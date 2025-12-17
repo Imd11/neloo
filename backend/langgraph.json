@@ -1,0 +1,11 @@
+{
+  "python_version": "3.11",
+  "dependencies": ["."],
+  "graphs": {
+    "data_analyst": "src.agent.graph:graph"
+  },
+  "http": {
+    "app": "src.api.webapp:app"
+  },
+  "env": ".env"
+}

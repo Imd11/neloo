@@ -1,0 +1,67 @@
+[project]
+name = "data-analyst-agent"
+version = "0.1.0"
+description = "Data Analysis Deep Agent with LangChain 1.0"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    # LangChain 1.0 Deep Agents
+    "deepagents>=0.1.0",
+    "langchain>=0.3.0",
+    "langgraph>=0.3.0",
+    "langchain-community>=0.3.0",
+
+    # Model Providers
+    "langchain-openai>=0.3.0",
+    "langchain-anthropic>=0.3.0",
+
+    # DeepSeek (via OpenAI-compatible API)
+    "openai>=1.0.0",
+
+    # Sandbox Execution
+    "e2b-code-interpreter>=1.0.0",
+
+    # Web Search
+    "tavily-python>=0.5.0",
+
+    # Data Analysis (for local execution)
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+    "scipy>=1.10.0",
+    "statsmodels>=0.14.0",
+    "matplotlib>=3.7.0",
+
+    # Utilities
+    "python-dotenv>=1.0.0",
+    "rich>=13.0.0",
+    "httpx>=0.27.0",
+
+    # File Storage
+    "supabase>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.5.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
