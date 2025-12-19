@@ -208,7 +208,7 @@ function HomePageContent() {
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
   const [assistantId, setAssistantId] = useQueryState("assistantId");
 
-  // On mount, check for saved config, otherwise show config dialog
+  // On mount, check for saved config or environment variables
   useEffect(() => {
     const savedConfig = getConfig();
     if (savedConfig) {
@@ -216,7 +216,9 @@ function HomePageContent() {
       if (!assistantId) {
         setAssistantId(savedConfig.assistantId);
       }
-    } else {
+    }
+    // If no config found (neither localStorage nor env vars), show config dialog
+    if (!savedConfig) {
       setConfigDialogOpen(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
