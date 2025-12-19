@@ -15,6 +15,7 @@ dependencies = [
     # Model Providers
     "langchain-openai>=0.3.0",
     "langchain-anthropic>=0.3.0",
+    "langchain-deepseek>=0.0.2",
 
     # DeepSeek (via OpenAI-compatible API)
     "openai>=1.0.0",
