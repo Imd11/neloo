@@ -39,4 +39,4 @@ ENV PORT=8000
 EXPOSE 8000
 
 # 启动命令 - 使用 langgraph 生产服务器
-CMD ["langgraph", "up", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "langgraph_cli", "up", "--host", "0.0.0.0", "--port", "8000"]
