@@ -16,8 +16,9 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# 复制依赖文件
+# 复制依赖文件和 README
 COPY backend/pyproject.toml ./
+COPY backend/README.md ./
 
 # 安装 Python 依赖
 RUN pip install --no-cache-dir --upgrade pip && \
