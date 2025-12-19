@@ -38,6 +38,6 @@ ENV PORT=8000
 # 暴露端口
 EXPOSE 8000
 
-# 启动命令 - 直接运行 FastAPI 应用
-# 使用 uvicorn 运行 FastAPI app (来自 langgraph.json 的 http.app 配置)
-CMD ["python", "-m", "uvicorn", "src.api.webapp:app", "--host", "0.0.0.0", "--port", "8000"]
+# 启动命令 - 使用 langgraph dev 启动完整服务
+# 这会同时启动 LangGraph Agent 和 FastAPI HTTP routes
+CMD ["python", "-m", "langgraph_cli", "dev", "--port", "8000"]
