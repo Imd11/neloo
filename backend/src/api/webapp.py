@@ -17,15 +17,19 @@ Routes:
 
 import os
 import uuid
-import shutil
 import tempfile
+import asyncio
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, Header
+from fastapi import FastAPI, File, UploadFile, HTTPException, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from pydantic import BaseModel
+
+# Import image storage
+from ..storage import get_image, get_image_storage
 
 # =============================================================================
 # Configuration
@@ -38,10 +42,13 @@ BUCKET_NAME = "data-analyst-files"
 # Check if we're using local storage mode
 USE_LOCAL_STORAGE = not (SUPABASE_URL and SUPABASE_SERVICE_KEY)
 
+# Async Supabase client singleton
+_supabase_client = None
+
 # Local storage directory - use the sandbox data directory for simplicity
 # This way uploaded files are directly available to the sandbox executor
 LOCAL_STORAGE_DIR = Path(tempfile.gettempdir()) / "data-analyst-sandbox" / "data"
-LOCAL_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+# Note: Directory creation moved to async context to avoid blocking
 
 # Supported file extensions
 ALLOWED_EXTENSIONS = {".csv", ".xlsx", ".xls", ".dta", ".sav", ".parquet"}
@@ -73,12 +80,15 @@ app.add_middleware(
 # Storage Backend
 # =============================================================================
 
-def get_supabase_client():
-    """Get Supabase client instance (only when Supabase is configured)."""
+async def get_supabase_client():
+    """Get async Supabase client instance (only when Supabase is configured)."""
+    global _supabase_client
     if USE_LOCAL_STORAGE:
         return None
-    from supabase import create_client
-    return create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    if _supabase_client is None:
+        from supabase import acreate_client
+        _supabase_client = await acreate_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    return _supabase_client
 
 
 def get_local_storage_path(user_id: str) -> Path:
@@ -86,11 +96,45 @@ def get_local_storage_path(user_id: str) -> Path:
 
     In local mode, files are stored directly in LOCAL_STORAGE_DIR (sandbox data dir)
     without user subdirectories for simplicity.
+
+    Note: Caller must ensure directory exists via _ensure_storage_dir().
     """
-    # In local mode, we store files directly in the sandbox data directory
-    # No user subdirectory needed since it's for local development
-    LOCAL_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
     return LOCAL_STORAGE_DIR
+
+
+async def _ensure_storage_dir() -> None:
+    """Ensure local storage directory exists (runs in thread pool)."""
+    await asyncio.to_thread(LOCAL_STORAGE_DIR.mkdir, parents=True, exist_ok=True)
+
+
+def _write_file_sync(path: Path, content: bytes) -> None:
+    """Write file synchronously (for use with asyncio.to_thread)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "wb") as f:
+        f.write(content)
+
+
+def _delete_file_sync(path: Path) -> bool:
+    """Delete file synchronously (for use with asyncio.to_thread)."""
+    if path.exists():
+        path.unlink()
+        return True
+    return False
+
+
+def _list_files_sync(directory: Path) -> list:
+    """List files synchronously (for use with asyncio.to_thread)."""
+    files = []
+    if directory.exists():
+        for item in directory.iterdir():
+            if item.is_file():
+                stat = item.stat()
+                files.append({
+                    "name": item.name,
+                    "size": stat.st_size,
+                    "ctime": stat.st_ctime,
+                })
+    return files
 
 
 # =============================================================================
@@ -103,6 +147,7 @@ class UploadResponse(BaseModel):
     filename: str
     original_filename: str
     storage_path: str
+    sandbox_path: str  # Actual path where file can be accessed in sandbox
     size: int
     message: str
 
@@ -211,17 +256,21 @@ async def upload_file(
 
     try:
         if USE_LOCAL_STORAGE:
-            # Local storage mode
+            # Local storage mode - use thread pool for file operations
             user_dir = get_local_storage_path(user_id)
             local_file_path = user_dir / storage_filename
 
-            with open(local_file_path, "wb") as f:
-                f.write(content)
+            # Write file in thread pool to avoid blocking
+            await asyncio.to_thread(_write_file_sync, local_file_path, content)
 
             print(f"[LocalStorage] File saved to: {local_file_path}")
+
+            # In local mode, use virtual path /home/user/data/{filename}
+            # The executor._rewrite_paths() will convert this to actual local path
+            sandbox_path = f"/home/user/data/{storage_filename}"
         else:
-            # Supabase storage mode
-            supabase = get_supabase_client()
+            # Supabase storage mode (async)
+            supabase = await get_supabase_client()
 
             # Determine content type
             ext = os.path.splitext(file.filename)[1].lower()
@@ -235,18 +284,22 @@ async def upload_file(
             }
             content_type = content_types.get(ext, "application/octet-stream")
 
-            # Upload file
-            supabase.storage.from_(BUCKET_NAME).upload(
+            # Upload file (async)
+            await supabase.storage.from_(BUCKET_NAME).upload(
                 path=storage_path,
                 file=content,
                 file_options={"content-type": content_type},
             )
+
+            # In E2B mode, sandbox_path uses the virtual path convention
+            sandbox_path = f"/home/user/data/{storage_filename}"
 
         return UploadResponse(
             success=True,
             filename=storage_filename,
             original_filename=file.filename,
             storage_path=storage_path,
+            sandbox_path=sandbox_path,
             size=file_size,
             message="File uploaded successfully",
         )
@@ -264,26 +317,26 @@ async def list_files(x_user_id: Optional[str] = Header(None)):
         files = []
 
         if USE_LOCAL_STORAGE:
-            # Local storage mode
+            # Local storage mode - use thread pool for file operations
             user_dir = get_local_storage_path(user_id)
-            for item in user_dir.iterdir():
-                if item.is_file():
-                    # Parse original filename from storage filename
-                    parts = item.name.split("_", 3)
-                    original_name = parts[3] if len(parts) > 3 else item.name
+            file_list = await asyncio.to_thread(_list_files_sync, user_dir)
 
-                    stat = item.stat()
-                    files.append(FileInfo(
-                        filename=item.name,
-                        original_filename=original_name,
-                        storage_path=f"{user_id}/{item.name}",
-                        size=stat.st_size,
-                        created_at=datetime.fromtimestamp(stat.st_ctime).isoformat(),
-                    ))
+            for item in file_list:
+                # Parse original filename from storage filename
+                parts = item["name"].split("_", 3)
+                original_name = parts[3] if len(parts) > 3 else item["name"]
+
+                files.append(FileInfo(
+                    filename=item["name"],
+                    original_filename=original_name,
+                    storage_path=f"{user_id}/{item['name']}",
+                    size=item["size"],
+                    created_at=datetime.fromtimestamp(item["ctime"]).isoformat(),
+                ))
         else:
-            # Supabase storage mode
-            supabase = get_supabase_client()
-            result = supabase.storage.from_(BUCKET_NAME).list(path=user_id)
+            # Supabase storage mode (async)
+            supabase = await get_supabase_client()
+            result = await supabase.storage.from_(BUCKET_NAME).list(path=user_id)
 
             for item in result:
                 if item.get("name"):
@@ -312,15 +365,14 @@ async def delete_file(filename: str, x_user_id: Optional[str] = Header(None)):
 
     try:
         if USE_LOCAL_STORAGE:
-            # Local storage mode
+            # Local storage mode - use thread pool for file operations
             user_dir = get_local_storage_path(user_id)
             local_file_path = user_dir / filename
-            if local_file_path.exists():
-                local_file_path.unlink()
+            await asyncio.to_thread(_delete_file_sync, local_file_path)
         else:
-            # Supabase storage mode
-            supabase = get_supabase_client()
-            supabase.storage.from_(BUCKET_NAME).remove([storage_path])
+            # Supabase storage mode (async)
+            supabase = await get_supabase_client()
+            await supabase.storage.from_(BUCKET_NAME).remove([storage_path])
 
         return DeleteResponse(success=True, message="File deleted successfully")
 
@@ -353,9 +405,9 @@ async def get_download_url(
                 expires_in=expires_in,
             )
         else:
-            # Supabase storage mode
-            supabase = get_supabase_client()
-            result = supabase.storage.from_(BUCKET_NAME).create_signed_url(
+            # Supabase storage mode (async)
+            supabase = await get_supabase_client()
+            result = await supabase.storage.from_(BUCKET_NAME).create_signed_url(
                 path=storage_path,
                 expires_in=expires_in,
             )
@@ -369,3 +421,241 @@ async def get_download_url(
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy", "service": "data-analyst-file-api"}
+
+
+# =============================================================================
+# Image Serving Routes
+# =============================================================================
+
+@app.options("/images/{image_id}")
+async def image_options(image_id: str):
+    """Handle CORS preflight for image endpoints."""
+    return Response(
+        content="",
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Max-Age": "86400",
+        },
+    )
+
+
+@app.get("/images/{image_id}")
+async def serve_image(
+    image_id: str,
+    sig: str = Query(..., description="URL signature for verification"),
+):
+    """
+    Serve an image by its ID.
+
+    This endpoint verifies the URL signature before serving the image.
+    Images are stored either locally (development) or in Supabase Storage (production).
+
+    Security:
+    - URL signature verification prevents unauthorized access
+    - Image IDs are UUID-based to prevent enumeration
+    - TTL-based cleanup removes old images automatically
+
+    Args:
+        image_id: Unique image identifier
+        sig: HMAC signature for URL verification
+
+    Returns:
+        Image bytes with PNG content type
+
+    Raises:
+        403: Invalid signature
+        404: Image not found
+    """
+    # Verify URL signature
+    storage = get_image_storage()
+
+    if not storage.verify_signature(image_id, sig):
+        raise HTTPException(
+            status_code=403,
+            detail="Invalid or expired image URL",
+        )
+
+    # Get image data
+    image_data = storage.get_image(image_id)
+
+    if image_data is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Image not found or expired",
+        )
+
+    # Return image with caching and CORS headers
+    return Response(
+        content=image_data,
+        media_type="image/png",
+        headers={
+            "Cache-Control": "public, max-age=86400",  # Cache for 24 hours
+            "X-Content-Type-Options": "nosniff",
+            # Explicit CORS headers for cross-origin fetch/download
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            # Allow download with correct filename
+            "Content-Disposition": f"inline; filename=\"figure_{image_id[:8]}.png\"",
+        },
+    )
+
+
+@app.delete("/images/{image_id}")
+async def delete_image(
+    image_id: str,
+    sig: str = Query(..., description="URL signature for verification"),
+):
+    """
+    Delete an image by its ID.
+
+    Args:
+        image_id: Unique image identifier
+        sig: HMAC signature for URL verification
+
+    Returns:
+        Success message
+
+    Raises:
+        403: Invalid signature
+        404: Image not found
+    """
+    storage = get_image_storage()
+
+    if not storage.verify_signature(image_id, sig):
+        raise HTTPException(
+            status_code=403,
+            detail="Invalid or expired image URL",
+        )
+
+    success = storage.delete_image(image_id)
+
+    if not success:
+        raise HTTPException(
+            status_code=404,
+            detail="Image not found",
+        )
+
+    return {"success": True, "message": "Image deleted"}
+
+
+@app.post("/images/cleanup")
+async def cleanup_images(max_age_hours: int = 24):
+    """
+    Clean up old images (admin endpoint).
+
+    This endpoint deletes images older than the specified age.
+    Should be called periodically (e.g., via cron job) to prevent storage buildup.
+
+    Args:
+        max_age_hours: Maximum age of images to keep (default: 24 hours)
+
+    Returns:
+        Number of deleted images
+    """
+    storage = get_image_storage()
+    deleted_count = storage.cleanup_old_images(max_age_hours)
+
+    return {
+        "success": True,
+        "deleted_count": deleted_count,
+        "message": f"Cleaned up {deleted_count} images older than {max_age_hours} hours",
+    }
+
+
+# =============================================================================
+# Sandbox File Download Routes
+# =============================================================================
+
+@app.get("/sandbox/files/{filename}")
+async def download_sandbox_file(filename: str):
+    """
+    Download a file from the sandbox data directory.
+
+    This endpoint serves files created by the AI during code execution.
+    Files are stored in the local data directory (sandbox).
+
+    Args:
+        filename: Name of the file to download
+
+    Returns:
+        File content with appropriate content type
+
+    Raises:
+        404: File not found
+    """
+    from fastapi.responses import FileResponse
+
+    # Get the sandbox data directory
+    local_file_path = LOCAL_STORAGE_DIR / filename
+
+    # Security check: prevent path traversal
+    try:
+        # Resolve the path and ensure it's within LOCAL_STORAGE_DIR
+        resolved_path = local_file_path.resolve()
+        if not str(resolved_path).startswith(str(LOCAL_STORAGE_DIR.resolve())):
+            raise HTTPException(status_code=403, detail="Access denied")
+    except Exception:
+        raise HTTPException(status_code=403, detail="Invalid file path")
+
+    if not local_file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    if not local_file_path.is_file():
+        raise HTTPException(status_code=400, detail="Not a file")
+
+    # Determine content type based on extension
+    ext = local_file_path.suffix.lower()
+    content_types = {
+        ".csv": "text/csv",
+        ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ".xls": "application/vnd.ms-excel",
+        ".json": "application/json",
+        ".txt": "text/plain",
+        ".md": "text/markdown",
+        ".html": "text/html",
+        ".parquet": "application/octet-stream",
+        ".dta": "application/octet-stream",
+        ".sav": "application/octet-stream",
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".pdf": "application/pdf",
+    }
+    media_type = content_types.get(ext, "application/octet-stream")
+
+    return FileResponse(
+        path=str(local_file_path),
+        filename=filename,
+        media_type=media_type,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Expose-Headers": "Content-Disposition",
+        },
+    )
+
+
+@app.get("/sandbox/files")
+async def list_sandbox_files():
+    """
+    List all files in the sandbox data directory.
+
+    Returns:
+        List of files with their metadata
+    """
+    files = []
+
+    if LOCAL_STORAGE_DIR.exists():
+        for item in LOCAL_STORAGE_DIR.iterdir():
+            if item.is_file():
+                stat = item.stat()
+                files.append({
+                    "filename": item.name,
+                    "size": stat.st_size,
+                    "modified": stat.st_mtime,
+                    "download_url": f"/sandbox/files/{item.name}",
+                })
+
+    return {"files": files, "total": len(files)}

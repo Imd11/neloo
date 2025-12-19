@@ -38,6 +38,11 @@ dependencies = [
 
     # File Storage
     "supabase>=2.0.0",
+
+    # RAG (Retrieval-Augmented Generation)
+    "langchain-chroma>=0.1.0",
+    "langchain-text-splitters>=0.3.0",
+    "chromadb>=0.5.0",
 ]
 
 [project.optional-dependencies]

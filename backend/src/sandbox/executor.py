@@ -34,6 +34,7 @@ class ExecutionResult:
     stderr: str = ""
     results: list[dict[str, Any]] = field(default_factory=list)
     error: Optional[str] = None
+    generated_files: list[dict[str, Any]] = field(default_factory=list)  # New files created during execution
 
     def to_dict(self) -> dict:
         return {
@@ -42,6 +43,7 @@ class ExecutionResult:
             "stderr": self.stderr,
             "results": self.results,
             "error": self.error,
+            "generated_files": self.generated_files,
         }
 
 
@@ -178,8 +180,74 @@ class LocalSubprocessExecutor(SandboxExecutor):
         # Replace the sandbox path with local path
         return code.replace("/home/user/data/", f"{local_data_dir}/")
 
+    def _get_data_dir_snapshot(self) -> dict[str, float]:
+        """
+        Get a snapshot of files in data directory with their modification times.
+
+        Returns:
+            Dict mapping filename to modification time
+        """
+        data_dir = self._get_data_dir()
+        snapshot = {}
+        try:
+            for item in os.listdir(data_dir):
+                item_path = os.path.join(data_dir, item)
+                if os.path.isfile(item_path):
+                    snapshot[item] = os.path.getmtime(item_path)
+        except Exception:
+            pass
+        return snapshot
+
+    def _detect_new_files(
+        self,
+        before: dict[str, float],
+        after: dict[str, float],
+    ) -> list[dict[str, Any]]:
+        """
+        Detect new or modified files by comparing snapshots.
+
+        Args:
+            before: Snapshot before execution
+            after: Snapshot after execution
+
+        Returns:
+            List of file info dicts with filename, size, and sandbox_path
+        """
+        data_dir = self._get_data_dir()
+        new_files = []
+
+        for filename, mtime in after.items():
+            # Check if file is new or modified
+            if filename not in before or mtime > before[filename]:
+                file_path = os.path.join(data_dir, filename)
+                try:
+                    size = os.path.getsize(file_path)
+                    new_files.append({
+                        "filename": filename,
+                        "size": size,
+                        "sandbox_path": f"/home/user/data/{filename}",
+                        "local_path": file_path,
+                    })
+                except Exception:
+                    pass
+
+        return new_files
+
     def execute(self, code: str, timeout: int = 300) -> ExecutionResult:
         """Execute code locally via subprocess with image capture support"""
+        # Auto-sync Supabase files to local before execution
+        # This ensures all user-uploaded files are available in the local sandbox
+        try:
+            from .file_sync import sync_all_supabase_files_to_local
+            synced_files = sync_all_supabase_files_to_local()
+            if synced_files:
+                print(f"[LocalExecutor] {len(synced_files)} files available for execution")
+        except Exception as e:
+            print(f"[LocalExecutor] Warning: Failed to sync files from storage: {e}")
+
+        # Take snapshot of data directory before execution
+        files_before = self._get_data_dir_snapshot()
+
         # Rewrite /home/user/data/ paths to local data directory
         code = self._rewrite_paths(code)
 
@@ -276,12 +344,19 @@ for fig_num in plt.get_fignums():
                     except Exception:
                         pass
 
+            # Detect new files created during execution
+            files_after = self._get_data_dir_snapshot()
+            generated_files = self._detect_new_files(files_before, files_after)
+            if generated_files:
+                print(f"[LocalExecutor] Detected {len(generated_files)} new/modified files")
+
             return ExecutionResult(
                 success=result.returncode == 0,
                 stdout=result.stdout,
                 stderr=result.stderr,
                 results=results,
                 error=result.stderr if result.returncode != 0 else None,
+                generated_files=generated_files,
             )
 
         except subprocess.TimeoutExpired:

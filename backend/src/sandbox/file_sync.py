@@ -292,3 +292,136 @@ def get_sandbox_file_path(storage_path: str) -> str:
     """
     filename = os.path.basename(storage_path)
     return f"{SANDBOX_DATA_DIR}/{filename}"
+
+
+# =============================================================================
+# Auto-sync Supabase files to Local
+# =============================================================================
+
+def list_supabase_files(user_id: str = "default") -> list[dict]:
+    """
+    List all files for a user in Supabase storage.
+
+    Args:
+        user_id: User identifier (default: "default")
+
+    Returns:
+        List of file info dicts with 'name' and 'storage_path'
+    """
+    if USE_LOCAL_STORAGE:
+        # In local storage mode, list files from LOCAL_STORAGE_DIR
+        files = []
+        try:
+            if LOCAL_STORAGE_DIR.exists():
+                for item in LOCAL_STORAGE_DIR.iterdir():
+                    if item.is_file():
+                        files.append({
+                            "name": item.name,
+                            "storage_path": f"{user_id}/{item.name}",
+                        })
+        except Exception as e:
+            print(f"[LocalStorage] Failed to list files: {e}")
+        return files
+    else:
+        # In Supabase mode, list files from bucket
+        client = get_supabase_client()
+        if not client:
+            return []
+
+        try:
+            result = client.storage.from_(BUCKET_NAME).list(path=user_id)
+            files = []
+            for item in result:
+                if item.get("name"):
+                    files.append({
+                        "name": item["name"],
+                        "storage_path": f"{user_id}/{item['name']}",
+                    })
+            return files
+        except Exception as e:
+            print(f"[Supabase] Failed to list files: {e}")
+            return []
+
+
+def sync_all_supabase_files_to_local(user_id: str = "default") -> list[dict]:
+    """
+    Sync ALL files from Supabase storage to local data directory.
+
+    This function should be called before code execution in local sandbox mode
+    to ensure all user-uploaded files are available locally.
+
+    Args:
+        user_id: User identifier (default: "default")
+
+    Returns:
+        List of synced file info dicts with 'name', 'storage_path', 'local_path'
+    """
+    if USE_LOCAL_STORAGE:
+        # In local storage mode, files are already in the right place
+        # Just return the list of files
+        local_dir = get_local_data_dir()
+        files = []
+        try:
+            if local_dir.exists():
+                for item in local_dir.iterdir():
+                    if item.is_file():
+                        files.append({
+                            "name": item.name,
+                            "storage_path": f"{user_id}/{item.name}",
+                            "local_path": str(item),
+                            "sandbox_path": f"{SANDBOX_DATA_DIR}/{item.name}",
+                        })
+            print(f"[LocalStorage] Found {len(files)} files already available locally")
+        except Exception as e:
+            print(f"[LocalStorage] Error listing local files: {e}")
+        return files
+
+    # In Supabase mode, download all files to local
+    print(f"[Supabase] Starting sync of all files for user: {user_id}")
+
+    # Get list of files in Supabase
+    remote_files = list_supabase_files(user_id)
+
+    if not remote_files:
+        print("[Supabase] No files found in storage")
+        return []
+
+    print(f"[Supabase] Found {len(remote_files)} files to sync")
+
+    # Sync each file
+    synced_files = []
+    for file_info in remote_files:
+        storage_path = file_info["storage_path"]
+        filename = file_info["name"]
+
+        # Check if file already exists locally
+        local_dir = get_local_data_dir()
+        local_path = local_dir / filename
+
+        if local_path.exists():
+            # File already synced
+            print(f"[Supabase] File already exists locally: {filename}")
+            synced_files.append({
+                "name": filename,
+                "storage_path": storage_path,
+                "local_path": str(local_path),
+                "sandbox_path": f"{SANDBOX_DATA_DIR}/{filename}",
+                "synced": False,  # Already existed
+            })
+        else:
+            # Download from Supabase
+            result_path = sync_file_to_local(storage_path)
+            if result_path:
+                print(f"[Supabase] Synced file: {filename}")
+                synced_files.append({
+                    "name": filename,
+                    "storage_path": storage_path,
+                    "local_path": result_path,
+                    "sandbox_path": f"{SANDBOX_DATA_DIR}/{filename}",
+                    "synced": True,  # Newly downloaded
+                })
+            else:
+                print(f"[Supabase] Failed to sync file: {filename}")
+
+    print(f"[Supabase] Sync complete: {len(synced_files)} files available locally")
+    return synced_files

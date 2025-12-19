@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Tests
+tests/
+pytest_cache/
+.pytest_cache/
+
+# Docs
+*.md
+docs/
+
+# Local files
+.env.local
+.env.development
+*.log
+
+# Data (will be created at runtime)
+data/
+*.db
+*.sqlite
+
+# Knowledge base (optional, can include if needed)
+# knowledge/
