@@ -38,6 +38,7 @@ dependencies = [
     "httpx>=0.27.0",
     "fastapi>=0.115.0",
     "uvicorn>=0.27.0",
+    "python-multipart>=0.0.6",
 
     # File Storage
     "supabase>=2.0.0",
