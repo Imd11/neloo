@@ -41,4 +41,5 @@ EXPOSE 8000
 
 # 启动命令 - 使用 langgraph dev 启动完整服务
 # 这会同时启动 LangGraph Agent 和 FastAPI HTTP routes
-CMD ["python", "-m", "langgraph_cli", "dev", "--port", "8000"]
+# 使用 --host 0.0.0.0 让服务监听所有网络接口（Railway 需要）
+CMD ["python", "-m", "langgraph_cli", "dev", "--port", "8000", "--host", "0.0.0.0"]
