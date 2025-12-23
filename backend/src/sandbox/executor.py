@@ -75,14 +75,13 @@ class E2BSandboxExecutor(SandboxExecutor):
     Requires: E2B_API_KEY environment variable
     """
 
-    def __init__(self, template: str = "base"):
+    def __init__(self):
         """
         Initialize E2B executor
 
-        Args:
-            template: E2B sandbox template (e.g., "base", "data-analysis")
+        Note: E2B code-interpreter SDK uses a default template,
+        no custom template parameter is needed.
         """
-        self.template = template
         self._sandbox = None
 
     def _get_sandbox(self):
@@ -90,7 +89,7 @@ class E2BSandboxExecutor(SandboxExecutor):
         if self._sandbox is None:
             try:
                 from e2b_code_interpreter import Sandbox
-                self._sandbox = Sandbox(template=self.template)
+                self._sandbox = Sandbox()
             except ImportError:
                 raise ImportError(
                     "e2b-code-interpreter is required for E2B sandbox. "
