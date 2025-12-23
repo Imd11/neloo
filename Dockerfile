@@ -35,13 +35,11 @@ RUN mkdir -p /app/data
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PORT=8000
-# 允许 LangGraph 在独立线程中运行阻塞操作（解决 os.getcwd() 等阻塞调用问题）
-ENV BG_JOB_ISOLATED_LOOPS=true
 
 # 暴露端口
 EXPOSE 8000
 
 # 启动命令 - 使用 langgraph dev 启动完整服务
-# 这会同时启动 LangGraph Agent 和 FastAPI HTTP routes
-# 使用 --host 0.0.0.0 让服务监听所有网络接口（Railway 需要）
-CMD ["python", "-m", "langgraph_cli", "dev", "--port", "8000", "--host", "0.0.0.0"]
+# --allow-blocking 允许阻塞操作（解决 os.getcwd() 等阻塞调用问题）
+# --host 0.0.0.0 让服务监听所有网络接口（Railway 需要）
+CMD ["python", "-m", "langgraph_cli", "dev", "--port", "8000", "--host", "0.0.0.0", "--allow-blocking"]
