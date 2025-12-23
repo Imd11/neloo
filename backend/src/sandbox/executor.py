@@ -104,6 +104,21 @@ class E2BSandboxExecutor(SandboxExecutor):
         """Execute code in E2B sandbox"""
         try:
             sandbox = self._get_sandbox()
+
+            # Auto-sync all files from Supabase to E2B sandbox before execution
+            try:
+                from .file_sync import list_supabase_files, sync_file_to_e2b
+                remote_files = list_supabase_files()
+                if remote_files:
+                    print(f"[E2BExecutor] Syncing {len(remote_files)} files to sandbox...")
+                    for file_info in remote_files:
+                        storage_path = file_info.get("storage_path")
+                        if storage_path:
+                            sync_file_to_e2b(sandbox, storage_path)
+                    print(f"[E2BExecutor] File sync complete")
+            except Exception as e:
+                print(f"[E2BExecutor] Warning: File sync failed: {e}")
+
             execution = sandbox.run_code(code, timeout=timeout)
 
             # Process results
