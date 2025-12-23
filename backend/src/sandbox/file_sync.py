@@ -82,35 +82,58 @@ def get_file_content(storage_path: str) -> Optional[bytes]:
     Get file content from storage (local or Supabase).
 
     Args:
-        storage_path: Path in storage (e.g., "user_id/filename.csv")
+        storage_path: Path in storage (e.g., "user_id/filename.csv" for Supabase,
+                      or just "filename.csv" for local mode)
 
     Returns:
         File content as bytes, or None if failed
     """
+    print(f"[FileSync] get_file_content called with storage_path={storage_path}")
+
     if USE_LOCAL_STORAGE:
         # Local storage mode - read from local filesystem
+        # In local mode, files are stored directly in LOCAL_STORAGE_DIR without subdirectories
         local_file_path = LOCAL_STORAGE_DIR / storage_path
+        print(f"[FileSync] Local mode: looking for file at {local_file_path}")
         try:
             if local_file_path.exists():
                 with open(local_file_path, "rb") as f:
-                    return f.read()
+                    content = f.read()
+                    print(f"[FileSync] Successfully read {len(content)} bytes from {local_file_path}")
+                    return content
             else:
-                print(f"[LocalStorage] File not found: {local_file_path}")
+                print(f"[FileSync] File not found: {local_file_path}")
+                # Try without any path prefix (in case storage_path has user_id prefix)
+                filename = os.path.basename(storage_path)
+                alt_path = LOCAL_STORAGE_DIR / filename
+                if alt_path.exists():
+                    print(f"[FileSync] Found file at alternate path: {alt_path}")
+                    with open(alt_path, "rb") as f:
+                        content = f.read()
+                        print(f"[FileSync] Successfully read {len(content)} bytes from {alt_path}")
+                        return content
                 return None
         except Exception as e:
-            print(f"[LocalStorage] Failed to read file: {e}")
+            print(f"[FileSync] Failed to read local file: {e}")
+            import traceback
+            print(f"[FileSync] Traceback: {traceback.format_exc()}")
             return None
     else:
         # Supabase storage mode
+        print(f"[FileSync] Supabase mode: downloading {storage_path} from bucket {BUCKET_NAME}")
         client = get_supabase_client()
         if not client:
+            print(f"[FileSync] Failed to get Supabase client")
             return None
 
         try:
             response = client.storage.from_(BUCKET_NAME).download(storage_path)
+            print(f"[FileSync] Successfully downloaded {len(response)} bytes from Supabase")
             return response
         except Exception as e:
-            print(f"Failed to download file from Supabase: {e}")
+            print(f"[FileSync] Failed to download from Supabase: {e}")
+            import traceback
+            print(f"[FileSync] Traceback: {traceback.format_exc()}")
             return None
 
 
@@ -308,28 +331,46 @@ def list_supabase_files(user_id: str = "default") -> list[dict]:
     Returns:
         List of file info dicts with 'name' and 'storage_path'
     """
+    print(f"[FileSync] list_supabase_files called with user_id={user_id}")
+    print(f"[FileSync] USE_LOCAL_STORAGE={USE_LOCAL_STORAGE}")
+    print(f"[FileSync] SUPABASE_URL={SUPABASE_URL[:30] if SUPABASE_URL else None}...")
+    print(f"[FileSync] SUPABASE_SERVICE_KEY configured: {bool(SUPABASE_SERVICE_KEY)}")
+
     if USE_LOCAL_STORAGE:
         # In local storage mode, list files from LOCAL_STORAGE_DIR
         files = []
+        print(f"[FileSync] LOCAL_STORAGE_DIR={LOCAL_STORAGE_DIR}")
         try:
             if LOCAL_STORAGE_DIR.exists():
                 for item in LOCAL_STORAGE_DIR.iterdir():
                     if item.is_file():
+                        # In local mode, files are stored directly without user_id subdirectory
+                        # So storage_path should just be the filename for get_file_content to work
                         files.append({
                             "name": item.name,
-                            "storage_path": f"{user_id}/{item.name}",
+                            "storage_path": item.name,  # Changed: no user_id prefix in local mode
                         })
+                        print(f"[FileSync] Found local file: {item.name}")
+            else:
+                print(f"[FileSync] LOCAL_STORAGE_DIR does not exist")
         except Exception as e:
-            print(f"[LocalStorage] Failed to list files: {e}")
+            print(f"[FileSync] Failed to list local files: {e}")
+            import traceback
+            print(f"[FileSync] Traceback: {traceback.format_exc()}")
+        print(f"[FileSync] Returning {len(files)} local files")
         return files
     else:
         # In Supabase mode, list files from bucket
+        print(f"[FileSync] Using Supabase mode, bucket={BUCKET_NAME}")
         client = get_supabase_client()
         if not client:
+            print(f"[FileSync] Failed to get Supabase client")
             return []
 
         try:
+            print(f"[FileSync] Listing files from Supabase path: {user_id}")
             result = client.storage.from_(BUCKET_NAME).list(path=user_id)
+            print(f"[FileSync] Supabase list result: {result}")
             files = []
             for item in result:
                 if item.get("name"):
@@ -337,9 +378,13 @@ def list_supabase_files(user_id: str = "default") -> list[dict]:
                         "name": item["name"],
                         "storage_path": f"{user_id}/{item['name']}",
                     })
+                    print(f"[FileSync] Found Supabase file: {user_id}/{item['name']}")
+            print(f"[FileSync] Returning {len(files)} Supabase files")
             return files
         except Exception as e:
-            print(f"[Supabase] Failed to list files: {e}")
+            print(f"[FileSync] Failed to list Supabase files: {e}")
+            import traceback
+            print(f"[FileSync] Traceback: {traceback.format_exc()}")
             return []
 
 
