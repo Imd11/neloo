@@ -89,7 +89,8 @@ class E2BSandboxExecutor(SandboxExecutor):
         if self._sandbox is None:
             try:
                 from e2b_code_interpreter import Sandbox
-                self._sandbox = Sandbox()
+                # E2B SDK v1 uses Sandbox.create() instead of Sandbox()
+                self._sandbox = Sandbox.create()
             except ImportError:
                 raise ImportError(
                     "e2b-code-interpreter is required for E2B sandbox. "
