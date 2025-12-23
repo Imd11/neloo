@@ -35,6 +35,8 @@ RUN mkdir -p /app/data
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PORT=8000
+# 允许 LangGraph 在独立线程中运行阻塞操作（解决 os.getcwd() 等阻塞调用问题）
+ENV BG_JOB_ISOLATED_LOOPS=true
 
 # 暴露端口
 EXPOSE 8000
