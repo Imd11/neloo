@@ -107,17 +107,28 @@ class E2BSandboxExecutor(SandboxExecutor):
 
             # Auto-sync all files from Supabase to E2B sandbox before execution
             try:
-                from .file_sync import list_supabase_files, sync_file_to_e2b
+                from .file_sync import list_supabase_files, sync_file_to_e2b, SUPABASE_URL, SUPABASE_SERVICE_KEY, USE_LOCAL_STORAGE
+                print(f"[E2BExecutor] Storage mode: {'LOCAL' if USE_LOCAL_STORAGE else 'SUPABASE'}")
+                print(f"[E2BExecutor] SUPABASE_URL configured: {bool(SUPABASE_URL)}")
+                print(f"[E2BExecutor] SUPABASE_SERVICE_KEY configured: {bool(SUPABASE_SERVICE_KEY)}")
+
                 remote_files = list_supabase_files()
+                print(f"[E2BExecutor] Found {len(remote_files)} files in storage: {remote_files}")
+
                 if remote_files:
                     print(f"[E2BExecutor] Syncing {len(remote_files)} files to sandbox...")
                     for file_info in remote_files:
                         storage_path = file_info.get("storage_path")
                         if storage_path:
-                            sync_file_to_e2b(sandbox, storage_path)
+                            result = sync_file_to_e2b(sandbox, storage_path)
+                            print(f"[E2BExecutor] Synced {storage_path} -> {result}")
                     print(f"[E2BExecutor] File sync complete")
+                else:
+                    print(f"[E2BExecutor] No files found to sync")
             except Exception as e:
+                import traceback
                 print(f"[E2BExecutor] Warning: File sync failed: {e}")
+                print(f"[E2BExecutor] Traceback: {traceback.format_exc()}")
 
             execution = sandbox.run_code(code, timeout=timeout)
 
