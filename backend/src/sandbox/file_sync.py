@@ -235,16 +235,18 @@ def sync_file_to_e2b(sandbox, storage_path: str, sandbox_path: Optional[str] = N
 
     try:
         # Create directory in E2B sandbox
+        # Note: E2B SDK v1 uses sandbox.files instead of sandbox.filesystem
         print(f"[sync_file_to_e2b] Creating directory {sandbox_dir} in sandbox")
-        sandbox.filesystem.make_dir(sandbox_dir)
+        sandbox.files.make_dir(sandbox_dir)
         print(f"[sync_file_to_e2b] Directory created successfully")
     except Exception as e:
         print(f"[sync_file_to_e2b] Directory creation note: {e}")  # Directory might already exist
 
     try:
         # Write file to E2B sandbox
+        # Note: E2B SDK v1 uses sandbox.files.write() instead of sandbox.filesystem.write_bytes()
         print(f"[sync_file_to_e2b] Writing {len(content)} bytes to {sandbox_path}")
-        sandbox.filesystem.write_bytes(sandbox_path, content)
+        sandbox.files.write(sandbox_path, content)
         print(f"[sync_file_to_e2b] Successfully wrote file to {sandbox_path}")
         return sandbox_path
     except Exception as e:
