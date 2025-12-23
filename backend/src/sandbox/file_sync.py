@@ -213,31 +213,44 @@ def sync_file_to_e2b(sandbox, storage_path: str, sandbox_path: Optional[str] = N
     Returns:
         Sandbox file path where the file was saved, or None if failed
     """
+    print(f"[sync_file_to_e2b] Starting sync for storage_path={storage_path}")
+
     # Get file content (handles both local and Supabase modes)
     content = get_file_content(storage_path)
     if content is None:
+        print(f"[sync_file_to_e2b] get_file_content returned None for {storage_path}")
         return None
+
+    print(f"[sync_file_to_e2b] Got {len(content)} bytes from storage")
 
     # Determine filename and sandbox path
     filename = os.path.basename(storage_path)
     if sandbox_path is None:
         sandbox_path = f"{SANDBOX_DATA_DIR}/{filename}"
 
+    print(f"[sync_file_to_e2b] Target sandbox_path={sandbox_path}")
+
     # Ensure directory exists in sandbox
     sandbox_dir = os.path.dirname(sandbox_path)
 
     try:
         # Create directory in E2B sandbox
+        print(f"[sync_file_to_e2b] Creating directory {sandbox_dir} in sandbox")
         sandbox.filesystem.make_dir(sandbox_dir)
-    except Exception:
-        pass  # Directory might already exist
+        print(f"[sync_file_to_e2b] Directory created successfully")
+    except Exception as e:
+        print(f"[sync_file_to_e2b] Directory creation note: {e}")  # Directory might already exist
 
     try:
         # Write file to E2B sandbox
+        print(f"[sync_file_to_e2b] Writing {len(content)} bytes to {sandbox_path}")
         sandbox.filesystem.write_bytes(sandbox_path, content)
+        print(f"[sync_file_to_e2b] Successfully wrote file to {sandbox_path}")
         return sandbox_path
     except Exception as e:
-        print(f"Failed to write file to E2B sandbox: {e}")
+        print(f"[sync_file_to_e2b] Failed to write file to E2B sandbox: {e}")
+        import traceback
+        print(f"[sync_file_to_e2b] Traceback: {traceback.format_exc()}")
         return None
 
 
