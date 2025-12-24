@@ -7,21 +7,48 @@ import { ConfigDialog } from "@/app/components/ConfigDialog";
 import { Button } from "@/components/ui/button";
 import { Assistant } from "@langchain/langgraph-sdk";
 import { ClientProvider, useClient } from "@/providers/ClientProvider";
-import { Settings, MessagesSquare, SquarePen } from "lucide-react";
+import { Settings, MessagesSquare, SquarePen, FolderOpen } from "lucide-react";
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { ThreadList } from "@/app/components/ThreadList";
-import { ChatProvider } from "@/providers/ChatProvider";
+import { ChatProvider, useChatContext } from "@/providers/ChatProvider";
 import { ChatInterface } from "@/app/components/ChatInterface";
+import { FilePanel } from "@/app/components/FilePanel";
 
 interface HomePageInnerProps {
   config: StandaloneConfig;
   configDialogOpen: boolean;
   setConfigDialogOpen: (open: boolean) => void;
   handleSaveConfig: (config: StandaloneConfig) => void;
+}
+
+// Wrapper component to access ChatContext for FilePanel
+function ChatWithFilePanel({
+  assistant,
+  showFilePanel,
+  onCloseFilePanel,
+}: {
+  assistant: Assistant | null;
+  showFilePanel: boolean;
+  onCloseFilePanel: () => void;
+}) {
+  const { messages } = useChatContext();
+
+  return (
+    <div className="flex h-full">
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <ChatInterface assistant={assistant} />
+      </div>
+      {showFilePanel && (
+        <div className="w-72 flex-shrink-0">
+          <FilePanel messages={messages} onClose={onCloseFilePanel} />
+        </div>
+      )}
+    </div>
+  );
 }
 
 function HomePageInner({
@@ -33,6 +60,7 @@ function HomePageInner({
   const client = useClient();
   const [threadId, setThreadId] = useQueryState("threadId");
   const [sidebar, setSidebar] = useQueryState("sidebar");
+  const [filePanel, setFilePanel] = useQueryState("files");
 
   const [mutateThreads, setMutateThreads] = useState<(() => void) | null>(null);
   const [interruptCount, setInterruptCount] = useState(0);
@@ -147,6 +175,15 @@ function HomePageInner({
             <Button
               variant="outline"
               size="sm"
+              onClick={() => setFilePanel(filePanel ? null : "1")}
+              className={filePanel ? "border-[#2F6868] bg-[#2F6868] text-white hover:bg-[#2F6868]/80" : ""}
+            >
+              <FolderOpen className="mr-2 h-4 w-4" />
+              Files
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => setThreadId(null)}
               disabled={!threadId}
               className="border-[#2F6868] bg-[#2F6868] text-white hover:bg-[#2F6868]/80"
@@ -193,7 +230,11 @@ function HomePageInner({
                 activeAssistant={assistant}
                 onHistoryRevalidate={() => mutateThreads?.()}
               >
-                <ChatInterface assistant={assistant} />
+                <ChatWithFilePanel
+                  assistant={assistant}
+                  showFilePanel={!!filePanel}
+                  onCloseFilePanel={() => setFilePanel(null)}
+                />
               </ChatProvider>
             </ResizablePanel>
           </ResizablePanelGroup>
