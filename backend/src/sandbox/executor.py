@@ -84,13 +84,27 @@ class E2BSandboxExecutor(SandboxExecutor):
         """
         self._sandbox = None
 
-    def _get_sandbox(self):
-        """Lazy initialization of sandbox"""
+    def _get_sandbox(self, force_new: bool = False):
+        """
+        Lazy initialization of sandbox with automatic recreation on failure.
+
+        Args:
+            force_new: If True, always create a new sandbox (used after sandbox expires)
+        """
+        if force_new and self._sandbox is not None:
+            try:
+                self._sandbox.close()
+            except Exception:
+                pass
+            self._sandbox = None
+
         if self._sandbox is None:
             try:
                 from e2b_code_interpreter import Sandbox
                 # E2B SDK v1 uses Sandbox.create() instead of Sandbox()
-                self._sandbox = Sandbox.create()
+                # Set timeout to 10 minutes (600 seconds) to reduce sandbox recreation frequency
+                self._sandbox = Sandbox.create(timeout=600)
+                print(f"[E2BExecutor] Created new sandbox with 10 minute timeout")
             except ImportError:
                 raise ImportError(
                     "e2b-code-interpreter is required for E2B sandbox. "
@@ -101,10 +115,41 @@ class E2BSandboxExecutor(SandboxExecutor):
         return self._sandbox
 
     def execute(self, code: str, timeout: int = 300) -> ExecutionResult:
-        """Execute code in E2B sandbox"""
-        try:
-            sandbox = self._get_sandbox()
+        """Execute code in E2B sandbox with automatic retry on sandbox expiration"""
+        max_retries = 2  # Retry once if sandbox expired
 
+        for attempt in range(max_retries):
+            try:
+                # Force new sandbox on retry (sandbox may have expired)
+                sandbox = self._get_sandbox(force_new=(attempt > 0))
+
+                result = self._execute_in_sandbox(sandbox, code, timeout)
+                return result
+
+            except Exception as e:
+                error_str = str(e)
+                # Check if error is due to sandbox not found (expired)
+                if "sandbox was not found" in error_str or "502" in error_str:
+                    if attempt < max_retries - 1:
+                        print(f"[E2BExecutor] Sandbox expired, creating new sandbox (attempt {attempt + 2})")
+                        self._sandbox = None  # Clear the stale reference
+                        continue  # Retry with new sandbox
+
+                # Other errors or final attempt failed
+                return ExecutionResult(
+                    success=False,
+                    error=f"E2B execution error: {error_str}",
+                )
+
+        # Should not reach here, but just in case
+        return ExecutionResult(
+            success=False,
+            error="E2B execution failed after retries",
+        )
+
+    def _execute_in_sandbox(self, sandbox, code: str, timeout: int) -> ExecutionResult:
+        """Internal method to execute code in a given sandbox"""
+        try:
             # Auto-sync all files from Supabase to E2B sandbox before execution
             try:
                 from .file_sync import list_supabase_files, sync_file_to_e2b, SUPABASE_URL, SUPABASE_SERVICE_KEY, USE_LOCAL_STORAGE
@@ -258,10 +303,8 @@ class E2BSandboxExecutor(SandboxExecutor):
             )
 
         except Exception as e:
-            return ExecutionResult(
-                success=False,
-                error=f"E2B execution error: {str(e)}",
-            )
+            # Re-raise to let execute() handle retry logic
+            raise
 
     def close(self) -> None:
         """Close the sandbox"""
