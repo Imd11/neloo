@@ -30,6 +30,7 @@ import type {
 import { Assistant, Message } from "@langchain/langgraph-sdk";
 import { extractStringFromMessageContent } from "@/app/utils/utils";
 import { useChatContext } from "@/providers/ChatProvider";
+import { useAuth } from "@/providers/AuthProvider";
 import { cn } from "@/lib/utils";
 import { useStickToBottom } from "use-stick-to-bottom";
 import { FilesPopover } from "@/app/components/TasksFilesSidebar";
@@ -90,6 +91,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant }) => {
 
   // Data file upload hook
   const config = getConfig();
+  const { session } = useAuth();
   const {
     files: dataFiles,
     isUploading,
@@ -102,6 +104,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant }) => {
     acceptAttribute,
   } = useDataFileUpload({
     apiUrl: config?.deploymentUrl || "",
+    accessToken: session?.access_token,
     maxFiles: 5,
   });
 

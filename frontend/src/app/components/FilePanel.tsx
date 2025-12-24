@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getConfig } from "@/lib/config";
 import { Message } from "@langchain/langgraph-sdk";
+import { useAuth } from "@/providers/AuthProvider";
 
 // ============================================================================
 // Types
@@ -401,6 +402,15 @@ function CodeItem({
 export function FilePanel({ messages, onClose }: FilePanelProps) {
   const config = getConfig();
   const apiUrl = config?.deploymentUrl || "";
+  const { session } = useAuth();
+
+  // Helper to get auth headers
+  const getAuthHeaders = useCallback((): Record<string, string> => {
+    if (session?.access_token) {
+      return { Authorization: `Bearer ${session.access_token}` };
+    }
+    return { "X-User-Id": "default" };
+  }, [session]);
 
   // State
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
@@ -424,7 +434,7 @@ export function FilePanel({ messages, onClose }: FilePanelProps) {
     setIsLoadingUploaded(true);
     try {
       const response = await fetch(`${apiUrl}/files/list`, {
-        headers: { "X-User-Id": "default" },
+        headers: getAuthHeaders(),
       });
       if (response.ok) {
         const data = await response.json();
@@ -435,7 +445,7 @@ export function FilePanel({ messages, onClose }: FilePanelProps) {
     } finally {
       setIsLoadingUploaded(false);
     }
-  }, [apiUrl]);
+  }, [apiUrl, getAuthHeaders]);
 
   // Fetch generated files
   const fetchGeneratedFiles = useCallback(async () => {
@@ -473,7 +483,7 @@ export function FilePanel({ messages, onClose }: FilePanelProps) {
       try {
         const response = await fetch(
           `${apiUrl}/files/download-url/${encodeURIComponent(file.filename)}`,
-          { headers: { "X-User-Id": "default" } }
+          { headers: getAuthHeaders() }
         );
         if (response.ok) {
           const data = await response.json();
@@ -483,7 +493,7 @@ export function FilePanel({ messages, onClose }: FilePanelProps) {
         console.error("Failed to download file:", error);
       }
     },
-    [apiUrl]
+    [apiUrl, getAuthHeaders]
   );
 
   const handleDownloadGenerated = useCallback(
@@ -501,7 +511,7 @@ export function FilePanel({ messages, onClose }: FilePanelProps) {
           `${apiUrl}/files/${encodeURIComponent(file.filename)}`,
           {
             method: "DELETE",
-            headers: { "X-User-Id": "default" },
+            headers: getAuthHeaders(),
           }
         );
         if (response.ok) {
@@ -513,7 +523,7 @@ export function FilePanel({ messages, onClose }: FilePanelProps) {
         console.error("Failed to delete file:", error);
       }
     },
-    [apiUrl]
+    [apiUrl, getAuthHeaders]
   );
 
   const handleDownloadImage = useCallback(async (image: ImageInfo) => {

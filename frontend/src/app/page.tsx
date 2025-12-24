@@ -2,28 +2,17 @@
 
 import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useQueryState } from "nuqs";
-import { getConfig, saveConfig, StandaloneConfig } from "@/lib/config";
-import { ConfigDialog } from "@/app/components/ConfigDialog";
-import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
+import { getConfig, StandaloneConfig } from "@/lib/config";
 import { Assistant } from "@langchain/langgraph-sdk";
 import { ClientProvider, useClient } from "@/providers/ClientProvider";
-import { Settings, MessagesSquare, SquarePen, FolderOpen } from "lucide-react";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
-import { ThreadList } from "@/app/components/ThreadList";
+import { useAuth } from "@/providers/AuthProvider";
 import { ChatProvider, useChatContext } from "@/providers/ChatProvider";
 import { ChatInterface } from "@/app/components/ChatInterface";
 import { FilePanel } from "@/app/components/FilePanel";
-
-interface HomePageInnerProps {
-  config: StandaloneConfig;
-  configDialogOpen: boolean;
-  setConfigDialogOpen: (open: boolean) => void;
-  handleSaveConfig: (config: StandaloneConfig) => void;
-}
+import { AppSidebar } from "@/app/components/AppSidebar";
+import { SearchDialog } from "@/app/components/SearchDialog";
+import { LibraryDialog } from "@/app/components/LibraryDialog";
 
 // Wrapper component to access ChatContext for FilePanel
 function ChatWithFilePanel({
@@ -51,20 +40,21 @@ function ChatWithFilePanel({
   );
 }
 
-function HomePageInner({
-  config,
-  configDialogOpen,
-  setConfigDialogOpen,
-  handleSaveConfig,
-}: HomePageInnerProps) {
+interface HomePageInnerProps {
+  config: StandaloneConfig;
+}
+
+function HomePageInner({ config }: HomePageInnerProps) {
   const client = useClient();
+  const router = useRouter();
+  const { signOut } = useAuth();
   const [threadId, setThreadId] = useQueryState("threadId");
-  const [sidebar, setSidebar] = useQueryState("sidebar");
   const [filePanel, setFilePanel] = useQueryState("files");
 
   const [mutateThreads, setMutateThreads] = useState<(() => void) | null>(null);
-  const [interruptCount, setInterruptCount] = useState(0);
   const [assistant, setAssistant] = useState<Assistant | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
 
   const fetchAssistant = useCallback(async () => {
     const isUUID =
@@ -73,7 +63,6 @@ function HomePageInner({
       );
 
     if (isUUID) {
-      // We should try to fetch the assistant directly with this UUID
       try {
         const data = await client.assistants.get(config.assistantId);
         setAssistant(data);
@@ -93,8 +82,6 @@ function HomePageInner({
       }
     } else {
       try {
-        // We should try to list out the assistants for this graph, and then use the default one.
-        // TODO: Paginate this search, but 100 should be enough for graph name
         const assistants = await client.assistants.search({
           graphId: config.assistantId,
           limit: 100,
@@ -108,7 +95,7 @@ function HomePageInner({
         setAssistant(defaultAssistant);
       } catch (error) {
         console.error(
-          "Failed to find default assistant from graph_id: try setting the assistant_id directly:",
+          "Failed to find default assistant from graph_id:",
           error
         );
         setAssistant({
@@ -130,114 +117,63 @@ function HomePageInner({
     fetchAssistant();
   }, [fetchAssistant]);
 
+  const handleLogout = async () => {
+    await signOut();
+    router.push("/login");
+  };
+
+  const handleNewThread = () => {
+    setThreadId(null);
+  };
+
+  const handleSearch = () => {
+    setSearchOpen(true);
+  };
+
+  const handleLibrary = () => {
+    setLibraryOpen(true);
+  };
+
+  const handleThreadSelect = async (id: string) => {
+    await setThreadId(id);
+    setSearchOpen(false);
+  };
+
   return (
     <>
-      <ConfigDialog
-        open={configDialogOpen}
-        onOpenChange={setConfigDialogOpen}
-        onSave={handleSaveConfig}
-        initialConfig={config}
+      <SearchDialog
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+        onThreadSelect={handleThreadSelect}
       />
-      <div className="flex h-screen flex-col">
-        <header className="flex h-16 items-center justify-between border-b border-border px-6">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-semibold">Deep Agent UI</h1>
-            {!sidebar && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSidebar("1")}
-                className="rounded-md border border-border bg-card p-3 text-foreground hover:bg-accent"
-              >
-                <MessagesSquare className="mr-2 h-4 w-4" />
-                Threads
-                {interruptCount > 0 && (
-                  <span className="ml-2 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] text-destructive-foreground">
-                    {interruptCount}
-                  </span>
-                )}
-              </Button>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="text-sm text-muted-foreground">
-              <span className="font-medium">Assistant:</span>{" "}
-              {config.assistantId}
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setConfigDialogOpen(true)}
-            >
-              <Settings className="mr-2 h-4 w-4" />
-              Settings
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setFilePanel(filePanel ? null : "1")}
-              className={filePanel ? "border-[#2F6868] bg-[#2F6868] text-white hover:bg-[#2F6868]/80" : ""}
-            >
-              <FolderOpen className="mr-2 h-4 w-4" />
-              Files
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setThreadId(null)}
-              disabled={!threadId}
-              className="border-[#2F6868] bg-[#2F6868] text-white hover:bg-[#2F6868]/80"
-            >
-              <SquarePen className="mr-2 h-4 w-4" />
-              New Thread
-            </Button>
-          </div>
-        </header>
+      <LibraryDialog
+        open={libraryOpen}
+        onOpenChange={setLibraryOpen}
+      />
+      <div className="flex h-screen">
+        {/* Sidebar */}
+        <AppSidebar
+          onNewThread={handleNewThread}
+          onSearch={handleSearch}
+          onLibrary={handleLibrary}
+          onThreadSelect={handleThreadSelect}
+          onMutateReady={(fn) => setMutateThreads(() => fn)}
+          onLogout={handleLogout}
+          currentThreadId={threadId}
+        />
 
+        {/* Main content area */}
         <div className="flex-1 overflow-hidden">
-          <ResizablePanelGroup
-            direction="horizontal"
-            autoSaveId="standalone-chat"
+          <ChatProvider
+            activeAssistant={assistant}
+            onHistoryRevalidate={() => mutateThreads?.()}
           >
-            {sidebar && (
-              <>
-                <ResizablePanel
-                  id="thread-history"
-                  order={1}
-                  defaultSize={25}
-                  minSize={20}
-                  className="relative min-w-[380px]"
-                >
-                  <ThreadList
-                    onThreadSelect={async (id) => {
-                      await setThreadId(id);
-                    }}
-                    onMutateReady={(fn) => setMutateThreads(() => fn)}
-                    onClose={() => setSidebar(null)}
-                    onInterruptCountChange={setInterruptCount}
-                  />
-                </ResizablePanel>
-                <ResizableHandle />
-              </>
-            )}
-
-            <ResizablePanel
-              id="chat"
-              className="relative flex flex-col"
-              order={2}
-            >
-              <ChatProvider
-                activeAssistant={assistant}
-                onHistoryRevalidate={() => mutateThreads?.()}
-              >
-                <ChatWithFilePanel
-                  assistant={assistant}
-                  showFilePanel={!!filePanel}
-                  onCloseFilePanel={() => setFilePanel(null)}
-                />
-              </ChatProvider>
-            </ResizablePanel>
-          </ResizablePanelGroup>
+            <ChatWithFilePanel
+              assistant={assistant}
+              showFilePanel={!!filePanel}
+              onCloseFilePanel={() => setFilePanel(null)}
+            />
+          </ChatProvider>
         </div>
       </div>
     </>
@@ -245,11 +181,20 @@ function HomePageInner({
 }
 
 function HomePageContent() {
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [config, setConfig] = useState<StandaloneConfig | null>(null);
-  const [configDialogOpen, setConfigDialogOpen] = useState(false);
+  const [configLoading, setConfigLoading] = useState(true);
   const [assistantId, setAssistantId] = useQueryState("assistantId");
 
-  // On mount, check for saved config or environment variables
+  // Check authentication
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/login");
+    }
+  }, [authLoading, user, router]);
+
+  // Load config from environment variables
   useEffect(() => {
     const savedConfig = getConfig();
     if (savedConfig) {
@@ -258,65 +203,46 @@ function HomePageContent() {
         setAssistantId(savedConfig.assistantId);
       }
     }
-    // If no config found (neither localStorage nor env vars), show config dialog
-    if (!savedConfig) {
-      setConfigDialogOpen(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    setConfigLoading(false);
+  }, [assistantId, setAssistantId]);
 
-  // If config changes, update the assistantId
-  useEffect(() => {
-    if (config && !assistantId) {
-      setAssistantId(config.assistantId);
-    }
-  }, [config, assistantId, setAssistantId]);
+  // Show loading while checking auth or config
+  if (authLoading || configLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
 
-  const handleSaveConfig = useCallback((newConfig: StandaloneConfig) => {
-    saveConfig(newConfig);
-    setConfig(newConfig);
-  }, []);
+  // If not authenticated, don't render (will redirect)
+  if (!user) {
+    return null;
+  }
 
-  const langsmithApiKey =
-    config?.langsmithApiKey || process.env.NEXT_PUBLIC_LANGSMITH_API_KEY || "";
-
+  // If no config, show error message
   if (!config) {
     return (
-      <>
-        <ConfigDialog
-          open={configDialogOpen}
-          onOpenChange={setConfigDialogOpen}
-          onSave={handleSaveConfig}
-        />
-        <div className="flex h-screen items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold">Welcome to Standalone Chat</h1>
-            <p className="mt-2 text-muted-foreground">
-              Configure your deployment to get started
-            </p>
-            <Button
-              onClick={() => setConfigDialogOpen(true)}
-              className="mt-4"
-            >
-              Open Configuration
-            </Button>
-          </div>
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold">Configuration Required</h1>
+          <p className="mt-2 text-muted-foreground">
+            Please set NEXT_PUBLIC_API_URL environment variable
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Example: NEXT_PUBLIC_API_URL=http://localhost:2024
+          </p>
         </div>
-      </>
+      </div>
     );
   }
 
   return (
     <ClientProvider
       deploymentUrl={config.deploymentUrl}
-      apiKey={langsmithApiKey}
+      apiKey={config.langsmithApiKey || ""}
     >
-      <HomePageInner
-        config={config}
-        configDialogOpen={configDialogOpen}
-        setConfigDialogOpen={setConfigDialogOpen}
-        handleSaveConfig={handleSaveConfig}
-      />
+      <HomePageInner config={config} />
     </ClientProvider>
   );
 }

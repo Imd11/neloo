@@ -12,7 +12,7 @@ import {
 
 interface UseDataFileUploadOptions {
   apiUrl: string;
-  userId?: string;
+  accessToken?: string | null;
   maxFiles?: number;
 }
 
@@ -41,7 +41,7 @@ interface UseDataFileUploadReturn {
  */
 export function useDataFileUpload({
   apiUrl,
-  userId,
+  accessToken,
   maxFiles = 5,
 }: UseDataFileUploadOptions): UseDataFileUploadReturn {
   const [files, setFiles] = useState<DataFile[]>([]);
@@ -140,9 +140,16 @@ export function useDataFileUpload({
         const formData = new FormData();
         formData.append("file", dataFile.file);
 
+        const headers: Record<string, string> = {};
+        if (accessToken) {
+          headers["Authorization"] = `Bearer ${accessToken}`;
+        } else {
+          headers["X-User-Id"] = "default";
+        }
+
         const response = await fetch(`${apiUrl}/files/upload`, {
           method: "POST",
-          headers: userId ? { "X-User-Id": userId } : undefined,
+          headers,
           body: formData,
         });
 
@@ -199,7 +206,7 @@ export function useDataFileUpload({
     setIsUploading(false);
 
     return results;
-  }, [files, uploadedFiles, apiUrl, userId]);
+  }, [files, uploadedFiles, apiUrl, accessToken]);
 
   /**
    * Clear all files

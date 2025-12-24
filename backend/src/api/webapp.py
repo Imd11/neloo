@@ -23,10 +23,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, Header, Query
+from fastapi import FastAPI, File, UploadFile, HTTPException, Header, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel
+
+# Import authentication
+from .auth import get_current_user, get_optional_user, get_user_id as auth_get_user_id
 
 # Import image storage
 from ..storage import get_image, get_image_storage
@@ -217,10 +220,8 @@ def generate_storage_filename(original_filename: str) -> str:
     return f"{timestamp}_{unique_id}_{safe_name}{ext}"
 
 
-def get_user_id(x_user_id: Optional[str]) -> str:
-    """Get user ID from header or use default."""
-    # In production, this should come from authentication
-    # For now, use a header or default to "default"
+def get_user_id_from_header(x_user_id: Optional[str]) -> str:
+    """Get user ID from header or use default (legacy, for backward compatibility)."""
     return x_user_id or "default"
 
 
@@ -231,10 +232,12 @@ def get_user_id(x_user_id: Optional[str]) -> str:
 @app.post("/files/upload", response_model=UploadResponse)
 async def upload_file(
     file: UploadFile = File(...),
-    x_user_id: Optional[str] = Header(None),
+    user: dict = Depends(get_current_user),
 ):
     """
     Upload a data file.
+
+    Requires authentication. User ID is extracted from JWT token.
 
     Storage mode is determined automatically:
     - If Supabase is configured: uploads to Supabase Storage
@@ -257,8 +260,8 @@ async def upload_file(
             detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)} MB",
         )
 
-    # Generate storage path
-    user_id = get_user_id(x_user_id)
+    # Generate storage path using authenticated user ID
+    user_id = auth_get_user_id(user)
     storage_filename = generate_storage_filename(file.filename)
     storage_path = f"{user_id}/{storage_filename}"
 
@@ -317,9 +320,9 @@ async def upload_file(
 
 
 @app.get("/files/list", response_model=FileListResponse)
-async def list_files(x_user_id: Optional[str] = Header(None)):
-    """List all files uploaded by the user."""
-    user_id = get_user_id(x_user_id)
+async def list_files(user: dict = Depends(get_current_user)):
+    """List all files uploaded by the user. Requires authentication."""
+    user_id = auth_get_user_id(user)
 
     try:
         files = []
@@ -366,9 +369,9 @@ async def list_files(x_user_id: Optional[str] = Header(None)):
 
 
 @app.delete("/files/{filename}", response_model=DeleteResponse)
-async def delete_file(filename: str, x_user_id: Optional[str] = Header(None)):
-    """Delete a file from storage."""
-    user_id = get_user_id(x_user_id)
+async def delete_file(filename: str, user: dict = Depends(get_current_user)):
+    """Delete a file from storage. Requires authentication."""
+    user_id = auth_get_user_id(user)
     storage_path = f"{user_id}/{filename}"
 
     try:
@@ -391,16 +394,16 @@ async def delete_file(filename: str, x_user_id: Optional[str] = Header(None)):
 @app.get("/files/download-url/{filename}", response_model=DownloadUrlResponse)
 async def get_download_url(
     filename: str,
-    x_user_id: Optional[str] = Header(None),
+    user: dict = Depends(get_current_user),
     expires_in: int = 3600,
 ):
     """
-    Get a download URL for a file.
+    Get a download URL for a file. Requires authentication.
 
     For local storage: returns a file:// URL (for development only)
     For Supabase: returns a signed URL
     """
-    user_id = get_user_id(x_user_id)
+    user_id = auth_get_user_id(user)
     storage_path = f"{user_id}/{filename}"
 
     try:
@@ -767,15 +770,15 @@ async def download_generated_file(
 
 @app.get("/generated-files")
 async def list_user_generated_files(
-    x_user_id: Optional[str] = Header(None),
+    user: dict = Depends(get_current_user),
 ):
     """
-    List all generated files for a user.
+    List all generated files for a user. Requires authentication.
 
     Returns:
         List of files with metadata and download URLs
     """
-    user_id = get_user_id(x_user_id)
+    user_id = auth_get_user_id(user)
     files = list_generated_files(user_id)
 
     return {

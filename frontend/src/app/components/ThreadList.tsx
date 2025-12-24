@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { format } from "date-fns";
-import { Loader2, MessageSquare, X } from "lucide-react";
+import { Loader2, MessageSquare } from "lucide-react";
 import { useQueryState } from "nuqs";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -24,11 +24,11 @@ import { useThreads } from "@/app/hooks/useThreads";
 type StatusFilter = "all" | "idle" | "busy" | "interrupted" | "error";
 
 const GROUP_LABELS = {
-  interrupted: "Requiring Attention",
-  today: "Today",
-  yesterday: "Yesterday",
-  week: "This Week",
-  older: "Older",
+  interrupted: "需要关注",
+  today: "今天",
+  yesterday: "昨天",
+  week: "本周",
+  older: "更早",
 } as const;
 
 const STATUS_COLORS: Record<ThreadItem["status"], string> = {
@@ -105,7 +105,7 @@ function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center">
       <MessageSquare className="mb-2 h-12 w-12 text-gray-300" />
-      <p className="text-sm text-muted-foreground">No threads found</p>
+      <p className="text-sm text-muted-foreground">暂无任务</p>
     </div>
   );
 }
@@ -208,9 +208,9 @@ export function ThreadList({
 
   return (
     <div className="absolute inset-0 flex flex-col">
-      {/* Header with title, filter, and close button */}
+      {/* Header with title and filter */}
       <div className="grid flex-shrink-0 grid-cols-[1fr_auto] items-center gap-3 border-b border-border p-4">
-        <h2 className="text-lg font-semibold tracking-tight">Threads</h2>
+        <h2 className="text-lg font-semibold tracking-tight">历史任务</h2>
         <div className="flex items-center gap-2">
           <Select
             value={statusFilter}
@@ -220,53 +220,42 @@ export function ThreadList({
               <SelectValue />
             </SelectTrigger>
             <SelectContent align="end">
-              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="all">全部状态</SelectItem>
               <SelectSeparator />
               <SelectGroup>
-                <SelectLabel>Active</SelectLabel>
+                <SelectLabel>活跃</SelectLabel>
                 <SelectItem value="idle">
                   <StatusFilterItem
                     status="idle"
-                    label="Idle"
+                    label="空闲"
                   />
                 </SelectItem>
                 <SelectItem value="busy">
                   <StatusFilterItem
                     status="busy"
-                    label="Busy"
+                    label="运行中"
                   />
                 </SelectItem>
               </SelectGroup>
               <SelectSeparator />
               <SelectGroup>
-                <SelectLabel>Attention</SelectLabel>
+                <SelectLabel>需要关注</SelectLabel>
                 <SelectItem value="interrupted">
                   <StatusFilterItem
                     status="interrupted"
-                    label="Interrupted"
+                    label="已中断"
                     badge={interruptedCount}
                   />
                 </SelectItem>
                 <SelectItem value="error">
                   <StatusFilterItem
                     status="error"
-                    label="Error"
+                    label="错误"
                   />
                 </SelectItem>
               </SelectGroup>
             </SelectContent>
           </Select>
-          {onClose && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="h-8 w-8"
-              aria-label="Close threads sidebar"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
         </div>
       </div>
 
@@ -353,10 +342,10 @@ export function ThreadList({
                   {isLoadingMore ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Loading...
+                      加载中...
                     </>
                   ) : (
-                    "Load More"
+                    "加载更多"
                   )}
                 </Button>
               </div>
