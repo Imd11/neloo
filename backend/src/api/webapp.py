@@ -31,6 +31,14 @@ from pydantic import BaseModel
 # Import image storage
 from ..storage import get_image, get_image_storage
 
+# Import generated file storage
+from ..storage.file_storage import (
+    get_file_storage,
+    get_generated_file,
+    list_generated_files,
+    get_mime_type,
+)
+
 # =============================================================================
 # Configuration
 # =============================================================================
@@ -659,3 +667,139 @@ async def list_sandbox_files():
                 })
 
     return {"files": files, "total": len(files)}
+
+
+# =============================================================================
+# Generated Files Download Routes (for E2B / Production)
+# =============================================================================
+
+@app.options("/generated-files/{file_id:path}")
+async def generated_file_options(file_id: str):
+    """Handle CORS preflight for generated file endpoints."""
+    return Response(
+        content="",
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Max-Age": "86400",
+        },
+    )
+
+
+@app.get("/generated-files/{file_id:path}")
+async def download_generated_file(
+    file_id: str,
+    sig: str = Query(..., description="URL signature for verification"),
+):
+    """
+    Download an agent-generated file by its ID.
+
+    This endpoint serves files created by the AI during code execution in E2B sandbox.
+    Files are stored either locally (development) or in Supabase Storage (production).
+
+    Security:
+    - URL signature verification prevents unauthorized access
+    - File IDs include user and timestamp info
+
+    Args:
+        file_id: Unique file identifier (format: user_id/timestamp_random_filename)
+        sig: HMAC signature for URL verification
+
+    Returns:
+        File content with appropriate content type
+
+    Raises:
+        403: Invalid signature
+        404: File not found
+    """
+    # Verify URL signature
+    storage = get_file_storage()
+
+    if not storage.verify_signature(file_id, sig):
+        raise HTTPException(
+            status_code=403,
+            detail="Invalid or expired file URL",
+        )
+
+    # Get file data
+    file_data = storage.get_file(file_id)
+
+    if file_data is None:
+        raise HTTPException(
+            status_code=404,
+            detail="File not found or expired",
+        )
+
+    # Extract filename from file_id for Content-Disposition
+    # file_id format: user_id/timestamp_random_filename
+    parts = file_id.split("/")
+    if len(parts) >= 2:
+        # Get the part after user_id/
+        name_part = parts[-1]
+        # Split by underscore and get everything after random part
+        name_segments = name_part.split("_", 2)
+        if len(name_segments) >= 3:
+            filename = name_segments[2]
+        else:
+            filename = name_part
+    else:
+        filename = file_id
+
+    # Get MIME type
+    content_type = get_mime_type(filename)
+
+    # Return file with appropriate headers
+    return Response(
+        content=file_data,
+        media_type=content_type,
+        headers={
+            "Cache-Control": "public, max-age=86400",  # Cache for 24 hours
+            "X-Content-Type-Options": "nosniff",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Expose-Headers": "Content-Disposition",
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
+    )
+
+
+@app.get("/generated-files")
+async def list_user_generated_files(
+    x_user_id: Optional[str] = Header(None),
+):
+    """
+    List all generated files for a user.
+
+    Returns:
+        List of files with metadata and download URLs
+    """
+    user_id = get_user_id(x_user_id)
+    files = list_generated_files(user_id)
+
+    return {
+        "files": files,
+        "total": len(files),
+    }
+
+
+@app.post("/generated-files/cleanup")
+async def cleanup_generated_files(max_age_hours: int = 72):
+    """
+    Clean up old generated files (admin endpoint).
+
+    Args:
+        max_age_hours: Maximum age of files to keep (default: 72 hours)
+
+    Returns:
+        Number of deleted files
+    """
+    storage = get_file_storage()
+    deleted_count = storage.cleanup_old_files(max_age_hours)
+
+    return {
+        "success": True,
+        "deleted_count": deleted_count,
+        "message": f"Cleaned up {deleted_count} files older than {max_age_hours} hours",
+    }

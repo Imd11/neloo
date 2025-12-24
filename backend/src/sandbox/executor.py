@@ -149,6 +149,8 @@ class E2BSandboxExecutor(SandboxExecutor):
 
             # Sync generated files from E2B sandbox back to storage
             try:
+                from ..storage.file_storage import save_generated_file
+
                 # List files in /home/user/data/
                 data_dir = "/home/user/data"
                 try:
@@ -158,34 +160,88 @@ class E2BSandboxExecutor(SandboxExecutor):
                     print(f"[E2BExecutor] Could not list sandbox files: {e}")
                     files_in_sandbox = []
 
-                # Process image files (PNG) - read and add to results
+                # Process all generated files
                 for f in files_in_sandbox:
+                    file_path = f"{data_dir}/{f.name}"
+
+                    # Handle image files (PNG) - add to results for inline display
                     if f.name.endswith('.png'):
                         try:
-                            file_path = f"{data_dir}/{f.name}"
                             # Read the file content from sandbox as bytes
-                            # E2B SDK v1 requires format="bytes" for binary files
                             content = sandbox.files.read(file_path, format="bytes")
-                            img_base64 = base64.b64encode(bytes(content)).decode('utf-8')
+                            content_bytes = bytes(content)
+                            img_base64 = base64.b64encode(content_bytes).decode('utf-8')
                             results.append({"type": "image/png", "data": img_base64})
                             print(f"[E2BExecutor] Read image from sandbox: {file_path}")
 
-                            # Track as generated file
-                            generated_files.append({
-                                "filename": f.name,
-                                "sandbox_path": file_path,
-                                "size": len(content),
-                            })
+                            # Also save to persistent storage for download
+                            file_info = save_generated_file(
+                                filename=f.name,
+                                data=content_bytes,
+                                user_id="default",  # TODO: pass user_id from context
+                            )
+                            if file_info:
+                                generated_files.append({
+                                    "filename": f.name,
+                                    "sandbox_path": file_path,
+                                    "size": len(content_bytes),
+                                    "download_url": file_info["download_url"],
+                                    "file_id": file_info["file_id"],
+                                    "content_type": "image/png",
+                                })
+                                print(f"[E2BExecutor] Saved image to storage: {file_info['download_url']}")
+                            else:
+                                generated_files.append({
+                                    "filename": f.name,
+                                    "sandbox_path": file_path,
+                                    "size": len(content_bytes),
+                                })
                         except Exception as e:
                             print(f"[E2BExecutor] Failed to read image {f.name}: {e}")
 
-                    # Track other generated files (CSV, Excel, etc.)
-                    elif f.name.endswith(('.csv', '.xlsx', '.json', '.txt', '.pdf')):
-                        generated_files.append({
-                            "filename": f.name,
-                            "sandbox_path": f"{data_dir}/{f.name}",
-                        })
-                        print(f"[E2BExecutor] Found generated file: {f.name}")
+                    # Handle other file types (CSV, Excel, TXT, etc.) - save to storage for download
+                    elif f.name.endswith(('.csv', '.xlsx', '.xls', '.json', '.txt', '.pdf', '.html', '.md')):
+                        try:
+                            # Determine read format based on file type
+                            if f.name.endswith(('.xlsx', '.xls', '.pdf')):
+                                content = sandbox.files.read(file_path, format="bytes")
+                                content_bytes = bytes(content)
+                            else:
+                                # Text-based files
+                                content = sandbox.files.read(file_path)
+                                content_bytes = content.encode('utf-8') if isinstance(content, str) else bytes(content)
+
+                            # Save to persistent storage
+                            file_info = save_generated_file(
+                                filename=f.name,
+                                data=content_bytes,
+                                user_id="default",  # TODO: pass user_id from context
+                            )
+
+                            if file_info:
+                                generated_files.append({
+                                    "filename": f.name,
+                                    "sandbox_path": file_path,
+                                    "size": len(content_bytes),
+                                    "download_url": file_info["download_url"],
+                                    "file_id": file_info["file_id"],
+                                    "content_type": file_info["content_type"],
+                                })
+                                print(f"[E2BExecutor] Saved file to storage: {f.name} -> {file_info['download_url']}")
+                            else:
+                                generated_files.append({
+                                    "filename": f.name,
+                                    "sandbox_path": file_path,
+                                    "size": len(content_bytes),
+                                })
+                                print(f"[E2BExecutor] Found generated file (not saved): {f.name}")
+
+                        except Exception as e:
+                            print(f"[E2BExecutor] Failed to read/save file {f.name}: {e}")
+                            generated_files.append({
+                                "filename": f.name,
+                                "sandbox_path": file_path,
+                            })
 
             except Exception as e:
                 import traceback

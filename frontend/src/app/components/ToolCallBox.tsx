@@ -23,8 +23,11 @@ import { getConfig } from "@/lib/config";
 // Interface for generated files from execute_python
 interface GeneratedFile {
   filename: string;
-  size: number;
-  sandbox_path: string;
+  size?: number;
+  sandbox_path?: string;
+  download_url?: string;  // New format: /generated-files/{file_id}?sig={signature}
+  file_id?: string;
+  content_type?: string;
 }
 
 // Helper to format file size
@@ -96,13 +99,20 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
       return [];
     }, [name, result]);
 
-    // Get download URL for a file
-    const getDownloadUrl = useCallback((filename: string) => {
+    // Get download URL for a file - supports both old sandbox_path and new download_url format
+    const getFileDownloadUrl = useCallback((file: GeneratedFile) => {
       const config = getConfig();
       const baseUrl = config?.deploymentUrl || "";
       // Remove trailing slash and /api suffix if present
       const cleanBaseUrl = baseUrl.replace(/\/api\/?$/, "").replace(/\/$/, "");
-      return `${cleanBaseUrl}/sandbox/files/${encodeURIComponent(filename)}`;
+
+      // If file has download_url (new format with signature), use it
+      if (file.download_url) {
+        return `${cleanBaseUrl}${file.download_url}`;
+      }
+
+      // Fallback to old sandbox/files endpoint for backwards compatibility
+      return `${cleanBaseUrl}/sandbox/files/${encodeURIComponent(file.filename)}`;
     }, []);
 
     const statusIcon = useMemo(() => {
@@ -285,9 +295,11 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
                     <div className="space-y-2">
                       {generatedFiles.map((file) => (
                         <a
-                          key={file.filename}
-                          href={getDownloadUrl(file.filename)}
+                          key={file.file_id || file.filename}
+                          href={getFileDownloadUrl(file)}
                           download={file.filename}
+                          target="_blank"
+                          rel="noopener noreferrer"
                           className="flex items-center gap-3 rounded-md border border-border bg-muted/30 p-2 transition-colors hover:bg-muted/50"
                         >
                           <FileIcon size={16} className="shrink-0 text-muted-foreground" />
@@ -296,7 +308,7 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
                               {file.filename}
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              {formatFileSize(file.size)}
+                              {file.size ? formatFileSize(file.size) : file.content_type || "File"}
                             </div>
                           </div>
                           <Download size={16} className="shrink-0 text-muted-foreground" />
