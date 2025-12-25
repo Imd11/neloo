@@ -38,9 +38,10 @@ export function useChat({
   const client = useClient();
 
   // Handle errors, especially 404 when thread doesn't exist
-  const handleError = (error: Error) => {
+  const handleError = (error: unknown) => {
     // Check if it's a 404 error (thread not found)
-    if (error.message?.includes("404") || error.message?.includes("not found")) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes("404") || errorMessage.includes("not found")) {
       console.warn("Thread not found, clearing threadId from URL");
       setThreadId(null);
     }
