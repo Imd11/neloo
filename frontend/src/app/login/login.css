@@ -1,0 +1,100 @@
+/*
+ * 登录页专用CSS - 100%复制自 GitHub: Imd11/hello-world-project/src/index.css
+ * 这些变量只在登录页生效，不影响主应用
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap');
+
+/* Light Mode - 100%复制自GitHub原始 */
+.login-page {
+  --background: 220 25% 97%;
+  --foreground: 220 25% 10%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 220 25% 10%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 220 25% 10%;
+
+  --primary: 220 70% 50%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 220 15% 94%;
+  --secondary-foreground: 220 25% 25%;
+
+  --muted: 220 15% 92%;
+  --muted-foreground: 220 10% 45%;
+
+  --accent: 220 70% 50%;
+  --accent-foreground: 0 0% 100%;
+
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 220 15% 88%;
+  --input: 220 15% 90%;
+  --ring: 220 70% 50%;
+
+  --radius: 0.625rem;
+}
+
+/* Dark Mode - 100%复制自GitHub原始 */
+.login-page.dark {
+  --background: 225 25% 6%;
+  --foreground: 220 15% 92%;
+
+  --card: 225 25% 8%;
+  --card-foreground: 220 15% 92%;
+
+  --popover: 225 25% 8%;
+  --popover-foreground: 220 15% 92%;
+
+  --primary: 220 70% 60%;
+  --primary-foreground: 225 25% 6%;
+
+  --secondary: 225 20% 12%;
+  --secondary-foreground: 220 15% 80%;
+
+  --muted: 225 20% 14%;
+  --muted-foreground: 220 10% 55%;
+
+  --accent: 220 70% 60%;
+  --accent-foreground: 225 25% 6%;
+
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 225 15% 16%;
+  --input: 225 15% 14%;
+  --ring: 220 70% 60%;
+}
+
+/* 基础样式 - 100%复制自GitHub原始 */
+.login-page {
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+}
+
+.login-page * {
+  border-color: hsl(var(--border));
+}
+
+.login-page h1,
+.login-page h2,
+.login-page h3 {
+  font-family: 'Fraunces', Georgia, serif;
+}
+
+/* Card阴影效果 - 100%复制自GitHub原始 */
+.login-page .card-elevated {
+  box-shadow:
+    0 1px 2px hsl(var(--foreground) / 0.04),
+    0 4px 8px hsl(var(--foreground) / 0.04),
+    0 12px 24px hsl(var(--foreground) / 0.06);
+}
+
+.login-page.dark .card-elevated {
+  box-shadow:
+    0 1px 2px hsl(0 0% 0% / 0.2),
+    0 4px 12px hsl(0 0% 0% / 0.3),
+    0 0 0 1px hsl(var(--border));
+}
