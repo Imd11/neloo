@@ -37,6 +37,16 @@ export function useChat({
   const [threadId, setThreadId] = useQueryState("threadId");
   const client = useClient();
 
+  // Handle errors, especially 404 when thread doesn't exist
+  const handleError = (error: Error) => {
+    // Check if it's a 404 error (thread not found)
+    if (error.message?.includes("404") || error.message?.includes("not found")) {
+      console.warn("Thread not found, clearing threadId from URL");
+      setThreadId(null);
+    }
+    onHistoryRevalidate?.();
+  };
+
   const stream = useStream<StateType>({
     assistantId: activeAssistant?.assistant_id || "",
     client: client ?? undefined,
@@ -46,7 +56,7 @@ export function useChat({
     defaultHeaders: { "x-auth-scheme": "langsmith" },
     // Revalidate thread list when stream finishes, errors, or creates new thread
     onFinish: onHistoryRevalidate,
-    onError: onHistoryRevalidate,
+    onError: handleError,
     onCreated: onHistoryRevalidate,
     experimental_thread: thread,
     // Enable state history fetching to support history access
