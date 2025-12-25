@@ -51,7 +51,13 @@ class SandboxExecutor(ABC):
     """Abstract base class for sandbox executors"""
 
     @abstractmethod
-    def execute(self, code: str, timeout: int = 300) -> ExecutionResult:
+    def execute(
+        self,
+        code: str,
+        timeout: int = 300,
+        user_id: str = "default",
+        thread_id: Optional[str] = None,
+    ) -> ExecutionResult:
         """Execute Python code and return the result"""
         pass
 
@@ -114,7 +120,13 @@ class E2BSandboxExecutor(SandboxExecutor):
                 raise RuntimeError(f"Failed to create E2B sandbox: {e}")
         return self._sandbox
 
-    def execute(self, code: str, timeout: int = 300) -> ExecutionResult:
+    def execute(
+        self,
+        code: str,
+        timeout: int = 300,
+        user_id: str = "default",
+        thread_id: Optional[str] = None,
+    ) -> ExecutionResult:
         """Execute code in E2B sandbox with automatic retry on sandbox expiration"""
         max_retries = 2  # Retry once if sandbox expired
 
@@ -123,7 +135,7 @@ class E2BSandboxExecutor(SandboxExecutor):
                 # Force new sandbox on retry (sandbox may have expired)
                 sandbox = self._get_sandbox(force_new=(attempt > 0))
 
-                result = self._execute_in_sandbox(sandbox, code, timeout)
+                result = self._execute_in_sandbox(sandbox, code, timeout, user_id, thread_id)
                 return result
 
             except Exception as e:
@@ -147,7 +159,14 @@ class E2BSandboxExecutor(SandboxExecutor):
             error="E2B execution failed after retries",
         )
 
-    def _execute_in_sandbox(self, sandbox, code: str, timeout: int) -> ExecutionResult:
+    def _execute_in_sandbox(
+        self,
+        sandbox,
+        code: str,
+        timeout: int,
+        user_id: str = "default",
+        thread_id: Optional[str] = None,
+    ) -> ExecutionResult:
         """Internal method to execute code in a given sandbox"""
         try:
             # Auto-sync all files from Supabase to E2B sandbox before execution
@@ -220,10 +239,13 @@ class E2BSandboxExecutor(SandboxExecutor):
                             print(f"[E2BExecutor] Read image from sandbox: {file_path}")
 
                             # Also save to persistent storage for download
+                            # Use file_type="chart" for images/charts
                             file_info = save_generated_file(
                                 filename=f.name,
                                 data=content_bytes,
-                                user_id="default",  # TODO: pass user_id from context
+                                user_id=user_id,
+                                thread_id=thread_id,
+                                file_type="chart",  # Charts and images
                             )
                             if file_info:
                                 generated_files.append({
@@ -233,13 +255,15 @@ class E2BSandboxExecutor(SandboxExecutor):
                                     "download_url": file_info["download_url"],
                                     "file_id": file_info["file_id"],
                                     "content_type": "image/png",
+                                    "file_type": "chart",
                                 })
-                                print(f"[E2BExecutor] Saved image to storage: {file_info['download_url']}")
+                                print(f"[E2BExecutor] Saved chart to storage: {file_info['download_url']}")
                             else:
                                 generated_files.append({
                                     "filename": f.name,
                                     "sandbox_path": file_path,
                                     "size": len(content_bytes),
+                                    "file_type": "chart",
                                 })
                         except Exception as e:
                             print(f"[E2BExecutor] Failed to read image {f.name}: {e}")
@@ -256,11 +280,13 @@ class E2BSandboxExecutor(SandboxExecutor):
                                 content = sandbox.files.read(file_path)
                                 content_bytes = content.encode('utf-8') if isinstance(content, str) else bytes(content)
 
-                            # Save to persistent storage
+                            # Save to persistent storage with file_type="generated" for data files
                             file_info = save_generated_file(
                                 filename=f.name,
                                 data=content_bytes,
-                                user_id="default",  # TODO: pass user_id from context
+                                user_id=user_id,
+                                thread_id=thread_id,
+                                file_type="generated",  # Generated data files
                             )
 
                             if file_info:
@@ -271,6 +297,7 @@ class E2BSandboxExecutor(SandboxExecutor):
                                     "download_url": file_info["download_url"],
                                     "file_id": file_info["file_id"],
                                     "content_type": file_info["content_type"],
+                                    "file_type": "generated",
                                 })
                                 print(f"[E2BExecutor] Saved file to storage: {f.name} -> {file_info['download_url']}")
                             else:
@@ -278,6 +305,7 @@ class E2BSandboxExecutor(SandboxExecutor):
                                     "filename": f.name,
                                     "sandbox_path": file_path,
                                     "size": len(content_bytes),
+                                    "file_type": "generated",
                                 })
                                 print(f"[E2BExecutor] Found generated file (not saved): {f.name}")
 
@@ -406,7 +434,13 @@ class LocalSubprocessExecutor(SandboxExecutor):
 
         return new_files
 
-    def execute(self, code: str, timeout: int = 300) -> ExecutionResult:
+    def execute(
+        self,
+        code: str,
+        timeout: int = 300,
+        user_id: str = "default",
+        thread_id: Optional[str] = None,
+    ) -> ExecutionResult:
         """Execute code locally via subprocess with image capture support"""
         # Auto-sync Supabase files to local before execution
         # This ensures all user-uploaded files are available in the local sandbox
@@ -596,8 +630,15 @@ class DockerExecutor(SandboxExecutor):
                 "Please install Docker or use a different sandbox mode."
             )
 
-    def execute(self, code: str, timeout: int = 300) -> ExecutionResult:
+    def execute(
+        self,
+        code: str,
+        timeout: int = 300,
+        user_id: str = "default",
+        thread_id: Optional[str] = None,
+    ) -> ExecutionResult:
         """Execute code in Docker container"""
+        # Note: user_id and thread_id are not used in Docker mode yet
         # Base64 encode to avoid shell escaping issues
         code_b64 = base64.b64encode(code.encode('utf-8')).decode('utf-8')
 
@@ -687,7 +728,13 @@ def get_executor() -> SandboxExecutor:
     return _executor
 
 
-def execute_python(code: str, timeout: int = 300, files: list[dict] | None = None) -> dict:
+def execute_python(
+    code: str,
+    timeout: int = 300,
+    files: list[dict] | None = None,
+    user_id: str = "default",
+    thread_id: Optional[str] = None,
+) -> dict:
     """
     Execute Python code in the configured sandbox
 
@@ -698,16 +745,18 @@ def execute_python(code: str, timeout: int = 300, files: list[dict] | None = Non
         code: Python code to execute
         timeout: Maximum execution time in seconds
         files: Optional list of file dicts with 'storage_path' key to sync before execution
+        user_id: User ID for file ownership (used for saving generated files)
+        thread_id: Thread ID for file-thread associations
 
     Returns:
-        dict with keys: success, stdout, stderr, results, error
+        dict with keys: success, stdout, stderr, results, error, generated_files
 
     Example:
         result = execute_python('''
         import pandas as pd
         df = pd.DataFrame({'x': [1, 2, 3], 'y': [4, 5, 6]})
         print(df.corr())
-        ''')
+        ''', user_id="user-123", thread_id="thread-456")
 
         if result['success']:
             print(result['stdout'])
@@ -737,9 +786,10 @@ def execute_python(code: str, timeout: int = 300, files: list[dict] | None = Non
                 "stderr": "",
                 "results": [],
                 "error": f"File sync error: {str(e)}",
+                "generated_files": [],
             }
 
-    result = executor.execute(code, timeout)
+    result = executor.execute(code, timeout, user_id, thread_id)
     return result.to_dict()
 
 

@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=Fraunces:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -16,6 +18,22 @@
   }
 
   :root {
+    /* Auth page theme variables (light mode) */
+    --auth-background: 220 25% 97%;
+    --auth-foreground: 220 25% 10%;
+    --auth-card: 0 0% 100%;
+    --auth-card-foreground: 220 25% 10%;
+    --auth-primary: 220 70% 50%;
+    --auth-primary-foreground: 0 0% 100%;
+    --auth-secondary: 220 15% 92%;
+    --auth-secondary-foreground: 220 25% 10%;
+    --auth-muted: 220 15% 95%;
+    --auth-muted-foreground: 220 10% 45%;
+    --auth-accent: 220 15% 94%;
+    --auth-accent-foreground: 220 25% 10%;
+    --auth-border: 220 15% 88%;
+    --auth-input: 220 15% 88%;
+    --auth-ring: 220 70% 50%;
     /* App-specific color variables */
     --color-primary: #1c3c3c;
     --color-user-message: #076699;
@@ -392,4 +410,68 @@ button {
   font-weight: 600;
   text-decoration: line-through;
   text-decoration-color: #f85149;
+}
+
+/* Dark theme class-based overrides for auth pages */
+.dark {
+  --auth-background: 225 25% 6%;
+  --auth-foreground: 220 15% 92%;
+  --auth-card: 225 20% 10%;
+  --auth-card-foreground: 220 15% 92%;
+  --auth-primary: 220 70% 60%;
+  --auth-primary-foreground: 225 25% 6%;
+  --auth-secondary: 225 15% 18%;
+  --auth-secondary-foreground: 220 15% 92%;
+  --auth-muted: 225 15% 15%;
+  --auth-muted-foreground: 220 10% 55%;
+  --auth-accent: 225 15% 16%;
+  --auth-accent-foreground: 220 15% 92%;
+  --auth-border: 225 15% 20%;
+  --auth-input: 225 15% 20%;
+  --auth-ring: 220 70% 60%;
+}
+
+/* Auth page specific utilities */
+.auth-page {
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.auth-page .font-serif {
+  font-family: 'Fraunces', Georgia, serif;
+}
+
+/* Auth background gradient */
+.auth-bg-gradient {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--auth-background)) 0%,
+    hsl(220 20% 94%) 50%,
+    hsl(var(--auth-background)) 100%
+  );
+}
+
+.dark .auth-bg-gradient {
+  background: linear-gradient(
+    135deg,
+    hsl(225 25% 6%) 0%,
+    hsl(225 20% 10%) 50%,
+    hsl(225 25% 6%) 100%
+  );
+}
+
+/* Auth card styles */
+.auth-card {
+  background: hsl(var(--auth-card));
+  border: 1px solid hsl(var(--auth-border));
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.03),
+    0 4px 8px rgba(0, 0, 0, 0.04),
+    0 12px 24px rgba(0, 0, 0, 0.05);
+}
+
+.dark .auth-card {
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.1),
+    0 4px 8px rgba(0, 0, 0, 0.15),
+    0 12px 24px rgba(0, 0, 0, 0.2);
 }

@@ -11,6 +11,7 @@ Features:
 - Thread ID association for session-based management
 - Automatic cleanup of old files (TTL-based)
 - Download URL generation with signature verification
+- Database integration for file metadata (files table)
 
 This module handles files generated during code execution (reports, processed data, etc.)
 Unlike image_storage.py which is for chart images, this handles downloadable artifacts.
@@ -24,8 +25,11 @@ import hmac
 import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 from abc import ABC, abstractmethod
+
+# Import database operations
+from .supabase_db import save_file_record, FileType, USE_SUPABASE_DB
 
 
 # =============================================================================
@@ -452,6 +456,7 @@ class GeneratedFileStorage:
         data: bytes,
         user_id: str = "default",
         thread_id: Optional[str] = None,
+        file_type: FileType = "generated",
     ) -> Optional[Dict[str, Any]]:
         """
         Save a generated file and return info dict.
@@ -461,6 +466,7 @@ class GeneratedFileStorage:
             data: File content as bytes
             user_id: User identifier
             thread_id: Optional thread ID for association
+            file_type: Type of file - 'uploaded', 'generated', 'chart', or 'code'
 
         Returns:
             dict with:
@@ -470,21 +476,84 @@ class GeneratedFileStorage:
             - content_type: MIME type
             - download_url: Relative URL path for download
             - signature: URL signature for verification
+            - file_type: Type of file
+            - db_record: Database record (if Supabase is configured)
         """
         file_id = generate_file_id(filename, user_id, thread_id)
         content_type = get_mime_type(filename)
         signature = generate_url_signature(file_id)
 
         if self._backend.save(file_id, data, content_type):
-            return {
+            result = {
                 "file_id": file_id,
                 "filename": filename,
                 "size": len(data),
                 "content_type": content_type,
                 "download_url": f"/generated-files/{file_id}?sig={signature}",
                 "signature": signature,
+                "file_type": file_type,
             }
+
+            # Save to database if Supabase is configured
+            if USE_SUPABASE_DB:
+                import asyncio
+                try:
+                    # Try to run in existing event loop
+                    loop = asyncio.get_running_loop()
+                    # Schedule coroutine but don't await (fire-and-forget)
+                    asyncio.create_task(self._save_to_db(
+                        user_id=user_id,
+                        filename=filename,
+                        storage_path=file_id,
+                        file_size=len(data),
+                        content_type=content_type,
+                        file_type=file_type,
+                        thread_id=thread_id,
+                    ))
+                except RuntimeError:
+                    # No running event loop, use sync approach
+                    loop = asyncio.new_event_loop()
+                    try:
+                        db_record = loop.run_until_complete(save_file_record(
+                            user_id=user_id,
+                            filename=filename,
+                            storage_path=file_id,
+                            file_size=len(data),
+                            content_type=content_type,
+                            file_type=file_type,
+                            thread_id=thread_id,
+                        ))
+                        if db_record:
+                            result["db_record"] = db_record
+                    finally:
+                        loop.close()
+
+            return result
         return None
+
+    async def _save_to_db(
+        self,
+        user_id: str,
+        filename: str,
+        storage_path: str,
+        file_size: int,
+        content_type: str,
+        file_type: FileType,
+        thread_id: Optional[str] = None,
+    ) -> None:
+        """Helper to save file record to database asynchronously."""
+        try:
+            await save_file_record(
+                user_id=user_id,
+                filename=filename,
+                storage_path=storage_path,
+                file_size=file_size,
+                content_type=content_type,
+                file_type=file_type,
+                thread_id=thread_id,
+            )
+        except Exception as e:
+            print(f"[FileStorage] Error saving to database: {e}")
 
     def get_file(self, file_id: str) -> Optional[bytes]:
         """Get file content by ID."""
@@ -548,9 +617,19 @@ def save_generated_file(
     data: bytes,
     user_id: str = "default",
     thread_id: Optional[str] = None,
+    file_type: FileType = "generated",
 ) -> Optional[Dict[str, Any]]:
-    """Convenience function to save a generated file."""
-    return get_file_storage().save_file(filename, data, user_id, thread_id)
+    """
+    Convenience function to save a generated file.
+
+    Args:
+        filename: Original filename
+        data: File content as bytes
+        user_id: User identifier
+        thread_id: Optional thread ID for association
+        file_type: Type of file - 'uploaded', 'generated', 'chart', or 'code'
+    """
+    return get_file_storage().save_file(filename, data, user_id, thread_id, file_type)
 
 
 def get_generated_file(file_id: str) -> Optional[bytes]:

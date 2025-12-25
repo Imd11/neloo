@@ -42,6 +42,14 @@ from ..storage.file_storage import (
     get_mime_type,
 )
 
+# Import database operations for file listing
+from ..storage.supabase_db import (
+    get_files_by_type,
+    get_thread_files,
+    USE_SUPABASE_DB,
+    FileType,
+)
+
 # =============================================================================
 # Configuration
 # =============================================================================
@@ -806,3 +814,148 @@ async def cleanup_generated_files(max_age_hours: int = 72):
         "deleted_count": deleted_count,
         "message": f"Cleaned up {deleted_count} files older than {max_age_hours} hours",
     }
+
+
+# =============================================================================
+# Database-Driven File API Routes (for FilePanel categories)
+# =============================================================================
+
+class DatabaseFileInfo(BaseModel):
+    """Information about a file from database."""
+    id: str
+    filename: str
+    original_filename: Optional[str] = None
+    file_type: str  # 'uploaded', 'generated', 'chart', 'code'
+    storage_path: Optional[str] = None
+    download_url: Optional[str] = None
+    size: Optional[int] = None
+    mime_type: Optional[str] = None
+    created_at: str
+
+
+class DatabaseFileListResponse(BaseModel):
+    """Response model for database file list."""
+    files: list[DatabaseFileInfo]
+    total: int
+    file_type: Optional[str] = None
+
+
+@app.get("/api/files/by-type", response_model=DatabaseFileListResponse)
+async def get_files_by_type_api(
+    file_type: Optional[str] = Query(None, description="Filter by file type: uploaded, generated, chart, code"),
+    user: dict = Depends(get_current_user),
+):
+    """
+    Get files from database filtered by type.
+
+    This endpoint queries the files table in Supabase database,
+    providing categorized access to all user files.
+
+    File types:
+    - uploaded: User-uploaded data files (CSV, Excel, etc.)
+    - generated: AI-generated data files (processed datasets, exports)
+    - chart: AI-generated charts and visualizations
+    - code: Code execution history/snippets
+
+    Args:
+        file_type: Optional filter by file type
+
+    Returns:
+        List of files with metadata
+    """
+    user_id = auth_get_user_id(user)
+
+    if not USE_SUPABASE_DB:
+        # Fallback: return empty list if database is not configured
+        return DatabaseFileListResponse(files=[], total=0, file_type=file_type)
+
+    try:
+        # Query database
+        files_data = await get_files_by_type(
+            user_id=user_id,
+            file_type=file_type,  # type: ignore
+        )
+
+        # Convert to response format
+        files = []
+        for f in files_data:
+            files.append(DatabaseFileInfo(
+                id=f.get("id", ""),
+                filename=f.get("filename", ""),
+                original_filename=f.get("original_filename"),
+                file_type=f.get("file_type", "generated"),
+                storage_path=f.get("storage_path"),
+                download_url=f.get("download_url"),
+                size=f.get("size"),
+                mime_type=f.get("mime_type"),
+                created_at=f.get("created_at", ""),
+            ))
+
+        return DatabaseFileListResponse(
+            files=files,
+            total=len(files),
+            file_type=file_type,
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get files: {str(e)}")
+
+
+@app.get("/api/threads/{thread_id}/files", response_model=DatabaseFileListResponse)
+async def get_thread_files_api(
+    thread_id: str,
+    file_type: Optional[str] = Query(None, description="Optional filter by file type"),
+    user: dict = Depends(get_current_user),
+):
+    """
+    Get all files associated with a specific thread.
+
+    This endpoint returns files linked to a conversation thread,
+    useful for displaying context-aware file lists in chat UI.
+
+    Args:
+        thread_id: The thread/conversation ID
+        file_type: Optional filter by file type
+
+    Returns:
+        List of files associated with the thread
+    """
+    user_id = auth_get_user_id(user)
+
+    if not USE_SUPABASE_DB:
+        return DatabaseFileListResponse(files=[], total=0, file_type=file_type)
+
+    try:
+        # Query database for thread files
+        files_data = await get_thread_files(
+            thread_id=thread_id,
+            file_type=file_type,  # type: ignore
+        )
+
+        # Filter by user_id for security (ensure user owns these files)
+        # The RLS policy should handle this, but double-check here
+        user_files = [f for f in files_data if f.get("user_id") == user_id]
+
+        # Convert to response format
+        files = []
+        for f in user_files:
+            files.append(DatabaseFileInfo(
+                id=f.get("id", ""),
+                filename=f.get("filename", ""),
+                original_filename=f.get("original_filename"),
+                file_type=f.get("file_type", "generated"),
+                storage_path=f.get("storage_path"),
+                download_url=f.get("download_url"),
+                size=f.get("size"),
+                mime_type=f.get("mime_type"),
+                created_at=f.get("created_at", ""),
+            ))
+
+        return DatabaseFileListResponse(
+            files=files,
+            total=len(files),
+            file_type=file_type,
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get thread files: {str(e)}")

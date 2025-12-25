@@ -27,6 +27,9 @@ import { useAuth } from "@/providers/AuthProvider";
 // Types
 // ============================================================================
 
+// File types matching backend database schema
+type FileType = "uploaded" | "generated" | "chart" | "code";
+
 interface UploadedFile {
   filename: string;
   original_filename: string;
@@ -40,6 +43,19 @@ interface GeneratedFile {
   filename: string;
   size: number;
   sandbox_path: string;
+}
+
+// Database-driven file info (from /api/files/by-type endpoint)
+interface DatabaseFile {
+  id: string;
+  filename: string;
+  original_filename?: string;
+  file_type: FileType;
+  storage_path?: string;
+  download_url?: string;
+  size?: number;
+  mime_type?: string;
+  created_at: string;
 }
 
 interface ImageInfo {
@@ -57,6 +73,7 @@ interface CodeSnippet {
 
 interface FilePanelProps {
   messages: Message[];
+  threadId?: string; // Optional thread ID for thread-specific file queries
   onClose?: () => void;
 }
 
@@ -399,7 +416,7 @@ function CodeItem({
 // Main Component
 // ============================================================================
 
-export function FilePanel({ messages, onClose }: FilePanelProps) {
+export function FilePanel({ messages, threadId, onClose }: FilePanelProps) {
   const config = getConfig();
   const apiUrl = config?.deploymentUrl || "";
   const { session } = useAuth();
@@ -412,11 +429,19 @@ export function FilePanel({ messages, onClose }: FilePanelProps) {
     return { "X-User-Id": "default" };
   }, [session]);
 
-  // State
+  // State - Legacy file storage (for backward compatibility)
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [generatedFiles, setGeneratedFiles] = useState<GeneratedFile[]>([]);
+
+  // State - Database-driven files (new approach)
+  const [dbUploadedFiles, setDbUploadedFiles] = useState<DatabaseFile[]>([]);
+  const [dbGeneratedFiles, setDbGeneratedFiles] = useState<DatabaseFile[]>([]);
+  const [dbChartFiles, setDbChartFiles] = useState<DatabaseFile[]>([]);
+  const [useDbFiles, setUseDbFiles] = useState(false); // Whether DB API is available
+
   const [isLoadingUploaded, setIsLoadingUploaded] = useState(false);
   const [isLoadingGenerated, setIsLoadingGenerated] = useState(false);
+  const [isLoadingCharts, setIsLoadingCharts] = useState(false);
 
   // Section open states
   const [uploadedOpen, setUploadedOpen] = useState(true);
@@ -424,58 +449,177 @@ export function FilePanel({ messages, onClose }: FilePanelProps) {
   const [imagesOpen, setImagesOpen] = useState(true);
   const [codeOpen, setCodeOpen] = useState(true);
 
-  // Extract images and code from messages
-  const images = useMemo(() => extractImagesFromMessages(messages), [messages]);
+  // Extract images and code from messages (fallback for when DB is not available)
+  const messagesImages = useMemo(() => extractImagesFromMessages(messages), [messages]);
   const codeSnippets = useMemo(() => extractCodeFromMessages(messages), [messages]);
 
-  // Fetch uploaded files
-  const fetchUploadedFiles = useCallback(async () => {
-    if (!apiUrl) return;
-    setIsLoadingUploaded(true);
+  // Use DB chart files if available, otherwise fallback to message extraction
+  const images = useMemo(() => {
+    if (useDbFiles && dbChartFiles.length > 0) {
+      // Convert DB chart files to ImageInfo format
+      return dbChartFiles.map((f) => ({
+        url: f.download_url || "",
+        alt: f.original_filename || f.filename,
+        messageId: undefined,
+      }));
+    }
+    return messagesImages;
+  }, [useDbFiles, dbChartFiles, messagesImages]);
+
+  // Fetch files by type from database API
+  const fetchFilesByType = useCallback(async (fileType: FileType) => {
+    if (!apiUrl) return [];
     try {
-      const response = await fetch(`${apiUrl}/files/list`, {
+      const url = threadId
+        ? `${apiUrl}/api/threads/${threadId}/files?file_type=${fileType}`
+        : `${apiUrl}/api/files/by-type?file_type=${fileType}`;
+
+      const response = await fetch(url, {
         headers: getAuthHeaders(),
       });
       if (response.ok) {
         const data = await response.json();
-        setUploadedFiles(data.files || []);
+        return data.files || [];
+      }
+    } catch (error) {
+      console.error(`Failed to fetch ${fileType} files from DB:`, error);
+    }
+    return [];
+  }, [apiUrl, threadId, getAuthHeaders]);
+
+  // Fetch uploaded files (try DB first, fallback to legacy)
+  const fetchUploadedFiles = useCallback(async () => {
+    if (!apiUrl) return;
+    setIsLoadingUploaded(true);
+    try {
+      // Try new DB API first
+      const dbFiles = await fetchFilesByType("uploaded");
+      if (dbFiles.length > 0) {
+        setDbUploadedFiles(dbFiles);
+        setUseDbFiles(true);
+      } else {
+        // Fallback to legacy API
+        const response = await fetch(`${apiUrl}/files/list`, {
+          headers: getAuthHeaders(),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setUploadedFiles(data.files || []);
+        }
       }
     } catch (error) {
       console.error("Failed to fetch uploaded files:", error);
+      // Try legacy API as fallback
+      try {
+        const response = await fetch(`${apiUrl}/files/list`, {
+          headers: getAuthHeaders(),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setUploadedFiles(data.files || []);
+        }
+      } catch (legacyError) {
+        console.error("Legacy API also failed:", legacyError);
+      }
     } finally {
       setIsLoadingUploaded(false);
     }
-  }, [apiUrl, getAuthHeaders]);
+  }, [apiUrl, getAuthHeaders, fetchFilesByType]);
 
-  // Fetch generated files
+  // Fetch generated files (try DB first, fallback to legacy)
   const fetchGeneratedFiles = useCallback(async () => {
     if (!apiUrl) return;
     setIsLoadingGenerated(true);
     try {
-      const response = await fetch(`${apiUrl}/sandbox/files`);
-      if (response.ok) {
-        const data = await response.json();
-        setGeneratedFiles(data.files || []);
+      // Try new DB API first
+      const dbFiles = await fetchFilesByType("generated");
+      if (dbFiles.length > 0) {
+        setDbGeneratedFiles(dbFiles);
+        setUseDbFiles(true);
+      } else {
+        // Fallback to legacy sandbox API
+        const response = await fetch(`${apiUrl}/sandbox/files`);
+        if (response.ok) {
+          const data = await response.json();
+          setGeneratedFiles(data.files || []);
+        }
       }
     } catch (error) {
       console.error("Failed to fetch generated files:", error);
+      // Try legacy API as fallback
+      try {
+        const response = await fetch(`${apiUrl}/sandbox/files`);
+        if (response.ok) {
+          const data = await response.json();
+          setGeneratedFiles(data.files || []);
+        }
+      } catch (legacyError) {
+        console.error("Legacy API also failed:", legacyError);
+      }
     } finally {
       setIsLoadingGenerated(false);
     }
-  }, [apiUrl]);
+  }, [apiUrl, fetchFilesByType]);
+
+  // Fetch chart files from DB
+  const fetchChartFiles = useCallback(async () => {
+    if (!apiUrl) return;
+    setIsLoadingCharts(true);
+    try {
+      const dbFiles = await fetchFilesByType("chart");
+      if (dbFiles.length > 0) {
+        setDbChartFiles(dbFiles);
+        setUseDbFiles(true);
+      }
+    } catch (error) {
+      console.error("Failed to fetch chart files:", error);
+    } finally {
+      setIsLoadingCharts(false);
+    }
+  }, [apiUrl, fetchFilesByType]);
 
   // Initial fetch
   useEffect(() => {
     fetchUploadedFiles();
     fetchGeneratedFiles();
-  }, [fetchUploadedFiles, fetchGeneratedFiles]);
+    fetchChartFiles();
+  }, [fetchUploadedFiles, fetchGeneratedFiles, fetchChartFiles]);
 
   // Refresh when messages change (might have new generated files)
   useEffect(() => {
     if (messages.length > 0) {
       fetchGeneratedFiles();
+      fetchChartFiles();
     }
-  }, [messages.length, fetchGeneratedFiles]);
+  }, [messages.length, fetchGeneratedFiles, fetchChartFiles]);
+
+  // Compute effective file lists (DB or legacy)
+  const effectiveUploadedFiles = useMemo(() => {
+    if (useDbFiles && dbUploadedFiles.length > 0) {
+      return dbUploadedFiles.map((f) => ({
+        filename: f.filename,
+        original_filename: f.original_filename || f.filename,
+        storage_path: f.storage_path || "",
+        sandbox_path: `/home/user/data/${f.filename}`,
+        size: f.size || 0,
+        created_at: f.created_at,
+        download_url: f.download_url,
+      }));
+    }
+    return uploadedFiles;
+  }, [useDbFiles, dbUploadedFiles, uploadedFiles]);
+
+  const effectiveGeneratedFiles = useMemo(() => {
+    if (useDbFiles && dbGeneratedFiles.length > 0) {
+      return dbGeneratedFiles.map((f) => ({
+        filename: f.filename,
+        size: f.size || 0,
+        sandbox_path: `/home/user/data/${f.filename}`,
+        download_url: f.download_url,
+      }));
+    }
+    return generatedFiles;
+  }, [useDbFiles, dbGeneratedFiles, generatedFiles]);
 
   // Download handlers
   const handleDownloadUploaded = useCallback(
@@ -544,8 +688,15 @@ export function FilePanel({ messages, onClose }: FilePanelProps) {
     }
   }, []);
 
+  // Refresh all file lists
+  const handleRefresh = useCallback(() => {
+    fetchUploadedFiles();
+    fetchGeneratedFiles();
+    fetchChartFiles();
+  }, [fetchUploadedFiles, fetchGeneratedFiles, fetchChartFiles]);
+
   const totalItems =
-    uploadedFiles.length + generatedFiles.length + images.length + codeSnippets.length;
+    effectiveUploadedFiles.length + effectiveGeneratedFiles.length + images.length + codeSnippets.length;
 
   return (
     <div className="flex h-full flex-col border-l border-border bg-background">
@@ -578,7 +729,7 @@ export function FilePanel({ messages, onClose }: FilePanelProps) {
           <div className="mb-1">
             <SectionHeader
               title="Uploaded Files"
-              count={uploadedFiles.length}
+              count={effectiveUploadedFiles.length}
               isOpen={uploadedOpen}
               onToggle={() => setUploadedOpen(!uploadedOpen)}
               icon={FileText}
@@ -589,18 +740,18 @@ export function FilePanel({ messages, onClose }: FilePanelProps) {
                   <div className="flex items-center justify-center py-4">
                     <Loader2 size={16} className="animate-spin text-muted-foreground" />
                   </div>
-                ) : uploadedFiles.length === 0 ? (
+                ) : effectiveUploadedFiles.length === 0 ? (
                   <p className="px-3 py-2 text-xs text-muted-foreground">
                     No files uploaded yet
                   </p>
                 ) : (
-                  uploadedFiles.map((file) => (
+                  effectiveUploadedFiles.map((file) => (
                     <FileItem
                       key={file.filename}
                       filename={file.original_filename || file.filename}
                       size={file.size}
-                      onDownload={() => handleDownloadUploaded(file)}
-                      onDelete={() => handleDeleteUploaded(file)}
+                      onDownload={() => handleDownloadUploaded(file as UploadedFile)}
+                      onDelete={() => handleDeleteUploaded(file as UploadedFile)}
                     />
                   ))
                 )}
@@ -612,7 +763,7 @@ export function FilePanel({ messages, onClose }: FilePanelProps) {
           <div className="mb-1">
             <SectionHeader
               title="Generated Files"
-              count={generatedFiles.length}
+              count={effectiveGeneratedFiles.length}
               isOpen={generatedOpen}
               onToggle={() => setGeneratedOpen(!generatedOpen)}
               icon={FileText}
@@ -623,17 +774,17 @@ export function FilePanel({ messages, onClose }: FilePanelProps) {
                   <div className="flex items-center justify-center py-4">
                     <Loader2 size={16} className="animate-spin text-muted-foreground" />
                   </div>
-                ) : generatedFiles.length === 0 ? (
+                ) : effectiveGeneratedFiles.length === 0 ? (
                   <p className="px-3 py-2 text-xs text-muted-foreground">
                     No files generated yet
                   </p>
                 ) : (
-                  generatedFiles.map((file) => (
+                  effectiveGeneratedFiles.map((file) => (
                     <FileItem
                       key={file.filename}
                       filename={file.filename}
                       size={file.size}
-                      onDownload={() => handleDownloadGenerated(file)}
+                      onDownload={() => handleDownloadGenerated(file as GeneratedFile)}
                     />
                   ))
                 )}
@@ -707,13 +858,10 @@ export function FilePanel({ messages, onClose }: FilePanelProps) {
           variant="outline"
           size="sm"
           className="w-full text-xs"
-          onClick={() => {
-            fetchUploadedFiles();
-            fetchGeneratedFiles();
-          }}
-          disabled={isLoadingUploaded || isLoadingGenerated}
+          onClick={handleRefresh}
+          disabled={isLoadingUploaded || isLoadingGenerated || isLoadingCharts}
         >
-          {isLoadingUploaded || isLoadingGenerated ? (
+          {isLoadingUploaded || isLoadingGenerated || isLoadingCharts ? (
             <Loader2 size={12} className="mr-2 animate-spin" />
           ) : null}
           Refresh

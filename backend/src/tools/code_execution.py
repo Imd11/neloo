@@ -4,13 +4,15 @@ Code Execution Tool
 Provides Python code execution in secure sandboxes.
 """
 
-from typing import Any
+from typing import Any, Optional
 from ..sandbox import execute_python
 
 
 def execute_python_tool(
     code: str,
     timeout: int = 120,
+    user_id: str = "default",
+    thread_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """
     Execute Python code in a secure sandbox
@@ -30,6 +32,8 @@ def execute_python_tool(
     Args:
         code: Python code to execute
         timeout: Maximum execution time in seconds (default: 120)
+        user_id: User ID for file ownership (for saving generated files to database)
+        thread_id: Thread ID for file-thread associations
 
     Returns:
         dict with keys:
@@ -38,6 +42,7 @@ def execute_python_tool(
         - stderr: Standard error from execution
         - results: List of result objects (text, images, etc.)
         - error: Error message if execution failed
+        - generated_files: List of files generated during execution
 
     Example:
         result = execute_python_tool('''
@@ -57,19 +62,21 @@ def execute_python_tool(
 
         # Basic statistics
         print(df.describe())
-        ''')
+        ''', user_id="user-123", thread_id="thread-456")
 
         if result['success']:
             print(result['stdout'])
         else:
             print(f"Error: {result['error']}")
     """
-    return execute_python(code=code, timeout=timeout)
+    return execute_python(code=code, timeout=timeout, user_id=user_id, thread_id=thread_id)
 
 
 def execute_regression(
     code: str,
     timeout: int = 180,
+    user_id: str = "default",
+    thread_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """
     Execute regression analysis code
@@ -85,6 +92,8 @@ def execute_regression(
     Args:
         code: Python code for regression analysis
         timeout: Maximum execution time in seconds (default: 180)
+        user_id: User ID for file ownership
+        thread_id: Thread ID for file-thread associations
 
     Returns:
         Execution result dict
@@ -109,12 +118,14 @@ def execute_regression(
         print(results.summary())
         ''')
     """
-    return execute_python(code=code, timeout=timeout)
+    return execute_python(code=code, timeout=timeout, user_id=user_id, thread_id=thread_id)
 
 
 def generate_latex_table(
     code: str,
     timeout: int = 120,
+    user_id: str = "default",
+    thread_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """
     Generate LaTeX formatted regression tables
@@ -129,6 +140,8 @@ def generate_latex_table(
     Args:
         code: Python code to generate LaTeX tables
         timeout: Maximum execution time in seconds
+        user_id: User ID for file ownership
+        thread_id: Thread ID for file-thread associations
 
     Returns:
         Execution result with LaTeX in results or stdout
@@ -149,4 +162,4 @@ def generate_latex_table(
         print(latex_table)
         ''')
     """
-    return execute_python(code=code, timeout=timeout)
+    return execute_python(code=code, timeout=timeout, user_id=user_id, thread_id=thread_id)
