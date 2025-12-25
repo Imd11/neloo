@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, Suspense } from "react";
-import { useQueryState } from "nuqs";
 import { useRouter } from "next/navigation";
+import { useQueryState } from "nuqs";
 import { getConfig, StandaloneConfig } from "@/lib/config";
 import { Assistant } from "@langchain/langgraph-sdk";
 import { ClientProvider, useClient } from "@/providers/ClientProvider";
@@ -48,7 +48,7 @@ interface HomePageInnerProps {
 function HomePageInner({ config }: HomePageInnerProps) {
   const client = useClient();
   const router = useRouter();
-  const { signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const [threadId, setThreadId] = useQueryState("threadId");
   const [filePanel, setFilePanel] = useQueryState("files");
 
@@ -124,14 +124,26 @@ function HomePageInner({ config }: HomePageInnerProps) {
   };
 
   const handleNewThread = () => {
+    if (!user) {
+      router.push("/login");
+      return;
+    }
     setThreadId(null);
   };
 
   const handleSearch = () => {
+    if (!user) {
+      router.push("/login");
+      return;
+    }
     setSearchOpen(true);
   };
 
   const handleLibrary = () => {
+    if (!user) {
+      router.push("/login");
+      return;
+    }
     setLibraryOpen(true);
   };
 
@@ -186,18 +198,10 @@ function HomePageInner({ config }: HomePageInnerProps) {
 }
 
 function HomePageContent() {
-  const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { loading: authLoading } = useAuth();
   const [config, setConfig] = useState<StandaloneConfig | null>(null);
   const [configLoading, setConfigLoading] = useState(true);
   const [assistantId, setAssistantId] = useQueryState("assistantId");
-
-  // Check authentication
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/login");
-    }
-  }, [authLoading, user, router]);
 
   // Load config from environment variables
   useEffect(() => {
@@ -218,11 +222,6 @@ function HomePageContent() {
         <p className="text-muted-foreground">Loading...</p>
       </div>
     );
-  }
-
-  // If not authenticated, don't render (will redirect)
-  if (!user) {
-    return null;
   }
 
   // If no config, show error message

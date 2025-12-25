@@ -8,6 +8,7 @@ import React, {
   FormEvent,
   Fragment,
 } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Square,
@@ -67,6 +68,7 @@ const getStatusIcon = (status: TodoItem["status"], className?: string) => {
 };
 
 export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant }) => {
+  const router = useRouter();
   const [metaOpen, setMetaOpen] = useState<"tasks" | "files" | null>(null);
   const tasksContainerRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -91,7 +93,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant }) => {
 
   // Data file upload hook
   const config = getConfig();
-  const { session } = useAuth();
+  const { user, session } = useAuth();
   const {
     files: dataFiles,
     isUploading,
@@ -115,6 +117,13 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant }) => {
       if (e) {
         e.preventDefault();
       }
+
+      // Check if user is logged in before sending message
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+
       const messageText = input.trim();
       if (!messageText || isLoading || submitDisabled) return;
 
@@ -146,7 +155,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant }) => {
       setInput("");
       clearDataFiles();
     },
-    [input, isLoading, submitDisabled, dataFiles, uploadFiles, sendMessage, setInput, clearDataFiles]
+    [input, isLoading, submitDisabled, dataFiles, uploadFiles, sendMessage, setInput, clearDataFiles, user, router]
   );
 
   // Handle file input change
