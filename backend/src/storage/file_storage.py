@@ -500,8 +500,8 @@ class GeneratedFileStorage:
                 try:
                     # Try to run in existing event loop
                     loop = asyncio.get_running_loop()
-                    # Schedule coroutine but don't await (fire-and-forget)
-                    asyncio.create_task(self._save_to_db(
+                    # Schedule coroutine with error callback
+                    task = asyncio.create_task(self._save_to_db(
                         user_id=user_id,
                         filename=filename,
                         storage_path=file_id,
@@ -510,6 +510,16 @@ class GeneratedFileStorage:
                         file_type=file_type,
                         thread_id=thread_id,
                     ))
+
+                    # Add callback to log completion/errors
+                    def on_complete(future):
+                        try:
+                            future.result()
+                            print(f"[FileStorage] ✓ Database record saved: {filename}")
+                        except Exception as e:
+                            print(f"[FileStorage] ✗ Database save failed for {filename}: {e}")
+
+                    task.add_done_callback(on_complete)
                 except RuntimeError:
                     # No running event loop, use sync approach
                     loop = asyncio.new_event_loop()
@@ -525,6 +535,11 @@ class GeneratedFileStorage:
                         ))
                         if db_record:
                             result["db_record"] = db_record
+                            print(f"[FileStorage] ✓ Database record saved (sync): {filename}")
+                        else:
+                            print(f"[FileStorage] ✗ Database save returned None: {filename}")
+                    except Exception as e:
+                        print(f"[FileStorage] ✗ Database save failed (sync) for {filename}: {e}")
                     finally:
                         loop.close()
 

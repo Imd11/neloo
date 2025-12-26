@@ -400,8 +400,8 @@ class ImageStorage:
             }
 
             # Save to database if Supabase DB is enabled
+            # Note: Database save is non-critical - file is already in storage
             try:
-                # Check if USE_SUPABASE_DB is defined
                 import os
                 supabase_url = os.environ.get("SUPABASE_URL")
                 if supabase_url:
@@ -414,11 +414,11 @@ class ImageStorage:
                     else:
                         storage_path = f"images/{image_id}.png"
 
-                    # Save to database (async)
-                    # Use fire-and-forget to avoid blocking
+                    # Save to database (async with proper error handling)
                     try:
                         loop = asyncio.get_running_loop()
-                        asyncio.create_task(save_file_record(
+                        # Create task with error callback
+                        task = asyncio.create_task(save_file_record(
                             user_id=user_id,
                             filename=f"{image_id}.png",
                             storage_path=storage_path,
@@ -427,13 +427,25 @@ class ImageStorage:
                             file_type="chart",
                             thread_id=thread_id,
                         ))
-                        print(f"[ImageStorage] Database record queued for: {image_id}.png")
+
+                        # Add callback to log completion/errors
+                        def on_complete(future):
+                            try:
+                                result = future.result()
+                                if result:
+                                    print(f"[ImageStorage] ✓ Database record saved: {image_id}.png")
+                                else:
+                                    print(f"[ImageStorage] ✗ Database save returned None for: {image_id}.png")
+                            except Exception as e:
+                                print(f"[ImageStorage] ✗ Database save failed for {image_id}.png: {e}")
+
+                        task.add_done_callback(on_complete)
                     except RuntimeError:
-                        # No event loop running, use synchronous approach
-                        print(f"[ImageStorage] Warning: No event loop, skipping database save for: {image_id}.png")
+                        # No event loop running
+                        print(f"[ImageStorage] Warning: No event loop, database save skipped for: {image_id}.png")
             except Exception as db_error:
                 # Log database error but don't fail the image save
-                print(f"[ImageStorage] Warning: Database save failed for {image_id}: {db_error}")
+                print(f"[ImageStorage] Warning: Database initialization error for {image_id}: {db_error}")
 
             return result
         return None

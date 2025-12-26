@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useRef, useEffect } from "react";
 import { useStream } from "@langchain/langgraph-sdk/react";
 import {
   type Message,
@@ -12,6 +12,8 @@ import type { UseStreamThread } from "@langchain/langgraph-sdk/react";
 import type { TodoItem } from "@/app/types/types";
 import { useClient } from "@/providers/ClientProvider";
 import { useQueryState } from "nuqs";
+import { getConfig } from "@/lib/config";
+import { useAuth } from "@/providers/AuthProvider";
 
 export type StateType = {
   messages: Message[];
@@ -36,6 +38,51 @@ export function useChat({
 }) {
   const [threadId, setThreadId] = useQueryState("threadId");
   const client = useClient();
+  const { session } = useAuth();
+  const config = getConfig();
+  const createdThreadsRef = useRef<Set<string>>(new Set());
+
+  // Create thread record in database when threadId is first set
+  useEffect(() => {
+    if (!threadId || !session || !config) return;
+
+    // Skip if already created for this threadId
+    if (createdThreadsRef.current.has(threadId)) return;
+
+    // Mark as created to prevent duplicate calls
+    createdThreadsRef.current.add(threadId);
+
+    // Create thread in database
+    const createThread = async () => {
+      try {
+        const response = await fetch(`${config.deploymentUrl}/api/threads`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            langgraph_thread_id: threadId,
+            title: "New Task",
+          }),
+        });
+
+        if (response.ok) {
+          console.log(`[useChat] Created thread record for: ${threadId.slice(0, 8)}...`);
+          onHistoryRevalidate?.();
+        } else {
+          const error = await response.text();
+          console.error("[useChat] Failed to create thread:", error);
+          // Don't throw - thread creation is not critical for basic functionality
+        }
+      } catch (error) {
+        console.error("[useChat] Thread creation error:", error);
+        // Silent failure - LangGraph thread still works without DB record
+      }
+    };
+
+    createThread();
+  }, [threadId, session, config, onHistoryRevalidate]);
 
   // Handle errors, especially 404 when thread doesn't exist
   const handleError = (error: unknown) => {
