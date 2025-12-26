@@ -38,8 +38,8 @@
   --radius: 0.625rem;
 }
 
-/* Dark Mode - 100%复制自GitHub原始 */
-.login-page.dark {
+/* Dark Mode - 当html有.dark class时生效 */
+.dark .login-page {
   --background: 225 25% 6%;
   --foreground: 220 15% 92%;
 
@@ -92,7 +92,7 @@
     0 12px 24px hsl(var(--foreground) / 0.06);
 }
 
-.login-page.dark .card-elevated {
+.dark .login-page .card-elevated {
   box-shadow:
     0 1px 2px hsl(0 0% 0% / 0.2),
     0 4px 12px hsl(0 0% 0% / 0.3),
