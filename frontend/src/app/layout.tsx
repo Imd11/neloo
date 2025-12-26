@@ -7,6 +7,22 @@ import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
+// Script to set theme before React hydration to prevent flash
+const themeScript = `
+(function() {
+  try {
+    var theme = localStorage.getItem('data-analyst-theme');
+    if (theme === 'light') {
+      document.documentElement.classList.remove('dark');
+    } else {
+      document.documentElement.classList.add('dark');
+    }
+  } catch (e) {
+    document.documentElement.classList.add('dark');
+  }
+})();
+`;
+
 export default function RootLayout({
   children,
 }: {
@@ -15,8 +31,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      className="dark"
       suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body
         className={inter.className}
         suppressHydrationWarning
