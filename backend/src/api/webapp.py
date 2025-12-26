@@ -46,6 +46,10 @@ from ..storage.file_storage import (
 from ..storage.supabase_db import (
     get_files_by_type,
     get_thread_files,
+    create_thread,
+    get_user_threads,
+    get_thread_by_langgraph_id,
+    update_thread_title,
     USE_SUPABASE_DB,
     FileType,
 )
@@ -991,3 +995,231 @@ async def get_thread_files_api(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get thread files: {str(e)}")
+
+
+# =============================================================================
+# Thread Management Routes
+# =============================================================================
+
+class ThreadCreate(BaseModel):
+    """Request model for creating a thread."""
+    langgraph_thread_id: str
+    title: str = "New Task"
+
+
+class ThreadInfo(BaseModel):
+    """Thread information response model."""
+    id: str
+    user_id: str
+    title: str
+    langgraph_thread_id: str
+    created_at: str
+    updated_at: str
+
+
+class ThreadListResponse(BaseModel):
+    """Response model for thread list."""
+    threads: list[ThreadInfo]
+    total: int
+
+
+class ThreadUpdateRequest(BaseModel):
+    """Request model for updating thread."""
+    title: Optional[str] = None
+
+
+@app.post("/api/threads", response_model=ThreadInfo)
+async def create_thread_api(
+    data: ThreadCreate,
+    user: dict = Depends(get_current_user),
+):
+    """
+    Create a new thread record in the database.
+
+    This endpoint should be called when a new conversation starts.
+    It creates the thread record that file associations will reference.
+
+    Args:
+        data: Thread creation data (langgraph_thread_id, title)
+        user: Authenticated user
+
+    Returns:
+        Created thread record
+    """
+    user_id = auth_get_user_id(user)
+
+    if not USE_SUPABASE_DB:
+        raise HTTPException(status_code=503, detail="Database not configured")
+
+    try:
+        thread_record = await create_thread(
+            user_id=user_id,
+            langgraph_thread_id=data.langgraph_thread_id,
+            title=data.title,
+        )
+
+        if not thread_record:
+            raise HTTPException(status_code=500, detail="Failed to create thread")
+
+        return ThreadInfo(
+            id=thread_record["id"],
+            user_id=thread_record["user_id"],
+            title=thread_record["title"],
+            langgraph_thread_id=thread_record["langgraph_thread_id"],
+            created_at=thread_record["created_at"],
+            updated_at=thread_record["updated_at"],
+        )
+
+    except Exception as e:
+        # Return more detailed error for debugging
+        raise HTTPException(status_code=500, detail=f"Failed to create thread: {str(e)}")
+
+
+@app.get("/api/threads", response_model=ThreadListResponse)
+async def list_threads_api(
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user: dict = Depends(get_current_user),
+):
+    """
+    List user's threads.
+
+    Args:
+        limit: Maximum number of threads to return
+        offset: Offset for pagination
+        user: Authenticated user
+
+    Returns:
+        List of user's threads
+    """
+    user_id = auth_get_user_id(user)
+
+    if not USE_SUPABASE_DB:
+        return ThreadListResponse(threads=[], total=0)
+
+    try:
+        threads_data = await get_user_threads(
+            user_id=user_id,
+            limit=limit,
+            offset=offset,
+        )
+
+        threads = []
+        for t in threads_data:
+            threads.append(ThreadInfo(
+                id=t["id"],
+                user_id=t["user_id"],
+                title=t["title"],
+                langgraph_thread_id=t["langgraph_thread_id"],
+                created_at=t["created_at"],
+                updated_at=t["updated_at"],
+            ))
+
+        return ThreadListResponse(
+            threads=threads,
+            total=len(threads),
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list threads: {str(e)}")
+
+
+@app.get("/api/threads/{langgraph_thread_id}", response_model=ThreadInfo)
+async def get_thread_api(
+    langgraph_thread_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """
+    Get a specific thread by its LangGraph ID.
+
+    Args:
+        langgraph_thread_id: The LangGraph thread ID
+        user: Authenticated user
+
+    Returns:
+        Thread record
+    """
+    user_id = auth_get_user_id(user)
+
+    if not USE_SUPABASE_DB:
+        raise HTTPException(status_code=503, detail="Database not configured")
+
+    try:
+        thread_record = await get_thread_by_langgraph_id(langgraph_thread_id)
+
+        if not thread_record:
+            raise HTTPException(status_code=404, detail="Thread not found")
+
+        # Verify ownership
+        if thread_record["user_id"] != user_id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+
+        return ThreadInfo(
+            id=thread_record["id"],
+            user_id=thread_record["user_id"],
+            title=thread_record["title"],
+            langgraph_thread_id=thread_record["langgraph_thread_id"],
+            created_at=thread_record["created_at"],
+            updated_at=thread_record["updated_at"],
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get thread: {str(e)}")
+
+
+@app.patch("/api/threads/{langgraph_thread_id}", response_model=ThreadInfo)
+async def update_thread_api(
+    langgraph_thread_id: str,
+    data: ThreadUpdateRequest,
+    user: dict = Depends(get_current_user),
+):
+    """
+    Update a thread's properties.
+
+    Args:
+        langgraph_thread_id: The LangGraph thread ID
+        data: Update data (currently only title)
+        user: Authenticated user
+
+    Returns:
+        Updated thread record
+    """
+    user_id = auth_get_user_id(user)
+
+    if not USE_SUPABASE_DB:
+        raise HTTPException(status_code=503, detail="Database not configured")
+
+    try:
+        # Verify thread exists and user owns it
+        thread_record = await get_thread_by_langgraph_id(langgraph_thread_id)
+
+        if not thread_record:
+            raise HTTPException(status_code=404, detail="Thread not found")
+
+        if thread_record["user_id"] != user_id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+
+        # Update title if provided
+        if data.title:
+            success = await update_thread_title(langgraph_thread_id, data.title)
+            if not success:
+                raise HTTPException(status_code=500, detail="Failed to update thread")
+
+        # Fetch updated record
+        updated_record = await get_thread_by_langgraph_id(langgraph_thread_id)
+
+        return ThreadInfo(
+            id=updated_record["id"],
+            user_id=updated_record["user_id"],
+            title=updated_record["title"],
+            langgraph_thread_id=updated_record["langgraph_thread_id"],
+            created_at=updated_record["created_at"],
+            updated_at=updated_record["updated_at"],
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update thread: {str(e)}")

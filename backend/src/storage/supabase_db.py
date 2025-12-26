@@ -93,9 +93,16 @@ async def save_file_record(
             file_record = result.data[0]
             print(f"[SupabaseDB] Saved file record: {filename} (type={file_type})")
 
-            # If thread_id provided, create association
+            # If thread_id provided (this is langgraph_thread_id), create association
             if thread_id:
-                await create_thread_file_link(thread_id, file_id)
+                # Get the thread record UUID from langgraph_thread_id
+                # Note: thread_id parameter here is actually the langgraph_thread_id
+                thread_record = await get_thread_by_langgraph_id(thread_id)
+                if thread_record:
+                    # Use the threads table UUID for the association
+                    await create_thread_file_link(thread_record["id"], file_id)
+                else:
+                    print(f"[SupabaseDB] Warning: Thread not found for langgraph_id {thread_id[:8]}... File saved but not linked to thread.")
 
             return file_record
 
@@ -272,6 +279,178 @@ async def delete_file_record(file_id: str, user_id: str) -> bool:
 
     except Exception as e:
         print(f"[SupabaseDB] Error deleting file record: {e}")
+        return False
+
+
+async def create_thread(
+    user_id: str,
+    langgraph_thread_id: str,
+    title: str = "New Task",
+) -> Optional[dict]:
+    """
+    Create a thread record in the threads table.
+
+    Args:
+        user_id: The user's ID (from Supabase Auth)
+        langgraph_thread_id: The LangGraph thread ID (UUID from frontend)
+        title: Optional thread title
+
+    Returns:
+        The created thread record, or None if failed
+    """
+    if not USE_SUPABASE_DB:
+        print(f"[SupabaseDB] Skipping create_thread (not configured)")
+        return None
+
+    try:
+        supabase = await get_supabase_client()
+        if not supabase:
+            return None
+
+        thread_id = str(uuid.uuid4())
+
+        thread_data = {
+            "id": thread_id,
+            "user_id": user_id,
+            "title": title,
+            "langgraph_thread_id": langgraph_thread_id,
+        }
+
+        result = await supabase.table("threads").insert(thread_data).execute()
+
+        if result.data and len(result.data) > 0:
+            thread_record = result.data[0]
+            print(f"[SupabaseDB] Created thread: {langgraph_thread_id[:8]}... (title={title})")
+            return thread_record
+
+        return None
+
+    except Exception as e:
+        # Check if it's a duplicate key error
+        if "duplicate" in str(e).lower() or "unique" in str(e).lower():
+            print(f"[SupabaseDB] Thread already exists: {langgraph_thread_id[:8]}...")
+            # Try to fetch the existing thread
+            try:
+                result = await supabase.table("threads")\
+                    .select("*")\
+                    .eq("langgraph_thread_id", langgraph_thread_id)\
+                    .execute()
+                if result.data and len(result.data) > 0:
+                    return result.data[0]
+            except Exception:
+                pass
+        print(f"[SupabaseDB] Error creating thread: {e}")
+        return None
+
+
+async def get_user_threads(
+    user_id: str,
+    limit: int = 50,
+    offset: int = 0,
+) -> list[dict]:
+    """
+    Get threads for a user.
+
+    Args:
+        user_id: The user's ID
+        limit: Maximum number of results
+        offset: Offset for pagination
+
+    Returns:
+        List of thread records
+    """
+    if not USE_SUPABASE_DB:
+        return []
+
+    try:
+        supabase = await get_supabase_client()
+        if not supabase:
+            return []
+
+        result = await supabase.table("threads")\
+            .select("*")\
+            .eq("user_id", user_id)\
+            .order("updated_at", desc=True)\
+            .range(offset, offset + limit - 1)\
+            .execute()
+
+        return result.data or []
+
+    except Exception as e:
+        print(f"[SupabaseDB] Error getting user threads: {e}")
+        return []
+
+
+async def get_thread_by_langgraph_id(
+    langgraph_thread_id: str,
+) -> Optional[dict]:
+    """
+    Get a thread record by LangGraph thread ID.
+
+    Args:
+        langgraph_thread_id: The LangGraph thread ID
+
+    Returns:
+        Thread record or None if not found
+    """
+    if not USE_SUPABASE_DB:
+        return None
+
+    try:
+        supabase = await get_supabase_client()
+        if not supabase:
+            return None
+
+        result = await supabase.table("threads")\
+            .select("*")\
+            .eq("langgraph_thread_id", langgraph_thread_id)\
+            .execute()
+
+        if result.data and len(result.data) > 0:
+            return result.data[0]
+
+        return None
+
+    except Exception as e:
+        print(f"[SupabaseDB] Error getting thread by langgraph_id: {e}")
+        return None
+
+
+async def update_thread_title(
+    langgraph_thread_id: str,
+    title: str,
+) -> bool:
+    """
+    Update a thread's title.
+
+    Args:
+        langgraph_thread_id: The LangGraph thread ID
+        title: New title
+
+    Returns:
+        True if successful, False otherwise
+    """
+    if not USE_SUPABASE_DB:
+        return False
+
+    try:
+        supabase = await get_supabase_client()
+        if not supabase:
+            return False
+
+        result = await supabase.table("threads")\
+            .update({"title": title, "updated_at": datetime.now().isoformat()})\
+            .eq("langgraph_thread_id", langgraph_thread_id)\
+            .execute()
+
+        if result.data:
+            print(f"[SupabaseDB] Updated thread title: {langgraph_thread_id[:8]}... -> {title}")
+            return True
+
+        return False
+
+    except Exception as e:
+        print(f"[SupabaseDB] Error updating thread title: {e}")
         return False
 
 

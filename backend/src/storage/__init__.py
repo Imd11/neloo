@@ -26,6 +26,10 @@ from .supabase_db import (
     get_files_by_type,
     get_thread_files,
     delete_file_record,
+    create_thread,
+    get_user_threads,
+    get_thread_by_langgraph_id,
+    update_thread_title,
     USE_SUPABASE_DB,
     FileType,
 )
@@ -61,6 +65,10 @@ __all__ = [
     "get_files_by_type",
     "get_thread_files",
     "delete_file_record",
+    "create_thread",
+    "get_user_threads",
+    "get_thread_by_langgraph_id",
+    "update_thread_title",
     "USE_SUPABASE_DB",
     "FileType",
     # Generated file storage
