@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { TrendingUp } from "lucide-react";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { RegisterForm } from "@/components/auth/RegisterForm";
@@ -10,14 +10,29 @@ import "./login.css";
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    // Check system preference
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    setIsDark(prefersDark);
+    if (prefersDark) {
+      document.documentElement.classList.add("dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    setIsDark(!isDark);
+    document.documentElement.classList.toggle("dark");
+  };
 
   return (
-    <div className="login-page min-h-screen flex items-center justify-center relative px-5 py-10 bg-[hsl(var(--background))]">
+    <div className={`login-page min-h-screen flex items-center justify-center relative px-5 py-10 bg-[hsl(var(--background))] ${isDark ? 'dark' : ''}`}>
       <AuthBackground />
 
       {/* Theme Toggle - Fixed Position */}
       <div className="fixed top-5 right-5 z-20">
-        <ThemeToggle />
+        <ThemeToggle isDark={isDark} onToggle={toggleTheme} />
       </div>
 
       <div className="w-full max-w-[400px] relative z-10">
