@@ -175,9 +175,10 @@ class E2BSandboxExecutor(SandboxExecutor):
                 print(f"[E2BExecutor] Storage mode: {'LOCAL' if USE_LOCAL_STORAGE else 'SUPABASE'}")
                 print(f"[E2BExecutor] SUPABASE_URL configured: {bool(SUPABASE_URL)}")
                 print(f"[E2BExecutor] SUPABASE_SERVICE_KEY configured: {bool(SUPABASE_SERVICE_KEY)}")
+                print(f"[E2BExecutor] user_id={user_id}")
 
-                remote_files = list_supabase_files()
-                print(f"[E2BExecutor] Found {len(remote_files)} files in storage: {remote_files}")
+                remote_files = list_supabase_files(user_id=user_id)
+                print(f"[E2BExecutor] Found {len(remote_files)} files in storage for user {user_id}: {remote_files}")
 
                 if remote_files:
                     print(f"[E2BExecutor] Syncing {len(remote_files)} files to sandbox...")

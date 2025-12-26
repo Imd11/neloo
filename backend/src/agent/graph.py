@@ -325,7 +325,11 @@ def execute_python(
     - Summary is returned for LLM context
     - If output exceeds threshold, full data is saved to file with path reference
     """
-    result = execute_python_tool(code=code, timeout=timeout)
+    # Get user_id and thread_id from context
+    user_id = _user_id_ctx.get()
+    thread_id = _thread_id_ctx.get()
+
+    result = execute_python_tool(code=code, timeout=timeout, user_id=user_id, thread_id=thread_id)
 
     if result["success"]:
         output_parts = []
