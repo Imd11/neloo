@@ -3,21 +3,12 @@
 import { Sun, Moon } from "lucide-react";
 import { useTheme } from "@/providers/ThemeProvider";
 
-interface ThemeToggleProps {
-  isDark?: boolean;
-  onToggle?: () => void;
-}
-
-export function ThemeToggle({ isDark: propIsDark, onToggle: propOnToggle }: ThemeToggleProps) {
-  const themeContext = useTheme();
-
-  // Use props if provided (login page), otherwise use context (main page)
-  const isDark = propIsDark !== undefined ? propIsDark : themeContext.isDark;
-  const onToggle = propOnToggle || themeContext.toggleTheme;
+export function ThemeToggle() {
+  const { isDark, toggleTheme } = useTheme();
 
   return (
     <button
-      onClick={onToggle}
+      onClick={toggleTheme}
       className="w-10 h-10 rounded-xl bg-secondary/80 backdrop-blur-sm flex items-center justify-center hover:bg-secondary transition-all duration-200 hover:scale-105"
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
     >
