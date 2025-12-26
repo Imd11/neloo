@@ -50,30 +50,42 @@ export function AppSidebar({
           collapsed ? "w-16" : "w-80"
         )}
       >
-        {/* Header with logo and collapse button */}
+        {/* Header with logo and collapse/expand button */}
         <div className="flex h-14 items-center justify-between border-b border-border px-3">
-          {!collapsed && (
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2F6868]">
-                <span className="text-sm font-bold text-white">DA</span>
+          {!collapsed ? (
+            <>
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2F6868]">
+                  <span className="text-sm font-bold text-white">DA</span>
+                </div>
+                <span className="font-semibold text-foreground">Data Analyst</span>
               </div>
-              <span className="font-semibold text-foreground">Data Analyst</span>
-            </div>
-          )}
-          {collapsed && (
-            <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-lg bg-[#2F6868]">
-              <span className="text-sm font-bold text-white">DA</span>
-            </div>
-          )}
-          {!collapsed && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setCollapsed(true)}
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
-            >
-              <PanelLeftClose className="h-4 w-4" />
-            </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setCollapsed(true)}
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              >
+                <PanelLeftClose className="h-4 w-4" />
+              </Button>
+            </>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setCollapsed(false)}
+                  className="group mx-auto relative flex h-8 w-8 items-center justify-center rounded-lg bg-[#2F6868] hover:bg-[#2F6868]/80 transition-all duration-200"
+                >
+                  {/* Logo - visible by default, hidden on hover */}
+                  <span className="text-sm font-bold text-white transition-opacity duration-200 group-hover:opacity-0">
+                    DA
+                  </span>
+                  {/* Expand icon - hidden by default, visible on hover */}
+                  <PanelLeft className="absolute h-4 w-4 text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">展开侧边栏</TooltipContent>
+            </Tooltip>
           )}
         </div>
 
@@ -151,26 +163,11 @@ export function AppSidebar({
           <div className="flex-1" />
         )}
 
-        {/* Footer with expand button and logout */}
+        {/* Footer with logout */}
         <div className={cn(
           "border-t border-border p-2",
           collapsed ? "flex flex-col items-center gap-1" : "flex items-center justify-between"
         )}>
-          {collapsed && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setCollapsed(false)}
-                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                >
-                  <PanelLeft className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">展开侧边栏</TooltipContent>
-            </Tooltip>
-          )}
           {onLogout && (
             <Tooltip>
               <TooltipTrigger asChild>
