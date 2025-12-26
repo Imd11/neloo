@@ -2,6 +2,7 @@ import { Inter } from "next/font/google";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/providers/AuthProvider";
+import { ThemeProvider } from "@/providers/ThemeProvider";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -20,9 +21,11 @@ export default function RootLayout({
         className={inter.className}
         suppressHydrationWarning
       >
-        <AuthProvider>
-          <NuqsAdapter>{children}</NuqsAdapter>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <NuqsAdapter>{children}</NuqsAdapter>
+          </AuthProvider>
+        </ThemeProvider>
         <Toaster />
       </body>
     </html>

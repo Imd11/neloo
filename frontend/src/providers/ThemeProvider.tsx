@@ -22,10 +22,10 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 const THEME_STORAGE_KEY = "data-analyst-theme";
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("light");
+  const [theme, setThemeState] = useState<Theme>("dark");
   const [mounted, setMounted] = useState(false);
 
-  // Initialize theme from localStorage or system preference
+  // Initialize theme from localStorage or default to dark
   useEffect(() => {
     const storedTheme = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null;
 
@@ -33,14 +33,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setThemeState(storedTheme);
       if (storedTheme === "dark") {
         document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
       }
     } else {
-      // Check system preference
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      if (prefersDark) {
-        setThemeState("dark");
-        document.documentElement.classList.add("dark");
-      }
+      // Default to dark theme
+      setThemeState("dark");
+      document.documentElement.classList.add("dark");
+      localStorage.setItem(THEME_STORAGE_KEY, "dark");
     }
 
     setMounted(true);
@@ -61,13 +61,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setTheme(theme === "dark" ? "light" : "dark");
   }, [theme, setTheme]);
 
-  // Prevent hydration mismatch
+  // Prevent hydration mismatch - use dark as default
   if (!mounted) {
     return (
       <ThemeContext.Provider
         value={{
-          theme: "light",
-          isDark: false,
+          theme: "dark",
+          isDark: true,
           toggleTheme: () => {},
           setTheme: () => {},
         }}

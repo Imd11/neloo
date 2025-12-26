@@ -13,7 +13,7 @@ import { FilePanel } from "@/app/components/FilePanel";
 import { AppSidebar } from "@/app/components/AppSidebar";
 import { SearchDialog } from "@/app/components/SearchDialog";
 import { LibraryDialog } from "@/app/components/LibraryDialog";
-import { UserAvatar } from "@/components/auth";
+import { UserAvatar, ThemeToggle } from "@/components/auth";
 
 // Wrapper component to access ChatContext for FilePanel
 function ChatWithFilePanel({
@@ -163,8 +163,9 @@ function HomePageInner({ config }: HomePageInnerProps) {
         open={libraryOpen}
         onOpenChange={setLibraryOpen}
       />
-      {/* User Avatar - fixed top right */}
-      <div className="fixed top-4 right-4 z-50">
+      {/* Theme Toggle and User Avatar - fixed top right */}
+      <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+        <ThemeToggle />
         <UserAvatar />
       </div>
       <div className="flex h-screen">
