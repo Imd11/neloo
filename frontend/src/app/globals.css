@@ -154,9 +154,8 @@
     --chart-5: 27 87% 67%;
   }
 
-  /* Dark theme - triggered by .dark class or system preference */
-  .dark,
-  :root:has(.dark) {
+  /* Dark theme - triggered by .dark class on html element */
+  .dark {
     /* App-specific color variables */
     --color-primary: #1c3c3c;
     --color-user-message: #065a8a;
@@ -207,7 +206,7 @@
   }
 
   @media (prefers-color-scheme: dark) {
-    :root:not(.light) {
+    :root {
       /* App-specific color variables */
       --color-primary: #1c3c3c;
       --color-user-message: #065a8a;
