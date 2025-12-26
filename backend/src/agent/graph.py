@@ -14,6 +14,7 @@ Architecture:
 """
 
 import os
+from contextvars import ContextVar
 from typing import Annotated
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
@@ -29,6 +30,10 @@ from ..context import (
     format_file_reference,
 )
 from ..storage import save_image_base64, get_image_url
+
+# Context variables for passing user_id and thread_id to tools
+_user_id_ctx: ContextVar[str] = ContextVar('user_id', default='default')
+_thread_id_ctx: ContextVar[str] = ContextVar('thread_id', default='default')
 
 # API base URL for image serving (configurable via environment)
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:2024")
@@ -343,7 +348,16 @@ def execute_python(
                     # Save image to storage and return URL (not base64!)
                     # This prevents FilesystemMiddleware from evicting the image data
                     image_count += 1
-                    image_info = save_image_base64(r["data"])
+
+                    # Get user_id and thread_id from context
+                    user_id = _user_id_ctx.get()
+                    thread_id = _thread_id_ctx.get()
+
+                    image_info = save_image_base64(
+                        r["data"],
+                        thread_id=thread_id,
+                        user_id=user_id
+                    )
 
                     if image_info:
                         # Return URL for frontend to load
@@ -689,17 +703,22 @@ graph = build_graph()
 # Convenience Functions
 # =============================================================================
 
-def invoke(query: str, thread_id: str = "default") -> dict:
+def invoke(query: str, thread_id: str = "default", user_id: str = "default") -> dict:
     """
     Invoke the agent with a query
 
     Args:
         query: User's question or request
         thread_id: Thread ID for conversation persistence
+        user_id: User ID for file ownership
 
     Returns:
         Agent response dict
     """
+    # Set context variables for tools to access
+    _user_id_ctx.set(user_id)
+    _thread_id_ctx.set(thread_id)
+
     config = {"configurable": {"thread_id": thread_id}}
     result = graph.invoke(
         {"messages": [HumanMessage(content=query)]},
@@ -708,17 +727,22 @@ def invoke(query: str, thread_id: str = "default") -> dict:
     return result
 
 
-def stream(query: str, thread_id: str = "default"):
+def stream(query: str, thread_id: str = "default", user_id: str = "default"):
     """
     Stream the agent's response
 
     Args:
         query: User's question or request
         thread_id: Thread ID for conversation persistence
+        user_id: User ID for file ownership
 
     Yields:
         Streaming events from the agent
     """
+    # Set context variables for tools to access
+    _user_id_ctx.set(user_id)
+    _thread_id_ctx.set(thread_id)
+
     config = {"configurable": {"thread_id": thread_id}}
     for event in graph.stream(
         {"messages": [HumanMessage(content=query)]},

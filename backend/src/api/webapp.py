@@ -313,6 +313,38 @@ async def upload_file(
             # In E2B mode, sandbox_path uses the virtual path convention
             sandbox_path = f"/home/user/data/{storage_filename}"
 
+        # Save file record to database if Supabase DB is enabled
+        if USE_SUPABASE_DB:
+            try:
+                from ..storage.supabase_db import save_file_record
+
+                # Determine content type
+                ext = os.path.splitext(file.filename)[1].lower()
+                content_types = {
+                    ".csv": "text/csv",
+                    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    ".xls": "application/vnd.ms-excel",
+                    ".dta": "application/octet-stream",
+                    ".sav": "application/octet-stream",
+                    ".parquet": "application/octet-stream",
+                }
+                content_type = content_types.get(ext, "application/octet-stream")
+
+                # Save to database (async)
+                await save_file_record(
+                    user_id=user_id,
+                    filename=file.filename,
+                    storage_path=storage_path,
+                    file_size=file_size,
+                    content_type=content_type,
+                    file_type="uploaded",
+                    thread_id=None,  # Uploaded files don't have thread association yet
+                )
+                print(f"[Database] File record saved: {file.filename}")
+            except Exception as db_error:
+                # Log database error but don't fail the upload
+                print(f"[Database] Warning: Failed to save file record: {db_error}")
+
         return UploadResponse(
             success=True,
             filename=storage_filename,

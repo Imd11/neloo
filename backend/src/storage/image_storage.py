@@ -373,6 +373,7 @@ class ImageStorage:
         self,
         data: bytes,
         thread_id: Optional[str] = None,
+        user_id: str = "default",
     ) -> Optional[dict]:
         """
         Save image and return info dict.
@@ -380,6 +381,7 @@ class ImageStorage:
         Args:
             data: Image bytes (PNG format)
             thread_id: Optional thread ID for association
+            user_id: User ID for file ownership
 
         Returns:
             dict with:
@@ -391,17 +393,56 @@ class ImageStorage:
         signature = generate_url_signature(image_id)
 
         if self._backend.save(image_id, data):
-            return {
+            result = {
                 "image_id": image_id,
                 "signature": signature,
                 "url_path": f"/images/{image_id}?sig={signature}",
             }
+
+            # Save to database if Supabase DB is enabled
+            try:
+                # Check if USE_SUPABASE_DB is defined
+                import os
+                supabase_url = os.environ.get("SUPABASE_URL")
+                if supabase_url:
+                    from .supabase_db import save_file_record
+                    import asyncio
+
+                    # Determine storage path based on backend
+                    if USE_LOCAL_STORAGE:
+                        storage_path = f"local/images/{image_id}.png"
+                    else:
+                        storage_path = f"images/{image_id}.png"
+
+                    # Save to database (async)
+                    # Use fire-and-forget to avoid blocking
+                    try:
+                        loop = asyncio.get_running_loop()
+                        asyncio.create_task(save_file_record(
+                            user_id=user_id,
+                            filename=f"{image_id}.png",
+                            storage_path=storage_path,
+                            file_size=len(data),
+                            content_type="image/png",
+                            file_type="chart",
+                            thread_id=thread_id,
+                        ))
+                        print(f"[ImageStorage] Database record queued for: {image_id}.png")
+                    except RuntimeError:
+                        # No event loop running, use synchronous approach
+                        print(f"[ImageStorage] Warning: No event loop, skipping database save for: {image_id}.png")
+            except Exception as db_error:
+                # Log database error but don't fail the image save
+                print(f"[ImageStorage] Warning: Database save failed for {image_id}: {db_error}")
+
+            return result
         return None
 
     def save_image_base64(
         self,
         base64_data: str,
         thread_id: Optional[str] = None,
+        user_id: str = "default",
     ) -> Optional[dict]:
         """
         Save base64-encoded image.
@@ -409,13 +450,14 @@ class ImageStorage:
         Args:
             base64_data: Base64 encoded PNG image
             thread_id: Optional thread ID
+            user_id: User ID for file ownership
 
         Returns:
             Same as save_image()
         """
         try:
             data = base64.b64decode(base64_data)
-            return self.save_image(data, thread_id)
+            return self.save_image(data, thread_id, user_id)
         except Exception as e:
             print(f"[ImageStorage] Base64 decode error: {e}")
             return None
@@ -477,17 +519,19 @@ def get_image_storage() -> ImageStorage:
 def save_image(
     data: bytes,
     thread_id: Optional[str] = None,
+    user_id: str = "default",
 ) -> Optional[dict]:
     """Convenience function to save image."""
-    return get_image_storage().save_image(data, thread_id)
+    return get_image_storage().save_image(data, thread_id, user_id)
 
 
 def save_image_base64(
     base64_data: str,
     thread_id: Optional[str] = None,
+    user_id: str = "default",
 ) -> Optional[dict]:
     """Convenience function to save base64 image."""
-    return get_image_storage().save_image_base64(base64_data, thread_id)
+    return get_image_storage().save_image_base64(base64_data, thread_id, user_id)
 
 
 def get_image(image_id: str) -> Optional[bytes]:
