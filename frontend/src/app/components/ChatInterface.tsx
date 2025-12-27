@@ -165,22 +165,26 @@ export function ChatInterface({ assistant }: ChatInterfaceProps) {
           )}
         </div>
 
-        <div className="flex flex-col border-t border-border bg-background">
-          <div className="flex items-center justify-between border-b border-border">
-            <div className="flex flex-1 items-center">
+        <div className="border-t border-border bg-background">
+          <div className="border-b border-border px-4 py-2">
+            <div className="flex items-center gap-4">
               <button
                 type="button"
-                className="inline-flex items-center gap-2 py-3 pr-4 first:pl-[18px] aria-expanded:font-semibold"
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                  metaOpen === "todos"
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                )}
                 onClick={() =>
                   setMetaOpen((prev) =>
                     prev === "todos" ? null : "todos"
                   )
                 }
-                aria-expanded={metaOpen === "todos"}
               >
                 Tasks
                 {hasTodos && (
-                  <span className="h-4 min-w-4 rounded-full bg-[#2F6868] px-0.5 text-center text-[10px] leading-[16px] text-white">
+                  <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 text-xs font-medium text-primary-foreground">
                     {todos.length}
                   </span>
                 )}
@@ -189,7 +193,7 @@ export function ChatInterface({ assistant }: ChatInterfaceProps) {
           </div>
 
           {metaOpen === "todos" && hasTodos && (
-            <div className="mb-6">
+            <div className="border-b border-border p-4">
               <TodoList todos={todos} />
             </div>
           )}
