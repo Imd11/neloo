@@ -16,6 +16,7 @@ import uuid
 import os.path
 from typing import Optional, Literal
 from datetime import datetime
+import asyncio
 
 # Supabase configuration
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
@@ -29,16 +30,40 @@ FileType = Literal['uploaded', 'generated', 'chart', 'code']
 
 # Async Supabase client singleton
 _supabase_client = None
+_supabase_client_loop: asyncio.AbstractEventLoop | None = None
 
 
 async def get_supabase_client():
     """Get async Supabase client instance."""
     global _supabase_client
+    global _supabase_client_loop
     if not USE_SUPABASE_DB:
         return None
-    if _supabase_client is None:
+    # NOTE: the async client is bound to the event loop it was created in.
+    # This codebase sometimes performs async DB writes from a temporary event loop
+    # (e.g. sync fallbacks in file/image storage). If we cache a client created
+    # in that temporary loop, subsequent requests in the main server loop will
+    # fail with "Event loop is closed". So we recreate the client whenever the
+    # current loop differs or the original loop is closed.
+    loop = asyncio.get_running_loop()
+    if (
+        _supabase_client is None
+        or _supabase_client_loop is None
+        or _supabase_client_loop.is_closed()
+        or _supabase_client_loop is not loop
+    ):
+        # Best-effort close of an existing client/session if supported.
+        try:
+            close_fn = getattr(_supabase_client, "aclose", None) or getattr(_supabase_client, "close", None)
+            if callable(close_fn):
+                maybe_awaitable = close_fn()
+                if asyncio.iscoroutine(maybe_awaitable):
+                    await maybe_awaitable
+        except Exception:
+            pass
         from supabase import acreate_client
         _supabase_client = await acreate_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+        _supabase_client_loop = loop
     return _supabase_client
 
 

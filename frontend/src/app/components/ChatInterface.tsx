@@ -12,6 +12,7 @@ import { FilePanel } from "@/app/components/FilePanel";
 import { FilesPopover } from "@/app/components/FilesPopover";
 import { TriangleAlert, FileIcon } from "lucide-react";
 import { useQueryState } from "nuqs";
+import { cn } from "@/lib/utils";
 
 const MAX_VISIBLE_CHARS = 100000;
 
@@ -84,7 +85,8 @@ export function ChatInterface({ assistant }: ChatInterfaceProps) {
     resumeInterrupt,
   } = useChatContext();
 
-  const [metaOpen, setMetaOpen] = useState<"todos" | "files" | null>(null);
+  const [metaOpen, setMetaOpen] = useState<"todos" | null>(null);
+  const [filePanelOpen, setFilePanelOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = useCallback(() => {
@@ -110,161 +112,130 @@ export function ChatInterface({ assistant }: ChatInterfaceProps) {
   const hasTodos = todos.length > 0;
   const hasFiles = Object.keys(files).length > 0;
 
-  const todosTrigger = (() => {
-    if (!hasTodos) return null;
-    return (
-      <button
-        type="button"
-        onClick={() =>
-          setMetaOpen((prev) => (prev === "todos" ? null : "todos"))
-        }
-        className="flex flex-shrink-0 cursor-pointer items-center gap-2 px-[18px] py-3 text-left text-sm"
-        aria-expanded={metaOpen === "todos"}
-      >
-        <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-[#2F6868] px-0.5 text-[10px] leading-[16px] text-white">
-          {todos.length}
-        </span>
-        Tasks
-      </button>
-    );
-  })();
-
-  const filesTrigger = (() => {
-    const fileCount = Object.keys(files).length;
-    return (
-      <button
-        type="button"
-        onClick={() =>
-          setMetaOpen((prev) =>
-            prev === "files" ? null : "files"
-          )
-        }
-        className="flex flex-shrink-0 cursor-pointer items-center gap-2 px-[18px] py-3 text-left text-sm"
-        aria-expanded={metaOpen === "files"}
-      >
-        <FileIcon size={16} />
-        Files
-        {fileCount > 0 && (
-          <span className="h-4 min-w-4 rounded-full bg-[#2F6868] px-0.5 text-center text-[10px] leading-[16px] text-white">
-            {fileCount}
-          </span>
-        )}
-      </button>
-    );
-  })();
-
   const handleSendMessage = (content: string) => {
     setMetaOpen(null);
     sendMessage(content);
   };
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex-1 overflow-y-auto px-3 md:px-4">
-        {isThreadLoading ? (
-          <div className="flex h-full items-center justify-center">
-            <p className="text-muted-foreground">Loading thread...</p>
-          </div>
-        ) : (
-          <div className="mx-auto max-w-4xl py-6">
-            <div className="space-y-4">
-              {groupedMessages.map((group, idx) => (
-                <MessageGroup
-                  key={`group-${idx}`}
-                  messages={group}
-                  files={files}
-                  continueStream={continueStream}
-                  stopStream={stopStream}
-                  isLoading={isLoading}
-                  interrupt={interrupt}
-                  resumeInterrupt={resumeInterrupt}
-                  markCurrentThreadAsResolved={markCurrentThreadAsResolved}
-                />
-              ))}
+    <div className="flex h-full relative">
+      {/* Main chat area */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 overflow-y-auto px-3 md:px-4">
+          {isThreadLoading ? (
+            <div className="flex h-full items-center justify-center">
+              <p className="text-muted-foreground">Loading thread...</p>
             </div>
+          ) : (
+            <div className="mx-auto max-w-4xl py-6">
+              <div className="space-y-4">
+                {groupedMessages.map((group, idx) => (
+                  <MessageGroup
+                    key={`group-${idx}`}
+                    messages={group}
+                    files={files}
+                    continueStream={continueStream}
+                    stopStream={stopStream}
+                    isLoading={isLoading}
+                    interrupt={interrupt}
+                    resumeInterrupt={resumeInterrupt}
+                    markCurrentThreadAsResolved={markCurrentThreadAsResolved}
+                  />
+                ))}
+              </div>
 
-            <div className="py-4">
-              {!isLoading && totalVisibleChars > MAX_VISIBLE_CHARS && (
-                <div className="mb-4 flex items-start gap-3 rounded-lg bg-yellow-50 p-4 dark:bg-yellow-950/20">
-                  <TriangleAlert className="h-5 w-5 flex-shrink-0 text-yellow-600 dark:text-yellow-500" />
-                  <div className="flex-1">
-                    <h3 className="font-medium text-yellow-800 dark:text-yellow-200">
-                      Large conversation detected
-                    </h3>
-                    <p className="mt-1 text-sm text-yellow-700 dark:text-yellow-300">
-                      Your conversation has grown quite large. Consider starting
-                      a new thread to improve performance.
-                    </p>
+              <div className="py-4">
+                {!isLoading && totalVisibleChars > MAX_VISIBLE_CHARS && (
+                  <div className="mb-4 flex items-start gap-3 rounded-lg bg-yellow-50 p-4 dark:bg-yellow-950/20">
+                    <TriangleAlert className="h-5 w-5 flex-shrink-0 text-yellow-600 dark:text-yellow-500" />
+                    <div className="flex-1">
+                      <h3 className="font-medium text-yellow-800 dark:text-yellow-200">
+                        Large conversation detected
+                      </h3>
+                      <p className="mt-1 text-sm text-yellow-700 dark:text-yellow-300">
+                        Your conversation has grown quite large. Consider starting
+                        a new thread to improve performance.
+                      </p>
+                    </div>
                   </div>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
+                )}
+                <div ref={messagesEndRef} />
+              </div>
             </div>
-          </div>
-        )}
-      </div>
-
-      <div className="flex flex-col border-t border-border bg-background">
-        <div className="flex items-center justify-between border-b border-border">
-          <div className="flex flex-1 items-center">
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 py-3 pr-4 first:pl-[18px] aria-expanded:font-semibold"
-              onClick={() =>
-                setMetaOpen((prev) =>
-                  prev === "todos" ? null : "todos"
-                )
-              }
-              aria-expanded={metaOpen === "todos"}
-            >
-              Tasks
-              {hasTodos && (
-                <span className="h-4 min-w-4 rounded-full bg-[#2F6868] px-0.5 text-center text-[10px] leading-[16px] text-white">
-                  {todos.length}
-                </span>
-              )}
-            </button>
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 py-3 pr-4 first:pl-[18px] aria-expanded:font-semibold"
-              onClick={() =>
-                setMetaOpen((prev) =>
-                  prev === "files" ? null : "files"
-                )
-              }
-              aria-expanded={metaOpen === "files"}
-            >
-              Files
-              {Object.keys(files).length > 0 && (
-                <span className="h-4 min-w-4 rounded-full bg-[#2F6868] px-0.5 text-center text-[10px] leading-[16px] text-white">
-                  {Object.keys(files).length}
-                </span>
-              )}
-            </button>
-          </div>
+          )}
         </div>
 
-        {metaOpen === "todos" && hasTodos && (
-          <div className="mb-6">
-            <TodoList todos={todos} />
+        <div className="flex flex-col border-t border-border bg-background">
+          <div className="flex items-center justify-between border-b border-border">
+            <div className="flex flex-1 items-center">
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 py-3 pr-4 first:pl-[18px] aria-expanded:font-semibold"
+                onClick={() =>
+                  setMetaOpen((prev) =>
+                    prev === "todos" ? null : "todos"
+                  )
+                }
+                aria-expanded={metaOpen === "todos"}
+              >
+                Tasks
+                {hasTodos && (
+                  <span className="h-4 min-w-4 rounded-full bg-[#2F6868] px-0.5 text-center text-[10px] leading-[16px] text-white">
+                    {todos.length}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
-        )}
 
-        {metaOpen === "files" && (
-          <div className="mb-6">
-            <FilePanel
-              messages={messages}
-              threadId={threadId || undefined}
-              compact={true}
-            />
-          </div>
-        )}
+          {metaOpen === "todos" && hasTodos && (
+            <div className="mb-6">
+              <TodoList todos={todos} />
+            </div>
+          )}
 
-        <ChatInput
-          onSubmit={handleSendMessage}
-          isLoading={isLoading}
-          disabled={isThreadLoading}
-          assistant={assistant}
+          <ChatInput
+            onSubmit={handleSendMessage}
+            isLoading={isLoading}
+            disabled={isThreadLoading}
+            assistant={assistant}
+          />
+        </div>
+      </div>
+
+      {/* Right-side toggle button */}
+      <button
+        onClick={() => setFilePanelOpen(!filePanelOpen)}
+        className={cn(
+          "fixed top-1/2 -translate-y-1/2 z-40 flex items-center justify-center",
+          "h-16 w-8 rounded-l-lg border border-r-0 border-border",
+          "bg-background shadow-md transition-all duration-300 hover:w-10",
+          filePanelOpen ? "right-[320px]" : "right-0"
+        )}
+        aria-label="Toggle file panel"
+      >
+        <div className="flex flex-col items-center gap-1">
+          <FileIcon className="h-4 w-4 text-muted-foreground" />
+          {hasFiles && (
+            <span className="text-[10px] font-medium text-muted-foreground">
+              {Object.keys(files).length}
+            </span>
+          )}
+        </div>
+      </button>
+
+      {/* Right sidebar - File Panel */}
+      <div
+        className={cn(
+          "fixed right-0 top-0 h-full w-80 bg-background border-l border-border",
+          "transform transition-transform duration-300 ease-in-out z-30",
+          filePanelOpen ? "translate-x-0" : "translate-x-full"
+        )}
+      >
+        <FilePanel
+          messages={messages}
+          threadId={threadId || undefined}
+          onClose={() => setFilePanelOpen(false)}
         />
       </div>
     </div>
