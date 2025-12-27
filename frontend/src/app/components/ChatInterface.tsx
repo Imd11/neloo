@@ -10,7 +10,7 @@ import { ChatInput } from "@/app/components/ChatInput";
 import { TodoList } from "@/app/components/TodoList";
 import { FilePanel } from "@/app/components/FilePanel";
 import { FilesPopover } from "@/app/components/FilesPopover";
-import { TriangleAlert, FileIcon } from "lucide-react";
+import { TriangleAlert, FileIcon, ChevronDown } from "lucide-react";
 import { useQueryState } from "nuqs";
 import { cn } from "@/lib/utils";
 
@@ -166,34 +166,36 @@ export function ChatInterface({ assistant }: ChatInterfaceProps) {
         </div>
 
         <div className="border-t border-border bg-background">
-          <div className="border-b border-border px-4 py-2">
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                className={cn(
-                  "inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                  metaOpen === "todos"
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-                )}
-                onClick={() =>
-                  setMetaOpen((prev) =>
-                    prev === "todos" ? null : "todos"
-                  )
-                }
-              >
-                Tasks
-                {hasTodos && (
-                  <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 text-xs font-medium text-primary-foreground">
-                    {todos.length}
-                  </span>
-                )}
-              </button>
+          {/* Tasks Header */}
+          <div className="flex items-center justify-between px-4 py-2.5">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Agent Tasks
+              </span>
+              {hasTodos && (
+                <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-muted px-1.5 text-[11px] font-medium text-muted-foreground">
+                  {todos.length}
+                </span>
+              )}
             </div>
+            <button
+              type="button"
+              onClick={() =>
+                setMetaOpen((prev) => (prev === "todos" ? null : "todos"))
+              }
+              className={cn(
+                "flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-all duration-200 hover:bg-accent hover:text-foreground",
+                metaOpen === "todos" && "rotate-180"
+              )}
+              aria-label="Toggle tasks panel"
+            >
+              <ChevronDown size={16} />
+            </button>
           </div>
 
+          {/* Tasks Panel */}
           {metaOpen === "todos" && hasTodos && (
-            <div className="border-b border-border p-4">
+            <div className="border-t border-border/50 bg-accent/30 px-4 py-3">
               <TodoList todos={todos} />
             </div>
           )}
