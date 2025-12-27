@@ -22,6 +22,7 @@ from langgraph.server.app import create_app
 # Import our graph and webapp
 from src.agent.graph import graph
 from src.api.webapp import app as webapp
+from src.runtime_context_middleware import RuntimeContextASGIMiddleware
 
 # Create the LangGraph application with our custom HTTP routes
 config = GraphConfig(
@@ -32,6 +33,7 @@ config = GraphConfig(
 )
 
 app = create_app(config)
+app = RuntimeContextASGIMiddleware(app)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))

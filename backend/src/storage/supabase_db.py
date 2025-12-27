@@ -13,6 +13,7 @@ This module handles:
 
 import os
 import uuid
+import os.path
 from typing import Optional, Literal
 from datetime import datetime
 
@@ -77,14 +78,29 @@ async def save_file_record(
         file_id = str(uuid.uuid4())
 
         # Insert into files table
+        # - filename: stored filename (basename of storage path)
+        # - original_filename: user-facing name (parameter `filename`)
+        stored_filename = os.path.basename(storage_path) or filename
+
+        bucket = None
+        if file_type == "uploaded":
+            bucket = "data-analyst-files"
+        elif file_type in ("generated", "code"):
+            bucket = "data-analyst-generated"
+        elif file_type == "chart":
+            bucket = "data-analyst-images"
+
         file_data = {
             "id": file_id,
             "user_id": user_id,
-            "filename": filename,
+            "filename": stored_filename,
+            "original_filename": filename,
             "storage_path": storage_path,
             "file_size": file_size,
             "content_type": content_type,
             "file_type": file_type,
+            "bucket": bucket,
+            "download_url": f"/api/files/{file_id}/download",
         }
 
         result = await supabase.table("files").insert(file_data).execute()
@@ -210,6 +226,29 @@ async def get_files_by_type(
         return []
 
 
+async def get_user_files(
+    user_id: str,
+    file_types: Optional[list[FileType]] = None,
+    limit: int = 200,
+) -> list[dict]:
+    """Get all files for a user, optionally filtered by file_type list."""
+    if not USE_SUPABASE_DB:
+        return []
+    try:
+        supabase = await get_supabase_client()
+        if not supabase:
+            return []
+        query = supabase.table("files").select("*").eq("user_id", user_id)
+        if file_types:
+            query = query.in_("file_type", file_types)
+        query = query.order("created_at", desc=True).limit(limit)
+        result = await query.execute()
+        return result.data or []
+    except Exception as e:
+        print(f"[SupabaseDB] Error getting user files: {e}")
+        return []
+
+
 async def get_thread_files(thread_id: str) -> list[dict]:
     """
     Get all files associated with a thread.
@@ -246,40 +285,79 @@ async def get_thread_files(thread_id: str) -> list[dict]:
         return []
 
 
+async def count_file_thread_links(file_id: str, user_id: str) -> int:
+    """Count how many threads (owned by user) reference a file."""
+    if not USE_SUPABASE_DB:
+        return 0
+    try:
+        supabase = await get_supabase_client()
+        if not supabase:
+            return 0
+        # Count thread_files where thread belongs to user.
+        result = await supabase.table("thread_files")\
+            .select("id, threads!inner(user_id)", count="exact")\
+            .eq("file_id", file_id)\
+            .eq("threads.user_id", user_id)\
+            .execute()
+        return int(getattr(result, "count", None) or 0)
+    except Exception as e:
+        print(f"[SupabaseDB] Error counting file links: {e}")
+        return 0
+
+
 async def delete_file_record(file_id: str, user_id: str) -> bool:
-    """
-    Delete a file record (also deletes thread_files associations via CASCADE).
-
-    Args:
-        file_id: The file's UUID
-        user_id: The user's ID (for verification)
-
-    Returns:
-        True if successful, False otherwise
-    """
+    """Delete a file record by ID (verifying ownership)."""
     if not USE_SUPABASE_DB:
         return False
-
     try:
         supabase = await get_supabase_client()
         if not supabase:
             return False
-
         result = await supabase.table("files")\
             .delete()\
             .eq("id", file_id)\
             .eq("user_id", user_id)\
             .execute()
-
-        if result.data:
-            print(f"[SupabaseDB] Deleted file record: {file_id}")
-            return True
-
-        return False
-
+        return bool(result.data)
     except Exception as e:
         print(f"[SupabaseDB] Error deleting file record: {e}")
         return False
+
+
+async def delete_thread_file_link(thread_db_id: str, file_id: str) -> bool:
+    """Delete thread_files association."""
+    if not USE_SUPABASE_DB:
+        return False
+    try:
+        supabase = await get_supabase_client()
+        if not supabase:
+            return False
+        result = await supabase.table("thread_files")\
+            .delete()\
+            .eq("thread_id", thread_db_id)\
+            .eq("file_id", file_id)\
+            .execute()
+        return True if result.data is not None else True
+    except Exception as e:
+        print(f"[SupabaseDB] Error deleting thread_file link: {e}")
+        return False
+
+
+async def get_file_by_id(file_id: str) -> Optional[dict]:
+    """Fetch a file record by ID."""
+    if not USE_SUPABASE_DB:
+        return None
+    try:
+        supabase = await get_supabase_client()
+        if not supabase:
+            return None
+        result = await supabase.table("files").select("*").eq("id", file_id).limit(1).execute()
+        if result.data and len(result.data) > 0:
+            return result.data[0]
+        return None
+    except Exception as e:
+        print(f"[SupabaseDB] Error getting file by id: {e}")
+        return None
 
 
 async def create_thread(

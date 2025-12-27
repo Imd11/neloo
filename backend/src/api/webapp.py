@@ -23,9 +23,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, Header, Query, Depends, Request
+from fastapi import FastAPI, File, UploadFile, HTTPException, Header, Query, Depends, Request, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import Response, RedirectResponse
 from starlette.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -54,7 +54,12 @@ from ..storage.file_storage import (
 # Import database operations for file listing
 from ..storage.supabase_db import (
     get_files_by_type,
+    get_user_files,
     get_thread_files,
+    get_file_by_id,
+    count_file_thread_links,
+    delete_file_record,
+    delete_thread_file_link,
     create_thread,
     get_user_threads,
     get_thread_by_langgraph_id,
@@ -316,6 +321,7 @@ def get_user_id_from_header(x_user_id: Optional[str]) -> str:
 @app.post("/files/upload", response_model=UploadResponse)
 async def upload_file(
     file: UploadFile = File(...),
+    langgraph_thread_id: Optional[str] = Form(None),
     user: dict = Depends(get_current_user),
 ):
     """
@@ -393,6 +399,14 @@ async def upload_file(
         if USE_SUPABASE_DB:
             try:
                 from ..storage.supabase_db import save_file_record
+                # Ensure thread record exists if the upload is associated with a thread.
+                # We bind uploads to the current conversation by linking to thread_files.
+                if langgraph_thread_id:
+                    await create_thread(
+                        user_id=user_id,
+                        langgraph_thread_id=langgraph_thread_id,
+                        title="New Task",
+                    )
 
                 # Determine content type
                 ext = os.path.splitext(file.filename)[1].lower()
@@ -414,7 +428,7 @@ async def upload_file(
                     file_size=file_size,
                     content_type=content_type,
                     file_type="uploaded",
-                    thread_id=None,  # Uploaded files don't have thread association yet
+                    thread_id=langgraph_thread_id,  # Treat as langgraph_thread_id for association
                 )
                 print(f"[Database] File record saved: {file.filename}")
             except Exception as db_error:
@@ -990,12 +1004,12 @@ async def get_files_by_type_api(
             files.append(DatabaseFileInfo(
                 id=f.get("id", ""),
                 filename=f.get("filename", ""),
-                original_filename=f.get("original_filename"),
+                original_filename=f.get("original_filename") or f.get("filename"),
                 file_type=f.get("file_type", "generated"),
                 storage_path=f.get("storage_path"),
-                download_url=f.get("download_url"),
-                size=f.get("size"),
-                mime_type=f.get("mime_type"),
+                download_url=f.get("download_url") or f"/api/files/{f.get('id','')}/download",
+                size=f.get("file_size"),
+                mime_type=f.get("content_type"),
                 created_at=f.get("created_at", ""),
             ))
 
@@ -1009,9 +1023,9 @@ async def get_files_by_type_api(
         raise HTTPException(status_code=500, detail=f"Failed to get files: {str(e)}")
 
 
-@app.get("/api/threads/{thread_id}/files", response_model=DatabaseFileListResponse)
+@app.get("/api/threads/{langgraph_thread_id}/files", response_model=DatabaseFileListResponse)
 async def get_thread_files_api(
-    thread_id: str,
+    langgraph_thread_id: str,
     file_type: Optional[str] = Query(None, description="Optional filter by file type"),
     user: dict = Depends(get_current_user),
 ):
@@ -1034,28 +1048,31 @@ async def get_thread_files_api(
         return DatabaseFileListResponse(files=[], total=0, file_type=file_type)
 
     try:
-        # Query database for thread files
-        files_data = await get_thread_files(
-            thread_id=thread_id,
-            file_type=file_type,  # type: ignore
-        )
+        thread_record = await get_thread_by_langgraph_id(langgraph_thread_id)
+        if not thread_record:
+            return DatabaseFileListResponse(files=[], total=0, file_type=file_type)
+        if thread_record["user_id"] != user_id:
+            raise HTTPException(status_code=403, detail="Not authorized")
 
-        # Filter by user_id for security (ensure user owns these files)
-        # The RLS policy should handle this, but double-check here
-        user_files = [f for f in files_data if f.get("user_id") == user_id]
+        # Query database for thread files using DB thread UUID
+        files_data = await get_thread_files(thread_id=thread_record["id"])
+
+        # Optional filter by file_type
+        if file_type:
+            files_data = [f for f in files_data if f.get("file_type") == file_type]
 
         # Convert to response format
         files = []
-        for f in user_files:
+        for f in files_data:
             files.append(DatabaseFileInfo(
                 id=f.get("id", ""),
                 filename=f.get("filename", ""),
-                original_filename=f.get("original_filename"),
+                original_filename=f.get("original_filename") or f.get("filename"),
                 file_type=f.get("file_type", "generated"),
                 storage_path=f.get("storage_path"),
-                download_url=f.get("download_url"),
-                size=f.get("size"),
-                mime_type=f.get("mime_type"),
+                download_url=f.get("download_url") or f"/api/files/{f.get('id','')}/download",
+                size=f.get("file_size"),
+                mime_type=f.get("content_type"),
                 created_at=f.get("created_at", ""),
             ))
 
@@ -1067,6 +1084,157 @@ async def get_thread_files_api(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get thread files: {str(e)}")
+
+
+@app.get("/api/files", response_model=DatabaseFileListResponse)
+async def list_files_api(
+    types: Optional[str] = Query(None, description="Comma-separated file types to include"),
+    user: dict = Depends(get_current_user),
+):
+    """List user's files from the database (DB-driven library)."""
+    user_id = auth_get_user_id(user)
+    if not USE_SUPABASE_DB:
+        return DatabaseFileListResponse(files=[], total=0, file_type=None)
+    file_types: Optional[list[FileType]] = None
+    if types:
+        requested = [t.strip() for t in types.split(",") if t.strip()]
+        file_types = [t for t in requested if t in ("uploaded", "generated", "chart", "code")]  # type: ignore
+    files_data = await get_user_files(user_id=user_id, file_types=file_types)
+    files: list[DatabaseFileInfo] = []
+    for f in files_data:
+        files.append(DatabaseFileInfo(
+            id=f.get("id", ""),
+            filename=f.get("filename", ""),
+            original_filename=f.get("original_filename") or f.get("filename"),
+            file_type=f.get("file_type", "generated"),
+            storage_path=f.get("storage_path"),
+            download_url=f.get("download_url") or f"/api/files/{f.get('id','')}/download",
+            size=f.get("file_size"),
+            mime_type=f.get("content_type"),
+            created_at=f.get("created_at", ""),
+        ))
+    return DatabaseFileListResponse(files=files, total=len(files))
+
+
+@app.get("/api/files/{file_id}/usage-count")
+async def get_file_usage_count_api(
+    file_id: str,
+    user: dict = Depends(get_current_user),
+):
+    user_id = auth_get_user_id(user)
+    if not USE_SUPABASE_DB:
+        return {"count": 0}
+    count = await count_file_thread_links(file_id=file_id, user_id=user_id)
+    return {"count": count}
+
+
+@app.delete("/api/threads/{langgraph_thread_id}/files/{file_id}")
+async def unlink_thread_file_api(
+    langgraph_thread_id: str,
+    file_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """Remove a file association from a thread (local delete)."""
+    user_id = auth_get_user_id(user)
+    if not USE_SUPABASE_DB:
+        raise HTTPException(status_code=503, detail="Database not configured")
+    thread_record = await get_thread_by_langgraph_id(langgraph_thread_id)
+    if not thread_record:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    if thread_record["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    await delete_thread_file_link(thread_db_id=thread_record["id"], file_id=file_id)
+    return {"success": True}
+
+
+@app.delete("/api/files/{file_id}")
+async def delete_file_global_api(
+    file_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """Delete a file globally: remove from storage + delete DB record (cascades thread_files)."""
+    user_id = auth_get_user_id(user)
+    if not USE_SUPABASE_DB:
+        raise HTTPException(status_code=503, detail="Database not configured")
+    record = await get_file_by_id(file_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="File not found")
+    if record.get("user_id") != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    bucket = record.get("bucket")
+    storage_path = record.get("storage_path")
+    file_type = record.get("file_type")
+    if not bucket:
+        if file_type == "uploaded":
+            bucket = BUCKET_NAME
+        elif file_type in ("generated", "code"):
+            bucket = "data-analyst-generated"
+        elif file_type == "chart":
+            bucket = "data-analyst-images"
+
+    # Best-effort storage delete; DB delete is the source of truth.
+    try:
+        if not USE_LOCAL_STORAGE and storage_path and bucket:
+            supabase = await get_supabase_client()
+            if supabase:
+                await supabase.storage.from_(bucket).remove([storage_path])
+    except Exception:
+        pass
+
+    deleted = await delete_file_record(file_id=file_id, user_id=user_id)
+    if not deleted:
+        raise HTTPException(status_code=500, detail="Failed to delete file record")
+    return {"success": True}
+
+
+@app.get("/api/files/{file_id}/download")
+async def download_file_api(
+    file_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """
+    Authenticated download endpoint (fixed URL stored in DB).
+    This endpoint can redirect to a signed URL for Supabase Storage.
+    """
+    user_id = auth_get_user_id(user)
+    if not USE_SUPABASE_DB:
+        raise HTTPException(status_code=503, detail="Database not configured")
+    record = await get_file_by_id(file_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="File not found")
+    if record.get("user_id") != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    bucket = record.get("bucket")
+    storage_path = record.get("storage_path")
+    file_type = record.get("file_type")
+    if not bucket:
+        if file_type == "uploaded":
+            bucket = BUCKET_NAME
+        elif file_type in ("generated", "code"):
+            bucket = "data-analyst-generated"
+        elif file_type == "chart":
+            bucket = "data-analyst-images"
+
+    if USE_LOCAL_STORAGE:
+        raise HTTPException(status_code=501, detail="Local download not implemented for DB mode")
+
+    supabase = await get_supabase_client()
+    if not supabase:
+        raise HTTPException(status_code=503, detail="Storage not configured")
+
+    if not storage_path or not bucket:
+        raise HTTPException(status_code=500, detail="Missing storage metadata")
+
+    result = await supabase.storage.from_(bucket).create_signed_url(
+        path=storage_path,
+        expires_in=3600,
+    )
+    signed = result.get("signedURL") or result.get("signedUrl")
+    if not signed:
+        raise HTTPException(status_code=500, detail="Failed to create download URL")
+    return RedirectResponse(url=signed, status_code=307)
 
 
 # =============================================================================

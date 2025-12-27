@@ -6,15 +6,10 @@ import {
   ChevronRight,
   Download,
   Trash2,
-  Copy,
-  Check,
   FileText,
-  Image as ImageIcon,
-  Code,
   FolderOpen,
   X,
   Loader2,
-  ExternalLink,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -31,18 +26,24 @@ import { useAuth } from "@/providers/AuthProvider";
 type FileType = "uploaded" | "generated" | "chart" | "code";
 
 interface UploadedFile {
+  id?: string;
   filename: string;
   original_filename: string;
   storage_path: string;
   sandbox_path: string;
   size: number;
   created_at?: string;
+  download_url?: string;
+  file_type?: FileType;
 }
 
 interface GeneratedFile {
+  id?: string;
   filename: string;
   size: number;
   sandbox_path: string;
+  download_url?: string;
+  file_type?: FileType;
 }
 
 // Database-driven file info (from /api/files/by-type endpoint)
@@ -58,23 +59,11 @@ interface DatabaseFile {
   created_at: string;
 }
 
-interface ImageInfo {
-  url: string;
-  alt: string;
-  messageId?: string;
-}
-
-interface CodeSnippet {
-  id: string;
-  code: string;
-  timestamp?: string;
-  messageId?: string;
-}
-
 interface FilePanelProps {
   messages: Message[];
   threadId?: string; // Optional thread ID for thread-specific file queries
   onClose?: () => void;
+  compact?: boolean;
 }
 
 // ============================================================================
@@ -87,97 +76,6 @@ function formatFileSize(bytes: number): string {
   const sizes = ["B", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
-}
-
-function extractImagesFromMessages(messages: Message[]): ImageInfo[] {
-  const images: ImageInfo[] = [];
-  const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
-
-  messages.forEach((message) => {
-    if (message.type === "ai" || message.type === "tool") {
-      const content =
-        typeof message.content === "string"
-          ? message.content
-          : Array.isArray(message.content)
-            ? message.content
-                .filter((c: any) => c.type === "text")
-                .map((c: any) => c.text)
-                .join("\n")
-            : "";
-
-      let match;
-      while ((match = imageRegex.exec(content)) !== null) {
-        const [, alt, url] = match;
-        // Only include image URLs (not data URIs that are too long)
-        if (url && !url.startsWith("data:") || (url.startsWith("data:") && url.length < 1000000)) {
-          images.push({
-            url,
-            alt: alt || `Image`,
-            messageId: message.id,
-          });
-        }
-      }
-    }
-  });
-
-  return images;
-}
-
-function extractCodeFromMessages(messages: Message[]): CodeSnippet[] {
-  const codeSnippets: CodeSnippet[] = [];
-
-  messages.forEach((message, index) => {
-    if (message.type === "ai") {
-      // Check tool_calls for execute_python
-      const rawToolCalls = message.tool_calls || message.additional_kwargs?.tool_calls;
-      const toolCalls: any[] = Array.isArray(rawToolCalls) ? rawToolCalls : [];
-
-      toolCalls.forEach((tc: any, tcIndex: number) => {
-        const name = tc.function?.name || tc.name || "";
-        if (name === "execute_python") {
-          const args = tc.function?.arguments || tc.args || tc.input || {};
-          let code = "";
-
-          if (typeof args === "string") {
-            try {
-              const parsed = JSON.parse(args);
-              code = parsed.code || "";
-            } catch {
-              code = args;
-            }
-          } else if (typeof args === "object" && args.code) {
-            code = args.code;
-          }
-
-          if (code) {
-            codeSnippets.push({
-              id: `${message.id}-${tcIndex}`,
-              code,
-              messageId: message.id,
-            });
-          }
-        }
-      });
-
-      // Also check content array for tool_use blocks
-      if (Array.isArray(message.content)) {
-        message.content.forEach((block: any, blockIndex: number) => {
-          if (block.type === "tool_use" && block.name === "execute_python") {
-            const code = block.input?.code || "";
-            if (code) {
-              codeSnippets.push({
-                id: `${message.id}-content-${blockIndex}`,
-                code,
-                messageId: message.id,
-              });
-            }
-          }
-        });
-      }
-    }
-  });
-
-  return codeSnippets;
 }
 
 // ============================================================================
@@ -271,147 +169,6 @@ function FileItem({
   );
 }
 
-function ImageItem({
-  image,
-  onDownload,
-}: {
-  image: ImageInfo;
-  onDownload: () => void;
-}) {
-  const [isDownloading, setIsDownloading] = useState(false);
-
-  const handleDownload = async () => {
-    setIsDownloading(true);
-    try {
-      await onDownload();
-    } finally {
-      setIsDownloading(false);
-    }
-  };
-
-  return (
-    <div className="group relative rounded-md overflow-hidden border border-border hover:border-primary/50 transition-colors">
-      <img
-        src={image.url}
-        alt={image.alt}
-        className="w-full h-20 object-cover"
-        loading="lazy"
-      />
-      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-        <button
-          onClick={handleDownload}
-          disabled={isDownloading}
-          className="p-1.5 rounded-full bg-white/90 hover:bg-white"
-          title="Download"
-        >
-          {isDownloading ? (
-            <Loader2 size={14} className="animate-spin text-gray-700" />
-          ) : (
-            <Download size={14} className="text-gray-700" />
-          )}
-        </button>
-        <a
-          href={image.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="p-1.5 rounded-full bg-white/90 hover:bg-white"
-          title="Open in new tab"
-        >
-          <ExternalLink size={14} className="text-gray-700" />
-        </a>
-      </div>
-    </div>
-  );
-}
-
-function CodeItem({
-  snippet,
-  index,
-}: {
-  snippet: CodeSnippet;
-  index: number;
-}) {
-  const [copied, setCopied] = useState(false);
-  const [expanded, setExpanded] = useState(false);
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(snippet.code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleDownload = () => {
-    const blob = new Blob([snippet.code], { type: "text/x-python" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `code_${index + 1}.py`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const previewCode = snippet.code.split("\n").slice(0, 3).join("\n");
-  const hasMore = snippet.code.split("\n").length > 3;
-
-  return (
-    <div className="rounded-md border border-border overflow-hidden">
-      <div className="flex items-center justify-between bg-muted/50 px-2 py-1">
-        <span className="text-[10px] font-medium text-muted-foreground">
-          Code #{index + 1}
-        </span>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={handleCopy}
-            className="p-1 rounded hover:bg-muted"
-            title="Copy"
-          >
-            {copied ? (
-              <Check size={12} className="text-green-500" />
-            ) : (
-              <Copy size={12} className="text-muted-foreground" />
-            )}
-          </button>
-          <button
-            onClick={handleDownload}
-            className="p-1 rounded hover:bg-muted"
-            title="Download as .py"
-          >
-            <Download size={12} className="text-muted-foreground" />
-          </button>
-        </div>
-      </div>
-      <div className="relative">
-        <pre
-          className={cn(
-            "p-2 text-[10px] leading-relaxed overflow-x-auto bg-zinc-950 text-zinc-100",
-            !expanded && hasMore && "max-h-16"
-          )}
-        >
-          <code>{expanded ? snippet.code : previewCode}</code>
-        </pre>
-        {hasMore && !expanded && (
-          <button
-            onClick={() => setExpanded(true)}
-            className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-zinc-950 to-transparent py-2 text-[10px] text-zinc-400 hover:text-zinc-200 text-center"
-          >
-            Show more...
-          </button>
-        )}
-        {expanded && hasMore && (
-          <button
-            onClick={() => setExpanded(false)}
-            className="w-full bg-zinc-900 py-1 text-[10px] text-zinc-400 hover:text-zinc-200 text-center border-t border-zinc-800"
-          >
-            Show less
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ============================================================================
 // Main Component
 // ============================================================================
@@ -429,274 +186,112 @@ export function FilePanel({ messages, threadId, onClose }: FilePanelProps) {
     return { "X-User-Id": "default" };
   }, [session]);
 
-  // State - Legacy file storage (for backward compatibility)
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
-  const [generatedFiles, setGeneratedFiles] = useState<GeneratedFile[]>([]);
-
-  // State - Database-driven files (new approach)
-  const [dbUploadedFiles, setDbUploadedFiles] = useState<DatabaseFile[]>([]);
-  const [dbGeneratedFiles, setDbGeneratedFiles] = useState<DatabaseFile[]>([]);
-  const [dbChartFiles, setDbChartFiles] = useState<DatabaseFile[]>([]);
-  const [useDbFiles, setUseDbFiles] = useState(false); // Whether DB API is available
-
-  const [isLoadingUploaded, setIsLoadingUploaded] = useState(false);
-  const [isLoadingGenerated, setIsLoadingGenerated] = useState(false);
-  const [isLoadingCharts, setIsLoadingCharts] = useState(false);
+  // DB-authoritative files for THIS thread only (thread_files JOIN files)
+  const [dbFiles, setDbFiles] = useState<DatabaseFile[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Section open states
   const [uploadedOpen, setUploadedOpen] = useState(true);
   const [generatedOpen, setGeneratedOpen] = useState(true);
-  const [imagesOpen, setImagesOpen] = useState(true);
+  const [chartsOpen, setChartsOpen] = useState(true);
   const [codeOpen, setCodeOpen] = useState(true);
 
-  // Extract images and code from messages (fallback for when DB is not available)
-  const messagesImages = useMemo(() => extractImagesFromMessages(messages), [messages]);
-  const codeSnippets = useMemo(() => extractCodeFromMessages(messages), [messages]);
-
-  // Use DB chart files if available, otherwise fallback to message extraction
-  const images = useMemo(() => {
-    if (useDbFiles && dbChartFiles.length > 0) {
-      // Convert DB chart files to ImageInfo format
-      return dbChartFiles.map((f) => ({
-        url: f.download_url || "",
-        alt: f.original_filename || f.filename,
-        messageId: undefined,
-      }));
+  const fetchThreadFiles = useCallback(async () => {
+    if (!apiUrl || !threadId) {
+      setDbFiles([]);
+      return;
     }
-    return messagesImages;
-  }, [useDbFiles, dbChartFiles, messagesImages]);
-
-  // Fetch files by type from database API
-  const fetchFilesByType = useCallback(async (fileType: FileType) => {
-    if (!apiUrl) return [];
+    setIsLoading(true);
     try {
-      const url = threadId
-        ? `${apiUrl}/api/threads/${threadId}/files?file_type=${fileType}`
-        : `${apiUrl}/api/files/by-type?file_type=${fileType}`;
-
-      const response = await fetch(url, {
+      const response = await fetch(`${apiUrl}/api/threads/${threadId}/files`, {
         headers: getAuthHeaders(),
       });
-      if (response.ok) {
-        const data = await response.json();
-        return data.files || [];
+      if (!response.ok) {
+        setDbFiles([]);
+        return;
       }
+      const data = await response.json();
+      setDbFiles(data.files || []);
     } catch (error) {
-      console.error(`Failed to fetch ${fileType} files from DB:`, error);
+      console.error("Failed to fetch thread files:", error);
+      setDbFiles([]);
+    } finally {
+      setIsLoading(false);
     }
-    return [];
   }, [apiUrl, threadId, getAuthHeaders]);
-
-  // Fetch uploaded files (try DB first, fallback to legacy)
-  const fetchUploadedFiles = useCallback(async () => {
-    if (!apiUrl) return;
-    setIsLoadingUploaded(true);
-    try {
-      // Try new DB API first
-      const dbFiles = await fetchFilesByType("uploaded");
-      if (dbFiles.length > 0) {
-        setDbUploadedFiles(dbFiles);
-        setUseDbFiles(true);
-      } else {
-        // Fallback to legacy API
-        const response = await fetch(`${apiUrl}/files/list`, {
-          headers: getAuthHeaders(),
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setUploadedFiles(data.files || []);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to fetch uploaded files:", error);
-      // Try legacy API as fallback
-      try {
-        const response = await fetch(`${apiUrl}/files/list`, {
-          headers: getAuthHeaders(),
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setUploadedFiles(data.files || []);
-        }
-      } catch (legacyError) {
-        console.error("Legacy API also failed:", legacyError);
-      }
-    } finally {
-      setIsLoadingUploaded(false);
-    }
-  }, [apiUrl, getAuthHeaders, fetchFilesByType]);
-
-  // Fetch generated files (try DB first, fallback to legacy)
-  const fetchGeneratedFiles = useCallback(async () => {
-    if (!apiUrl) return;
-    setIsLoadingGenerated(true);
-    try {
-      // Try new DB API first
-      const dbFiles = await fetchFilesByType("generated");
-      if (dbFiles.length > 0) {
-        setDbGeneratedFiles(dbFiles);
-        setUseDbFiles(true);
-      } else {
-        // Fallback to legacy sandbox API
-        const response = await fetch(`${apiUrl}/sandbox/files`);
-        if (response.ok) {
-          const data = await response.json();
-          setGeneratedFiles(data.files || []);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to fetch generated files:", error);
-      // Try legacy API as fallback
-      try {
-        const response = await fetch(`${apiUrl}/sandbox/files`);
-        if (response.ok) {
-          const data = await response.json();
-          setGeneratedFiles(data.files || []);
-        }
-      } catch (legacyError) {
-        console.error("Legacy API also failed:", legacyError);
-      }
-    } finally {
-      setIsLoadingGenerated(false);
-    }
-  }, [apiUrl, fetchFilesByType]);
-
-  // Fetch chart files from DB
-  const fetchChartFiles = useCallback(async () => {
-    if (!apiUrl) return;
-    setIsLoadingCharts(true);
-    try {
-      const dbFiles = await fetchFilesByType("chart");
-      if (dbFiles.length > 0) {
-        setDbChartFiles(dbFiles);
-        setUseDbFiles(true);
-      }
-    } catch (error) {
-      console.error("Failed to fetch chart files:", error);
-    } finally {
-      setIsLoadingCharts(false);
-    }
-  }, [apiUrl, fetchFilesByType]);
 
   // Initial fetch
   useEffect(() => {
-    fetchUploadedFiles();
-    fetchGeneratedFiles();
-    fetchChartFiles();
-  }, [fetchUploadedFiles, fetchGeneratedFiles, fetchChartFiles]);
+    fetchThreadFiles();
+  }, [fetchThreadFiles]);
 
   // Refresh when messages change (might have new generated files)
   useEffect(() => {
     if (messages.length > 0) {
-      fetchGeneratedFiles();
-      fetchChartFiles();
+      fetchThreadFiles();
     }
-  }, [messages.length, fetchGeneratedFiles, fetchChartFiles]);
+  }, [messages.length, fetchThreadFiles]);
 
-  // Compute effective file lists (DB or legacy)
-  const effectiveUploadedFiles = useMemo(() => {
-    if (useDbFiles && dbUploadedFiles.length > 0) {
-      return dbUploadedFiles.map((f) => ({
-        filename: f.filename,
-        original_filename: f.original_filename || f.filename,
-        storage_path: f.storage_path || "",
-        sandbox_path: `/home/user/data/${f.filename}`,
-        size: f.size || 0,
-        created_at: f.created_at,
-        download_url: f.download_url,
-      }));
+  const grouped = useMemo(() => {
+    const uploaded: DatabaseFile[] = [];
+    const generated: DatabaseFile[] = [];
+    const chart: DatabaseFile[] = [];
+    const code: DatabaseFile[] = [];
+    for (const f of dbFiles) {
+      if (f.file_type === "uploaded") uploaded.push(f);
+      else if (f.file_type === "generated") generated.push(f);
+      else if (f.file_type === "chart") chart.push(f);
+      else if (f.file_type === "code") code.push(f);
     }
-    return uploadedFiles;
-  }, [useDbFiles, dbUploadedFiles, uploadedFiles]);
+    return { uploaded, generated, chart, code };
+  }, [dbFiles]);
 
-  const effectiveGeneratedFiles = useMemo(() => {
-    if (useDbFiles && dbGeneratedFiles.length > 0) {
-      return dbGeneratedFiles.map((f) => ({
-        filename: f.filename,
-        size: f.size || 0,
-        sandbox_path: `/home/user/data/${f.filename}`,
-        download_url: f.download_url,
-      }));
-    }
-    return generatedFiles;
-  }, [useDbFiles, dbGeneratedFiles, generatedFiles]);
-
-  // Download handlers
-  const handleDownloadUploaded = useCallback(
-    async (file: UploadedFile) => {
-      try {
-        const response = await fetch(
-          `${apiUrl}/files/download-url/${encodeURIComponent(file.filename)}`,
-          { headers: getAuthHeaders() }
-        );
-        if (response.ok) {
-          const data = await response.json();
-          window.open(data.url, "_blank");
-        }
-      } catch (error) {
-        console.error("Failed to download file:", error);
-      }
-    },
-    [apiUrl, getAuthHeaders]
-  );
-
-  const handleDownloadGenerated = useCallback(
-    (file: GeneratedFile) => {
-      const url = `${apiUrl}/sandbox/files/${encodeURIComponent(file.filename)}`;
-      window.open(url, "_blank");
-    },
-    [apiUrl]
-  );
-
-  const handleDeleteUploaded = useCallback(
-    async (file: UploadedFile) => {
-      try {
-        const response = await fetch(
-          `${apiUrl}/files/${encodeURIComponent(file.filename)}`,
-          {
-            method: "DELETE",
-            headers: getAuthHeaders(),
-          }
-        );
-        if (response.ok) {
-          setUploadedFiles((prev) =>
-            prev.filter((f) => f.filename !== file.filename)
-          );
-        }
-      } catch (error) {
-        console.error("Failed to delete file:", error);
-      }
-    },
-    [apiUrl, getAuthHeaders]
-  );
-
-  const handleDownloadImage = useCallback(async (image: ImageInfo) => {
-    try {
-      const response = await fetch(image.url);
+  const downloadDbFile = useCallback(
+    async (file: { id?: string; download_url?: string; filename: string; original_filename?: string }) => {
+      if (!apiUrl) return;
+      const url = file.download_url
+        ? file.download_url.startsWith("http")
+          ? file.download_url
+          : `${apiUrl}${file.download_url}`
+        : file.id
+          ? `${apiUrl}/api/files/${encodeURIComponent(file.id)}/download`
+          : "";
+      if (!url) return;
+      const response = await fetch(url, { headers: getAuthHeaders() });
+      if (!response.ok) return;
       const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
+      const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url;
-      a.download = image.alt || "figure.png";
+      a.href = blobUrl;
+      a.download = file.original_filename || file.filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Failed to download image:", error);
-      window.open(image.url, "_blank");
-    }
-  }, []);
+      URL.revokeObjectURL(blobUrl);
+    },
+    [apiUrl, getAuthHeaders]
+  );
+
+  const unlinkFromThread = useCallback(
+    async (fileId: string) => {
+      if (!apiUrl || !threadId) return;
+      const response = await fetch(
+        `${apiUrl}/api/threads/${encodeURIComponent(threadId)}/files/${encodeURIComponent(fileId)}`,
+        { method: "DELETE", headers: getAuthHeaders() }
+      );
+      if (response.ok) {
+        setDbFiles((prev) => prev.filter((f) => f.id !== fileId));
+      }
+    },
+    [apiUrl, threadId, getAuthHeaders]
+  );
 
   // Refresh all file lists
   const handleRefresh = useCallback(() => {
-    fetchUploadedFiles();
-    fetchGeneratedFiles();
-    fetchChartFiles();
-  }, [fetchUploadedFiles, fetchGeneratedFiles, fetchChartFiles]);
+    fetchThreadFiles();
+  }, [fetchThreadFiles]);
 
-  const totalItems =
-    effectiveUploadedFiles.length + effectiveGeneratedFiles.length + images.length + codeSnippets.length;
+  const totalItems = dbFiles.length;
 
   return (
     <div className="flex h-full flex-col border-l border-border bg-background">
@@ -729,29 +324,37 @@ export function FilePanel({ messages, threadId, onClose }: FilePanelProps) {
           <div className="mb-1">
             <SectionHeader
               title="Uploaded Files"
-              count={effectiveUploadedFiles.length}
+              count={grouped.uploaded.length}
               isOpen={uploadedOpen}
               onToggle={() => setUploadedOpen(!uploadedOpen)}
               icon={FileText}
             />
             {uploadedOpen && (
               <div className="px-1 py-1">
-                {isLoadingUploaded ? (
+                {isLoading ? (
                   <div className="flex items-center justify-center py-4">
                     <Loader2 size={16} className="animate-spin text-muted-foreground" />
                   </div>
-                ) : effectiveUploadedFiles.length === 0 ? (
+                ) : !threadId ? (
+                  <p className="px-3 py-2 text-xs text-muted-foreground">
+                    No thread selected
+                  </p>
+                ) : grouped.uploaded.length === 0 ? (
                   <p className="px-3 py-2 text-xs text-muted-foreground">
                     No files uploaded yet
                   </p>
                 ) : (
-                  effectiveUploadedFiles.map((file) => (
+                  grouped.uploaded.map((file) => (
                     <FileItem
-                      key={file.filename}
+                      key={file.id}
                       filename={file.original_filename || file.filename}
                       size={file.size}
-                      onDownload={() => handleDownloadUploaded(file as UploadedFile)}
-                      onDelete={() => handleDeleteUploaded(file as UploadedFile)}
+                      onDownload={() => downloadDbFile(file)}
+                      onDelete={
+                        threadId
+                          ? () => unlinkFromThread(file.id)
+                          : undefined
+                      }
                     />
                   ))
                 )}
@@ -763,28 +366,33 @@ export function FilePanel({ messages, threadId, onClose }: FilePanelProps) {
           <div className="mb-1">
             <SectionHeader
               title="Generated Files"
-              count={effectiveGeneratedFiles.length}
+              count={grouped.generated.length}
               isOpen={generatedOpen}
               onToggle={() => setGeneratedOpen(!generatedOpen)}
               icon={FileText}
             />
             {generatedOpen && (
               <div className="px-1 py-1">
-                {isLoadingGenerated ? (
+                {isLoading ? (
                   <div className="flex items-center justify-center py-4">
                     <Loader2 size={16} className="animate-spin text-muted-foreground" />
                   </div>
-                ) : effectiveGeneratedFiles.length === 0 ? (
+                ) : !threadId ? (
+                  <p className="px-3 py-2 text-xs text-muted-foreground">
+                    No thread selected
+                  </p>
+                ) : grouped.generated.length === 0 ? (
                   <p className="px-3 py-2 text-xs text-muted-foreground">
                     No files generated yet
                   </p>
                 ) : (
-                  effectiveGeneratedFiles.map((file) => (
+                  grouped.generated.map((file) => (
                     <FileItem
-                      key={file.filename}
+                      key={file.id}
                       filename={file.filename}
                       size={file.size}
-                      onDownload={() => handleDownloadGenerated(file as GeneratedFile)}
+                      onDownload={() => downloadDbFile(file)}
+                      onDelete={threadId ? () => unlinkFromThread(file.id) : undefined}
                     />
                   ))
                 )}
@@ -792,31 +400,39 @@ export function FilePanel({ messages, threadId, onClose }: FilePanelProps) {
             )}
           </div>
 
-          {/* Images Section */}
+          {/* Charts Section */}
           <div className="mb-1">
             <SectionHeader
-              title="Charts & Images"
-              count={images.length}
-              isOpen={imagesOpen}
-              onToggle={() => setImagesOpen(!imagesOpen)}
-              icon={ImageIcon}
+              title="Charts"
+              count={grouped.chart.length}
+              isOpen={chartsOpen}
+              onToggle={() => setChartsOpen(!chartsOpen)}
+              icon={FileText}
             />
-            {imagesOpen && (
-              <div className="px-3 py-2">
-                {images.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">
+            {chartsOpen && (
+              <div className="px-1 py-1">
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 size={16} className="animate-spin text-muted-foreground" />
+                  </div>
+                ) : !threadId ? (
+                  <p className="px-3 py-2 text-xs text-muted-foreground">
+                    No thread selected
+                  </p>
+                ) : grouped.chart.length === 0 ? (
+                  <p className="px-3 py-2 text-xs text-muted-foreground">
                     No charts generated yet
                   </p>
                 ) : (
-                  <div className="grid grid-cols-2 gap-2">
-                    {images.map((image, index) => (
-                      <ImageItem
-                        key={`${image.url}-${index}`}
-                        image={image}
-                        onDownload={() => handleDownloadImage(image)}
-                      />
-                    ))}
-                  </div>
+                  grouped.chart.map((file) => (
+                    <FileItem
+                      key={file.id}
+                      filename={file.original_filename || file.filename}
+                      size={file.size}
+                      onDownload={() => downloadDbFile(file)}
+                      onDelete={threadId ? () => unlinkFromThread(file.id) : undefined}
+                    />
+                  ))
                 )}
               </div>
             )}
@@ -825,24 +441,34 @@ export function FilePanel({ messages, threadId, onClose }: FilePanelProps) {
           {/* Code History Section */}
           <div className="mb-1">
             <SectionHeader
-              title="Code History"
-              count={codeSnippets.length}
+              title="Code"
+              count={grouped.code.length}
               isOpen={codeOpen}
               onToggle={() => setCodeOpen(!codeOpen)}
-              icon={Code}
+              icon={FileText}
             />
             {codeOpen && (
-              <div className="px-3 py-2 space-y-2">
-                {codeSnippets.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">
-                    No code executed yet
+              <div className="px-1 py-1">
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 size={16} className="animate-spin text-muted-foreground" />
+                  </div>
+                ) : !threadId ? (
+                  <p className="px-3 py-2 text-xs text-muted-foreground">
+                    No thread selected
+                  </p>
+                ) : grouped.code.length === 0 ? (
+                  <p className="px-3 py-2 text-xs text-muted-foreground">
+                    No code saved yet
                   </p>
                 ) : (
-                  codeSnippets.map((snippet, index) => (
-                    <CodeItem
-                      key={snippet.id}
-                      snippet={snippet}
-                      index={index}
+                  grouped.code.map((file) => (
+                    <FileItem
+                      key={file.id}
+                      filename={file.original_filename || file.filename}
+                      size={file.size}
+                      onDownload={() => downloadDbFile(file)}
+                      onDelete={threadId ? () => unlinkFromThread(file.id) : undefined}
                     />
                   ))
                 )}
@@ -859,9 +485,9 @@ export function FilePanel({ messages, threadId, onClose }: FilePanelProps) {
           size="sm"
           className="w-full text-xs"
           onClick={handleRefresh}
-          disabled={isLoadingUploaded || isLoadingGenerated || isLoadingCharts}
+          disabled={isLoading}
         >
-          {isLoadingUploaded || isLoadingGenerated || isLoadingCharts ? (
+          {isLoading ? (
             <Loader2 size={12} className="mr-2 animate-spin" />
           ) : null}
           Refresh

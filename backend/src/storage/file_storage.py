@@ -70,6 +70,7 @@ MIME_TYPES = {
     ".jpeg": "image/jpeg",
     ".html": "text/html",
     ".md": "text/markdown",
+    ".py": "text/x-python",
 }
 
 

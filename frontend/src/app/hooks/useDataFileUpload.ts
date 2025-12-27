@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import {
   DataFile,
@@ -14,6 +14,8 @@ interface UseDataFileUploadOptions {
   apiUrl: string;
   accessToken?: string | null;
   maxFiles?: number;
+  threadId?: string | null;
+  autoUpload?: boolean;
 }
 
 interface UseDataFileUploadReturn {
@@ -43,6 +45,8 @@ export function useDataFileUpload({
   apiUrl,
   accessToken,
   maxFiles = 5,
+  threadId,
+  autoUpload = false,
 }: UseDataFileUploadOptions): UseDataFileUploadReturn {
   const [files, setFiles] = useState<DataFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -124,6 +128,11 @@ export function useDataFileUpload({
     if (pendingFiles.length === 0) {
       return uploadedFiles;
     }
+    if (!threadId) {
+      // Can't bind uploads to a thread until a thread exists.
+      // Caller can set threadId later; autoUpload effect will retry.
+      return uploadedFiles;
+    }
 
     setIsUploading(true);
     const results: UploadedFileInfo[] = [...uploadedFiles];
@@ -139,6 +148,7 @@ export function useDataFileUpload({
       try {
         const formData = new FormData();
         formData.append("file", dataFile.file);
+        formData.append("langgraph_thread_id", threadId);
 
         const headers: Record<string, string> = {};
         if (accessToken) {
@@ -206,7 +216,19 @@ export function useDataFileUpload({
     setIsUploading(false);
 
     return results;
-  }, [files, uploadedFiles, apiUrl, accessToken]);
+  }, [files, uploadedFiles, apiUrl, accessToken, threadId]);
+
+  // Auto-upload pending files when enabled and threadId is available
+  // This makes uploads happen immediately after selection, without waiting for message send.
+  // The effect also retries once threadId becomes available.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!autoUpload) return;
+    if (!threadId) return;
+    if (isUploading) return;
+    if (!files.some((f) => f.status === "pending")) return;
+    void uploadFiles();
+  }, [autoUpload, threadId, isUploading, files, uploadFiles]);
 
   /**
    * Clear all files

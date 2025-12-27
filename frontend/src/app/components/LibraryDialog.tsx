@@ -27,10 +27,12 @@ import { getConfig } from "@/lib/config";
 import { useAuth } from "@/providers/AuthProvider";
 
 interface UploadedFile {
+  id: string;
   filename: string;
   original_filename: string;
-  storage_path: string;
-  sandbox_path: string;
+  file_type: "uploaded" | "generated" | "chart" | "code";
+  storage_path?: string;
+  download_url?: string;
   size: number;
   created_at?: string;
 }
@@ -74,6 +76,7 @@ export function LibraryDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState<string | null>(null);
 
   // Fetch files
   const fetchFiles = useCallback(async () => {
@@ -87,7 +90,11 @@ export function LibraryDialog({
         headers["X-User-Id"] = "default";
       }
 
-      const response = await fetch(`${apiUrl}/files/list`, { headers });
+      // Library is DB-driven: show only uploaded/generated/chart (exclude code)
+      const response = await fetch(
+        `${apiUrl}/api/files?types=uploaded,generated,chart`,
+        { headers }
+      );
       if (response.ok) {
         const data = await response.json();
         setFiles(data.files || []);
@@ -120,7 +127,9 @@ export function LibraryDialog({
 
   // Handle file download
   const handleDownload = async (file: UploadedFile) => {
+    if (!apiUrl) return;
     try {
+      setIsDownloading(file.id);
       const headers: Record<string, string> = {};
       if (session?.access_token) {
         headers["Authorization"] = `Bearer ${session.access_token}`;
@@ -128,22 +137,34 @@ export function LibraryDialog({
         headers["X-User-Id"] = "default";
       }
 
-      const response = await fetch(
-        `${apiUrl}/files/download-url/${encodeURIComponent(file.filename)}`,
-        { headers }
-      );
-      if (response.ok) {
-        const data = await response.json();
-        window.open(data.url, "_blank");
-      }
+      const downloadUrl = file.download_url
+        ? file.download_url.startsWith("http")
+          ? file.download_url
+          : `${apiUrl}${file.download_url}`
+        : `${apiUrl}/api/files/${encodeURIComponent(file.id)}/download`;
+
+      const response = await fetch(downloadUrl, { headers });
+      if (!response.ok) return;
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.original_filename || file.filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Failed to download file:", error);
+    } finally {
+      setIsDownloading(null);
     }
   };
 
   // Handle file delete
   const handleDelete = async (file: UploadedFile) => {
-    setIsDeleting(file.filename);
+    if (!apiUrl) return;
+    setIsDeleting(file.id);
     try {
       const headers: Record<string, string> = {};
       if (session?.access_token) {
@@ -152,18 +173,40 @@ export function LibraryDialog({
         headers["X-User-Id"] = "default";
       }
 
-      const response = await fetch(
-        `${apiUrl}/files/${encodeURIComponent(file.filename)}`,
-        { method: "DELETE", headers }
-      );
-      if (response.ok) {
-        setFiles((prev) => prev.filter((f) => f.filename !== file.filename));
-        setSelectedFiles((prev) => {
-          const next = new Set(prev);
-          next.delete(file.filename);
-          return next;
-        });
+      // Confirm global delete with usage count
+      let usageCount = 0;
+      try {
+        const usageResp = await fetch(
+          `${apiUrl}/api/files/${encodeURIComponent(file.id)}/usage-count`,
+          { headers }
+        );
+        if (usageResp.ok) {
+          const data = await usageResp.json();
+          usageCount = Number(data?.count || 0);
+        }
+      } catch {
+        // ignore usage count failure; still allow delete
       }
+
+      const ok = window.confirm(
+        usageCount > 0
+          ? `此文件被 ${usageCount} 个对话使用，确认全局删除？`
+          : "确认全局删除该文件？"
+      );
+      if (!ok) return;
+
+      const response = await fetch(`${apiUrl}/api/files/${encodeURIComponent(file.id)}`, {
+        method: "DELETE",
+        headers,
+      });
+      if (!response.ok) return;
+
+      setFiles((prev) => prev.filter((f) => f.id !== file.id));
+      setSelectedFiles((prev) => {
+        const next = new Set(prev);
+        next.delete(file.id);
+        return next;
+      });
     } catch (error) {
       console.error("Failed to delete file:", error);
     } finally {
@@ -175,10 +218,10 @@ export function LibraryDialog({
   const toggleSelection = (file: UploadedFile) => {
     setSelectedFiles((prev) => {
       const next = new Set(prev);
-      if (next.has(file.filename)) {
-        next.delete(file.filename);
+      if (next.has(file.id)) {
+        next.delete(file.id);
       } else {
-        next.add(file.filename);
+        next.add(file.id);
       }
       return next;
     });
@@ -186,7 +229,7 @@ export function LibraryDialog({
 
   // Handle confirm selection
   const handleConfirmSelection = () => {
-    const selected = files.filter((f) => selectedFiles.has(f.filename));
+    const selected = files.filter((f) => selectedFiles.has(f.id));
     onFilesSelected?.(selected);
     onOpenChange(false);
   };
@@ -232,11 +275,11 @@ export function LibraryDialog({
             <div className="space-y-1 p-1">
               {filteredFiles.map((file) => (
                 <div
-                  key={file.filename}
+                  key={file.id}
                   className={cn(
                     "group flex items-center justify-between gap-3 rounded-lg px-3 py-2 transition-colors",
                     mode === "select" && "cursor-pointer",
-                    selectedFiles.has(file.filename)
+                    selectedFiles.has(file.id)
                       ? "bg-primary/10 border border-primary"
                       : "hover:bg-accent border border-transparent"
                   )}
@@ -247,12 +290,12 @@ export function LibraryDialog({
                       <div
                         className={cn(
                           "flex h-5 w-5 items-center justify-center rounded border",
-                          selectedFiles.has(file.filename)
+                          selectedFiles.has(file.id)
                             ? "bg-primary border-primary text-primary-foreground"
                             : "border-muted-foreground"
                         )}
                       >
-                        {selectedFiles.has(file.filename) && (
+                        {selectedFiles.has(file.id) && (
                           <Check className="h-3 w-3" />
                         )}
                       </div>
@@ -276,16 +319,21 @@ export function LibraryDialog({
                       onClick={() => handleDownload(file)}
                       className="p-1.5 rounded hover:bg-muted"
                       title="下载"
+                      disabled={isDownloading === file.id}
                     >
-                      <Download className="h-4 w-4 text-muted-foreground" />
+                      {isDownloading === file.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Download className="h-4 w-4 text-muted-foreground" />
+                      )}
                     </button>
                     <button
                       onClick={() => handleDelete(file)}
-                      disabled={isDeleting === file.filename}
+                      disabled={isDeleting === file.id}
                       className="p-1.5 rounded hover:bg-destructive/10"
                       title="删除"
                     >
-                      {isDeleting === file.filename ? (
+                      {isDeleting === file.id ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         <Trash2 className="h-4 w-4 text-destructive" />

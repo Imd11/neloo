@@ -5,6 +5,9 @@ Provides Python code execution in secure sandboxes.
 """
 
 from typing import Any, Optional
+from datetime import datetime
+import secrets
+
 from ..sandbox import execute_python
 
 
@@ -69,7 +72,41 @@ def execute_python_tool(
         else:
             print(f"Error: {result['error']}")
     """
-    return execute_python(code=code, timeout=timeout, user_id=user_id, thread_id=thread_id)
+    result = execute_python(code=code, timeout=timeout, user_id=user_id, thread_id=thread_id)
+
+    # Persist executed code to files/thread_files so the thread's Files panel can be DB-authoritative.
+    # This is intentionally best-effort: execution results should still return even if persistence fails.
+    try:
+        if thread_id and user_id and user_id not in ("default", "anonymous"):
+            from ..storage.file_storage import save_generated_file
+
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            suffix = secrets.token_hex(4)
+            filename = f"{ts}_{suffix}_execute_python.py"
+            code_bytes = code.encode("utf-8")
+            file_info = save_generated_file(
+                filename=filename,
+                data=code_bytes,
+                user_id=user_id,
+                thread_id=thread_id,
+                file_type="code",
+            )
+            if file_info:
+                generated_files = result.get("generated_files")
+                if isinstance(generated_files, list):
+                    generated_files.append({
+                        "filename": filename,
+                        "sandbox_path": f"/home/user/data/{filename}",
+                        "size": len(code_bytes),
+                        "download_url": file_info.get("download_url"),
+                        "file_id": file_info.get("file_id"),
+                        "content_type": file_info.get("content_type") or "text/x-python",
+                        "file_type": "code",
+                    })
+    except Exception:
+        pass
+
+    return result
 
 
 def execute_regression(
