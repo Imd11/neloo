@@ -331,6 +331,33 @@ def execute_python(
 
     result = execute_python_tool(code=code, timeout=timeout, user_id=user_id, thread_id=thread_id)
 
+    # Try to update state.files with generated files (deepagents integration)
+    try:
+        if result.get("generated_files"):
+            import inspect
+            # Find the runtime in the call stack (deepagents pattern)
+            for frame_info in inspect.stack():
+                frame_locals = frame_info.frame.f_locals
+                if 'runtime' in frame_locals:
+                    runtime = frame_locals['runtime']
+                    if hasattr(runtime, 'state'):
+                        state = runtime.state
+                        files = state.get("files", {})
+                        # Add generated files to state
+                        for gen_file in result["generated_files"]:
+                            filename = gen_file.get("filename")
+                            download_url = gen_file.get("download_url")
+                            if filename and download_url:
+                                # Store download URL as file content for frontend display
+                                file_content = f"# {filename}\nDownload: {download_url}\n"
+                                files[filename] = file_content
+                        state["files"] = files
+                        print(f"[execute_python] Updated state.files with {len(result['generated_files'])} files")
+                        break
+    except Exception as e:
+        # Silent failure - file registration is not critical
+        print(f"[execute_python] Warning: Could not update state.files: {e}")
+
     if result["success"]:
         output_parts = []
         full_output_parts = []  # For file storage (uncompressed)
@@ -375,6 +402,38 @@ def execute_python(
 
         raw_output = "\n\n".join(output_parts) if output_parts else "Code executed successfully (no output)"
         full_text = "\n\n".join(full_output_parts) if full_output_parts else raw_output
+
+        # Process generated files and add to state.files
+        generated_files_info = []
+        if result.get("generated_files"):
+            for gen_file in result["generated_files"]:
+                filename = gen_file.get("filename", "unknown")
+                download_url = gen_file.get("download_url")
+                file_id = gen_file.get("file_id")
+                file_type = gen_file.get("file_type", "generated")
+
+                if download_url:
+                    # Build file info for state.files
+                    file_content_preview = f"# Generated File: {filename}\n"
+                    file_content_preview += f"Download URL: {download_url}\n"
+                    if file_id:
+                        file_content_preview += f"File ID: {file_id}\n"
+                    file_content_preview += f"Type: {file_type}\n"
+                    file_content_preview += f"\nThis file was generated during code execution."
+
+                    generated_files_info.append({
+                        "filename": filename,
+                        "content": file_content_preview,
+                        "download_url": download_url,
+                    })
+
+        # If we have generated files, prepend their info to output
+        if generated_files_info:
+            files_msg = "\n[Generated Files]\n"
+            for f in generated_files_info:
+                files_msg += f"- {f['filename']}: {f['download_url']}\n"
+            raw_output = files_msg + "\n" + raw_output
+            full_text = files_msg + "\n" + full_text
 
         # Apply Context Engineering: dual-form output
         # Check if output is large enough to need compression
