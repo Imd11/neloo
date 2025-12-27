@@ -14,7 +14,6 @@ Architecture:
 """
 
 import os
-from contextvars import ContextVar
 from typing import Annotated
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
@@ -31,9 +30,7 @@ from ..context import (
 )
 from ..storage import save_image_base64, get_image_url
 
-# Context variables for passing user_id and thread_id to tools
-_user_id_ctx: ContextVar[str] = ContextVar('user_id', default='default')
-_thread_id_ctx: ContextVar[str] = ContextVar('thread_id', default='default')
+from ..runtime_context import user_id_ctx as _user_id_ctx, thread_id_ctx as _thread_id_ctx
 
 # API base URL for image serving (configurable via environment)
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:2024")
@@ -160,10 +157,14 @@ print(df.head())
 ### What NOT to Do
 
 **NEVER** do any of these to find data files:
-- ❌ `ls`, `glob`, `os.listdir()` - will NOT find your files
+- ❌ `ls`, `glob`, `os.listdir()` - will NOT reliably find uploaded files
 - ❌ `read_file` tool - operates on virtual filesystem
 - ❌ Search for files by partial name
 - ❌ Guess or construct file paths
+
+**If you accidentally ran `ls` and did not see the uploaded file, do NOT conclude it is missing.**
+The `ls` tool and `read_file` tool do not reflect the Python sandbox filesystem.
+Proceed to load the file directly in `execute_python` using the exact path from `[Uploaded Data Files]`.
 
 **ALWAYS** do this:
 - ✅ Copy the exact path from `[Uploaded Data Files]`

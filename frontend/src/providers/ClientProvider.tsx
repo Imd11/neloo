@@ -13,22 +13,28 @@ interface ClientProviderProps {
   children: ReactNode;
   deploymentUrl: string;
   apiKey: string;
+  accessToken?: string | null;
 }
 
 export function ClientProvider({
   children,
   deploymentUrl,
   apiKey,
+  accessToken,
 }: ClientProviderProps) {
   const client = useMemo(() => {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "X-Api-Key": apiKey,
+    };
+    if (accessToken) {
+      headers["Authorization"] = `Bearer ${accessToken}`;
+    }
     return new Client({
       apiUrl: deploymentUrl,
-      defaultHeaders: {
-        "Content-Type": "application/json",
-        "X-Api-Key": apiKey,
-      },
+      defaultHeaders: headers,
     });
-  }, [deploymentUrl, apiKey]);
+  }, [deploymentUrl, apiKey, accessToken]);
 
   const value = useMemo(() => ({ client }), [client]);
 

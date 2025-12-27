@@ -199,7 +199,7 @@ function HomePageInner({ config }: HomePageInnerProps) {
 }
 
 function HomePageContent() {
-  const { loading: authLoading } = useAuth();
+  const { loading: authLoading, session } = useAuth();
   const [config, setConfig] = useState<StandaloneConfig | null>(null);
   const [configLoading, setConfigLoading] = useState(true);
   const [assistantId, setAssistantId] = useQueryState("assistantId");
@@ -246,6 +246,7 @@ function HomePageContent() {
     <ClientProvider
       deploymentUrl={config.deploymentUrl}
       apiKey={config.langsmithApiKey || ""}
+      accessToken={session?.access_token}
     >
       <HomePageInner config={config} />
     </ClientProvider>

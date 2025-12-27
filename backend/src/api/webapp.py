@@ -23,13 +23,22 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, Header, Query, Depends
+from fastapi import FastAPI, File, UploadFile, HTTPException, Header, Query, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
+from starlette.responses import StreamingResponse
 from pydantic import BaseModel
 
 # Import authentication
-from .auth import get_current_user, get_optional_user, get_user_id as auth_get_user_id
+from .auth import (
+    extract_token_from_header,
+    get_current_user,
+    get_jwt_secret,
+    get_optional_user,
+    verify_jwt_token,
+    get_user_id as auth_get_user_id,
+)
+from ..runtime_context import user_id_ctx, thread_id_ctx
 
 # Import image storage
 from ..storage import get_image, get_image_storage
@@ -88,6 +97,69 @@ app = FastAPI(
     description="File upload API for the Data Analyst Agent",
     version="1.0.0",
 )
+
+# =============================================================================
+# Request Context Middleware
+# =============================================================================
+#
+# LangGraph endpoints are served inside this FastAPI app. Tool calls (e.g. execute_python)
+# need the authenticated user_id + current thread_id so file syncing targets the correct
+# Supabase Storage path and generated artifacts can be associated with the right thread.
+#
+# IMPORTANT: For streaming responses, ContextVar values must remain set for the entire
+# stream iteration; otherwise tool calls during streaming will fall back to defaults.
+#
+
+
+def _extract_thread_id_from_path(path: str) -> str | None:
+    parts = [p for p in path.split("/") if p]
+    for i, part in enumerate(parts):
+        if part == "threads" and i + 1 < len(parts):
+            return parts[i + 1]
+    return None
+
+
+@app.middleware("http")
+async def _set_runtime_context(request: Request, call_next):
+    user_id = "default"
+    thread_id = _extract_thread_id_from_path(request.url.path) or "default"
+
+    authorization = request.headers.get("authorization")
+    token = extract_token_from_header(authorization)
+    if token:
+        try:
+            payload = verify_jwt_token(token)
+            user_id = payload.get("sub", "default")
+        except HTTPException:
+            pass
+    else:
+        if not get_jwt_secret():
+            user_id = request.headers.get("x-user-id") or "default"
+        else:
+            user_id = "anonymous"
+
+    user_token = user_id_ctx.set(user_id)
+    thread_token = thread_id_ctx.set(thread_id)
+
+    response = await call_next(request)
+
+    if isinstance(response, StreamingResponse):
+        original_iterator = response.body_iterator
+
+        async def _wrap_iterator():
+            try:
+                async for chunk in original_iterator:
+                    yield chunk
+            finally:
+                user_id_ctx.reset(user_token)
+                thread_id_ctx.reset(thread_token)
+
+        response.body_iterator = _wrap_iterator()
+        return response
+
+    user_id_ctx.reset(user_token)
+    thread_id_ctx.reset(thread_token)
+    return response
 
 # CORS configuration
 app.add_middleware(
