@@ -21,9 +21,11 @@ import sys
 import subprocess
 import tempfile
 import base64
+import threading
 from abc import ABC, abstractmethod
 from typing import Optional, Any
 from dataclasses import dataclass, field
+from datetime import datetime
 
 
 @dataclass
@@ -68,49 +70,106 @@ class SandboxExecutor(ABC):
 
 
 # =============================================================================
-# E2B Cloud Sandbox Executor (Production)
+# E2B Cloud Sandbox Executor (Production) - Per-User Isolation
 # =============================================================================
+
+@dataclass
+class SandboxInfo:
+    """Information about a user's sandbox instance"""
+    sandbox: Any  # E2B Sandbox instance
+    last_used: datetime
+    created_at: datetime
+
 
 class E2BSandboxExecutor(SandboxExecutor):
     """
-    E2B Cloud Sandbox Executor
+    E2B Cloud Sandbox Executor with Per-User Isolation
 
     Executes code in E2B's secure cloud sandbox environment.
+    Each user gets their own isolated sandbox instance to prevent
+    cross-user file access and data leakage.
+
+    Features:
+    - Per-user sandbox isolation (user_id -> sandbox mapping)
+    - Per-user execution lock (prevents concurrent execution conflicts)
+    - LRU eviction when max sandbox limit reached
+    - Automatic idle sandbox cleanup
+    - Pre-execution file sync guarantee
+
     Pre-installed packages: pandas, numpy, scipy, statsmodels, matplotlib
 
     Requires: E2B_API_KEY environment variable
     """
 
+    # Configuration
+    SANDBOX_TIMEOUT = 600           # E2B sandbox lifetime (10 minutes)
+    IDLE_CLEANUP_THRESHOLD = 1800   # Cleanup sandboxes idle for 30 minutes
+    MAX_SANDBOXES = 50              # Maximum concurrent sandboxes
+
     def __init__(self):
         """
-        Initialize E2B executor
-
-        Note: E2B code-interpreter SDK uses a default template,
-        no custom template parameter is needed.
+        Initialize E2B executor with per-user sandbox management
         """
-        self._sandbox = None
+        self._sandboxes: dict[str, SandboxInfo] = {}  # user_id -> SandboxInfo
+        self._lock = threading.Lock()                  # Protects _sandboxes dict
+        self._user_locks: dict[str, threading.Lock] = {}  # Per-user execution locks
+        print(f"[E2BExecutor] Initialized with per-user isolation (max {self.MAX_SANDBOXES} sandboxes)")
 
-    def _get_sandbox(self, force_new: bool = False):
+    def _get_user_lock(self, user_id: str) -> threading.Lock:
         """
-        Lazy initialization of sandbox with automatic recreation on failure.
+        Get or create a per-user execution lock.
+
+        This prevents concurrent code execution for the same user,
+        which could cause file conflicts within a sandbox.
+        """
+        with self._lock:
+            if user_id not in self._user_locks:
+                self._user_locks[user_id] = threading.Lock()
+            return self._user_locks[user_id]
+
+    def _get_sandbox(self, user_id: str, force_new: bool = False):
+        """
+        Get or create a sandbox for a specific user.
+
+        Each user gets their own isolated sandbox. Sandboxes are reused
+        within their lifetime to enable file pre-warming.
 
         Args:
-            force_new: If True, always create a new sandbox (used after sandbox expires)
+            user_id: User identifier (must come from trusted JWT)
+            force_new: If True, always create a new sandbox (used after expiration)
         """
-        if force_new and self._sandbox is not None:
-            try:
-                self._sandbox.close()
-            except Exception:
-                pass
-            self._sandbox = None
+        with self._lock:
+            now = datetime.now()
 
-        if self._sandbox is None:
+            # Check if user already has a sandbox
+            if user_id in self._sandboxes and not force_new:
+                info = self._sandboxes[user_id]
+                # Check if sandbox is still valid (not expired)
+                elapsed = (now - info.created_at).total_seconds()
+                if elapsed < self.SANDBOX_TIMEOUT - 30:  # 30s buffer
+                    info.last_used = now
+                    print(f"[E2BExecutor] Reusing sandbox for user {user_id} (age: {elapsed:.0f}s)")
+                    return info.sandbox
+                else:
+                    # Sandbox expired, close it
+                    print(f"[E2BExecutor] Sandbox expired for user {user_id}, recreating")
+                    self._close_sandbox_unlocked(user_id)
+
+            # Check if we need to evict old sandboxes
+            if len(self._sandboxes) >= self.MAX_SANDBOXES:
+                self._evict_lru_sandbox_unlocked()
+
+            # Create new sandbox for this user
             try:
                 from e2b_code_interpreter import Sandbox
-                # E2B SDK v1 uses Sandbox.create() instead of Sandbox()
-                # Set timeout to 10 minutes (600 seconds) to reduce sandbox recreation frequency
-                self._sandbox = Sandbox.create(timeout=600)
-                print(f"[E2BExecutor] Created new sandbox with 10 minute timeout")
+                sandbox = Sandbox.create(timeout=self.SANDBOX_TIMEOUT)
+                self._sandboxes[user_id] = SandboxInfo(
+                    sandbox=sandbox,
+                    last_used=now,
+                    created_at=now
+                )
+                print(f"[E2BExecutor] Created new sandbox for user {user_id} (total: {len(self._sandboxes)})")
+                return sandbox
             except ImportError:
                 raise ImportError(
                     "e2b-code-interpreter is required for E2B sandbox. "
@@ -118,7 +177,98 @@ class E2BSandboxExecutor(SandboxExecutor):
                 )
             except Exception as e:
                 raise RuntimeError(f"Failed to create E2B sandbox: {e}")
-        return self._sandbox
+
+    def _close_sandbox_unlocked(self, user_id: str):
+        """Close sandbox for a user (must hold _lock)"""
+        if user_id in self._sandboxes:
+            try:
+                self._sandboxes[user_id].sandbox.close()
+            except Exception as e:
+                print(f"[E2BExecutor] Error closing sandbox for {user_id}: {e}")
+            del self._sandboxes[user_id]
+
+    def _evict_lru_sandbox_unlocked(self):
+        """Evict the least recently used sandbox (must hold _lock)"""
+        if not self._sandboxes:
+            return
+
+        # Find the user with oldest last_used time
+        oldest_user = min(
+            self._sandboxes.keys(),
+            key=lambda u: self._sandboxes[u].last_used
+        )
+        print(f"[E2BExecutor] Evicting LRU sandbox for user {oldest_user}")
+        self._close_sandbox_unlocked(oldest_user)
+
+    def cleanup_idle_sandboxes(self):
+        """
+        Clean up sandboxes that have been idle for too long.
+
+        This can be called periodically by a background task to
+        free up resources and reduce costs.
+        """
+        with self._lock:
+            now = datetime.now()
+            to_remove = []
+
+            for user_id, info in self._sandboxes.items():
+                idle_seconds = (now - info.last_used).total_seconds()
+                if idle_seconds > self.IDLE_CLEANUP_THRESHOLD:
+                    to_remove.append(user_id)
+
+            for user_id in to_remove:
+                print(f"[E2BExecutor] Cleaning up idle sandbox for user {user_id}")
+                self._close_sandbox_unlocked(user_id)
+
+            if to_remove:
+                print(f"[E2BExecutor] Cleaned up {len(to_remove)} idle sandboxes")
+
+    def _ensure_files_synced(self, sandbox, user_id: str):
+        """
+        Ensure all user files are synced to sandbox before execution.
+
+        This is the "兜底同步" (fallback sync) that guarantees files
+        are present even if pre-warming failed or sandbox was recreated.
+        """
+        try:
+            from .file_sync import list_supabase_files, sync_file_to_e2b, SUPABASE_URL, SUPABASE_SERVICE_KEY, USE_LOCAL_STORAGE
+            print(f"[E2BExecutor] Ensuring files synced for user {user_id}")
+            print(f"[E2BExecutor] Storage mode: {'LOCAL' if USE_LOCAL_STORAGE else 'SUPABASE'}")
+
+            remote_files = list_supabase_files(user_id=user_id)
+            print(f"[E2BExecutor] Found {len(remote_files)} files in storage for user {user_id}")
+
+            if remote_files:
+                # Get list of files already in sandbox
+                data_dir = "/home/user/data"
+                try:
+                    existing_files = {f.name for f in sandbox.files.list(data_dir)}
+                except Exception:
+                    existing_files = set()
+
+                # Sync missing files
+                synced_count = 0
+                for file_info in remote_files:
+                    storage_path = file_info.get("storage_path")
+                    if storage_path:
+                        # Extract filename from storage path
+                        filename = storage_path.split("/")[-1] if "/" in storage_path else storage_path
+                        if filename not in existing_files:
+                            result = sync_file_to_e2b(sandbox, storage_path)
+                            synced_count += 1
+                            print(f"[E2BExecutor] Synced missing file: {storage_path} -> {result}")
+
+                if synced_count > 0:
+                    print(f"[E2BExecutor] Synced {synced_count} missing files")
+                else:
+                    print(f"[E2BExecutor] All {len(remote_files)} files already in sandbox")
+            else:
+                print(f"[E2BExecutor] No files to sync for user {user_id}")
+
+        except Exception as e:
+            import traceback
+            print(f"[E2BExecutor] Warning: File sync check failed: {e}")
+            print(f"[E2BExecutor] Traceback: {traceback.format_exc()}")
 
     def execute(
         self,
@@ -127,37 +277,53 @@ class E2BSandboxExecutor(SandboxExecutor):
         user_id: str = "default",
         thread_id: Optional[str] = None,
     ) -> ExecutionResult:
-        """Execute code in E2B sandbox with automatic retry on sandbox expiration"""
-        max_retries = 2  # Retry once if sandbox expired
+        """
+        Execute code in user's isolated E2B sandbox.
 
-        for attempt in range(max_retries):
-            try:
-                # Force new sandbox on retry (sandbox may have expired)
-                sandbox = self._get_sandbox(force_new=(attempt > 0))
+        Uses per-user execution lock to prevent concurrent execution
+        conflicts within the same sandbox.
+        """
+        # Get per-user lock to prevent concurrent execution
+        user_lock = self._get_user_lock(user_id)
 
-                result = self._execute_in_sandbox(sandbox, code, timeout, user_id, thread_id)
-                return result
+        with user_lock:
+            max_retries = 2  # Retry once if sandbox expired
 
-            except Exception as e:
-                error_str = str(e)
-                # Check if error is due to sandbox not found (expired)
-                if "sandbox was not found" in error_str or "502" in error_str:
-                    if attempt < max_retries - 1:
-                        print(f"[E2BExecutor] Sandbox expired, creating new sandbox (attempt {attempt + 2})")
-                        self._sandbox = None  # Clear the stale reference
-                        continue  # Retry with new sandbox
+            for attempt in range(max_retries):
+                try:
+                    # Get user's sandbox (force new on retry)
+                    sandbox = self._get_sandbox(user_id, force_new=(attempt > 0))
 
-                # Other errors or final attempt failed
-                return ExecutionResult(
-                    success=False,
-                    error=f"E2B execution error: {error_str}",
-                )
+                    # Ensure files are synced before execution (兜底同步)
+                    self._ensure_files_synced(sandbox, user_id)
 
-        # Should not reach here, but just in case
-        return ExecutionResult(
-            success=False,
-            error="E2B execution failed after retries",
-        )
+                    # Execute code
+                    result = self._execute_in_sandbox(sandbox, code, timeout, user_id, thread_id)
+                    return result
+
+                except Exception as e:
+                    error_str = str(e)
+                    # Check if error is due to sandbox not found (expired)
+                    if "sandbox was not found" in error_str or "502" in error_str:
+                        if attempt < max_retries - 1:
+                            print(f"[E2BExecutor] Sandbox expired for user {user_id}, recreating (attempt {attempt + 2})")
+                            # Clear the stale reference
+                            with self._lock:
+                                if user_id in self._sandboxes:
+                                    del self._sandboxes[user_id]
+                            continue  # Retry with new sandbox
+
+                    # Other errors or final attempt failed
+                    return ExecutionResult(
+                        success=False,
+                        error=f"E2B execution error: {error_str}",
+                    )
+
+            # Should not reach here
+            return ExecutionResult(
+                success=False,
+                error="E2B execution failed after retries",
+            )
 
     def _execute_in_sandbox(
         self,
@@ -167,34 +333,14 @@ class E2BSandboxExecutor(SandboxExecutor):
         user_id: str = "default",
         thread_id: Optional[str] = None,
     ) -> ExecutionResult:
-        """Internal method to execute code in a given sandbox"""
+        """
+        Internal method to execute code in a given sandbox.
+
+        Note: File sync is handled by _ensure_files_synced() before this method
+        is called, so we don't need to sync again here.
+        """
         try:
-            # Auto-sync all files from Supabase to E2B sandbox before execution
-            try:
-                from .file_sync import list_supabase_files, sync_file_to_e2b, SUPABASE_URL, SUPABASE_SERVICE_KEY, USE_LOCAL_STORAGE
-                print(f"[E2BExecutor] Storage mode: {'LOCAL' if USE_LOCAL_STORAGE else 'SUPABASE'}")
-                print(f"[E2BExecutor] SUPABASE_URL configured: {bool(SUPABASE_URL)}")
-                print(f"[E2BExecutor] SUPABASE_SERVICE_KEY configured: {bool(SUPABASE_SERVICE_KEY)}")
-                print(f"[E2BExecutor] user_id={user_id}")
-
-                remote_files = list_supabase_files(user_id=user_id)
-                print(f"[E2BExecutor] Found {len(remote_files)} files in storage for user {user_id}: {remote_files}")
-
-                if remote_files:
-                    print(f"[E2BExecutor] Syncing {len(remote_files)} files to sandbox...")
-                    for file_info in remote_files:
-                        storage_path = file_info.get("storage_path")
-                        if storage_path:
-                            result = sync_file_to_e2b(sandbox, storage_path)
-                            print(f"[E2BExecutor] Synced {storage_path} -> {result}")
-                    print(f"[E2BExecutor] File sync complete")
-                else:
-                    print(f"[E2BExecutor] No files found to sync")
-            except Exception as e:
-                import traceback
-                print(f"[E2BExecutor] Warning: File sync failed: {e}")
-                print(f"[E2BExecutor] Traceback: {traceback.format_exc()}")
-
+            print(f"[E2BExecutor] Executing code for user {user_id}")
             execution = sandbox.run_code(code, timeout=timeout)
 
             # Process results
@@ -336,13 +482,13 @@ class E2BSandboxExecutor(SandboxExecutor):
             raise
 
     def close(self) -> None:
-        """Close the sandbox"""
-        if self._sandbox is not None:
-            try:
-                self._sandbox.close()
-            except Exception:
-                pass
-            self._sandbox = None
+        """Close all user sandboxes"""
+        with self._lock:
+            for user_id in list(self._sandboxes.keys()):
+                self._close_sandbox_unlocked(user_id)
+            self._sandboxes.clear()
+            self._user_locks.clear()
+            print("[E2BExecutor] Closed all sandboxes")
 
 
 # =============================================================================
@@ -766,7 +912,9 @@ def execute_python(
     """
     executor = get_executor()
 
-    # Sync files if provided
+    # Sync files if provided (for explicit file sync before execution)
+    # Note: E2BSandboxExecutor now handles file sync internally via _ensure_files_synced()
+    # This block is kept for backwards compatibility with explicit file lists
     if files:
         try:
             from .file_sync import sync_files_to_local, sync_files_to_e2b
@@ -776,7 +924,8 @@ def execute_python(
             if mode == "local":
                 sync_files_to_local(files)
             elif mode == "e2b" and isinstance(executor, E2BSandboxExecutor):
-                sandbox = executor._get_sandbox()
+                # Get user's sandbox (this will create one if needed)
+                sandbox = executor._get_sandbox(user_id)
                 sync_files_to_e2b(sandbox, files)
             # Docker mode file sync not implemented yet
 
