@@ -561,6 +561,29 @@ async def update_thread_title(
 # Upload Session Management (Staging Area Pattern)
 # =============================================================================
 
+# In-memory fallback for upload sessions when database table doesn't exist
+# This allows the system to work without the upload_sessions table
+_in_memory_upload_sessions: dict[str, dict] = {}
+
+# Flag to track if we should use in-memory fallback
+# Set to True after first database error indicating table doesn't exist
+_use_memory_sessions_fallback = False
+
+
+def _cleanup_expired_memory_sessions():
+    """Remove expired sessions from in-memory store."""
+    global _in_memory_upload_sessions
+    now = datetime.now()
+    expired_ids = [
+        sid for sid, session in _in_memory_upload_sessions.items()
+        if datetime.fromisoformat(session["expires_at"]) < now
+    ]
+    for sid in expired_ids:
+        del _in_memory_upload_sessions[sid]
+    if expired_ids:
+        print(f"[MemorySession] Cleaned up {len(expired_ids)} expired sessions")
+
+
 async def create_upload_session(
     user_id: str,
     file_id: str,
@@ -573,6 +596,7 @@ async def create_upload_session(
     Create an upload session record in the database.
 
     This tracks pending uploads before they're committed to a thread.
+    Falls back to in-memory storage if database table doesn't exist.
 
     Args:
         user_id: The user's ID (from JWT)
@@ -585,27 +609,35 @@ async def create_upload_session(
     Returns:
         The created session record, or None if failed
     """
-    if not USE_SUPABASE_DB:
-        print(f"[SupabaseDB] Skipping create_upload_session (not configured)")
-        return None
+    global _use_memory_sessions_fallback
+
+    expires_at = datetime.now() + timedelta(seconds=ttl_seconds)
+
+    session_data = {
+        "id": file_id,
+        "user_id": user_id,
+        "filename": filename,
+        "expected_size": expected_size,
+        "storage_path": storage_path,
+        "status": "pending",  # pending -> uploaded -> committed
+        "committed": False,
+        "expires_at": expires_at.isoformat(),
+    }
+
+    # Try in-memory fallback first if we know DB table doesn't exist
+    if _use_memory_sessions_fallback or not USE_SUPABASE_DB:
+        _cleanup_expired_memory_sessions()
+        _in_memory_upload_sessions[file_id] = session_data
+        print(f"[MemorySession] Created upload session: {file_id[:8]}... ({filename})")
+        return session_data
 
     try:
         supabase = await get_supabase_client()
         if not supabase:
-            return None
-
-        expires_at = datetime.now() + timedelta(seconds=ttl_seconds)
-
-        session_data = {
-            "id": file_id,
-            "user_id": user_id,
-            "filename": filename,
-            "expected_size": expected_size,
-            "storage_path": storage_path,
-            "status": "pending",  # pending -> uploaded -> committed
-            "committed": False,
-            "expires_at": expires_at.isoformat(),
-        }
+            # Fall back to memory
+            _in_memory_upload_sessions[file_id] = session_data
+            print(f"[MemorySession] Created upload session (no DB): {file_id[:8]}...")
+            return session_data
 
         result = await supabase.table("upload_sessions").insert(session_data).execute()
 
@@ -616,6 +648,13 @@ async def create_upload_session(
         return None
 
     except Exception as e:
+        error_str = str(e).lower()
+        # Check if error indicates table doesn't exist
+        if "upload_sessions" in error_str or "does not exist" in error_str or "relation" in error_str:
+            print(f"[SupabaseDB] Table upload_sessions not found, using in-memory fallback")
+            _use_memory_sessions_fallback = True
+            _in_memory_upload_sessions[file_id] = session_data
+            return session_data
         print(f"[SupabaseDB] Error creating upload session: {e}")
         return None
 
@@ -631,12 +670,28 @@ async def get_upload_session(file_id: str, user_id: str) -> Optional[dict]:
     Returns:
         Session record or None if not found/expired
     """
-    if not USE_SUPABASE_DB:
+    global _use_memory_sessions_fallback
+
+    # Check in-memory storage first
+    if _use_memory_sessions_fallback or not USE_SUPABASE_DB:
+        session = _in_memory_upload_sessions.get(file_id)
+        if session and session.get("user_id") == user_id:
+            # Check if expired
+            expires_at = datetime.fromisoformat(session["expires_at"])
+            if expires_at < datetime.now():
+                del _in_memory_upload_sessions[file_id]
+                print(f"[MemorySession] Session expired: {file_id[:8]}...")
+                return None
+            return session
         return None
 
     try:
         supabase = await get_supabase_client()
         if not supabase:
+            # Fall back to memory
+            session = _in_memory_upload_sessions.get(file_id)
+            if session and session.get("user_id") == user_id:
+                return session
             return None
 
         result = await supabase.table("upload_sessions")\
@@ -657,6 +712,14 @@ async def get_upload_session(file_id: str, user_id: str) -> Optional[dict]:
         return None
 
     except Exception as e:
+        error_str = str(e).lower()
+        if "upload_sessions" in error_str or "does not exist" in error_str or "relation" in error_str:
+            print(f"[SupabaseDB] Table upload_sessions not found, using in-memory fallback")
+            _use_memory_sessions_fallback = True
+            session = _in_memory_upload_sessions.get(file_id)
+            if session and session.get("user_id") == user_id:
+                return session
+            return None
         print(f"[SupabaseDB] Error getting upload session: {e}")
         return None
 
@@ -677,12 +740,28 @@ async def update_upload_session_status(
     Returns:
         True if successful, False otherwise
     """
-    if not USE_SUPABASE_DB:
+    global _use_memory_sessions_fallback
+
+    # Handle in-memory fallback
+    if _use_memory_sessions_fallback or not USE_SUPABASE_DB:
+        if file_id in _in_memory_upload_sessions:
+            _in_memory_upload_sessions[file_id]["status"] = status
+            _in_memory_upload_sessions[file_id]["updated_at"] = datetime.now().isoformat()
+            if actual_size is not None:
+                _in_memory_upload_sessions[file_id]["actual_size"] = actual_size
+            print(f"[MemorySession] Updated status: {file_id[:8]}... -> {status}")
+            return True
         return False
 
     try:
         supabase = await get_supabase_client()
         if not supabase:
+            # Fall back to memory
+            if file_id in _in_memory_upload_sessions:
+                _in_memory_upload_sessions[file_id]["status"] = status
+                if actual_size is not None:
+                    _in_memory_upload_sessions[file_id]["actual_size"] = actual_size
+                return True
             return False
 
         update_data = {"status": status, "updated_at": datetime.now().isoformat()}
@@ -701,6 +780,14 @@ async def update_upload_session_status(
         return False
 
     except Exception as e:
+        error_str = str(e).lower()
+        if "upload_sessions" in error_str or "does not exist" in error_str or "relation" in error_str:
+            _use_memory_sessions_fallback = True
+            if file_id in _in_memory_upload_sessions:
+                _in_memory_upload_sessions[file_id]["status"] = status
+                if actual_size is not None:
+                    _in_memory_upload_sessions[file_id]["actual_size"] = actual_size
+                return True
         print(f"[SupabaseDB] Error updating upload session: {e}")
         return False
 
@@ -716,12 +803,27 @@ async def commit_upload_session(file_id: str, thread_id: str) -> bool:
     Returns:
         True if successful, False otherwise
     """
-    if not USE_SUPABASE_DB:
+    global _use_memory_sessions_fallback
+
+    # Handle in-memory fallback
+    if _use_memory_sessions_fallback or not USE_SUPABASE_DB:
+        if file_id in _in_memory_upload_sessions:
+            _in_memory_upload_sessions[file_id]["committed"] = True
+            _in_memory_upload_sessions[file_id]["thread_id"] = thread_id
+            _in_memory_upload_sessions[file_id]["status"] = "committed"
+            _in_memory_upload_sessions[file_id]["updated_at"] = datetime.now().isoformat()
+            print(f"[MemorySession] Committed: {file_id[:8]}... to thread {thread_id[:8]}...")
+            return True
         return False
 
     try:
         supabase = await get_supabase_client()
         if not supabase:
+            if file_id in _in_memory_upload_sessions:
+                _in_memory_upload_sessions[file_id]["committed"] = True
+                _in_memory_upload_sessions[file_id]["thread_id"] = thread_id
+                _in_memory_upload_sessions[file_id]["status"] = "committed"
+                return True
             return False
 
         update_data = {
@@ -743,6 +845,14 @@ async def commit_upload_session(file_id: str, thread_id: str) -> bool:
         return False
 
     except Exception as e:
+        error_str = str(e).lower()
+        if "upload_sessions" in error_str or "does not exist" in error_str or "relation" in error_str:
+            _use_memory_sessions_fallback = True
+            if file_id in _in_memory_upload_sessions:
+                _in_memory_upload_sessions[file_id]["committed"] = True
+                _in_memory_upload_sessions[file_id]["thread_id"] = thread_id
+                _in_memory_upload_sessions[file_id]["status"] = "committed"
+                return True
         print(f"[SupabaseDB] Error committing upload session: {e}")
         return False
 
@@ -757,27 +867,48 @@ async def get_user_pending_uploads(user_id: str) -> list[dict]:
     Returns:
         List of pending upload sessions
     """
-    if not USE_SUPABASE_DB:
-        return []
+    global _use_memory_sessions_fallback
+
+    now = datetime.now()
+
+    # Handle in-memory fallback
+    if _use_memory_sessions_fallback or not USE_SUPABASE_DB:
+        _cleanup_expired_memory_sessions()
+        return [
+            session for session in _in_memory_upload_sessions.values()
+            if session.get("user_id") == user_id
+            and not session.get("committed", False)
+            and datetime.fromisoformat(session["expires_at"]) > now
+        ]
 
     try:
         supabase = await get_supabase_client()
         if not supabase:
-            return []
-
-        now = datetime.now().isoformat()
+            return [
+                session for session in _in_memory_upload_sessions.values()
+                if session.get("user_id") == user_id
+                and not session.get("committed", False)
+            ]
 
         result = await supabase.table("upload_sessions")\
             .select("*")\
             .eq("user_id", user_id)\
             .eq("committed", False)\
-            .gt("expires_at", now)\
+            .gt("expires_at", now.isoformat())\
             .order("created_at", desc=True)\
             .execute()
 
         return result.data or []
 
     except Exception as e:
+        error_str = str(e).lower()
+        if "upload_sessions" in error_str or "does not exist" in error_str or "relation" in error_str:
+            _use_memory_sessions_fallback = True
+            return [
+                session for session in _in_memory_upload_sessions.values()
+                if session.get("user_id") == user_id
+                and not session.get("committed", False)
+            ]
         print(f"[SupabaseDB] Error getting pending uploads: {e}")
         return []
 
@@ -789,12 +920,19 @@ async def cleanup_expired_uploads() -> int:
     Returns:
         Number of sessions deleted
     """
-    if not USE_SUPABASE_DB:
-        return 0
+    global _use_memory_sessions_fallback
+
+    # Handle in-memory cleanup
+    if _use_memory_sessions_fallback or not USE_SUPABASE_DB:
+        before_count = len(_in_memory_upload_sessions)
+        _cleanup_expired_memory_sessions()
+        after_count = len(_in_memory_upload_sessions)
+        return before_count - after_count
 
     try:
         supabase = await get_supabase_client()
         if not supabase:
+            _cleanup_expired_memory_sessions()
             return 0
 
         now = datetime.now().isoformat()
@@ -814,6 +952,11 @@ async def cleanup_expired_uploads() -> int:
         return deleted_count
 
     except Exception as e:
+        error_str = str(e).lower()
+        if "upload_sessions" in error_str or "does not exist" in error_str or "relation" in error_str:
+            _use_memory_sessions_fallback = True
+            _cleanup_expired_memory_sessions()
+            return 0
         print(f"[SupabaseDB] Error cleaning up expired uploads: {e}")
         return 0
 
