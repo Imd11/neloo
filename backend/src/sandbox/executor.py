@@ -447,9 +447,9 @@ class LocalSubprocessExecutor(SandboxExecutor):
         # This ensures all user-uploaded files are available in the local sandbox
         try:
             from .file_sync import sync_all_supabase_files_to_local
-            synced_files = sync_all_supabase_files_to_local()
+            synced_files = sync_all_supabase_files_to_local(user_id=user_id)
             if synced_files:
-                print(f"[LocalExecutor] {len(synced_files)} files available for execution")
+                print(f"[LocalExecutor] {len(synced_files)} files available for user {user_id}")
         except Exception as e:
             print(f"[LocalExecutor] Warning: Failed to sync files from storage: {e}")
 
