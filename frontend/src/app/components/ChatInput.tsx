@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryState } from "nuqs";
@@ -72,15 +72,13 @@ export function ChatInput({
       e.target.value = "";
       if (!selected || selected.length === 0) return;
 
-      void (async () => {
-        try {
-          await ensureThreadId();
-          fileUpload.addFiles(selected);
-        } catch (err) {
-          const message = err instanceof Error ? err.message : String(err);
-          toast.error("Failed to prepare upload", { description: message });
-        }
-      })();
+      // Add files immediately so the UI updates even if thread creation takes time.
+      // Upload will auto-start once `threadId` exists (see `useDataFileUpload` autoUpload effect).
+      fileUpload.addFiles(selected);
+      void ensureThreadId().catch((err) => {
+        const message = err instanceof Error ? err.message : String(err);
+        toast.error("Failed to create thread for upload", { description: message });
+      });
     },
     [ensureThreadId, fileUpload]
   );
@@ -118,7 +116,7 @@ export function ChatInput({
         multiple
         accept={fileUpload.acceptAttribute}
         onChange={handleFileInputChange}
-        className="hidden"
+        className="sr-only"
       />
 
       <form
@@ -141,7 +139,10 @@ export function ChatInput({
             files={fileUpload.files}
             isUploading={fileUpload.isUploading}
             onTriggerSelect={() => {
-              void ensureThreadId().then(() => fileUpload.triggerFileSelect());
+              // IMPORTANT: file picker must be opened synchronously from a user gesture.
+              // Also avoid triggering navigation (e.g., setting query params) while the picker is open,
+              // otherwise some browsers will close it immediately.
+              fileUpload.triggerFileSelect();
             }}
             onRemoveFile={fileUpload.removeFile}
             disabled={disabled || isLoading}
@@ -160,4 +161,3 @@ export function ChatInput({
     </div>
   );
 }
-
