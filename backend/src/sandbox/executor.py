@@ -79,6 +79,7 @@ class SandboxInfo:
     sandbox: Any  # E2B Sandbox instance
     last_used: datetime
     created_at: datetime
+    is_executing: bool = False  # True while code is running, prevents LRU eviction
 
 
 class E2BSandboxExecutor(SandboxExecutor):
@@ -188,13 +189,29 @@ class E2BSandboxExecutor(SandboxExecutor):
             del self._sandboxes[user_id]
 
     def _evict_lru_sandbox_unlocked(self):
-        """Evict the least recently used sandbox (must hold _lock)"""
+        """
+        Evict the least recently used sandbox (must hold _lock).
+
+        Skips sandboxes that are currently executing to prevent
+        interrupting active code execution.
+        """
         if not self._sandboxes:
             return
 
-        # Find the user with oldest last_used time
+        # Find candidates that are NOT currently executing
+        candidates = [
+            user_id for user_id, info in self._sandboxes.items()
+            if not info.is_executing
+        ]
+
+        if not candidates:
+            # All sandboxes are executing, cannot evict safely
+            print(f"[E2BExecutor] WARNING: All {len(self._sandboxes)} sandboxes are executing, cannot evict")
+            return
+
+        # Find the user with oldest last_used time among non-executing sandboxes
         oldest_user = min(
-            self._sandboxes.keys(),
+            candidates,
             key=lambda u: self._sandboxes[u].last_used
         )
         print(f"[E2BExecutor] Evicting LRU sandbox for user {oldest_user}")
@@ -202,26 +219,49 @@ class E2BSandboxExecutor(SandboxExecutor):
 
     def cleanup_idle_sandboxes(self):
         """
-        Clean up sandboxes that have been idle for too long.
+        Clean up sandboxes and user locks that have been idle for too long.
 
         This can be called periodically by a background task to
         free up resources and reduce costs.
+
+        Also cleans up orphaned user locks to prevent memory leaks.
         """
         with self._lock:
             now = datetime.now()
             to_remove = []
 
+            # Find idle sandboxes (skip those currently executing)
             for user_id, info in self._sandboxes.items():
+                if info.is_executing:
+                    continue  # Don't cleanup executing sandboxes
                 idle_seconds = (now - info.last_used).total_seconds()
                 if idle_seconds > self.IDLE_CLEANUP_THRESHOLD:
                     to_remove.append(user_id)
 
+            # Close idle sandboxes
             for user_id in to_remove:
                 print(f"[E2BExecutor] Cleaning up idle sandbox for user {user_id}")
                 self._close_sandbox_unlocked(user_id)
 
             if to_remove:
                 print(f"[E2BExecutor] Cleaned up {len(to_remove)} idle sandboxes")
+
+            # Clean up orphaned user locks (users without sandboxes)
+            # A lock is orphaned if the user has no sandbox AND the lock is not currently held
+            orphaned_locks = []
+            for user_id in list(self._user_locks.keys()):
+                if user_id not in self._sandboxes:
+                    lock = self._user_locks[user_id]
+                    # Try to acquire the lock non-blocking to check if it's free
+                    if lock.acquire(blocking=False):
+                        lock.release()
+                        orphaned_locks.append(user_id)
+
+            for user_id in orphaned_locks:
+                del self._user_locks[user_id]
+
+            if orphaned_locks:
+                print(f"[E2BExecutor] Cleaned up {len(orphaned_locks)} orphaned user locks")
 
     def _ensure_files_synced(self, sandbox, user_id: str):
         """
@@ -270,6 +310,12 @@ class E2BSandboxExecutor(SandboxExecutor):
             print(f"[E2BExecutor] Warning: File sync check failed: {e}")
             print(f"[E2BExecutor] Traceback: {traceback.format_exc()}")
 
+    def _set_executing(self, user_id: str, is_executing: bool):
+        """Set the is_executing flag for a user's sandbox (thread-safe)"""
+        with self._lock:
+            if user_id in self._sandboxes:
+                self._sandboxes[user_id].is_executing = is_executing
+
     def execute(
         self,
         code: str,
@@ -294,12 +340,19 @@ class E2BSandboxExecutor(SandboxExecutor):
                     # Get user's sandbox (force new on retry)
                     sandbox = self._get_sandbox(user_id, force_new=(attempt > 0))
 
-                    # Ensure files are synced before execution (兜底同步)
-                    self._ensure_files_synced(sandbox, user_id)
+                    # Mark sandbox as executing to prevent LRU eviction
+                    self._set_executing(user_id, True)
 
-                    # Execute code
-                    result = self._execute_in_sandbox(sandbox, code, timeout, user_id, thread_id)
-                    return result
+                    try:
+                        # Ensure files are synced before execution (兜底同步)
+                        self._ensure_files_synced(sandbox, user_id)
+
+                        # Execute code
+                        result = self._execute_in_sandbox(sandbox, code, timeout, user_id, thread_id)
+                        return result
+                    finally:
+                        # Always clear executing flag when done
+                        self._set_executing(user_id, False)
 
                 except Exception as e:
                     error_str = str(e)
