@@ -66,6 +66,13 @@ from ..storage.supabase_db import (
     update_thread_title,
     USE_SUPABASE_DB,
     FileType,
+    # Upload session management
+    create_upload_session,
+    get_upload_session,
+    update_upload_session_status,
+    commit_upload_session,
+    get_user_pending_uploads,
+    cleanup_expired_uploads,
 )
 
 # =============================================================================
@@ -92,6 +99,9 @@ ALLOWED_EXTENSIONS = {".csv", ".xlsx", ".xls", ".dta", ".sav", ".parquet"}
 
 # Maximum file size (100 MB)
 MAX_FILE_SIZE = 100 * 1024 * 1024
+
+# Upload session TTL (1 hour)
+UPLOAD_SESSION_TTL_SECONDS = 3600
 
 # =============================================================================
 # FastAPI Application
@@ -280,6 +290,44 @@ class DownloadUrlResponse(BaseModel):
 
 
 # =============================================================================
+# Two-Phase Upload Models (Staging Area Pattern)
+# =============================================================================
+
+class UploadInitRequest(BaseModel):
+    """Request model for initializing an upload session."""
+    filename: str
+    size: int  # Expected file size in bytes
+
+
+class UploadInitResponse(BaseModel):
+    """Response model for upload initialization."""
+    file_id: str
+    upload_url: str  # URL to upload the file to
+    ttl: int  # Time to live in seconds
+    expires_at: str  # ISO timestamp when session expires
+
+
+class UploadCompleteRequest(BaseModel):
+    """Request model for completing an upload."""
+    file_id: str
+
+
+class UploadCompleteResponse(BaseModel):
+    """Response model for upload completion."""
+    file_id: str
+    status: str  # 'uploaded' or 'error'
+    filename: str
+    size: int
+    sandbox_path: str
+
+
+class CommitFilesRequest(BaseModel):
+    """Request model for committing files to a thread."""
+    file_ids: list[str]
+    thread_id: str  # LangGraph thread ID
+
+
+# =============================================================================
 # Helper Functions
 # =============================================================================
 
@@ -447,6 +495,334 @@ async def upload_file(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+
+# =============================================================================
+# Two-Phase Upload API (Staging Area Pattern)
+# =============================================================================
+#
+# This implements the industry best practice for file uploads:
+# 1. POST /uploads/init - Initialize upload session (returns file_id + upload_url)
+# 2. POST /uploads/{file_id}/data - Upload the actual file data
+# 3. POST /uploads/{file_id}/complete - Mark upload as complete (optional explicit call)
+# 4. POST /uploads/commit - Commit files to a thread when sending message
+#
+# Files are staged in user's space (bound to user_id from JWT, NOT thread_id).
+# They're only associated with a thread when the message is sent.
+# TTL cleanup removes uncommitted files after expiration.
+
+
+@app.post("/uploads/init", response_model=UploadInitResponse)
+async def init_upload(
+    data: UploadInitRequest,
+    user: dict = Depends(get_current_user),
+):
+    """
+    Initialize an upload session.
+
+    This is the first step of the two-phase upload process.
+    Creates a staging record and returns the file_id and upload URL.
+
+    The upload is bound to the authenticated user (from JWT), NOT a thread.
+    Thread association happens later when the message is sent.
+    """
+    user_id = auth_get_user_id(user)
+
+    # Validate filename extension
+    ext = os.path.splitext(data.filename)[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File type '{ext}' not supported. Allowed: {', '.join(ALLOWED_EXTENSIONS)}",
+        )
+
+    # Check file size
+    if data.size > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)} MB",
+        )
+
+    # Generate unique file ID and storage path
+    file_id = str(uuid.uuid4())
+    storage_filename = generate_storage_filename(data.filename)
+    storage_path = f"{user_id}/{storage_filename}"
+
+    # Calculate expiration
+    from datetime import timedelta
+    expires_at = datetime.now() + timedelta(seconds=UPLOAD_SESSION_TTL_SECONDS)
+
+    # Create upload session in database
+    if USE_SUPABASE_DB:
+        session = await create_upload_session(
+            user_id=user_id,
+            file_id=file_id,
+            filename=data.filename,
+            expected_size=data.size,
+            storage_path=storage_path,
+            ttl_seconds=UPLOAD_SESSION_TTL_SECONDS,
+        )
+        if not session:
+            raise HTTPException(status_code=500, detail="Failed to create upload session")
+
+    # The upload URL points to our own endpoint
+    upload_url = f"/uploads/{file_id}/data"
+
+    return UploadInitResponse(
+        file_id=file_id,
+        upload_url=upload_url,
+        ttl=UPLOAD_SESSION_TTL_SECONDS,
+        expires_at=expires_at.isoformat(),
+    )
+
+
+@app.post("/uploads/{file_id}/data", response_model=UploadCompleteResponse)
+async def upload_file_data(
+    file_id: str,
+    file: UploadFile = File(...),
+    user: dict = Depends(get_current_user),
+):
+    """
+    Upload the actual file data.
+
+    This is the second step of the two-phase upload process.
+    Receives the file content and stores it, then marks the session as uploaded.
+    """
+    user_id = auth_get_user_id(user)
+
+    # Verify the upload session exists and belongs to this user
+    session = await get_upload_session(file_id, user_id)
+    if not session:
+        raise HTTPException(
+            status_code=404,
+            detail="Upload session not found or expired",
+        )
+
+    if session["status"] != "pending":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Upload session already in status: {session['status']}",
+        )
+
+    # Read file content
+    content = await file.read()
+    file_size = len(content)
+
+    # Check file size
+    if file_size > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)} MB",
+        )
+
+    storage_path = session["storage_path"]
+    storage_filename = os.path.basename(storage_path)
+
+    try:
+        if USE_LOCAL_STORAGE:
+            # Local storage mode
+            user_dir = get_local_storage_path(user_id)
+            local_file_path = user_dir / storage_filename
+            await asyncio.to_thread(_write_file_sync, local_file_path, content)
+            sandbox_path = f"/home/user/data/{storage_filename}"
+        else:
+            # Supabase storage mode
+            supabase = await get_supabase_client()
+            ext = os.path.splitext(session["filename"])[1].lower()
+            content_types = {
+                ".csv": "text/csv",
+                ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                ".xls": "application/vnd.ms-excel",
+                ".dta": "application/octet-stream",
+                ".sav": "application/octet-stream",
+                ".parquet": "application/octet-stream",
+            }
+            content_type = content_types.get(ext, "application/octet-stream")
+
+            await supabase.storage.from_(BUCKET_NAME).upload(
+                path=storage_path,
+                file=content,
+                file_options={"content-type": content_type},
+            )
+            sandbox_path = f"/home/user/data/{storage_filename}"
+
+        # Update session status to uploaded
+        await update_upload_session_status(file_id, "uploaded", actual_size=file_size)
+
+        return UploadCompleteResponse(
+            file_id=file_id,
+            status="uploaded",
+            filename=session["filename"],
+            size=file_size,
+            sandbox_path=sandbox_path,
+        )
+
+    except Exception as e:
+        # Mark session as error
+        await update_upload_session_status(file_id, "error")
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+
+@app.post("/uploads/commit")
+async def commit_uploads(
+    data: CommitFilesRequest,
+    user: dict = Depends(get_current_user),
+):
+    """
+    Commit uploaded files to a thread.
+
+    This is called when a message is sent. It associates the staged files
+    with the thread and creates proper file records.
+    """
+    user_id = auth_get_user_id(user)
+    committed_files = []
+    errors = []
+
+    for file_id in data.file_ids:
+        # Verify session exists and is uploaded
+        session = await get_upload_session(file_id, user_id)
+        if not session:
+            errors.append({"file_id": file_id, "error": "Session not found or expired"})
+            continue
+
+        if session["status"] != "uploaded":
+            errors.append({"file_id": file_id, "error": f"Invalid status: {session['status']}"})
+            continue
+
+        # Ensure thread exists
+        await create_thread(
+            user_id=user_id,
+            langgraph_thread_id=data.thread_id,
+            title="New Task",
+        )
+
+        # Create file record in files table
+        if USE_SUPABASE_DB:
+            from ..storage.supabase_db import save_file_record
+            ext = os.path.splitext(session["filename"])[1].lower()
+            content_types = {
+                ".csv": "text/csv",
+                ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                ".xls": "application/vnd.ms-excel",
+                ".dta": "application/octet-stream",
+                ".sav": "application/octet-stream",
+                ".parquet": "application/octet-stream",
+            }
+            content_type = content_types.get(ext, "application/octet-stream")
+
+            await save_file_record(
+                user_id=user_id,
+                filename=session["filename"],
+                storage_path=session["storage_path"],
+                file_size=session.get("actual_size") or session["expected_size"],
+                content_type=content_type,
+                file_type="uploaded",
+                thread_id=data.thread_id,
+            )
+
+        # Mark session as committed
+        await commit_upload_session(file_id, data.thread_id)
+
+        storage_filename = os.path.basename(session["storage_path"])
+        committed_files.append({
+            "file_id": file_id,
+            "filename": session["filename"],
+            "storage_path": session["storage_path"],
+            "sandbox_path": f"/home/user/data/{storage_filename}",
+        })
+
+    return {
+        "success": len(errors) == 0,
+        "committed": committed_files,
+        "errors": errors,
+        "thread_id": data.thread_id,
+    }
+
+
+@app.get("/uploads/pending")
+async def get_pending_uploads(user: dict = Depends(get_current_user)):
+    """
+    Get all pending uploads for the current user.
+
+    Returns files that have been uploaded but not yet committed to a thread.
+    """
+    user_id = auth_get_user_id(user)
+    pending = await get_user_pending_uploads(user_id)
+
+    return {
+        "pending": [
+            {
+                "file_id": p["id"],
+                "filename": p["filename"],
+                "status": p["status"],
+                "size": p.get("actual_size") or p["expected_size"],
+                "expires_at": p["expires_at"],
+            }
+            for p in pending
+        ],
+        "total": len(pending),
+    }
+
+
+@app.delete("/uploads/{file_id}")
+async def cancel_upload(
+    file_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """
+    Cancel a pending upload.
+
+    Removes the staged file and deletes the session record.
+    """
+    user_id = auth_get_user_id(user)
+
+    session = await get_upload_session(file_id, user_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Upload session not found")
+
+    if session["committed"]:
+        raise HTTPException(status_code=400, detail="Cannot cancel committed upload")
+
+    # Delete the file from storage if it was uploaded
+    if session["status"] == "uploaded":
+        storage_path = session["storage_path"]
+        try:
+            if USE_LOCAL_STORAGE:
+                storage_filename = os.path.basename(storage_path)
+                user_dir = get_local_storage_path(user_id)
+                local_file_path = user_dir / storage_filename
+                await asyncio.to_thread(_delete_file_sync, local_file_path)
+            else:
+                supabase = await get_supabase_client()
+                await supabase.storage.from_(BUCKET_NAME).remove([storage_path])
+        except Exception as e:
+            print(f"Warning: Failed to delete staged file: {e}")
+
+    # Delete the session record
+    if USE_SUPABASE_DB:
+        supabase = await get_supabase_client()
+        await supabase.table("upload_sessions").delete().eq("id", file_id).execute()
+
+    return {"success": True, "message": "Upload cancelled"}
+
+
+@app.post("/uploads/cleanup")
+async def cleanup_uploads():
+    """
+    Clean up expired upload sessions (admin endpoint).
+
+    Deletes expired sessions and their associated files.
+    Should be called periodically via cron job.
+    """
+    deleted_count = await cleanup_expired_uploads()
+
+    # TODO: Also clean up orphaned files in storage
+
+    return {
+        "success": True,
+        "deleted_sessions": deleted_count,
+        "message": f"Cleaned up {deleted_count} expired upload sessions",
+    }
 
 
 @app.get("/files/list", response_model=FileListResponse)

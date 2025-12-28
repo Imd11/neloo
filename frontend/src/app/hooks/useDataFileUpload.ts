@@ -14,8 +14,17 @@ interface UseDataFileUploadOptions {
   apiUrl: string;
   accessToken?: string | null;
   maxFiles?: number;
+  // Note: threadId is no longer required for upload - files are staged independently
   threadId?: string | null;
   autoUpload?: boolean;
+}
+
+interface StagedFile {
+  fileId: string;
+  filename: string;
+  size: number;
+  sandboxPath: string;
+  status: "pending" | "uploading" | "uploaded" | "error";
 }
 
 interface UseDataFileUploadReturn {
@@ -23,12 +32,14 @@ interface UseDataFileUploadReturn {
   files: DataFile[];
   isUploading: boolean;
   uploadedFiles: UploadedFileInfo[];
+  stagedFiles: StagedFile[];  // Files ready to be committed
 
   // Actions
   addFiles: (fileList: FileList | File[]) => void;
   removeFile: (fileId: string) => void;
   uploadFiles: () => Promise<UploadedFileInfo[]>;
   clearFiles: () => void;
+  commitFiles: (threadId: string) => Promise<void>;
 
   // Input helpers
   inputRef: React.RefObject<HTMLInputElement | null>;
@@ -37,21 +48,184 @@ interface UseDataFileUploadReturn {
 }
 
 /**
- * Hook for managing data file uploads
+ * Hook for managing data file uploads with two-phase upload pattern.
  *
- * Handles file validation, upload to backend, and state management.
+ * Key changes from previous implementation:
+ * - Files are uploaded immediately when selected (no thread dependency)
+ * - Files are staged in user's space, bound to userId (from JWT)
+ * - Thread association happens only when message is sent (commitFiles)
+ * - This eliminates empty thread creation and improves UX
  */
 export function useDataFileUpload({
   apiUrl,
   accessToken,
   maxFiles = 5,
   threadId,
-  autoUpload = false,
+  autoUpload = true,  // Default to true for immediate upload
 }: UseDataFileUploadOptions): UseDataFileUploadReturn {
   const [files, setFiles] = useState<DataFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFileInfo[]>([]);
+  const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Track which files have been initiated for upload
+  const uploadingFileIds = useRef<Set<string>>(new Set());
+
+  /**
+   * Get authorization headers
+   */
+  const getHeaders = useCallback((): Record<string, string> => {
+    if (accessToken) {
+      return { "Authorization": `Bearer ${accessToken}` };
+    }
+    return { "X-User-Id": "default" };
+  }, [accessToken]);
+
+  /**
+   * Initialize upload session for a file (Phase 1)
+   */
+  const initUpload = useCallback(async (file: File): Promise<{ fileId: string; uploadUrl: string } | null> => {
+    try {
+      const response = await fetch(`${apiUrl}/uploads/init`, {
+        method: "POST",
+        headers: {
+          ...getHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          filename: file.name,
+          size: file.size,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || "Failed to initialize upload");
+      }
+
+      const data = await response.json();
+      return {
+        fileId: data.file_id,
+        uploadUrl: data.upload_url,
+      };
+    } catch (error) {
+      console.error("Failed to init upload:", error);
+      return null;
+    }
+  }, [apiUrl, getHeaders]);
+
+  /**
+   * Upload file data (Phase 2)
+   */
+  const uploadFileData = useCallback(async (
+    fileId: string,
+    uploadUrl: string,
+    file: File,
+  ): Promise<StagedFile | null> => {
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch(`${apiUrl}${uploadUrl}`, {
+        method: "POST",
+        headers: getHeaders(),
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || "Upload failed");
+      }
+
+      const data = await response.json();
+      return {
+        fileId: data.file_id,
+        filename: data.filename,
+        size: data.size,
+        sandboxPath: data.sandbox_path,
+        status: "uploaded" as const,
+      };
+    } catch (error) {
+      console.error("Failed to upload file data:", error);
+      return null;
+    }
+  }, [apiUrl, getHeaders]);
+
+  /**
+   * Upload a single file using two-phase pattern
+   */
+  const uploadSingleFile = useCallback(async (dataFile: DataFile): Promise<StagedFile | null> => {
+    // Prevent duplicate uploads
+    if (uploadingFileIds.current.has(dataFile.id)) {
+      return null;
+    }
+    uploadingFileIds.current.add(dataFile.id);
+
+    // Update status to uploading
+    setFiles((prev) =>
+      prev.map((f) =>
+        f.id === dataFile.id ? { ...f, status: "uploading" as const } : f
+      )
+    );
+
+    try {
+      // Phase 1: Initialize upload
+      const initResult = await initUpload(dataFile.file);
+      if (!initResult) {
+        throw new Error("Failed to initialize upload");
+      }
+
+      // Phase 2: Upload file data
+      const staged = await uploadFileData(
+        initResult.fileId,
+        initResult.uploadUrl,
+        dataFile.file,
+      );
+
+      if (!staged) {
+        throw new Error("Failed to upload file");
+      }
+
+      // Update file status to uploaded
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.id === dataFile.id
+            ? {
+                ...f,
+                status: "uploaded" as const,
+                storagePath: staged.sandboxPath,
+                sandboxPath: staged.sandboxPath,
+              }
+            : f
+        )
+      );
+
+      // Add to staged files
+      setStagedFiles((prev) => [...prev, staged]);
+
+      return staged;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Upload failed";
+
+      // Update status to error
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.id === dataFile.id
+            ? { ...f, status: "error" as const, error: errorMessage }
+            : f
+        )
+      );
+
+      toast.error(`Failed to upload ${dataFile.file.name}`, {
+        description: errorMessage,
+      });
+
+      return null;
+    } finally {
+      uploadingFileIds.current.delete(dataFile.id);
+    }
+  }, [initUpload, uploadFileData]);
 
   /**
    * Add files to the upload queue
@@ -114,6 +288,7 @@ export function useDataFileUpload({
    */
   const removeFile = useCallback((fileId: string) => {
     setFiles((prev) => prev.filter((f) => f.id !== fileId));
+    setStagedFiles((prev) => prev.filter((f) => f.fileId !== fileId));
     setUploadedFiles((prev) =>
       prev.filter((f) => !f.filename.includes(fileId))
     );
@@ -128,86 +303,19 @@ export function useDataFileUpload({
     if (pendingFiles.length === 0) {
       return uploadedFiles;
     }
-    if (!threadId) {
-      // Can't bind uploads to a thread until a thread exists.
-      // Caller can set threadId later; autoUpload effect will retry.
-      return uploadedFiles;
-    }
 
     setIsUploading(true);
     const results: UploadedFileInfo[] = [...uploadedFiles];
 
     for (const dataFile of pendingFiles) {
-      // Update status to uploading
-      setFiles((prev) =>
-        prev.map((f) =>
-          f.id === dataFile.id ? { ...f, status: "uploading" as const } : f
-        )
-      );
-
-      try {
-        const formData = new FormData();
-        formData.append("file", dataFile.file);
-        formData.append("langgraph_thread_id", threadId);
-
-        const headers: Record<string, string> = {};
-        if (accessToken) {
-          headers["Authorization"] = `Bearer ${accessToken}`;
-        } else {
-          headers["X-User-Id"] = "default";
-        }
-
-        const response = await fetch(`${apiUrl}/files/upload`, {
-          method: "POST",
-          headers,
-          body: formData,
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.detail || "Upload failed");
-        }
-
-        const result = await response.json();
-
-        // Update status to uploaded
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.id === dataFile.id
-              ? {
-                  ...f,
-                  status: "uploaded" as const,
-                  storagePath: result.storage_path,
-                  sandboxPath: result.sandbox_path,
-                }
-              : f
-          )
-        );
-
-        const uploadedFile: UploadedFileInfo = {
-          filename: result.filename,
-          originalFilename: result.original_filename,
-          storagePath: result.storage_path,
-          sandboxPath: result.sandbox_path,
-          size: result.size,
-        };
-
-        results.push(uploadedFile);
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Upload failed";
-
-        // Update status to error
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.id === dataFile.id
-              ? { ...f, status: "error" as const, error: errorMessage }
-              : f
-          )
-        );
-
-        toast.error(`Failed to upload ${dataFile.file.name}`, {
-          description: errorMessage,
+      const staged = await uploadSingleFile(dataFile);
+      if (staged) {
+        results.push({
+          filename: staged.filename,
+          originalFilename: staged.filename,
+          storagePath: staged.sandboxPath,
+          sandboxPath: staged.sandboxPath,
+          size: staged.size,
         });
       }
     }
@@ -216,19 +324,57 @@ export function useDataFileUpload({
     setIsUploading(false);
 
     return results;
-  }, [files, uploadedFiles, apiUrl, accessToken, threadId]);
+  }, [files, uploadedFiles, uploadSingleFile]);
 
-  // Auto-upload pending files when enabled and threadId is available
-  // This makes uploads happen immediately after selection, without waiting for message send.
-  // The effect also retries once threadId becomes available.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  /**
+   * Auto-upload pending files when autoUpload is enabled
+   * Key difference: No threadId dependency!
+   */
   useEffect(() => {
     if (!autoUpload) return;
-    if (!threadId) return;
     if (isUploading) return;
     if (!files.some((f) => f.status === "pending")) return;
+
     void uploadFiles();
-  }, [autoUpload, threadId, isUploading, files, uploadFiles]);
+  }, [autoUpload, isUploading, files, uploadFiles]);
+
+  /**
+   * Commit staged files to a thread
+   * This is called when the message is sent
+   */
+  const commitFiles = useCallback(async (targetThreadId: string): Promise<void> => {
+    const uploadedStaged = stagedFiles.filter((f) => f.status === "uploaded");
+    if (uploadedStaged.length === 0) return;
+
+    try {
+      const response = await fetch(`${apiUrl}/uploads/commit`, {
+        method: "POST",
+        headers: {
+          ...getHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          file_ids: uploadedStaged.map((f) => f.fileId),
+          thread_id: targetThreadId,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || "Failed to commit files");
+      }
+
+      const data = await response.json();
+      if (!data.success) {
+        console.warn("Some files failed to commit:", data.errors);
+      }
+    } catch (error) {
+      console.error("Failed to commit files:", error);
+      toast.error("Failed to associate files with message", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }, [apiUrl, getHeaders, stagedFiles]);
 
   /**
    * Clear all files
@@ -236,6 +382,8 @@ export function useDataFileUpload({
   const clearFiles = useCallback(() => {
     setFiles([]);
     setUploadedFiles([]);
+    setStagedFiles([]);
+    uploadingFileIds.current.clear();
   }, []);
 
   /**
@@ -249,10 +397,12 @@ export function useDataFileUpload({
     files,
     isUploading,
     uploadedFiles,
+    stagedFiles,
     addFiles,
     removeFile,
     uploadFiles,
     clearFiles,
+    commitFiles,
     inputRef,
     triggerFileSelect,
     acceptAttribute: getAcceptAttribute(),

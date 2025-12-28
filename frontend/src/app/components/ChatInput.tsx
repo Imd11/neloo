@@ -34,12 +34,13 @@ export function ChatInput({
   const [threadId, setThreadId] = useQueryState("threadId");
   const [input, setInput] = useState("");
 
+  // Note: With the new two-phase upload, files upload immediately without thread dependency
   const fileUpload = useDataFileUpload({
     apiUrl,
     accessToken: session?.access_token,
     maxFiles: 5,
-    threadId,
-    autoUpload: true,
+    threadId,  // Still passed but not required for upload
+    autoUpload: true,  // Files upload immediately when selected
   });
 
   const ensureThreadId = useCallback(async (): Promise<string> => {
@@ -61,56 +62,88 @@ export function ChatInput({
     [fileUpload.files]
   );
 
+  const uploadingCount = useMemo(
+    () => fileUpload.files.filter((f) => f.status === "uploading").length,
+    [fileUpload.files]
+  );
+
   const hasFiles = fileUpload.files.length > 0;
-  const hasPendingOrUploading = fileUpload.isUploading || pendingCount > 0;
+  const hasPendingOrUploading = fileUpload.isUploading || pendingCount > 0 || uploadingCount > 0;
   const submitDisabled =
     disabled || isLoading || hasPendingOrUploading || (!input.trim() && !hasFiles);
 
   const handleFileInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const selected = e.target.files;
-      e.target.value = "";
       if (!selected || selected.length === 0) return;
 
-      // Add files immediately so the UI updates even if thread creation takes time.
-      // Upload will auto-start once `threadId` exists (see `useDataFileUpload` autoUpload effect).
-      fileUpload.addFiles(selected);
-      void ensureThreadId().catch((err) => {
-        const message = err instanceof Error ? err.message : String(err);
-        toast.error("Failed to create thread for upload", { description: message });
-      });
+      // Copy files before clearing the input value
+      const fileArray = Array.from(selected);
+
+      // Clear input value to allow selecting the same file again
+      e.target.value = "";
+
+      // Add files - they will auto-upload immediately (no thread dependency)
+      fileUpload.addFiles(fileArray);
     },
-    [ensureThreadId, fileUpload]
+    [fileUpload]
   );
 
   const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
+    async (e: React.FormEvent) => {
       e.preventDefault();
       if (submitDisabled) return;
 
-      if (fileUpload.isUploading || pendingCount > 0) {
+      if (fileUpload.isUploading || pendingCount > 0 || uploadingCount > 0) {
         toast.message("Uploading files...", {
           description: "Please wait for uploads to finish before sending.",
         });
         return;
       }
 
-      const uploadedFiles = fileUpload.uploadedFiles;
-      let messageContent = input.trim();
-      if (uploadedFiles.length > 0) {
-        messageContent += formatFilesForMessage(uploadedFiles);
-      }
+      try {
+        // Ensure thread exists before sending message
+        const currentThreadId = await ensureThreadId();
 
-      onSubmit(messageContent);
-      setInput("");
-      fileUpload.clearFiles();
+        // Commit staged files to the thread (associates files with thread)
+        if (fileUpload.stagedFiles.length > 0) {
+          await fileUpload.commitFiles(currentThreadId);
+        }
+
+        // Build message content with file references
+        const uploadedFiles = fileUpload.uploadedFiles;
+        let messageContent = input.trim();
+        if (uploadedFiles.length > 0) {
+          messageContent += formatFilesForMessage(uploadedFiles);
+        }
+
+        onSubmit(messageContent);
+        setInput("");
+        fileUpload.clearFiles();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        toast.error("Failed to send message", { description: message });
+      }
     },
-    [submitDisabled, fileUpload, input, onSubmit, pendingCount]
+    [submitDisabled, fileUpload, input, onSubmit, pendingCount, uploadingCount, ensureThreadId]
+  );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        if (!submitDisabled) {
+          handleSubmit(e as unknown as React.FormEvent);
+        }
+      }
+    },
+    [submitDisabled, handleSubmit]
   );
 
   return (
     <div className="mx-auto w-full max-w-4xl px-3 py-4 md:px-4">
       <input
+        id="data-file-input"
         ref={fileUpload.inputRef}
         type="file"
         multiple
@@ -129,6 +162,7 @@ export function ChatInput({
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder="Write your message..."
           className="min-h-[80px] w-full resize-none rounded-xl bg-transparent p-2 text-sm outline-none"
           disabled={disabled || isLoading}
@@ -140,9 +174,9 @@ export function ChatInput({
             isUploading={fileUpload.isUploading}
             onTriggerSelect={() => {
               // IMPORTANT: file picker must be opened synchronously from a user gesture.
-              // Also avoid triggering navigation (e.g., setting query params) while the picker is open,
-              // otherwise some browsers will close it immediately.
-              fileUpload.triggerFileSelect();
+              // Use getElementById for more reliable element lookup
+              const input = document.getElementById('data-file-input') as HTMLInputElement;
+              input?.click();
             }}
             onRemoveFile={fileUpload.removeFile}
             disabled={disabled || isLoading}
