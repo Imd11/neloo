@@ -825,6 +825,142 @@ async def cleanup_uploads():
     }
 
 
+# =============================================================================
+# File Preview API (for Agent Context Injection)
+# =============================================================================
+#
+# This endpoint provides data previews that can be embedded directly in the
+# Agent's context window, similar to how Gemini/ChatGPT handle file uploads.
+# Instead of just passing file paths, the agent can now "see" the actual data.
+#
+
+class FilePreviewResponse(BaseModel):
+    """Response model for file preview."""
+    file_id: str
+    filename: str
+    preview: str  # Human-readable preview (first N rows as markdown/text)
+    row_count: int  # Total rows in file (if applicable)
+    column_count: int  # Total columns (if applicable)
+    columns: list[str]  # Column names
+    truncated: bool  # Whether preview is truncated
+    file_size: int
+    preview_rows: int  # Number of rows in preview
+
+
+@app.get("/files/{file_id}/preview", response_model=FilePreviewResponse)
+async def get_file_preview(
+    file_id: str,
+    max_rows: int = Query(10, ge=1, le=100, description="Maximum rows to include in preview"),
+    user: dict = Depends(get_current_user),
+):
+    """
+    Get a preview of a file's content for Agent context injection.
+
+    This endpoint reads the file and returns a structured preview that can be
+    embedded directly in the Agent's context window. This allows the Agent to
+    "see" the data immediately, similar to Gemini/ChatGPT.
+
+    Supported formats: CSV, Excel, Parquet, DTA, SAV
+
+    Args:
+        file_id: The upload session file ID
+        max_rows: Maximum number of rows to include (default: 10, max: 100)
+
+    Returns:
+        FilePreviewResponse with preview data as markdown table
+    """
+    user_id = auth_get_user_id(user)
+
+    # Get upload session to find the file
+    session = await get_upload_session(file_id, user_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    if session["status"] not in ("uploaded", "committed"):
+        raise HTTPException(status_code=400, detail="File not yet uploaded")
+
+    storage_path = session["storage_path"]
+    filename = session["filename"]
+    ext = os.path.splitext(filename)[1].lower()
+
+    try:
+        # Read file content from storage
+        if USE_LOCAL_STORAGE:
+            storage_filename = os.path.basename(storage_path)
+            user_dir = get_local_storage_path(user_id)
+            local_file_path = user_dir / storage_filename
+
+            def _read_file_sync():
+                with open(local_file_path, "rb") as f:
+                    return f.read()
+
+            file_content = await asyncio.to_thread(_read_file_sync)
+        else:
+            supabase = await get_supabase_client()
+            result = await supabase.storage.from_(BUCKET_NAME).download(storage_path)
+            file_content = result
+
+        file_size = len(file_content)
+
+        # Parse file based on extension
+        import io
+        import pandas as pd
+
+        if ext == ".csv":
+            df = pd.read_csv(io.BytesIO(file_content), nrows=max_rows + 1)
+        elif ext in (".xlsx", ".xls"):
+            df = pd.read_excel(io.BytesIO(file_content), nrows=max_rows + 1)
+        elif ext == ".parquet":
+            import pyarrow.parquet as pq
+            table = pq.read_table(io.BytesIO(file_content))
+            df = table.to_pandas().head(max_rows + 1)
+        elif ext == ".dta":
+            df = pd.read_stata(io.BytesIO(file_content))
+            df = df.head(max_rows + 1)
+        elif ext == ".sav":
+            import pyreadstat
+            df, meta = pyreadstat.read_sav(io.BytesIO(file_content))
+            df = df.head(max_rows + 1)
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}")
+
+        # Check if truncated
+        truncated = len(df) > max_rows
+        if truncated:
+            df = df.head(max_rows)
+
+        # Get total row count (approximate for large files)
+        total_rows = len(df)
+        if ext == ".csv":
+            # For CSV, count newlines for approximate total
+            try:
+                full_df = pd.read_csv(io.BytesIO(file_content))
+                total_rows = len(full_df)
+            except Exception:
+                pass
+
+        # Generate markdown preview
+        columns = df.columns.tolist()
+        preview_md = df.to_markdown(index=False)
+
+        return FilePreviewResponse(
+            file_id=file_id,
+            filename=filename,
+            preview=preview_md,
+            row_count=total_rows,
+            column_count=len(columns),
+            columns=columns,
+            truncated=truncated,
+            file_size=file_size,
+            preview_rows=len(df),
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate preview: {str(e)}")
+
+
 @app.get("/files/list", response_model=FileListResponse)
 async def list_files(user: dict = Depends(get_current_user)):
     """List all files uploaded by the user. Requires authentication."""

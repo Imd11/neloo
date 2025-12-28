@@ -17,7 +17,6 @@ import { ToolCall, ActionRequest, ReviewConfig } from "@/app/types/types";
 import { cn } from "@/lib/utils";
 import { LoadExternalComponent } from "@langchain/langgraph-sdk/react-ui";
 import { ToolApprovalInterrupt } from "@/app/components/ToolApprovalInterrupt";
-import { MarkdownContent } from "@/app/components/MarkdownContent";
 import { getConfig } from "@/lib/config";
 
 // Interface for generated files from execute_python
@@ -272,18 +271,11 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
                     <h4 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Result
                     </h4>
-                    {/* Use MarkdownContent for execute_python to render images */}
-                    {name === "execute_python" && typeof result === "string" ? (
-                      <div className="rounded-sm border border-border bg-muted/40 p-2">
-                        <MarkdownContent content={result} />
-                      </div>
-                    ) : (
-                      <pre className="m-0 overflow-x-auto whitespace-pre-wrap break-all rounded-sm border border-border bg-muted/40 p-2 font-mono text-xs leading-7 text-foreground">
-                        {typeof result === "string"
-                          ? result
-                          : JSON.stringify(result, null, 2)}
-                      </pre>
-                    )}
+                    <pre className="m-0 overflow-x-auto whitespace-pre-wrap break-all rounded-sm border border-border bg-muted/40 p-2 font-mono text-xs leading-7 text-foreground">
+                      {typeof result === "string"
+                        ? result
+                        : JSON.stringify(result, null, 2)}
+                    </pre>
                   </div>
                 )}
                 {/* Generated Files Section */}
