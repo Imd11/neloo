@@ -376,16 +376,20 @@ def list_supabase_files(user_id: str = "default") -> list[dict]:
         return files
     else:
         # In Supabase mode, list files from bucket
-        print(f"[FileSync] Using Supabase mode, bucket={BUCKET_NAME}")
+        print(f"[FileSync] ========== SUPABASE QUERY DEBUG ==========")
+        print(f"[FileSync] Bucket: {BUCKET_NAME}")
+        print(f"[FileSync] Query path: '{user_id}'")
         client = get_supabase_client()
         if not client:
-            print(f"[FileSync] Failed to get Supabase client")
+            print(f"[FileSync] ERROR: Failed to get Supabase client!")
             return []
 
         try:
-            print(f"[FileSync] Listing files from Supabase path: {user_id}")
+            print(f"[FileSync] Calling client.storage.from_('{BUCKET_NAME}').list(path='{user_id}')")
             result = client.storage.from_(BUCKET_NAME).list(path=user_id)
-            print(f"[FileSync] Supabase list result: {result}")
+            print(f"[FileSync] Raw result type: {type(result)}")
+            print(f"[FileSync] Raw result count: {len(result) if result else 0}")
+            print(f"[FileSync] Raw result: {result[:5] if result and len(result) > 5 else result}")
             files = []
             for item in result:
                 if item.get("name"):

@@ -271,9 +271,13 @@ class E2BSandboxExecutor(SandboxExecutor):
         are present even if pre-warming failed or sandbox was recreated.
         """
         try:
-            from .file_sync import list_supabase_files, sync_file_to_e2b, SUPABASE_URL, SUPABASE_SERVICE_KEY, USE_LOCAL_STORAGE
-            print(f"[E2BExecutor] Ensuring files synced for user {user_id}")
+            from .file_sync import list_supabase_files, sync_file_to_e2b, SUPABASE_URL, SUPABASE_SERVICE_KEY, USE_LOCAL_STORAGE, BUCKET_NAME
+            print(f"[E2BExecutor] ========== FILE SYNC DEBUG ==========")
+            print(f"[E2BExecutor] user_id = '{user_id}' (type: {type(user_id).__name__})")
             print(f"[E2BExecutor] Storage mode: {'LOCAL' if USE_LOCAL_STORAGE else 'SUPABASE'}")
+            print(f"[E2BExecutor] BUCKET_NAME = '{BUCKET_NAME}'")
+            print(f"[E2BExecutor] SUPABASE_URL configured: {bool(SUPABASE_URL)}")
+            print(f"[E2BExecutor] SUPABASE_SERVICE_KEY configured: {bool(SUPABASE_SERVICE_KEY)}")
 
             remote_files = list_supabase_files(user_id=user_id)
             print(f"[E2BExecutor] Found {len(remote_files)} files in storage for user {user_id}")

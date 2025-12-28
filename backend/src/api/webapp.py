@@ -548,6 +548,12 @@ async def init_upload(
     storage_filename = generate_storage_filename(data.filename)
     storage_path = f"{user_id}/{storage_filename}"
 
+    print(f"[Upload/Init] ========== UPLOAD DEBUG ==========")
+    print(f"[Upload/Init] user_id = '{user_id}'")
+    print(f"[Upload/Init] filename = '{data.filename}'")
+    print(f"[Upload/Init] storage_path = '{storage_path}'")
+    print(f"[Upload/Init] bucket = '{BUCKET_NAME}'")
+
     # Calculate expiration
     from datetime import timedelta
     expires_at = datetime.now() + timedelta(seconds=UPLOAD_SESSION_TTL_SECONDS)
@@ -639,11 +645,16 @@ async def upload_file_data(
             }
             content_type = content_types.get(ext, "application/octet-stream")
 
+            print(f"[Upload/Data] ========== STORAGE UPLOAD DEBUG ==========")
+            print(f"[Upload/Data] Uploading to bucket='{BUCKET_NAME}', path='{storage_path}'")
+            print(f"[Upload/Data] File size: {len(content)} bytes, content_type: {content_type}")
+
             await supabase.storage.from_(BUCKET_NAME).upload(
                 path=storage_path,
                 file=content,
                 file_options={"content-type": content_type},
             )
+            print(f"[Upload/Data] SUCCESS: File uploaded to Supabase Storage")
             sandbox_path = f"/home/user/data/{storage_filename}"
 
         # Update session status to uploaded
