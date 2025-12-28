@@ -19,8 +19,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -96,3 +96,5 @@ backend/data/
 # Old/Backup Directories
 # =============================================================================
 frontend-old/
+.vercel
+.env*.local
