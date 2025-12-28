@@ -5,6 +5,7 @@ import React, {
   useRef,
   useCallback,
   useMemo,
+  useEffect,
   FormEvent,
   Fragment,
 } from "react";
@@ -112,19 +113,20 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant }) => {
     autoUpload: true,
   });
 
-  const ensureThreadId = useCallback(async (): Promise<string> => {
-    if (threadId) return threadId;
-    const created = await client.threads.create({});
-    const id =
-      (created as any)?.thread_id ||
-      (created as any)?.threadId ||
-      (created as any)?.id;
-    if (!id || typeof id !== "string") {
-      throw new Error("Failed to create thread");
+  // Track pending file commits that need threadId
+  const pendingCommitRef = useRef<{
+    resolve: (threadId: string) => void;
+    reject: (error: Error) => void;
+  } | null>(null);
+
+  // When threadId changes (created by useStream), commit any pending files
+  useEffect(() => {
+    if (threadId && pendingCommitRef.current) {
+      const { resolve } = pendingCommitRef.current;
+      pendingCommitRef.current = null;
+      resolve(threadId);
     }
-    setThreadId(id);
-    return id;
-  }, [client, threadId, setThreadId]);
+  }, [threadId]);
 
   const pendingCount = useMemo(
     () => fileUpload.files.filter((f) => f.status === "pending").length,
@@ -156,14 +158,6 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant }) => {
       }
 
       try {
-        // Ensure thread exists before sending message
-        const currentThreadId = await ensureThreadId();
-
-        // Commit staged files to the thread (associates files with thread)
-        if (fileUpload.stagedFiles.length > 0) {
-          await fileUpload.commitFiles(currentThreadId);
-        }
-
         // Build message content with file references
         const uploadedFiles = fileUpload.uploadedFiles;
         let messageContent = input.trim();
@@ -173,15 +167,50 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant }) => {
 
         if (!messageContent && uploadedFiles.length === 0) return;
 
-        sendMessage(messageContent);
-        setInput("");
-        fileUpload.clearFiles();
+        // If we have staged files but no threadId yet, we need to wait for
+        // useStream to create the thread, then commit files
+        const hasStagedFiles = fileUpload.stagedFiles.length > 0;
+
+        if (hasStagedFiles && !threadId) {
+          // Create a promise that will be resolved when threadId is set
+          const threadIdPromise = new Promise<string>((resolve, reject) => {
+            pendingCommitRef.current = { resolve, reject };
+            // Set a timeout to prevent hanging
+            setTimeout(() => {
+              if (pendingCommitRef.current) {
+                pendingCommitRef.current = null;
+                reject(new Error("Thread creation timeout"));
+              }
+            }, 30000);
+          });
+
+          // Send message first - this will trigger useStream to create thread
+          sendMessage(messageContent);
+          setInput("");
+
+          // Wait for threadId to be created, then commit files
+          const newThreadId = await threadIdPromise;
+          await fileUpload.commitFiles(newThreadId);
+          fileUpload.clearFiles();
+        } else if (hasStagedFiles && threadId) {
+          // We already have a threadId, commit files first then send
+          await fileUpload.commitFiles(threadId);
+          sendMessage(messageContent);
+          setInput("");
+          fileUpload.clearFiles();
+        } else {
+          // No files to commit, just send message
+          // useStream will create thread if needed (via onThreadId callback)
+          sendMessage(messageContent);
+          setInput("");
+          fileUpload.clearFiles();
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         toast.error("Failed to send message", { description: message });
       }
     },
-    [submitDisabled, fileUpload, input, sendMessage, pendingCount, uploadingCount, ensureThreadId]
+    [submitDisabled, fileUpload, input, sendMessage, pendingCount, uploadingCount, threadId]
   );
 
   const handleKeyDown = useCallback(
