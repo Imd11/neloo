@@ -183,7 +183,9 @@ class E2BSandboxExecutor(SandboxExecutor):
         """Close sandbox for a user (must hold _lock)"""
         if user_id in self._sandboxes:
             try:
-                self._sandboxes[user_id].sandbox.close()
+                # e2b_code_interpreter.Sandbox uses kill() to terminate a sandbox.
+                # Using a non-existent close() caused resource leaks and prevented proper cleanup.
+                self._sandboxes[user_id].sandbox.kill()
             except Exception as e:
                 print(f"[E2BExecutor] Error closing sandbox for {user_id}: {e}")
             del self._sandboxes[user_id]
@@ -282,6 +284,13 @@ class E2BSandboxExecutor(SandboxExecutor):
             remote_files = list_supabase_files(user_id=user_id)
             print(f"[E2BExecutor] Found {len(remote_files)} files in storage for user {user_id}")
 
+            # Ensure the data directory exists even when there are no files to sync.
+            # This prevents downstream code that lists /home/user/data from failing.
+            try:
+                sandbox.files.make_dir("/home/user/data")
+            except Exception:
+                pass
+
             if remote_files:
                 # Get list of files already in sandbox
                 data_dir = "/home/user/data"
@@ -364,10 +373,9 @@ class E2BSandboxExecutor(SandboxExecutor):
                     if "sandbox was not found" in error_str or "502" in error_str:
                         if attempt < max_retries - 1:
                             print(f"[E2BExecutor] Sandbox expired for user {user_id}, recreating (attempt {attempt + 2})")
-                            # Clear the stale reference
+                            # Clear the stale reference and best-effort kill the sandbox to avoid leaks.
                             with self._lock:
-                                if user_id in self._sandboxes:
-                                    del self._sandboxes[user_id]
+                                self._close_sandbox_unlocked(user_id)
                             continue  # Retry with new sandbox
 
                     # Other errors or final attempt failed
@@ -397,6 +405,12 @@ class E2BSandboxExecutor(SandboxExecutor):
         is called, so we don't need to sync again here.
         """
         try:
+            # Make sure /home/user/data exists for user code and for generated file collection.
+            try:
+                sandbox.files.make_dir("/home/user/data")
+            except Exception:
+                pass
+
             print(f"[E2BExecutor] Executing code for user {user_id}")
             execution = sandbox.run_code(code, timeout=timeout)
 

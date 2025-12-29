@@ -16,6 +16,7 @@ Architecture:
 import os
 from typing import Annotated
 from langchain_core.messages import HumanMessage
+from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 from deepagents import create_deep_agent, SubAgent
 
@@ -300,6 +301,52 @@ When writing Python code:
 4. Always copy the EXACT image URL from the tool result - do not modify or reconstruct it.
 """
 
+def _resolve_thread_id_from_config(config: RunnableConfig | None) -> str | None:
+    if not config:
+        return None
+    try:
+        configurable = config.get("configurable") or {}
+        if isinstance(configurable, dict):
+            thread_id = configurable.get("thread_id")
+            if isinstance(thread_id, str) and thread_id:
+                return thread_id
+    except Exception:
+        return None
+    return None
+
+
+def _resolve_user_id_for_thread(thread_id: str) -> str | None:
+    """
+    Resolve authenticated user_id for a LangGraph thread_id via DB.
+
+    Tools execute in a ThreadPoolExecutor where ContextVars may not propagate,
+    so reading user_id_ctx/thread_id_ctx can fall back to "default".
+    """
+    if not thread_id or thread_id == "default":
+        return None
+    try:
+        from ..storage.supabase_db import USE_SUPABASE_DB, get_thread_by_langgraph_id
+        if not USE_SUPABASE_DB:
+            return None
+
+        import asyncio
+
+        async def _get_user_id() -> str | None:
+            record = await get_thread_by_langgraph_id(thread_id)
+            if record and isinstance(record.get("user_id"), str):
+                return record["user_id"]
+            return None
+
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(_get_user_id())
+        else:
+            return None
+    except Exception as e:
+        print(f"[execute_python] Warning: Failed to resolve user_id for thread {thread_id[:8]}...: {e}")
+        return None
+
 
 # =============================================================================
 # Tool Definitions
@@ -309,6 +356,7 @@ When writing Python code:
 def execute_python(
     code: Annotated[str, "Python code to execute"],
     timeout: Annotated[int, "Timeout in seconds"] = 120,
+    config: RunnableConfig = None,  # type: ignore[assignment]
 ) -> str:
     """
     Execute Python code in a secure sandbox environment.
@@ -326,9 +374,27 @@ def execute_python(
     - Summary is returned for LLM context
     - If output exceeds threshold, full data is saved to file with path reference
     """
-    # Get user_id and thread_id from context
+    # Resolve thread_id/user_id. Do not rely solely on ContextVars because tools
+    # execute in a ThreadPoolExecutor where ContextVars may not propagate.
+    thread_id = _resolve_thread_id_from_config(config) or _thread_id_ctx.get()
     user_id = _user_id_ctx.get()
-    thread_id = _thread_id_ctx.get()
+
+    if user_id in ("default", "anonymous"):
+        resolved = _resolve_user_id_for_thread(thread_id) if isinstance(thread_id, str) else None
+        if resolved:
+            user_id = resolved
+
+    if user_id in ("default", "anonymous"):
+        return (
+            "Execution failed: missing authenticated user context.\n"
+            "The server could not determine your user_id for sandbox file sync.\n"
+            "Please refresh the page and sign in again."
+        )
+
+    # Ensure downstream storage + image saving sees the correct context within this tool thread.
+    _user_id_ctx.set(user_id)
+    if isinstance(thread_id, str) and thread_id:
+        _thread_id_ctx.set(thread_id)
 
     result = execute_python_tool(code=code, timeout=timeout, user_id=user_id, thread_id=thread_id)
 
