@@ -1,11 +1,8 @@
-import { Inter } from "next/font/google";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import "./globals.css";
-
-const inter = Inter({ subsets: ["latin"] });
 
 // Script to set theme before React hydration to prevent flash
 const themeScript = `
@@ -38,7 +35,6 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body
-        className={inter.className}
         suppressHydrationWarning
       >
         <ThemeProvider>

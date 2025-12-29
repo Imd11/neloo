@@ -17,8 +17,6 @@ import {
   Download,
   Trash2,
   FolderOpen,
-  Upload,
-  X,
   Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";

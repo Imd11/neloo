@@ -1,7 +1,7 @@
 import useSWRInfinite from "swr/infinite";
 import type { Thread } from "@langchain/langgraph-sdk";
-import { Client } from "@langchain/langgraph-sdk";
 import { getConfig } from "@/lib/config";
+import { useAuth } from "@/providers/AuthProvider";
 
 export interface ThreadItem {
   id: string;
@@ -19,14 +19,11 @@ export function useThreads(props: {
   limit?: number;
 }) {
   const pageSize = props.limit || DEFAULT_PAGE_SIZE;
+  const { session } = useAuth();
 
   return useSWRInfinite(
     (pageIndex: number, previousPageData: ThreadItem[] | null) => {
       const config = getConfig();
-      const apiKey =
-        config?.langsmithApiKey ||
-        process.env.NEXT_PUBLIC_LANGSMITH_API_KEY ||
-        "";
 
       if (!config) {
         return null;
@@ -42,91 +39,57 @@ export function useThreads(props: {
         pageIndex,
         pageSize,
         deploymentUrl: config.deploymentUrl,
-        assistantId: config.assistantId,
-        apiKey,
         status: props?.status,
+        accessToken: session?.access_token ?? null,
       };
     },
     async ({
       deploymentUrl,
-      assistantId,
-      apiKey,
       status,
       pageIndex,
       pageSize,
+      accessToken,
     }: {
       kind: "threads";
       pageIndex: number;
       pageSize: number;
       deploymentUrl: string;
-      assistantId: string;
-      apiKey: string;
       status?: Thread["status"];
+      accessToken: string | null;
     }) => {
-      const client = new Client({
-        apiUrl: deploymentUrl,
-        defaultHeaders: apiKey ? { "X-Api-Key": apiKey } : {},
+      if (!accessToken) {
+        // Not authenticated: do not show any history.
+        return [];
+      }
+
+      const params = new URLSearchParams({
+        limit: String(pageSize),
+        offset: String(pageIndex * pageSize),
       });
 
-      // Check if assistantId is a UUID (deployed) or graph name (local)
-      const isUUID =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-          assistantId
-        );
-
-      const threads = await client.threads.search({
-        limit: pageSize,
-        offset: pageIndex * pageSize,
-        sortBy: "updated_at" as const,
-        sortOrder: "desc" as const,
-        status,
-        // Only filter by assistant_id metadata for deployed graphs (UUIDs)
-        // Local dev graphs don't set this metadata
-        ...(isUUID ? { metadata: { assistant_id: assistantId } } : {}),
+      const resp = await fetch(`${deploymentUrl}/api/threads?${params.toString()}`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
 
-      return threads.map((thread): ThreadItem => {
-        let title = "Untitled Thread";
-        let description = "";
+      if (!resp.ok) {
+        // If auth fails or backend is unavailable, return empty list rather than leaking global history.
+        return [];
+      }
 
-        try {
-          if (thread.values && typeof thread.values === "object") {
-            const values = thread.values as any;
-            const firstHumanMessage = values.messages.find(
-              (m: any) => m.type === "human"
-            );
-            if (firstHumanMessage?.content) {
-              const content =
-                typeof firstHumanMessage.content === "string"
-                  ? firstHumanMessage.content
-                  : firstHumanMessage.content[0]?.text || "";
-              title = content.slice(0, 50) + (content.length > 50 ? "..." : "");
-            }
-            const firstAiMessage = values.messages.find(
-              (m: any) => m.type === "ai"
-            );
-            if (firstAiMessage?.content) {
-              const content =
-                typeof firstAiMessage.content === "string"
-                  ? firstAiMessage.content
-                  : firstAiMessage.content[0]?.text || "";
-              description = content.slice(0, 100);
-            }
-          }
-        } catch {
-          // Fallback to thread ID
-          title = `Thread ${thread.thread_id.slice(0, 8)}`;
-        }
+      const data = await resp.json();
+      const threads = Array.isArray(data?.threads) ? data.threads : [];
 
-        return {
-          id: thread.thread_id,
-          updatedAt: new Date(thread.updated_at),
-          status: thread.status,
-          title,
-          description,
-          assistantId,
-        };
-      });
+      // DB threads do not contain LangGraph status or message previews; keep UI stable with defaults.
+      return threads.map((t: any): ThreadItem => ({
+        id: t.langgraph_thread_id,
+        updatedAt: new Date(t.updated_at || t.created_at || Date.now()),
+        status: "idle" as Thread["status"],
+        title: t.title || "Untitled Thread",
+        description: "",
+        assistantId: undefined,
+      }));
     },
     {
       revalidateFirstPage: true,

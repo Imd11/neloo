@@ -17,7 +17,6 @@ import {
   Clock,
   Circle,
   FileIcon,
-  Loader2,
   AlertCircle,
 } from "lucide-react";
 import { ChatMessage } from "@/app/components/ChatMessage";
@@ -37,7 +36,6 @@ import { toast } from "sonner";
 import { useQueryState } from "nuqs";
 import { getConfig } from "@/lib/config";
 import { useAuth } from "@/providers/AuthProvider";
-import { useClient } from "@/providers/ClientProvider";
 import { formatFilesForMessage } from "@/lib/data-file-utils";
 import { useDataFileUpload } from "@/app/hooks/useDataFileUpload";
 import { DataFileUpload } from "@/app/components/DataFileUpload";
@@ -102,8 +100,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant }) => {
   const config = getConfig();
   const apiUrl = config?.deploymentUrl || "";
   const { session } = useAuth();
-  const client = useClient();
-  const [threadId, setThreadId] = useQueryState("threadId");
+  const [threadId] = useQueryState("threadId");
 
   const fileUpload = useDataFileUpload({
     apiUrl,

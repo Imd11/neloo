@@ -3,8 +3,6 @@
  * 这些变量只在登录页生效，不影响主应用
  */
 
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap');
-
 /* Light Mode - 100%复制自GitHub原始 */
 .login-page {
   --background: 220 25% 97%;

@@ -689,6 +689,18 @@ async def commit_uploads(
     committed_files = []
     errors = []
 
+    # Ensure thread exists once (the per-file loop is for file-level validation/commit).
+    # If the LangGraph thread ID is already associated with a different user, block the commit.
+    existing_thread = await get_thread_by_langgraph_id(data.thread_id) if USE_SUPABASE_DB else None
+    if existing_thread and existing_thread.get("user_id") != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to use this thread")
+
+    await create_thread(
+        user_id=user_id,
+        langgraph_thread_id=data.thread_id,
+        title="New Task",
+    )
+
     for file_id in data.file_ids:
         # Verify session exists and is uploaded
         session = await get_upload_session(file_id, user_id)
@@ -699,13 +711,6 @@ async def commit_uploads(
         if session["status"] != "uploaded":
             errors.append({"file_id": file_id, "error": f"Invalid status: {session['status']}"})
             continue
-
-        # Ensure thread exists
-        await create_thread(
-            user_id=user_id,
-            langgraph_thread_id=data.thread_id,
-            title="New Task",
-        )
 
         # Create file record in files table
         if USE_SUPABASE_DB:
@@ -728,6 +733,7 @@ async def commit_uploads(
                 file_size=session.get("actual_size") or session["expected_size"],
                 content_type=content_type,
                 file_type="uploaded",
+                file_id=file_id,
                 thread_id=data.thread_id,
             )
 
@@ -1815,11 +1821,18 @@ async def create_thread_api(
         raise HTTPException(status_code=503, detail="Database not configured")
 
     try:
-        thread_record = await create_thread(
-            user_id=user_id,
-            langgraph_thread_id=data.langgraph_thread_id,
-            title=data.title,
-        )
+        # If the thread already exists, only the owner can reuse it.
+        existing = await get_thread_by_langgraph_id(data.langgraph_thread_id)
+        if existing:
+            if existing.get("user_id") != user_id:
+                raise HTTPException(status_code=403, detail="Not authorized")
+            thread_record = existing
+        else:
+            thread_record = await create_thread(
+                user_id=user_id,
+                langgraph_thread_id=data.langgraph_thread_id,
+                title=data.title,
+            )
 
         if not thread_record:
             raise HTTPException(status_code=500, detail="Failed to create thread")

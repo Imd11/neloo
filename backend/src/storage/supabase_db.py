@@ -74,6 +74,7 @@ async def save_file_record(
     file_size: int,
     content_type: str,
     file_type: FileType,
+    file_id: Optional[str] = None,
     thread_id: Optional[str] = None,
 ) -> Optional[dict]:
     """
@@ -100,7 +101,7 @@ async def save_file_record(
         if not supabase:
             return None
 
-        file_id = str(uuid.uuid4())
+        file_id = file_id or str(uuid.uuid4())
 
         # Insert into files table
         # - filename: stored filename (basename of storage path)
@@ -128,7 +129,9 @@ async def save_file_record(
             "download_url": f"/api/files/{file_id}/download",
         }
 
-        result = await supabase.table("files").insert(file_data).execute()
+        # Use upsert so callers can be idempotent (e.g. commit retries, multi-instance retries),
+        # and so staged uploads can reuse the same file_id across upload_sessions/files.
+        result = await supabase.table("files").upsert(file_data, on_conflict="id").execute()
 
         if result.data and len(result.data) > 0:
             file_record = result.data[0]

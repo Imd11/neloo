@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { getConfig } from "@/lib/config";
 import { Message } from "@langchain/langgraph-sdk";
 import { useAuth } from "@/providers/AuthProvider";
@@ -24,27 +23,6 @@ import { useAuth } from "@/providers/AuthProvider";
 
 // File types matching backend database schema
 type FileType = "uploaded" | "generated" | "chart" | "code";
-
-interface UploadedFile {
-  id?: string;
-  filename: string;
-  original_filename: string;
-  storage_path: string;
-  sandbox_path: string;
-  size: number;
-  created_at?: string;
-  download_url?: string;
-  file_type?: FileType;
-}
-
-interface GeneratedFile {
-  id?: string;
-  filename: string;
-  size: number;
-  sandbox_path: string;
-  download_url?: string;
-  file_type?: FileType;
-}
 
 // Database-driven file info (from /api/files/by-type endpoint)
 interface DatabaseFile {

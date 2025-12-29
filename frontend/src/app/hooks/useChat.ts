@@ -14,6 +14,7 @@ import { useClient } from "@/providers/ClientProvider";
 import { useQueryState } from "nuqs";
 import { getConfig } from "@/lib/config";
 import { useAuth } from "@/providers/AuthProvider";
+import { toast } from "sonner";
 
 export type StateType = {
   messages: Message[];
@@ -41,16 +42,26 @@ export function useChat({
   const { session } = useAuth();
   const config = getConfig();
   const createdThreadsRef = useRef<Set<string>>(new Set());
+  const creatingThreadsRef = useRef<Set<string>>(new Set());
 
-  // Create thread record in database when threadId is first set
+  // If the URL contains a threadId but the user isn't logged in, clear it.
+  // This prevents unauthenticated users from accessing globally addressable threads.
+  useEffect(() => {
+    if (!threadId) return;
+    if (session?.access_token) return;
+    setThreadId(null);
+  }, [threadId, session?.access_token, setThreadId]);
+
+  // Create/verify the thread record in the DB when threadId is set.
+  // This is also our ownership gate: if the thread exists but belongs to another user, the backend returns 403.
   useEffect(() => {
     if (!threadId || !session || !config) return;
 
-    // Skip if already created for this threadId
+    // Skip if already created/verified for this threadId
     if (createdThreadsRef.current.has(threadId)) return;
+    if (creatingThreadsRef.current.has(threadId)) return;
 
-    // Mark as created to prevent duplicate calls
-    createdThreadsRef.current.add(threadId);
+    creatingThreadsRef.current.add(threadId);
 
     // Create thread in database
     const createThread = async () => {
@@ -69,20 +80,31 @@ export function useChat({
 
         if (response.ok) {
           console.log(`[useChat] Created thread record for: ${threadId.slice(0, 8)}...`);
+          createdThreadsRef.current.add(threadId);
           onHistoryRevalidate?.();
+          return;
         } else {
-          const error = await response.text();
-          console.error("[useChat] Failed to create thread:", error);
-          // Don't throw - thread creation is not critical for basic functionality
+          const errorText = await response.text();
+          // If the thread belongs to another user, clear it immediately to prevent data leakage.
+          if (response.status === 403) {
+            console.warn("[useChat] Thread ownership mismatch, clearing threadId");
+            setThreadId(null);
+            toast.error("无权限访问该对话", {
+              description: "该对话不属于当前账号，已为你切换到新对话。",
+            });
+            return;
+          }
+          console.error("[useChat] Failed to create thread:", errorText);
         }
       } catch (error) {
         console.error("[useChat] Thread creation error:", error);
-        // Silent failure - LangGraph thread still works without DB record
+      } finally {
+        creatingThreadsRef.current.delete(threadId);
       }
     };
 
     createThread();
-  }, [threadId, session, config, onHistoryRevalidate]);
+  }, [threadId, session, config, onHistoryRevalidate, setThreadId]);
 
   // Handle errors, especially 404 when thread doesn't exist
   const handleError = (error: unknown) => {
