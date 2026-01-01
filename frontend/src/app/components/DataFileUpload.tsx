@@ -41,11 +41,7 @@ export function DataFileUpload({
         disabled={disabled || isUploading}
         className="h-8 px-2 text-muted-foreground hover:text-foreground"
       >
-        {isUploading ? (
-          <Loader2 className="h-4 w-4 animate-spin mr-1" />
-        ) : (
-          <Paperclip className="h-4 w-4 mr-1" />
-        )}
+        <Paperclip className="h-4 w-4 mr-1" />
         <span className="text-xs">Upload Data</span>
       </Button>
 

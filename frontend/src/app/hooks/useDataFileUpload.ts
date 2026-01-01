@@ -275,9 +275,6 @@ export function useDataFileUpload({
 
       if (newFiles.length > 0) {
         setFiles((prev) => [...prev, ...newFiles]);
-        toast.success("Files added", {
-          description: `${newFiles.length} file(s) ready for upload`,
-        });
       }
     },
     [files, maxFiles]

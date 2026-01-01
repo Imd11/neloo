@@ -16,6 +16,11 @@ import {
   extractStringFromMessageContent,
 } from "@/app/utils/utils";
 import { cn } from "@/lib/utils";
+import {
+  stripUploadedFilesAnnotation,
+  parseUploadedFilesAnnotation,
+} from "@/lib/uploadedFilesAnnotation";
+import { MessageAttachments } from "@/app/components/MessageAttachments";
 
 interface ChatMessageProps {
   message: Message;
@@ -42,7 +47,16 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     graphId,
   }) => {
     const isUser = message.type === "human";
-    const messageContent = extractStringFromMessageContent(message);
+    const rawMessageContent = extractStringFromMessageContent(message);
+
+    // For user messages, parse out file attachments and get clean display text
+    const messageContent = isUser
+      ? stripUploadedFilesAnnotation(rawMessageContent)
+      : rawMessageContent;
+    const userAttachments = isUser
+      ? parseUploadedFilesAnnotation(rawMessageContent)
+      : [];
+
     const hasContent = messageContent && messageContent.trim() !== "";
     const hasToolCalls = toolCalls.length > 0;
     const subAgents = useMemo(() => {
@@ -97,7 +111,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
             isUser ? "max-w-[70%]" : "w-full"
           )}
         >
-          {hasContent && (
+          {(hasContent || userAttachments.length > 0) && (
             <div className={cn("relative flex items-end gap-0")}>
               <div
                 className={cn(
@@ -113,9 +127,21 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                 }
               >
                 {isUser ? (
-                  <p className="m-0 whitespace-pre-wrap break-words text-sm leading-relaxed">
-                    {messageContent}
-                  </p>
+                  <div>
+                    {/* Attachment chips at top of user message */}
+                    {userAttachments.length > 0 && (
+                      <MessageAttachments
+                        attachments={userAttachments}
+                        className={hasContent ? "mb-2" : ""}
+                      />
+                    )}
+                    {/* User prompt text */}
+                    {hasContent && (
+                      <p className="m-0 whitespace-pre-wrap break-words text-sm leading-relaxed">
+                        {messageContent}
+                      </p>
+                    )}
+                  </div>
                 ) : hasContent ? (
                   <MarkdownContent content={messageContent} />
                 ) : null}
