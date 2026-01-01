@@ -111,14 +111,20 @@ export const ChatMessage = React.memo<ChatMessageProps>(
             isUser ? "max-w-[70%]" : "w-full"
           )}
         >
-          {(hasContent || userAttachments.length > 0) && (
+          {/* Attachment chips outside the bubble for user messages */}
+          {isUser && userAttachments.length > 0 && (
+            <div className="mt-4 flex justify-end">
+              <MessageAttachments attachments={userAttachments} />
+            </div>
+          )}
+          {(hasContent || (!isUser && userAttachments.length > 0)) && (
             <div className={cn("relative flex items-end gap-0")}>
               <div
                 className={cn(
-                  "mt-4 overflow-hidden break-words text-sm font-normal leading-[150%]",
+                  "mt-2 overflow-hidden break-words text-sm font-normal leading-[150%]",
                   isUser
                     ? "rounded-xl rounded-br-none border border-border px-3 py-2 text-foreground"
-                    : "text-primary"
+                    : "mt-4 text-primary"
                 )}
                 style={
                   isUser
@@ -127,21 +133,11 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                 }
               >
                 {isUser ? (
-                  <div>
-                    {/* Attachment chips at top of user message */}
-                    {userAttachments.length > 0 && (
-                      <MessageAttachments
-                        attachments={userAttachments}
-                        className={hasContent ? "mb-2" : ""}
-                      />
-                    )}
-                    {/* User prompt text */}
-                    {hasContent && (
-                      <p className="m-0 whitespace-pre-wrap break-words text-sm leading-relaxed">
-                        {messageContent}
-                      </p>
-                    )}
-                  </div>
+                  hasContent && (
+                    <p className="m-0 whitespace-pre-wrap break-words text-sm leading-relaxed">
+                      {messageContent}
+                    </p>
+                  )
                 ) : hasContent ? (
                   <MarkdownContent content={messageContent} />
                 ) : null}

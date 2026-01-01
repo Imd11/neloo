@@ -7,7 +7,7 @@
  * These functions are UI-only and do not affect backend logic.
  */
 
-import { getFileTypeLabel, formatFileSize } from "./data-file-utils";
+import { getFileTypeLabel } from "./data-file-utils";
 
 export interface ParsedAttachment {
   filename: string;
