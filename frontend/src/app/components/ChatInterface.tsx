@@ -684,7 +684,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant }) => {
                 <Button
                   type={isLoading ? "button" : "submit"}
                   variant={isLoading ? "destructive" : "default"}
-                  onClick={isLoading ? stopStream : handleSubmit}
+                  onClick={isLoading ? stopStream : undefined}
                   disabled={!isLoading && (submitDisabled || !input.trim())}
                 >
                   {isLoading ? (
