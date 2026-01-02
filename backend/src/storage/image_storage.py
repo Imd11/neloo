@@ -264,20 +264,16 @@ class SupabaseImageStorage(ImageStorageBackend):
             return False
 
     def save(self, image_id: str, data: bytes) -> bool:
-        """Save image to Supabase Storage (runs in thread pool if in async context)."""
-        try:
-            loop = asyncio.get_running_loop()
-            # We're in an async context, run sync code in thread pool
-            future = loop.run_in_executor(None, self._save_sync, image_id, data)
-            # Use asyncio.run_coroutine_threadsafe alternative pattern
-            # Since we're already in an event loop, we can't block on the future
-            # Instead, schedule it and return optimistically
-            # This is a fire-and-forget pattern for non-blocking saves
-            asyncio.ensure_future(asyncio.wrap_future(future))
-            return True  # Optimistic return
-        except RuntimeError:
-            # No running event loop, safe to call sync directly
-            return self._save_sync(image_id, data)
+        """Save image to Supabase Storage.
+
+        CRITICAL: This method now runs synchronously to ensure reliable uploads.
+        The previous "fire-and-forget" pattern caused random upload failures
+        because async tasks could be cancelled before completion.
+        """
+        # Always use synchronous save to ensure reliability
+        # The performance cost is acceptable (~100-500ms per image)
+        # compared to the risk of losing images
+        return self._save_sync(image_id, data)
 
     def _get_sync(self, image_id: str) -> Optional[bytes]:
         """Synchronous get implementation."""
