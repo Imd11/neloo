@@ -371,6 +371,25 @@ async def delete_thread_file_link(thread_db_id: str, file_id: str) -> bool:
         return False
 
 
+async def delete_thread_record(thread_db_id: str, user_id: str) -> bool:
+    """Delete a thread record by DB id (verifying ownership)."""
+    if not USE_SUPABASE_DB:
+        return False
+    try:
+        supabase = await get_supabase_client()
+        if not supabase:
+            return False
+        result = await supabase.table("threads")\
+            .delete()\
+            .eq("id", thread_db_id)\
+            .eq("user_id", user_id)\
+            .execute()
+        return bool(result.data)
+    except Exception as e:
+        print(f"[SupabaseDB] Error deleting thread record: {e}")
+        return False
+
+
 async def get_file_by_id(file_id: str) -> Optional[dict]:
     """Fetch a file record by ID."""
     if not USE_SUPABASE_DB:

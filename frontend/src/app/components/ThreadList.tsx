@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { format } from "date-fns";
-import { Loader2, MessageSquare } from "lucide-react";
+import { Loader2, MessageSquare, Trash2 } from "lucide-react";
 import { useQueryState } from "nuqs";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -20,6 +20,9 @@ import {
 import { cn } from "@/lib/utils";
 import type { ThreadItem } from "@/app/hooks/useThreads";
 import { useThreads } from "@/app/hooks/useThreads";
+import { getConfig } from "@/lib/config";
+import { useAuth } from "@/providers/AuthProvider";
+import { toast } from "sonner";
 
 type StatusFilter = "all" | "idle" | "busy" | "interrupted" | "error";
 
@@ -123,8 +126,10 @@ export function ThreadList({
   onClose,
   onInterruptCountChange,
 }: ThreadListProps) {
-  const [currentThreadId] = useQueryState("threadId");
+  const [currentThreadId, setCurrentThreadId] = useQueryState("threadId");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const config = getConfig();
+  const { session } = useAuth();
 
   const threads = useThreads({
     status: statusFilter === "all" ? undefined : statusFilter,
@@ -177,6 +182,47 @@ export function ThreadList({
   const interruptedCount = useMemo(() => {
     return flattened.filter((t) => t.status === "interrupted").length;
   }, [flattened]);
+
+  const handleDeleteThread = useCallback(
+    async (threadId: string) => {
+      if (!config?.deploymentUrl) return;
+      if (!session?.access_token) {
+        toast.error("请先登录");
+        return;
+      }
+
+      const ok = window.confirm("确认删除该对话？此操作不可恢复（不会删除文件）。");
+      if (!ok) return;
+
+      try {
+        const resp = await fetch(
+          `${config.deploymentUrl}/api/threads/${encodeURIComponent(threadId)}`,
+          {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          }
+        );
+
+        if (!resp.ok) {
+          const text = await resp.text();
+          throw new Error(text || `HTTP ${resp.status}`);
+        }
+
+        // If deleting the currently open thread, reset to a new thread.
+        if (currentThreadId === threadId) {
+          await setCurrentThreadId(null);
+        }
+
+        await threads.mutate();
+        onClose?.();
+      } catch (e) {
+        toast.error("删除失败", {
+          description: e instanceof Error ? e.message : String(e),
+        });
+      }
+    },
+    [config?.deploymentUrl, currentThreadId, onClose, session?.access_token, setCurrentThreadId, threads]
+  );
 
   // Expose thread list revalidation to parent component
   // Use refs to create a stable callback that always calls the latest mutate function
@@ -286,18 +332,19 @@ export function ThreadList({
                   </h4>
                   <div className="flex flex-col gap-1">
                     {groupThreads.map((thread) => (
-                      <button
+                      <div
                         key={thread.id}
-                        type="button"
                         onClick={() => onThreadSelect(thread.id)}
                         className={cn(
-                          "grid w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors duration-200",
+                          "group grid w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors duration-200",
                           "hover:bg-accent",
                           currentThreadId === thread.id
                             ? "border border-primary bg-accent hover:bg-accent"
                             : "border border-transparent bg-transparent"
                         )}
                         aria-current={currentThreadId === thread.id}
+                        role="button"
+                        tabIndex={0}
                       >
                         <div className="min-w-0 flex-1">
                           {/* Title + Timestamp Row */}
@@ -315,16 +362,31 @@ export function ThreadList({
                               {thread.description}
                             </p>
                             <div className="ml-2 flex-shrink-0">
-                              <div
-                                className={cn(
-                                  "h-2 w-2 rounded-full",
-                                  getThreadColor(thread.status)
-                                )}
-                              />
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className={cn(
+                                    "h-2 w-2 rounded-full",
+                                    getThreadColor(thread.status)
+                                  )}
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    void handleDeleteThread(thread.id);
+                                  }}
+                                  aria-label="Delete thread"
+                                >
+                                  <Trash2 className="h-4 w-4 text-muted-foreground" />
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </button>
+                      </div>
                     ))}
                   </div>
                 </div>

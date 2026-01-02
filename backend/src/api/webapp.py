@@ -60,6 +60,7 @@ from ..storage.supabase_db import (
     count_file_thread_links,
     delete_file_record,
     delete_thread_file_link,
+    delete_thread_record,
     create_thread,
     get_user_threads,
     get_thread_by_langgraph_id,
@@ -1999,3 +2000,68 @@ async def update_thread_api(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update thread: {str(e)}")
+
+
+@app.delete("/api/threads/{langgraph_thread_id}")
+async def delete_thread_api(
+    langgraph_thread_id: str,
+    delete_orphan_files: bool = Query(False, description="If true, also delete files only used by this thread"),
+    user: dict = Depends(get_current_user),
+):
+    """
+    Delete a thread owned by the current user.
+
+    Default behavior deletes only the thread record (and cascaded thread_files), and does NOT delete files/storage
+    because files may be reused across threads.
+    """
+    user_id = auth_get_user_id(user)
+    if not USE_SUPABASE_DB:
+        raise HTTPException(status_code=503, detail="Database not configured")
+
+    thread_record = await get_thread_by_langgraph_id(langgraph_thread_id)
+    if not thread_record:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    if thread_record.get("user_id") != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    thread_db_id = thread_record["id"]
+
+    files_snapshot: list[dict] = []
+    if delete_orphan_files:
+        files_snapshot = await get_thread_files(thread_id=thread_db_id)
+
+    deleted = await delete_thread_record(thread_db_id=thread_db_id, user_id=user_id)
+    if not deleted:
+        raise HTTPException(status_code=500, detail="Failed to delete thread")
+
+    if delete_orphan_files and files_snapshot:
+        supabase = await get_supabase_client()
+        for f in files_snapshot:
+            file_id = f.get("id")
+            if not file_id:
+                continue
+            if f.get("user_id") != user_id:
+                continue
+            if await count_file_thread_links(file_id=file_id, user_id=user_id) != 0:
+                continue
+
+            bucket = f.get("bucket")
+            storage_path = f.get("storage_path")
+            file_type = f.get("file_type")
+            if not bucket:
+                if file_type == "uploaded":
+                    bucket = BUCKET_NAME
+                elif file_type in ("generated", "code"):
+                    bucket = "data-analyst-generated"
+                elif file_type == "chart":
+                    bucket = "data-analyst-images"
+
+            try:
+                if not USE_LOCAL_STORAGE and storage_path and bucket and supabase:
+                    await supabase.storage.from_(bucket).remove([storage_path])
+            except Exception:
+                pass
+
+            await delete_file_record(file_id=file_id, user_id=user_id)
+
+    return {"success": True}
