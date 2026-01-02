@@ -413,15 +413,21 @@ async def create_thread(
     title: str = "New Task",
 ) -> Optional[dict]:
     """
-    Create a thread record in the threads table.
+    Create or get a thread record in the threads table (idempotent/upsert pattern).
+
+    This function first checks if a thread with the same (user_id, langgraph_thread_id)
+    already exists. If so, returns the existing record. Otherwise, creates a new one.
+
+    This ensures idempotency even without a database UNIQUE constraint, preventing
+    duplicate threads from being created by concurrent requests.
 
     Args:
         user_id: The user's ID (from Supabase Auth)
         langgraph_thread_id: The LangGraph thread ID (UUID from frontend)
-        title: Optional thread title
+        title: Optional thread title (only used for new threads)
 
     Returns:
-        The created thread record, or None if failed
+        The thread record (existing or newly created), or None if failed
     """
     if not USE_SUPABASE_DB:
         print(f"[SupabaseDB] Skipping create_thread (not configured)")
@@ -432,6 +438,18 @@ async def create_thread(
         if not supabase:
             return None
 
+        # First, check if thread already exists for this user + langgraph_thread_id
+        existing = await supabase.table("threads")\
+            .select("*")\
+            .eq("user_id", user_id)\
+            .eq("langgraph_thread_id", langgraph_thread_id)\
+            .execute()
+
+        if existing.data and len(existing.data) > 0:
+            print(f"[SupabaseDB] Thread already exists: {langgraph_thread_id[:8]}... (returning existing)")
+            return existing.data[0]
+
+        # Thread doesn't exist, create new one
         thread_id = str(uuid.uuid4())
 
         thread_data = {
@@ -451,13 +469,15 @@ async def create_thread(
         return None
 
     except Exception as e:
-        # Check if it's a duplicate key error
+        # Handle race condition: if another request created the thread between
+        # our check and insert, we'll get a duplicate key error (if UNIQUE constraint exists)
         if "duplicate" in str(e).lower() or "unique" in str(e).lower():
-            print(f"[SupabaseDB] Thread already exists: {langgraph_thread_id[:8]}...")
-            # Try to fetch the existing thread
+            print(f"[SupabaseDB] Thread created by concurrent request: {langgraph_thread_id[:8]}...")
+            # Fetch the existing thread
             try:
                 result = await supabase.table("threads")\
                     .select("*")\
+                    .eq("user_id", user_id)\
                     .eq("langgraph_thread_id", langgraph_thread_id)\
                     .execute()
                 if result.data and len(result.data) > 0:
