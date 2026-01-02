@@ -18,6 +18,7 @@ import {
   Circle,
   FileIcon,
   AlertCircle,
+  FolderOpen,
 } from "lucide-react";
 import { ChatMessage } from "@/app/components/ChatMessage";
 import type {
@@ -45,6 +46,8 @@ const MAX_VISIBLE_CHARS = 100000;
 
 interface ChatInterfaceProps {
   assistant: Assistant | null;
+  onOpenFilePanel?: () => void;
+  showFilePanelButton?: boolean;
 }
 
 const getStatusIcon = (status: TodoItem["status"], className?: string) => {
@@ -73,7 +76,7 @@ const getStatusIcon = (status: TodoItem["status"], className?: string) => {
   }
 };
 
-export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant }) => {
+export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, onOpenFilePanel, showFilePanelButton }) => {
   const [metaOpen, setMetaOpen] = useState<"tasks" | "files" | null>(null);
   const tasksContainerRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -679,6 +682,20 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant }) => {
                   onTriggerSelect={() => fileUpload.inputRef.current?.click()}
                   isUploading={fileUpload.isUploading}
                 />
+                {/* FilePanel button - show when there's a thread OR local files */}
+                {(showFilePanelButton || hasUploadFiles) && onOpenFilePanel && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={onOpenFilePanel}
+                    className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                    title="View files"
+                  >
+                    <FolderOpen size={16} />
+                    <span className="ml-1 text-xs">Files</span>
+                  </Button>
+                )}
               </div>
               <div className="flex justify-end gap-2">
                 <Button

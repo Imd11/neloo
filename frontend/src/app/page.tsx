@@ -19,22 +19,35 @@ import { UserAvatar, ThemeToggle } from "@/components/auth";
 function ChatWithFilePanel({
   assistant,
   showFilePanel,
+  onOpenFilePanel,
   onCloseFilePanel,
+  threadId,
 }: {
   assistant: Assistant | null;
   showFilePanel: boolean;
+  onOpenFilePanel: () => void;
   onCloseFilePanel: () => void;
+  threadId: string | null;
 }) {
-  const { messages } = useChatContext();
+  const { messages, isLoading } = useChatContext();
 
   return (
     <div className="flex h-full">
       <div className="flex-1 flex flex-col overflow-hidden">
-        <ChatInterface assistant={assistant} />
+        <ChatInterface
+          assistant={assistant}
+          onOpenFilePanel={onOpenFilePanel}
+          showFilePanelButton={!!threadId}
+        />
       </div>
       {showFilePanel && (
         <div className="w-72 flex-shrink-0">
-          <FilePanel messages={messages} onClose={onCloseFilePanel} />
+          <FilePanel
+            messages={messages}
+            threadId={threadId || undefined}
+            onClose={onCloseFilePanel}
+            isStreamComplete={!isLoading}
+          />
         </div>
       )}
     </div>
@@ -189,7 +202,9 @@ function HomePageInner({ config }: HomePageInnerProps) {
             <ChatWithFilePanel
               assistant={assistant}
               showFilePanel={!!filePanel}
+              onOpenFilePanel={() => setFilePanel("1")}
               onCloseFilePanel={() => setFilePanel(null)}
+              threadId={threadId}
             />
           </ChatProvider>
         </div>

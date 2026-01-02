@@ -42,6 +42,7 @@ interface FilePanelProps {
   threadId?: string; // Optional thread ID for thread-specific file queries
   onClose?: () => void;
   compact?: boolean;
+  isStreamComplete?: boolean; // True when stream finishes (agent done)
 }
 
 // ============================================================================
@@ -151,7 +152,7 @@ function FileItem({
 // Main Component
 // ============================================================================
 
-export function FilePanel({ messages, threadId, onClose }: FilePanelProps) {
+export function FilePanel({ messages, threadId, onClose, isStreamComplete }: FilePanelProps) {
   const config = getConfig();
   const apiUrl = config?.deploymentUrl || "";
   const { session } = useAuth();
@@ -204,11 +205,24 @@ export function FilePanel({ messages, threadId, onClose }: FilePanelProps) {
   }, [fetchThreadFiles]);
 
   // Refresh when messages change (might have new generated files)
+  // Use a short delay for a second refresh to catch DB writes that happen after message is sent
   useEffect(() => {
     if (messages.length > 0) {
       fetchThreadFiles();
+      // Second refresh after 1 second to catch any delayed DB writes (e.g., from commitFiles)
+      const delayedRefresh = setTimeout(() => {
+        fetchThreadFiles();
+      }, 1000);
+      return () => clearTimeout(delayedRefresh);
     }
   }, [messages.length, fetchThreadFiles]);
+
+  // Refresh when stream completes (agent finished generating files)
+  useEffect(() => {
+    if (isStreamComplete) {
+      fetchThreadFiles();
+    }
+  }, [isStreamComplete, fetchThreadFiles]);
 
   const grouped = useMemo(() => {
     const uploaded: DatabaseFile[] = [];

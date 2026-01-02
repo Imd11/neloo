@@ -159,7 +159,7 @@ async def save_file_record(
 
 async def create_thread_file_link(thread_id: str, file_id: str) -> bool:
     """
-    Create a thread_files association.
+    Create a thread_files association (idempotent via upsert).
 
     Args:
         thread_id: The thread's UUID
@@ -182,19 +182,20 @@ async def create_thread_file_link(thread_id: str, file_id: str) -> bool:
             "file_id": file_id,
         }
 
-        result = await supabase.table("thread_files").insert(link_data).execute()
+        # Use upsert with ON CONFLICT DO NOTHING for idempotency
+        # The table has UNIQUE(thread_id, file_id) constraint
+        result = await supabase.table("thread_files").upsert(
+            link_data,
+            on_conflict="thread_id,file_id"
+        ).execute()
 
         if result.data and len(result.data) > 0:
-            print(f"[SupabaseDB] Created thread_file link: thread={thread_id[:8]}... -> file={file_id[:8]}...")
+            print(f"[SupabaseDB] Created/verified thread_file link: thread={thread_id[:8]}... -> file={file_id[:8]}...")
             return True
 
         return False
 
     except Exception as e:
-        # Might fail on duplicate, which is OK
-        if "duplicate" in str(e).lower() or "unique" in str(e).lower():
-            print(f"[SupabaseDB] Thread-file link already exists")
-            return True
         print(f"[SupabaseDB] Error creating thread_file link: {e}")
         return False
 

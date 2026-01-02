@@ -496,13 +496,23 @@ class GeneratedFileStorage:
             }
 
             # Save to database if Supabase is configured
+            # CRITICAL: Use synchronous save to ensure database record is created
+            # before returning. This function is called from sync context (executor.py,
+            # graph.py tools), so we can safely use asyncio.run().
             if USE_SUPABASE_DB:
                 import asyncio
                 try:
-                    # Try to run in existing event loop
-                    loop = asyncio.get_running_loop()
-                    # Schedule coroutine with error callback
-                    task = asyncio.create_task(self._save_to_db(
+                    # Verify we're not in an async context
+                    asyncio.get_running_loop()
+                    # If we get here, we're in async context - this shouldn't happen
+                    # for the current call sites, but log it if it does
+                    print(f"[FileStorage] Warning: save_file called from async context for {filename}")
+                except RuntimeError:
+                    # No running loop - safe to use asyncio.run()
+                    pass
+
+                try:
+                    db_record = asyncio.run(save_file_record(
                         user_id=user_id,
                         filename=filename,
                         storage_path=file_id,
@@ -511,65 +521,16 @@ class GeneratedFileStorage:
                         file_type=file_type,
                         thread_id=thread_id,
                     ))
-
-                    # Add callback to log completion/errors
-                    def on_complete(future):
-                        try:
-                            future.result()
-                            print(f"[FileStorage] ✓ Database record saved: {filename}")
-                        except Exception as e:
-                            print(f"[FileStorage] ✗ Database save failed for {filename}: {e}")
-
-                    task.add_done_callback(on_complete)
-                except RuntimeError:
-                    # No running event loop, use sync approach
-                    loop = asyncio.new_event_loop()
-                    try:
-                        db_record = loop.run_until_complete(save_file_record(
-                            user_id=user_id,
-                            filename=filename,
-                            storage_path=file_id,
-                            file_size=len(data),
-                            content_type=content_type,
-                            file_type=file_type,
-                            thread_id=thread_id,
-                        ))
-                        if db_record:
-                            result["db_record"] = db_record
-                            print(f"[FileStorage] ✓ Database record saved (sync): {filename}")
-                        else:
-                            print(f"[FileStorage] ✗ Database save returned None: {filename}")
-                    except Exception as e:
-                        print(f"[FileStorage] ✗ Database save failed (sync) for {filename}: {e}")
-                    finally:
-                        loop.close()
+                    if db_record:
+                        result["db_record"] = db_record
+                        print(f"[FileStorage] ✓ Database record saved: {filename}")
+                    else:
+                        print(f"[FileStorage] ✗ Database save returned None: {filename}")
+                except Exception as e:
+                    print(f"[FileStorage] ✗ Database save failed for {filename}: {e}")
 
             return result
         return None
-
-    async def _save_to_db(
-        self,
-        user_id: str,
-        filename: str,
-        storage_path: str,
-        file_size: int,
-        content_type: str,
-        file_type: FileType,
-        thread_id: Optional[str] = None,
-    ) -> None:
-        """Helper to save file record to database asynchronously."""
-        try:
-            await save_file_record(
-                user_id=user_id,
-                filename=filename,
-                storage_path=storage_path,
-                file_size=file_size,
-                content_type=content_type,
-                file_type=file_type,
-                thread_id=thread_id,
-            )
-        except Exception as e:
-            print(f"[FileStorage] Error saving to database: {e}")
 
     def get_file(self, file_id: str) -> Optional[bytes]:
         """Get file content by ID."""
