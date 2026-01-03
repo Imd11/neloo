@@ -37,7 +37,7 @@ import { toast } from "sonner";
 import { useQueryState } from "nuqs";
 import { getConfig } from "@/lib/config";
 import { useAuth } from "@/providers/AuthProvider";
-import { formatFilesForMessage } from "@/lib/data-file-utils";
+import { formatFilesForMessage, getAcceptAttribute } from "@/lib/data-file-utils";
 import { useDataFileUpload } from "@/app/hooks/useDataFileUpload";
 import { DataFileUpload } from "@/app/components/DataFileUpload";
 
@@ -660,7 +660,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, onOpen
               ref={fileUpload.inputRef}
               type="file"
               multiple
-              accept=".csv,.tsv,.json,.jsonl,.parquet,.xlsx"
+              accept={getAcceptAttribute()}
               onChange={handleFileInputChange}
               className="hidden"
             />
