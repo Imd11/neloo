@@ -2065,3 +2065,156 @@ async def delete_thread_api(
             await delete_file_record(file_id=file_id, user_id=user_id)
 
     return {"success": True}
+
+
+# =============================================================================
+# AI-Generated Thread Title
+# =============================================================================
+
+class GenerateTitleRequest(BaseModel):
+    """Request model for generating thread title."""
+    user_message: str  # The user's first message to generate title from
+
+
+class GenerateTitleResponse(BaseModel):
+    """Response model for generated title."""
+    title: str
+    generated: bool
+
+
+async def _generate_title_with_llm(user_message: str) -> str:
+    """
+    Use LLM to generate a concise title from the user's message.
+
+    Falls back to truncating the message if LLM fails.
+    """
+    try:
+        from langchain.chat_models import init_chat_model
+
+        # Use a fast, cheap model for title generation
+        if os.environ.get("DEEPSEEK_API_KEY"):
+            model = init_chat_model(
+                "deepseek-chat",
+                model_provider="deepseek",
+                api_key=os.environ.get("DEEPSEEK_API_KEY"),
+                timeout=30,
+            )
+        elif os.environ.get("ANTHROPIC_API_KEY"):
+            model = init_chat_model(
+                "claude-3-5-haiku-latest",
+                model_provider="anthropic",
+                api_key=os.environ.get("ANTHROPIC_API_KEY"),
+                base_url=os.environ.get("ANTHROPIC_BASE_URL"),
+                timeout=30,
+            )
+        elif os.environ.get("OPENAI_API_KEY"):
+            model = init_chat_model(
+                "gpt-4o-mini",
+                model_provider="openai",
+                api_key=os.environ.get("OPENAI_API_KEY"),
+                timeout=30,
+            )
+        else:
+            # No LLM available, fallback to truncation
+            return _truncate_message(user_message)
+
+        # Generate title
+        from langchain_core.messages import SystemMessage, HumanMessage
+
+        response = await model.ainvoke([
+            SystemMessage(content="""Generate a very short title (max 6 Chinese characters or 4 English words) for this data analysis task.
+Rules:
+- Be concise and descriptive
+- Focus on the main topic/action
+- Use the same language as the user's message
+- Do NOT use quotes or punctuation
+- Just output the title, nothing else
+
+Examples:
+- "帮我分析这个销售数据" → "销售数据分析"
+- "Analyze my sales data" → "Sales Analysis"
+- "用DID方法做因果推断" → "DID因果分析"
+- "画一个柱状图" → "柱状图绘制"
+"""),
+            HumanMessage(content=user_message),
+        ])
+
+        title = response.content.strip()
+        # Clean up: remove quotes if present
+        title = title.strip('"\'')
+        # Limit length
+        if len(title) > 30:
+            title = title[:27] + "..."
+
+        return title if title else _truncate_message(user_message)
+
+    except Exception as e:
+        print(f"[GenerateTitle] LLM failed: {e}, falling back to truncation")
+        return _truncate_message(user_message)
+
+
+def _truncate_message(message: str) -> str:
+    """Truncate message to create a simple title."""
+    # Remove newlines and extra spaces
+    clean = " ".join(message.split())
+    if len(clean) <= 20:
+        return clean
+    return clean[:17] + "..."
+
+
+@app.post("/api/threads/{langgraph_thread_id}/generate-title", response_model=GenerateTitleResponse)
+async def generate_thread_title_api(
+    langgraph_thread_id: str,
+    data: GenerateTitleRequest,
+    user: dict = Depends(get_current_user),
+):
+    """
+    Generate and update thread title using AI.
+
+    This endpoint uses LLM to generate a concise, descriptive title
+    based on the user's first message, then updates the thread.
+
+    Args:
+        langgraph_thread_id: The LangGraph thread ID
+        data: Contains user_message to generate title from
+        user: Authenticated user
+
+    Returns:
+        Generated title and whether it was applied
+    """
+    user_id = auth_get_user_id(user)
+
+    if not USE_SUPABASE_DB:
+        raise HTTPException(status_code=503, detail="Database not configured")
+
+    try:
+        # Verify thread exists and user owns it
+        thread_record = await get_thread_by_langgraph_id(langgraph_thread_id)
+
+        if not thread_record:
+            raise HTTPException(status_code=404, detail="Thread not found")
+
+        if thread_record["user_id"] != user_id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+
+        # Only generate if title is still default
+        current_title = thread_record.get("title", "")
+        if current_title and current_title != "New Task":
+            # Title already customized, don't overwrite
+            return GenerateTitleResponse(title=current_title, generated=False)
+
+        # Generate title using LLM
+        new_title = await _generate_title_with_llm(data.user_message)
+
+        # Update thread title
+        success = await update_thread_title(langgraph_thread_id, new_title)
+
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to update thread title")
+
+        return GenerateTitleResponse(title=new_title, generated=True)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate title: {str(e)}")

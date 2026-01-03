@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState, useRef, useCallback } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback, KeyboardEvent } from "react";
 import { format } from "date-fns";
-import { Loader2, MessageSquare, Trash2 } from "lucide-react";
+import { Loader2, MessageSquare, Trash2, Pencil, Check, X } from "lucide-react";
 import { useQueryState } from "nuqs";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -128,6 +128,9 @@ export function ThreadList({
 }: ThreadListProps) {
   const [currentThreadId, setCurrentThreadId] = useQueryState("threadId");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
+  const editInputRef = useRef<HTMLInputElement>(null);
   const config = getConfig();
   const { session } = useAuth();
 
@@ -222,6 +225,77 @@ export function ThreadList({
       }
     },
     [config?.deploymentUrl, currentThreadId, onClose, session?.access_token, setCurrentThreadId, threads]
+  );
+
+  const startEditingTitle = useCallback(
+    (threadId: string, currentTitle: string) => {
+      setEditingThreadId(threadId);
+      setEditingTitle(currentTitle);
+      // Focus input after render
+      setTimeout(() => {
+        editInputRef.current?.focus();
+        editInputRef.current?.select();
+      }, 0);
+    },
+    []
+  );
+
+  const cancelEditing = useCallback(() => {
+    setEditingThreadId(null);
+    setEditingTitle("");
+  }, []);
+
+  const saveTitle = useCallback(
+    async (threadId: string) => {
+      if (!config?.deploymentUrl || !session?.access_token) return;
+
+      const newTitle = editingTitle.trim();
+      if (!newTitle) {
+        toast.error("标题不能为空");
+        return;
+      }
+
+      try {
+        const resp = await fetch(
+          `${config.deploymentUrl}/api/threads/${encodeURIComponent(threadId)}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ title: newTitle }),
+          }
+        );
+
+        if (!resp.ok) {
+          const text = await resp.text();
+          throw new Error(text || `HTTP ${resp.status}`);
+        }
+
+        await threads.mutate();
+        setEditingThreadId(null);
+        setEditingTitle("");
+      } catch (e) {
+        toast.error("更新标题失败", {
+          description: e instanceof Error ? e.message : String(e),
+        });
+      }
+    },
+    [config?.deploymentUrl, session?.access_token, editingTitle, threads]
+  );
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLInputElement>, threadId: string) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        saveTitle(threadId);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        cancelEditing();
+      }
+    },
+    [saveTitle, cancelEditing]
   );
 
   // Expose thread list revalidation to parent component
@@ -349,12 +423,62 @@ export function ThreadList({
                         <div className="min-w-0 flex-1">
                           {/* Title + Timestamp Row */}
                           <div className="mb-1 flex items-center justify-between">
-                            <h3 className="truncate text-sm font-semibold">
-                              {thread.title}
-                            </h3>
-                            <span className="ml-2 flex-shrink-0 text-xs text-muted-foreground">
-                              {formatTime(thread.updatedAt)}
-                            </span>
+                            {editingThreadId === thread.id ? (
+                              <div className="flex flex-1 items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                                <input
+                                  ref={editInputRef}
+                                  type="text"
+                                  value={editingTitle}
+                                  onChange={(e) => setEditingTitle(e.target.value)}
+                                  onKeyDown={(e) => handleKeyDown(e, thread.id)}
+                                  className="h-6 flex-1 rounded border border-input bg-background px-2 text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-ring"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={() => saveTitle(thread.id)}
+                                  aria-label="Save title"
+                                >
+                                  <Check className="h-3 w-3 text-green-600" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={cancelEditing}
+                                  aria-label="Cancel editing"
+                                >
+                                  <X className="h-3 w-3 text-muted-foreground" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <>
+                                <h3 className="truncate text-sm font-semibold">
+                                  {thread.title}
+                                </h3>
+                                <div className="ml-2 flex flex-shrink-0 items-center gap-1">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      startEditingTitle(thread.id, thread.title);
+                                    }}
+                                    aria-label="Edit title"
+                                  >
+                                    <Pencil className="h-3 w-3 text-muted-foreground" />
+                                  </Button>
+                                  <span className="text-xs text-muted-foreground">
+                                    {formatTime(thread.updatedAt)}
+                                  </span>
+                                </div>
+                              </>
+                            )}
                           </div>
                           {/* Description + Status Row */}
                           <div className="flex items-center justify-between">

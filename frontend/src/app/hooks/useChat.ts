@@ -138,9 +138,49 @@ export function useChat({
     fetchStateHistory: true,
   });
 
+  // Track whether we've generated a title for this thread
+  const titleGeneratedRef = useRef<Set<string>>(new Set());
+
+  const generateTitleForThread = useCallback(
+    async (currentThreadId: string, userMessage: string) => {
+      if (!config?.deploymentUrl || !session?.access_token) return;
+      if (titleGeneratedRef.current.has(currentThreadId)) return;
+
+      titleGeneratedRef.current.add(currentThreadId);
+
+      try {
+        const response = await fetch(
+          `${config.deploymentUrl}/api/threads/${encodeURIComponent(currentThreadId)}/generate-title`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ user_message: userMessage }),
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.generated) {
+            console.log(`[useChat] Generated title: ${data.title}`);
+            onHistoryRevalidate?.();
+          }
+        }
+      } catch (error) {
+        console.error("[useChat] Failed to generate title:", error);
+      }
+    },
+    [config?.deploymentUrl, session?.access_token, onHistoryRevalidate]
+  );
+
   const sendMessage = useCallback(
     (content: string) => {
       const newMessage: Message = { id: uuidv4(), type: "human", content };
+      const currentMessages = stream.messages ?? [];
+      const isFirstMessage = currentMessages.length === 0;
+
       stream.submit(
         { messages: [newMessage] },
         {
@@ -152,8 +192,16 @@ export function useChat({
       );
       // Update thread list immediately when sending a message
       onHistoryRevalidate?.();
+
+      // Generate title for new threads (first message)
+      if (isFirstMessage && threadId) {
+        // Delay title generation to ensure thread is created in DB
+        setTimeout(() => {
+          generateTitleForThread(threadId, content);
+        }, 1000);
+      }
     },
-    [stream, activeAssistant?.config, onHistoryRevalidate]
+    [stream, activeAssistant?.config, onHistoryRevalidate, threadId, generateTitleForThread]
   );
 
   const runSingleStep = useCallback(
