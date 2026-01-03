@@ -47,6 +47,8 @@ export interface DataFile {
   error?: string;
   storagePath?: string;
   sandboxPath?: string;
+  /** Override size for display (used for library imports where File.size is 0) */
+  displaySize?: number;
 }
 
 export interface UploadedFileInfo {

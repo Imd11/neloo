@@ -96,9 +96,10 @@ interface FileChipProps {
 }
 
 function FileChip({ dataFile, onRemove, disabled }: FileChipProps) {
-  const { file, status, error } = dataFile;
+  const { file, status, error, displaySize } = dataFile;
   const typeLabel = getFileTypeLabel(file.name);
-  const sizeLabel = formatFileSize(file.size);
+  // Use displaySize if available (for library imports), otherwise use file.size
+  const sizeLabel = formatFileSize(displaySize ?? file.size);
 
   // Truncate filename if too long
   const maxNameLength = 20;

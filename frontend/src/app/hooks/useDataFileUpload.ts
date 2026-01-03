@@ -341,12 +341,9 @@ export function useDataFileUpload({
           const placeholderFile = new File([], imported.filename, {
             type: "application/octet-stream",
           });
-          Object.defineProperty(placeholderFile, "size", {
-            value: imported.size,
-            writable: false,
-          });
 
           // Add to files state (already uploaded)
+          // Use displaySize to override the File.size (which is 0 for placeholder)
           setFiles((prev) => [
             ...prev,
             {
@@ -355,6 +352,7 @@ export function useDataFileUpload({
               status: "uploaded" as const,
               storagePath: imported.storage_path,
               sandboxPath: imported.sandbox_path,
+              displaySize: imported.size,
             },
           ]);
 
