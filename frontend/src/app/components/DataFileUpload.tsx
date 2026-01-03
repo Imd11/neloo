@@ -1,6 +1,6 @@
 "use client";
 
-import { Paperclip, X, FileSpreadsheet, Loader2 } from "lucide-react";
+import { Paperclip, X, FileSpreadsheet, Loader2, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -12,7 +12,9 @@ import {
 interface DataFileUploadProps {
   files: DataFile[];
   isUploading: boolean;
+  isImporting?: boolean;
   onTriggerSelect: () => void;
+  onTriggerLibrary?: () => void;
   onRemoveFile: (fileId: string) => void;
   disabled?: boolean;
 }
@@ -26,10 +28,14 @@ interface DataFileUploadProps {
 export function DataFileUpload({
   files,
   isUploading,
+  isImporting = false,
   onTriggerSelect,
+  onTriggerLibrary,
   onRemoveFile,
   disabled = false,
 }: DataFileUploadProps) {
+  const isProcessing = isUploading || isImporting;
+
   return (
     <div className="flex items-center gap-2 flex-wrap">
       {/* Upload Button */}
@@ -38,12 +44,31 @@ export function DataFileUpload({
         variant="ghost"
         size="sm"
         onClick={onTriggerSelect}
-        disabled={disabled || isUploading}
+        disabled={disabled || isProcessing}
         className="h-8 px-2 text-muted-foreground hover:text-foreground"
       >
         <Paperclip className="h-4 w-4 mr-1" />
-        <span className="text-xs">Upload Data</span>
+        <span className="text-xs">上传文件</span>
       </Button>
+
+      {/* Import from Library Button */}
+      {onTriggerLibrary && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onTriggerLibrary}
+          disabled={disabled || isProcessing}
+          className="h-8 px-2 text-muted-foreground hover:text-foreground"
+        >
+          {isImporting ? (
+            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+          ) : (
+            <FolderOpen className="h-4 w-4 mr-1" />
+          )}
+          <span className="text-xs">从库导入</span>
+        </Button>
+      )}
 
       {/* File Chips */}
       {files.map((dataFile) => (
@@ -51,7 +76,7 @@ export function DataFileUpload({
           key={dataFile.id}
           dataFile={dataFile}
           onRemove={() => onRemoveFile(dataFile.id)}
-          disabled={disabled || isUploading}
+          disabled={disabled || isProcessing}
         />
       ))}
     </div>

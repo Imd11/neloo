@@ -27,15 +27,25 @@ interface StagedFile {
   status: "pending" | "uploading" | "uploaded" | "error";
 }
 
+interface LibraryFile {
+  id: string;
+  filename: string;
+  original_filename: string;
+  size: number;
+  storage_path?: string;
+}
+
 interface UseDataFileUploadReturn {
   // State
   files: DataFile[];
   isUploading: boolean;
   uploadedFiles: UploadedFileInfo[];
   stagedFiles: StagedFile[];  // Files ready to be committed
+  isImporting: boolean;  // Whether importing from library
 
   // Actions
   addFiles: (fileList: FileList | File[]) => void;
+  addFromLibrary: (libraryFiles: LibraryFile[]) => Promise<void>;
   removeFile: (fileId: string) => void;
   uploadFiles: () => Promise<UploadedFileInfo[]>;
   clearFiles: () => void;
@@ -65,6 +75,7 @@ export function useDataFileUpload({
 }: UseDataFileUploadOptions): UseDataFileUploadReturn {
   const [files, setFiles] = useState<DataFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFileInfo[]>([]);
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -281,6 +292,111 @@ export function useDataFileUpload({
   );
 
   /**
+   * Import files from the library
+   */
+  const addFromLibrary = useCallback(
+    async (libraryFiles: LibraryFile[]) => {
+      if (libraryFiles.length === 0) return;
+
+      // Check total file count
+      if (files.length + libraryFiles.length > maxFiles) {
+        toast.error("Too many files", {
+          description: `Maximum ${maxFiles} files allowed. You have ${files.length} file(s) already.`,
+        });
+        return;
+      }
+
+      setIsImporting(true);
+
+      try {
+        // Call backend to create import sessions
+        const response = await fetch(`${apiUrl}/uploads/import-from-library`, {
+          method: "POST",
+          headers: {
+            ...getHeaders(),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            file_ids: libraryFiles.map((f) => f.id),
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.detail || "Failed to import files");
+        }
+
+        const data = await response.json();
+
+        if (data.errors?.length > 0) {
+          toast.error("Some files could not be imported", {
+            description: data.errors.map((e: any) => e.error).join("; "),
+          });
+        }
+
+        // Add imported files to the state
+        const importedFiles = data.imported || [];
+        for (const imported of importedFiles) {
+          // Create a placeholder File object for display purposes
+          const placeholderFile = new File([], imported.filename, {
+            type: "application/octet-stream",
+          });
+          Object.defineProperty(placeholderFile, "size", {
+            value: imported.size,
+            writable: false,
+          });
+
+          // Add to files state (already uploaded)
+          setFiles((prev) => [
+            ...prev,
+            {
+              file: placeholderFile,
+              id: imported.file_id,
+              status: "uploaded" as const,
+              storagePath: imported.storage_path,
+              sandboxPath: imported.sandbox_path,
+            },
+          ]);
+
+          // Add to staged files
+          setStagedFiles((prev) => [
+            ...prev,
+            {
+              fileId: imported.file_id,
+              filename: imported.filename,
+              size: imported.size,
+              sandboxPath: imported.sandbox_path,
+              status: "uploaded" as const,
+            },
+          ]);
+
+          // Add to uploaded files
+          setUploadedFiles((prev) => [
+            ...prev,
+            {
+              filename: imported.filename,
+              originalFilename: imported.filename,
+              storagePath: imported.storage_path,
+              sandboxPath: imported.sandbox_path,
+              size: imported.size,
+            },
+          ]);
+        }
+
+        if (importedFiles.length > 0) {
+          toast.success(`Imported ${importedFiles.length} file(s) from library`);
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Import failed";
+        toast.error("Failed to import files", { description: errorMessage });
+      } finally {
+        setIsImporting(false);
+      }
+    },
+    [apiUrl, files, maxFiles, getHeaders]
+  );
+
+  /**
    * Remove a file from the queue
    */
   const removeFile = useCallback((fileId: string) => {
@@ -393,9 +509,11 @@ export function useDataFileUpload({
   return {
     files,
     isUploading,
+    isImporting,
     uploadedFiles,
     stagedFiles,
     addFiles,
+    addFromLibrary,
     removeFile,
     uploadFiles,
     clearFiles,

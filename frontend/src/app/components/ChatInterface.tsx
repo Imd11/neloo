@@ -40,6 +40,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { formatFilesForMessage, getAcceptAttribute } from "@/lib/data-file-utils";
 import { useDataFileUpload } from "@/app/hooks/useDataFileUpload";
 import { DataFileUpload } from "@/app/components/DataFileUpload";
+import { LibraryDialog } from "@/app/components/LibraryDialog";
 
 // Maximum visible characters before showing warning
 const MAX_VISIBLE_CHARS = 100000;
@@ -80,6 +81,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, onOpen
   const [metaOpen, setMetaOpen] = useState<"tasks" | "files" | null>(null);
   const tasksContainerRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const [libraryDialogOpen, setLibraryDialogOpen] = useState(false);
 
   const [input, setInput] = useState("");
   const { scrollRef, contentRef } = useStickToBottom();
@@ -234,6 +236,20 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, onOpen
     [fileUpload]
   );
 
+  // Handle files selected from library
+  const handleLibraryFilesSelected = useCallback(
+    async (files: Array<{
+      id: string;
+      filename: string;
+      original_filename: string;
+      size: number;
+      storage_path?: string;
+    }>) => {
+      await fileUpload.addFromLibrary(files);
+    },
+    [fileUpload]
+  );
+
   // TODO: can we make this part of the hook?
   const processedMessages = useMemo(() => {
     /*
@@ -376,7 +392,15 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, onOpen
   const showLargeConversationWarning = totalVisibleChars > MAX_VISIBLE_CHARS;
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
+    <>
+      {/* Library Dialog for importing files */}
+      <LibraryDialog
+        open={libraryDialogOpen}
+        onOpenChange={setLibraryDialogOpen}
+        mode="select"
+        onFilesSelected={handleLibraryFilesSelected}
+      />
+      <div className="flex flex-1 flex-col overflow-hidden">
       <div
         className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain"
         ref={scrollRef}
@@ -680,7 +704,9 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, onOpen
                   files={fileUpload.files}
                   onRemoveFile={fileUpload.removeFile}
                   onTriggerSelect={() => fileUpload.inputRef.current?.click()}
+                  onTriggerLibrary={() => setLibraryDialogOpen(true)}
                   isUploading={fileUpload.isUploading}
+                  isImporting={fileUpload.isImporting}
                 />
                 {/* FilePanel button - show when there's a thread OR local files */}
                 {(showFilePanelButton || hasUploadFiles) && onOpenFilePanel && (
@@ -721,7 +747,8 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, onOpen
           </form>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 });
 

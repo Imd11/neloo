@@ -328,6 +328,11 @@ class CommitFilesRequest(BaseModel):
     thread_id: str  # LangGraph thread ID
 
 
+class ImportFromLibraryRequest(BaseModel):
+    """Request model for importing files from library."""
+    file_ids: list[str]  # IDs of files in the library to import
+
+
 # =============================================================================
 # Helper Functions
 # =============================================================================
@@ -754,6 +759,82 @@ async def commit_uploads(
         "committed": committed_files,
         "errors": errors,
         "thread_id": data.thread_id,
+    }
+
+
+@app.post("/uploads/import-from-library")
+async def import_from_library(
+    data: ImportFromLibraryRequest,
+    user: dict = Depends(get_current_user),
+):
+    """
+    Import files from the user's library to be used in a new message.
+
+    This creates staged file entries that can be committed with the message.
+    Unlike regular uploads, these files already exist in storage, so we just
+    create upload session records pointing to them.
+    """
+    user_id = auth_get_user_id(user)
+    imported_files = []
+    errors = []
+
+    for file_id in data.file_ids:
+        try:
+            # Get the file from the library
+            file_record = await get_file_by_id(file_id)
+            if not file_record:
+                errors.append({"file_id": file_id, "error": "File not found"})
+                continue
+
+            # Verify ownership
+            if file_record.get("user_id") != user_id:
+                errors.append({"file_id": file_id, "error": "Not authorized"})
+                continue
+
+            # Get file details
+            filename = file_record.get("original_filename") or file_record.get("filename", "unknown")
+            storage_path = file_record.get("storage_path", "")
+            file_size = file_record.get("size", 0)
+
+            # Create a new upload session that references the existing file
+            # Generate a new ID for this import session
+            import_session_id = str(uuid.uuid4())
+
+            await create_upload_session(
+                file_id=import_session_id,
+                user_id=user_id,
+                filename=filename,
+                expected_size=file_size,
+            )
+
+            # Mark as uploaded immediately since file already exists
+            await update_upload_session_status(
+                file_id=import_session_id,
+                status="uploaded",
+                storage_path=storage_path,
+                actual_size=file_size,
+            )
+
+            # Get the sandbox path
+            storage_filename = os.path.basename(storage_path) if storage_path else filename
+            sandbox_path = f"/home/user/data/{storage_filename}"
+
+            imported_files.append({
+                "file_id": import_session_id,
+                "original_file_id": file_id,
+                "filename": filename,
+                "size": file_size,
+                "storage_path": storage_path,
+                "sandbox_path": sandbox_path,
+            })
+
+        except Exception as e:
+            errors.append({"file_id": file_id, "error": str(e)})
+
+    return {
+        "success": len(errors) == 0,
+        "imported": imported_files,
+        "errors": errors,
     }
 
 
