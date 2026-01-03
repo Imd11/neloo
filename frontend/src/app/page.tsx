@@ -14,6 +14,11 @@ import { AppSidebar } from "@/app/components/AppSidebar";
 import { SearchDialog } from "@/app/components/SearchDialog";
 import { LibraryDialog } from "@/app/components/LibraryDialog";
 import { UserAvatar, ThemeToggle } from "@/components/auth";
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from "@/components/ui/resizable";
 
 // Wrapper component to access ChatContext for FilePanel
 function ChatWithFilePanel({
@@ -32,25 +37,33 @@ function ChatWithFilePanel({
   const { messages, isLoading } = useChatContext();
 
   return (
-    <div className="flex h-full">
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <ChatInterface
-          assistant={assistant}
-          onOpenFilePanel={onOpenFilePanel}
-          showFilePanelButton={!!threadId}
-        />
-      </div>
-      {showFilePanel && (
-        <div className="w-72 flex-shrink-0">
-          <FilePanel
-            messages={messages}
-            threadId={threadId || undefined}
-            onClose={onCloseFilePanel}
-            isStreamComplete={!isLoading}
+    <ResizablePanelGroup
+      direction="horizontal"
+      className="h-full"
+    >
+      <ResizablePanel defaultSize={showFilePanel ? 75 : 100} minSize={50}>
+        <div className="flex h-full flex-col overflow-hidden">
+          <ChatInterface
+            assistant={assistant}
+            onOpenFilePanel={onOpenFilePanel}
+            showFilePanelButton={!!threadId}
           />
         </div>
+      </ResizablePanel>
+      {showFilePanel && (
+        <>
+          <ResizableHandle withHandle />
+          <ResizablePanel defaultSize={25} minSize={15} maxSize={40}>
+            <FilePanel
+              messages={messages}
+              threadId={threadId || undefined}
+              onClose={onCloseFilePanel}
+              isStreamComplete={!isLoading}
+            />
+          </ResizablePanel>
+        </>
       )}
-    </div>
+    </ResizablePanelGroup>
   );
 }
 
@@ -181,20 +194,27 @@ function HomePageInner({ config }: HomePageInnerProps) {
         <ThemeToggle />
         <UserAvatar />
       </div>
-      <div className="flex h-screen">
+      <ResizablePanelGroup
+        direction="horizontal"
+        className="h-screen"
+      >
         {/* Sidebar */}
-        <AppSidebar
-          onNewThread={handleNewThread}
-          onSearch={handleSearch}
-          onLibrary={handleLibrary}
-          onThreadSelect={handleThreadSelect}
-          onMutateReady={(fn) => setMutateThreads(() => fn)}
-          onLogout={handleLogout}
-          currentThreadId={threadId}
-        />
+        <ResizablePanel defaultSize={18} minSize={12} maxSize={30}>
+          <AppSidebar
+            onNewThread={handleNewThread}
+            onSearch={handleSearch}
+            onLibrary={handleLibrary}
+            onThreadSelect={handleThreadSelect}
+            onMutateReady={(fn) => setMutateThreads(() => fn)}
+            onLogout={handleLogout}
+            currentThreadId={threadId}
+          />
+        </ResizablePanel>
+
+        <ResizableHandle withHandle />
 
         {/* Main content area */}
-        <div className="flex-1 overflow-hidden">
+        <ResizablePanel defaultSize={82} minSize={50}>
           <ChatProvider
             activeAssistant={assistant}
             onHistoryRevalidate={() => mutateThreads?.()}
@@ -207,8 +227,8 @@ function HomePageInner({ config }: HomePageInnerProps) {
               threadId={threadId}
             />
           </ChatProvider>
-        </div>
-      </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </>
   );
 }

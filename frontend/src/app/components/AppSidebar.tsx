@@ -45,8 +45,8 @@ export function AppSidebar({
     <TooltipProvider delayDuration={0}>
       <div
         className={cn(
-          "flex h-full flex-col border-r border-border bg-card transition-all duration-300",
-          collapsed ? "w-16" : "w-80"
+          "flex h-full w-full flex-col border-r border-border bg-card transition-all duration-300",
+          collapsed && "!w-16"
         )}
       >
         {/* Header with logo and collapse/expand button */}
