@@ -813,7 +813,6 @@ async def import_from_library(
             await update_upload_session_status(
                 file_id=import_session_id,
                 status="uploaded",
-                storage_path=storage_path,
                 actual_size=file_size,
             )
 
