@@ -28,6 +28,8 @@ interface AppSidebarProps {
   onInterruptCountChange?: (count: number) => void;
   onLogout?: () => void;
   currentThreadId?: string | null;
+  collapsed?: boolean;
+  onCollapsedChange?: (collapsed: boolean) => void;
 }
 
 export function AppSidebar({
@@ -38,16 +40,19 @@ export function AppSidebar({
   onMutateReady,
   onInterruptCountChange,
   onLogout,
+  collapsed: controlledCollapsed,
+  onCollapsedChange,
 }: AppSidebarProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [internalCollapsed, setInternalCollapsed] = useState(false);
+
+  // Support both controlled and uncontrolled mode
+  const collapsed = controlledCollapsed ?? internalCollapsed;
+  const setCollapsed = onCollapsedChange ?? setInternalCollapsed;
 
   return (
     <TooltipProvider delayDuration={0}>
       <div
-        className={cn(
-          "flex h-full w-full flex-col border-r border-border bg-card transition-all duration-300",
-          collapsed && "!w-16"
-        )}
+        className="flex h-full w-full flex-col border-r border-border bg-card"
       >
         {/* Header with logo and collapse/expand button */}
         <div className="flex h-14 items-center justify-between border-b border-border px-3">

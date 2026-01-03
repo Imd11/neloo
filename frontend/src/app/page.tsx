@@ -19,6 +19,7 @@ import {
   ResizablePanel,
   ResizableHandle,
 } from "@/components/ui/resizable";
+import { cn } from "@/lib/utils";
 
 // Wrapper component to access ChatContext for FilePanel
 function ChatWithFilePanel({
@@ -82,6 +83,7 @@ function HomePageInner({ config }: HomePageInnerProps) {
   const [assistant, setAssistant] = useState<Assistant | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const fetchAssistant = useCallback(async () => {
     const isUUID =
@@ -194,12 +196,14 @@ function HomePageInner({ config }: HomePageInnerProps) {
         <ThemeToggle />
         <UserAvatar />
       </div>
-      <ResizablePanelGroup
-        direction="horizontal"
-        className="h-screen"
-      >
-        {/* Sidebar */}
-        <ResizablePanel defaultSize={18} minSize={12} maxSize={30}>
+      <div className="flex h-screen">
+        {/* Sidebar - fixed width based on collapsed state */}
+        <div
+          className={cn(
+            "flex-shrink-0 transition-all duration-300",
+            sidebarCollapsed ? "w-16" : "w-72"
+          )}
+        >
           <AppSidebar
             onNewThread={handleNewThread}
             onSearch={handleSearch}
@@ -208,13 +212,13 @@ function HomePageInner({ config }: HomePageInnerProps) {
             onMutateReady={(fn) => setMutateThreads(() => fn)}
             onLogout={handleLogout}
             currentThreadId={threadId}
+            collapsed={sidebarCollapsed}
+            onCollapsedChange={setSidebarCollapsed}
           />
-        </ResizablePanel>
-
-        <ResizableHandle withHandle />
+        </div>
 
         {/* Main content area */}
-        <ResizablePanel defaultSize={82} minSize={50}>
+        <div className="flex-1 min-w-0">
           <ChatProvider
             activeAssistant={assistant}
             onHistoryRevalidate={() => mutateThreads?.()}
@@ -227,8 +231,8 @@ function HomePageInner({ config }: HomePageInnerProps) {
               threadId={threadId}
             />
           </ChatProvider>
-        </ResizablePanel>
-      </ResizablePanelGroup>
+        </div>
+      </div>
     </>
   );
 }
