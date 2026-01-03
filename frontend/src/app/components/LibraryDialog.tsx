@@ -353,12 +353,21 @@ export function LibraryDialog({
             )}
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
               {mode === "select" ? "取消" : "关闭"}
             </Button>
             {mode === "select" && (
               <Button
-                onClick={handleConfirmSelection}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleConfirmSelection();
+                }}
                 disabled={selectedFiles.size === 0}
               >
                 使用选中的文件
