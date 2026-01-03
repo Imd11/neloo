@@ -1,7 +1,13 @@
 "use client";
 
-import { Paperclip, X, FileSpreadsheet, Loader2, FolderOpen } from "lucide-react";
+import { Paperclip, X, FileSpreadsheet, Loader2, Upload, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import {
   DataFile,
@@ -22,7 +28,7 @@ interface DataFileUploadProps {
 /**
  * Data File Upload Component
  *
- * Displays an upload button and chips for selected files.
+ * Displays an upload button with dropdown menu and chips for selected files.
  * Supports CSV, Excel, Stata, SPSS, and Parquet formats.
  */
 export function DataFileUpload({
@@ -38,37 +44,37 @@ export function DataFileUpload({
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      {/* Upload Button */}
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={onTriggerSelect}
-        disabled={disabled || isProcessing}
-        className="h-8 px-2 text-muted-foreground hover:text-foreground"
-      >
-        <Paperclip className="h-4 w-4 mr-1" />
-        <span className="text-xs">上传文件</span>
-      </Button>
-
-      {/* Import from Library Button */}
-      {onTriggerLibrary && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={onTriggerLibrary}
-          disabled={disabled || isProcessing}
-          className="h-8 px-2 text-muted-foreground hover:text-foreground"
-        >
-          {isImporting ? (
-            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-          ) : (
-            <FolderOpen className="h-4 w-4 mr-1" />
+      {/* Upload Button with Dropdown */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={disabled || isProcessing}
+            className="h-8 px-2 text-muted-foreground hover:text-foreground"
+          >
+            {isProcessing ? (
+              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+            ) : (
+              <Paperclip className="h-4 w-4 mr-1" />
+            )}
+            <span className="text-xs">上传文件</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-40">
+          <DropdownMenuItem onClick={onTriggerSelect}>
+            <Upload className="h-4 w-4 mr-2" />
+            <span>从本地上传</span>
+          </DropdownMenuItem>
+          {onTriggerLibrary && (
+            <DropdownMenuItem onClick={onTriggerLibrary}>
+              <FolderOpen className="h-4 w-4 mr-2" />
+              <span>从库导入</span>
+            </DropdownMenuItem>
           )}
-          <span className="text-xs">从库导入</span>
-        </Button>
-      )}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {/* File Chips */}
       {files.map((dataFile) => (
