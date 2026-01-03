@@ -800,11 +800,13 @@ async def import_from_library(
             # Generate a new ID for this import session
             import_session_id = str(uuid.uuid4())
 
+            # Create session with storage_path already set (file exists)
             await create_upload_session(
                 file_id=import_session_id,
                 user_id=user_id,
                 filename=filename,
                 expected_size=file_size,
+                storage_path=storage_path,
             )
 
             # Mark as uploaded immediately since file already exists
