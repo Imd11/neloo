@@ -6,16 +6,24 @@
 
 // Supported file extensions
 export const ALLOWED_EXTENSIONS = [
+  // Data files
   ".csv",
   ".xlsx",
   ".xls",
   ".dta",
   ".sav",
   ".parquet",
+  // Image files (for multimodal)
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".gif",
+  ".webp",
 ] as const;
 
 // MIME types for supported files
 export const ALLOWED_MIME_TYPES: Record<string, string[]> = {
+  // Data files
   ".csv": ["text/csv", "application/csv"],
   ".xlsx": [
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -24,6 +32,12 @@ export const ALLOWED_MIME_TYPES: Record<string, string[]> = {
   ".dta": ["application/octet-stream", "application/x-stata-dta"],
   ".sav": ["application/octet-stream", "application/x-spss-sav"],
   ".parquet": ["application/octet-stream", "application/x-parquet"],
+  // Image files
+  ".png": ["image/png"],
+  ".jpg": ["image/jpeg"],
+  ".jpeg": ["image/jpeg"],
+  ".gif": ["image/gif"],
+  ".webp": ["image/webp"],
 };
 
 // Maximum file size (100 MB)
@@ -31,12 +45,19 @@ export const MAX_FILE_SIZE = 100 * 1024 * 1024;
 
 // File type labels for display
 export const FILE_TYPE_LABELS: Record<string, string> = {
+  // Data files
   ".csv": "CSV",
   ".xlsx": "Excel",
   ".xls": "Excel",
   ".dta": "Stata",
   ".sav": "SPSS",
   ".parquet": "Parquet",
+  // Image files
+  ".png": "PNG",
+  ".jpg": "JPEG",
+  ".jpeg": "JPEG",
+  ".gif": "GIF",
+  ".webp": "WebP",
 };
 
 export interface DataFile {

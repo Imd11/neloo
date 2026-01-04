@@ -68,6 +68,8 @@ MIME_TYPES = {
     ".png": "image/png",
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
     ".html": "text/html",
     ".md": "text/markdown",
     ".py": "text/x-python",

@@ -96,7 +96,12 @@ LOCAL_STORAGE_DIR = Path(tempfile.gettempdir()) / "data-analyst-sandbox" / "data
 # Note: Directory creation moved to async context to avoid blocking
 
 # Supported file extensions
-ALLOWED_EXTENSIONS = {".csv", ".xlsx", ".xls", ".dta", ".sav", ".parquet"}
+ALLOWED_EXTENSIONS = {
+    # Data files
+    ".csv", ".xlsx", ".xls", ".dta", ".sav", ".parquet",
+    # Image files (for multimodal)
+    ".png", ".jpg", ".jpeg", ".gif", ".webp",
+}
 
 # Maximum file size (100 MB)
 MAX_FILE_SIZE = 100 * 1024 * 1024
