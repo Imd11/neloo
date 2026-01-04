@@ -740,7 +740,7 @@ MODEL_PROFILES = {
 # Keys: model_id (used in API), display_name, model_name, provider, env_key, base_url_env, profile_key
 AVAILABLE_MODELS = {
     "deepseek-chat": {
-        "display_name": "DeepSeek V3",
+        "display_name": "DeepSeek V3.2",
         "model_name": "deepseek-chat",
         "provider": "deepseek",
         "env_key": "DEEPSEEK_API_KEY",
@@ -748,7 +748,7 @@ AVAILABLE_MODELS = {
         "profile_key": "deepseek",
     },
     "deepseek-reasoner": {
-        "display_name": "DeepSeek R1",
+        "display_name": "DeepSeek V3.2 (思考)",
         "model_name": "deepseek-reasoner",
         "provider": "deepseek",
         "env_key": "DEEPSEEK_API_KEY",
