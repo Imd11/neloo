@@ -779,9 +779,9 @@ AVAILABLE_MODELS = {
         "base_url_env": "MINIMAX_BASE_URL",
         "profile_key": "minimax",
     },
-    "claude-sonnet": {
-        "display_name": "Claude Sonnet 4",
-        "model_name": "claude-sonnet-4-20250514",
+    "claude-opus": {
+        "display_name": "Claude Opus 4.5",
+        "model_name": "claude-opus-4-5-20251101",
         "provider": "anthropic",
         "env_key": "ANTHROPIC_API_KEY",
         "base_url_env": "ANTHROPIC_BASE_URL",
@@ -959,7 +959,7 @@ graph_deepseek_reasoner = _MODEL_GRAPHS.get("deepseek-reasoner")
 graph_qwen_plus = _MODEL_GRAPHS.get("qwen-plus")
 graph_qwen3_max = _MODEL_GRAPHS.get("qwen3-max")
 graph_minimax_m2 = _MODEL_GRAPHS.get("minimax-m2")
-graph_claude_sonnet = _MODEL_GRAPHS.get("claude-sonnet")
+graph_claude_opus = _MODEL_GRAPHS.get("claude-opus")
 
 
 # =============================================================================

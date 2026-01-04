@@ -8,7 +8,7 @@
     "qwen-plus": "src.agent.graph:graph_qwen_plus",
     "qwen3-max": "src.agent.graph:graph_qwen3_max",
     "minimax-m2": "src.agent.graph:graph_minimax_m2",
-    "claude-sonnet": "src.agent.graph:graph_claude_sonnet"
+    "claude-opus": "src.agent.graph:graph_claude_opus"
   },
   "http": {
     "app": "src.api.webapp:app"
