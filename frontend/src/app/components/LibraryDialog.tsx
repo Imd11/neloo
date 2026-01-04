@@ -275,7 +275,7 @@ export function LibraryDialog({
                 <div
                   key={file.id}
                   className={cn(
-                    "group flex items-center justify-between gap-3 rounded-lg px-3 py-2 transition-colors",
+                    "group relative flex items-center gap-3 rounded-lg py-2 pl-3 pr-20 transition-colors",
                     mode === "select" && "cursor-pointer",
                     selectedFiles.has(file.id)
                       ? "bg-primary/10 border border-primary"
@@ -310,7 +310,7 @@ export function LibraryDialog({
                     </div>
                   </div>
                   <div
-                    className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <button
