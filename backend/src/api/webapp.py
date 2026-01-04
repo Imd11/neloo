@@ -1183,6 +1183,42 @@ async def health_check():
 
 
 # =============================================================================
+# Model Configuration Routes
+# =============================================================================
+
+class ModelInfo(BaseModel):
+    """Model information for frontend display."""
+    id: str
+    display_name: str
+    available: bool
+
+
+class ModelsResponse(BaseModel):
+    """Response for available models list."""
+    models: list[ModelInfo]
+    default_model: str | None
+
+
+@app.get("/api/models", response_model=ModelsResponse)
+async def get_available_models():
+    """
+    Get list of available language models.
+
+    Returns models that have their API keys configured.
+    Frontend uses this to populate the model selector dropdown.
+    """
+    from ..agent.graph import get_available_models as get_models, get_default_model_id
+
+    models = get_models()
+    default_model = get_default_model_id()
+
+    return ModelsResponse(
+        models=[ModelInfo(**m) for m in models],
+        default_model=default_model,
+    )
+
+
+# =============================================================================
 # Image Serving Routes
 # =============================================================================
 

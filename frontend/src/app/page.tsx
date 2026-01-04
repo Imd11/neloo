@@ -13,6 +13,7 @@ import { FilePanel } from "@/app/components/FilePanel";
 import { AppSidebar } from "@/app/components/AppSidebar";
 import { SearchDialog } from "@/app/components/SearchDialog";
 import { LibraryDialog } from "@/app/components/LibraryDialog";
+import { ModelSelector } from "@/app/components/ModelSelector";
 import { UserAvatar, ThemeToggle } from "@/components/auth";
 import {
   ResizablePanelGroup,
@@ -84,22 +85,26 @@ function HomePageInner({ config }: HomePageInnerProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<string | null>(null);
 
-  const fetchAssistant = useCallback(async () => {
+  const fetchAssistant = useCallback(async (modelId?: string | null) => {
+    // Use selected model as graph ID if available, otherwise fall back to config
+    const graphId = modelId || config.assistantId;
+
     const isUUID =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        config.assistantId
+        graphId
       );
 
     if (isUUID) {
       try {
-        const data = await client.assistants.get(config.assistantId);
+        const data = await client.assistants.get(graphId);
         setAssistant(data);
       } catch (error) {
         console.error("Failed to fetch assistant:", error);
         setAssistant({
-          assistant_id: config.assistantId,
-          graph_id: config.assistantId,
+          assistant_id: graphId,
+          graph_id: graphId,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           config: {},
@@ -112,7 +117,7 @@ function HomePageInner({ config }: HomePageInnerProps) {
     } else {
       try {
         const assistants = await client.assistants.search({
-          graphId: config.assistantId,
+          graphId: graphId,
           limit: 100,
         });
         const defaultAssistant = assistants.find(
@@ -128,23 +133,24 @@ function HomePageInner({ config }: HomePageInnerProps) {
           error
         );
         setAssistant({
-          assistant_id: config.assistantId,
-          graph_id: config.assistantId,
+          assistant_id: graphId,
+          graph_id: graphId,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           config: {},
           metadata: {},
           version: 1,
-          name: config.assistantId,
+          name: graphId,
           context: {},
         });
       }
     }
   }, [client, config.assistantId]);
 
+  // Fetch assistant when model changes
   useEffect(() => {
-    fetchAssistant();
-  }, [fetchAssistant]);
+    fetchAssistant(selectedModel);
+  }, [fetchAssistant, selectedModel]);
 
   const handleLogout = async () => {
     await signOut();
@@ -195,6 +201,19 @@ function HomePageInner({ config }: HomePageInnerProps) {
       <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
         <ThemeToggle />
         <UserAvatar />
+      </div>
+      {/* Model Selector - fixed top left of main content */}
+      <div
+        className={cn(
+          "fixed top-4 z-50 transition-all duration-300",
+          sidebarCollapsed ? "left-20" : "left-76"
+        )}
+        style={{ left: sidebarCollapsed ? "5rem" : "19rem" }}
+      >
+        <ModelSelector
+          selectedModel={selectedModel}
+          onModelChange={setSelectedModel}
+        />
       </div>
       <div className="flex h-screen">
         {/* Sidebar - fixed width based on collapsed state */}

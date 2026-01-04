@@ -729,14 +729,98 @@ MODEL_PROFILES = {
     "deepseek": {"max_input_tokens": 80000},      # Adjusted for LangChain's 4 chars/token counting
     "anthropic": {"max_input_tokens": 180000},    # Claude: 200k context, leave buffer
     "openai": {"max_input_tokens": 120000},       # GPT-4o: 128k context, leave buffer
+    "qwen": {"max_input_tokens": 120000},         # Qwen: 128k context, leave buffer
+    "minimax": {"max_input_tokens": 80000},       # MiniMax: estimate based on typical limits
+}
+
+# =============================================================================
+# Model Configuration Registry
+# =============================================================================
+# Each model entry defines how to initialize it with init_chat_model
+# Keys: model_id (used in API), display_name, model_name, provider, env_key, base_url_env, profile_key
+AVAILABLE_MODELS = {
+    "deepseek-chat": {
+        "display_name": "DeepSeek V3",
+        "model_name": "deepseek-chat",
+        "provider": "deepseek",
+        "env_key": "DEEPSEEK_API_KEY",
+        "base_url_env": None,
+        "profile_key": "deepseek",
+    },
+    "deepseek-reasoner": {
+        "display_name": "DeepSeek R1",
+        "model_name": "deepseek-reasoner",
+        "provider": "deepseek",
+        "env_key": "DEEPSEEK_API_KEY",
+        "base_url_env": None,
+        "profile_key": "deepseek",
+    },
+    "qwen-plus": {
+        "display_name": "Qwen Plus",
+        "model_name": "qwen-plus",
+        "provider": "openai",  # Uses OpenAI-compatible mode
+        "env_key": "QWEN_API_KEY",
+        "base_url_env": "QWEN_BASE_URL",
+        "profile_key": "qwen",
+    },
+    "qwen3-max": {
+        "display_name": "Qwen3 Max",
+        "model_name": "qwen3-max",
+        "provider": "openai",  # Uses OpenAI-compatible mode
+        "env_key": "QWEN_API_KEY",
+        "base_url_env": "QWEN_BASE_URL",
+        "profile_key": "qwen",
+    },
+    "minimax-m2": {
+        "display_name": "MiniMax M2.1",
+        "model_name": "MiniMax-M2.1",
+        "provider": "openai",  # Uses OpenAI-compatible mode
+        "env_key": "MINIMAX_API_KEY",
+        "base_url_env": "MINIMAX_BASE_URL",
+        "profile_key": "minimax",
+    },
 }
 
 
-def get_model():
+def get_available_models() -> list[dict]:
     """
-    Initialize the language model based on available API keys.
+    Get list of available models based on configured API keys.
 
-    Priority: DeepSeek > Anthropic > OpenAI
+    Returns list of model info dicts with id, display_name, and available status.
+    """
+    available = []
+    for model_id, config in AVAILABLE_MODELS.items():
+        api_key = os.environ.get(config["env_key"])
+        if api_key:
+            available.append({
+                "id": model_id,
+                "display_name": config["display_name"],
+                "available": True,
+            })
+    return available
+
+
+def get_default_model_id() -> str | None:
+    """
+    Get the default model ID based on available API keys.
+    Priority: DeepSeek > Qwen > MiniMax
+    """
+    # Priority order
+    priority = ["deepseek-chat", "qwen-plus", "minimax-m1"]
+    for model_id in priority:
+        config = AVAILABLE_MODELS.get(model_id)
+        if config and os.environ.get(config["env_key"]):
+            return model_id
+    return None
+
+
+def get_model(model_id: str | None = None):
+    """
+    Initialize the language model.
+
+    Args:
+        model_id: Specific model to use (e.g., "deepseek-chat", "qwen-plus").
+                  If None, uses default based on available API keys.
 
     IMPORTANT: Sets model.profile for SummarizationMiddleware to work correctly.
     Without profile, the middleware falls back to 170k token threshold which
@@ -744,57 +828,60 @@ def get_model():
     """
     from langchain.chat_models import init_chat_model
 
-    if os.environ.get("DEEPSEEK_API_KEY"):
-        model = init_chat_model(
-            "deepseek-chat",
-            model_provider="deepseek",
-            api_key=os.environ.get("DEEPSEEK_API_KEY"),
-            # Increase timeout for complex data analysis tasks
-            # DeepSeek can be slow, especially with multiple tool calls
-            timeout=600,  # 10 minutes
-            max_retries=2,
-        )
-        # CRITICAL: Set profile for SummarizationMiddleware
-        # Without this, middleware uses 170k threshold (> DeepSeek's 64k limit)
-        model.profile = MODEL_PROFILES["deepseek"]
-        return model
-    elif os.environ.get("ANTHROPIC_API_KEY"):
-        model = init_chat_model(
-            "claude-sonnet-4-5-20250929",
-            model_provider="anthropic",
-            api_key=os.environ.get("ANTHROPIC_API_KEY"),
-            base_url=os.environ.get("ANTHROPIC_BASE_URL"),
-            timeout=600,  # 10 minutes
-            max_retries=2,
-        )
-        # Set profile for consistency (Claude usually has this, but be explicit)
-        model.profile = MODEL_PROFILES["anthropic"]
-        return model
-    elif os.environ.get("OPENAI_API_KEY"):
-        model = init_chat_model(
-            "gpt-4o",
-            model_provider="openai",
-            api_key=os.environ.get("OPENAI_API_KEY"),
-            timeout=600,  # 10 minutes
-            max_retries=2,
-        )
-        # Set profile for consistency
-        model.profile = MODEL_PROFILES["openai"]
-        return model
-    else:
+    # If no model_id specified, use default
+    if not model_id:
+        model_id = get_default_model_id()
+
+    if not model_id:
         raise ValueError(
             "No API key found. Set one of: "
-            "DEEPSEEK_API_KEY, ANTHROPIC_API_KEY, OPENAI_API_KEY"
+            "DEEPSEEK_API_KEY, QWEN_API_KEY, MINIMAX_API_KEY"
         )
+
+    # Get model configuration
+    config = AVAILABLE_MODELS.get(model_id)
+    if not config:
+        raise ValueError(f"Unknown model: {model_id}. Available: {list(AVAILABLE_MODELS.keys())}")
+
+    # Check API key is available
+    api_key = os.environ.get(config["env_key"])
+    if not api_key:
+        raise ValueError(f"API key not configured for {model_id}. Set {config['env_key']}")
+
+    # Build init_chat_model kwargs
+    kwargs = {
+        "model_provider": config["provider"],
+        "api_key": api_key,
+        "timeout": 600,  # 10 minutes for complex data analysis
+        "max_retries": 2,
+    }
+
+    # Add base_url if configured
+    if config["base_url_env"]:
+        base_url = os.environ.get(config["base_url_env"])
+        if base_url:
+            kwargs["base_url"] = base_url
+
+    # Initialize model
+    model = init_chat_model(config["model_name"], **kwargs)
+
+    # CRITICAL: Set profile for SummarizationMiddleware
+    model.profile = MODEL_PROFILES[config["profile_key"]]
+
+    return model
 
 
 # =============================================================================
 # Create Deep Agent
 # =============================================================================
 
-def build_graph():
+def build_graph(model_id: str | None = None):
     """
     Build the data analyst agent using Deep Agents architecture.
+
+    Args:
+        model_id: Specific model to use (e.g., "deepseek-chat", "qwen-plus").
+                  If None, uses default based on available API keys.
 
     This provides:
     - TodoListMiddleware: Automatic task planning with write_todos tool
@@ -811,7 +898,7 @@ def build_graph():
     Environment Variables:
     - ENABLE_HITL: Set to "true" to enable human approval for sensitive operations
     """
-    model = get_model()
+    model = get_model(model_id)
 
     # Determine interrupt_on config based on ENABLE_HITL environment variable
     interrupt_on = INTERRUPT_ON_CONFIG if ENABLE_HITL else None
@@ -825,8 +912,45 @@ def build_graph():
     )
 
 
-# Export the compiled graph (CompiledStateGraph, compatible with LangGraph Server)
-graph = build_graph()
+# =============================================================================
+# Export Graphs for LangGraph Server
+# =============================================================================
+
+# Build graphs for each available model
+# LangGraph Server will expose these as separate assistants
+def _build_model_graphs() -> dict:
+    """
+    Build graphs for each available model.
+
+    Returns a dict mapping model_id to compiled graph.
+    Only builds graphs for models with configured API keys.
+    """
+    graphs = {}
+    for model_id in AVAILABLE_MODELS.keys():
+        config = AVAILABLE_MODELS[model_id]
+        api_key = os.environ.get(config["env_key"])
+        if api_key:
+            try:
+                graphs[model_id] = build_graph(model_id)
+                print(f"[graph.py] Built graph for model: {model_id}")
+            except Exception as e:
+                print(f"[graph.py] Failed to build graph for {model_id}: {e}")
+    return graphs
+
+
+# Build all available model graphs
+_MODEL_GRAPHS = _build_model_graphs()
+
+# Default graph (for backwards compatibility with LangGraph Server)
+# Uses the default model based on priority
+graph = _MODEL_GRAPHS.get(get_default_model_id()) or build_graph()
+
+# Export individual graphs for LangGraph Server multi-assistant setup
+graph_deepseek_chat = _MODEL_GRAPHS.get("deepseek-chat")
+graph_deepseek_reasoner = _MODEL_GRAPHS.get("deepseek-reasoner")
+graph_qwen_plus = _MODEL_GRAPHS.get("qwen-plus")
+graph_qwen3_max = _MODEL_GRAPHS.get("qwen3-max")
+graph_minimax_m2 = _MODEL_GRAPHS.get("minimax-m2")
 
 
 # =============================================================================

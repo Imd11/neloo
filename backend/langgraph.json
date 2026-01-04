@@ -2,7 +2,12 @@
   "python_version": "3.11",
   "dependencies": ["."],
   "graphs": {
-    "data_analyst": "src.agent.graph:graph"
+    "data_analyst": "src.agent.graph:graph",
+    "deepseek-chat": "src.agent.graph:graph_deepseek_chat",
+    "deepseek-reasoner": "src.agent.graph:graph_deepseek_reasoner",
+    "qwen-plus": "src.agent.graph:graph_qwen_plus",
+    "qwen3-max": "src.agent.graph:graph_qwen3_max",
+    "minimax-m2": "src.agent.graph:graph_minimax_m2"
   },
   "http": {
     "app": "src.api.webapp:app"
