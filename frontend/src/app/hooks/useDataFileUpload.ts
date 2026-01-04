@@ -372,6 +372,7 @@ export function useDataFileUpload({
           setUploadedFiles((prev) => [
             ...prev,
             {
+              fileId: imported.file_id,
               filename: imported.filename,
               originalFilename: imported.filename,
               storagePath: imported.storage_path,
@@ -398,12 +399,22 @@ export function useDataFileUpload({
    * Remove a file from the queue
    */
   const removeFile = useCallback((fileId: string) => {
+    // Get the filename before removing from files (for fallback matching)
+    const fileToRemove = files.find((f) => f.id === fileId);
+    const filenameToRemove = fileToRemove?.file.name;
+
     setFiles((prev) => prev.filter((f) => f.id !== fileId));
     setStagedFiles((prev) => prev.filter((f) => f.fileId !== fileId));
     setUploadedFiles((prev) =>
-      prev.filter((f) => !f.filename.includes(fileId))
+      prev.filter((f) => {
+        // Match by fileId if available, otherwise by filename
+        if (f.fileId) {
+          return f.fileId !== fileId;
+        }
+        return f.filename !== filenameToRemove;
+      })
     );
-  }, []);
+  }, [files]);
 
   /**
    * Upload all pending files
@@ -422,6 +433,7 @@ export function useDataFileUpload({
       const staged = await uploadSingleFile(dataFile);
       if (staged) {
         results.push({
+          fileId: staged.fileId,
           filename: staged.filename,
           originalFilename: staged.filename,
           storagePath: staged.sandboxPath,

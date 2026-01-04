@@ -794,7 +794,8 @@ async def import_from_library(
             # Get file details
             filename = file_record.get("original_filename") or file_record.get("filename", "unknown")
             storage_path = file_record.get("storage_path", "")
-            file_size = file_record.get("size", 0)
+            # DB column is file_size, not size
+            file_size = file_record.get("file_size") or file_record.get("size") or 0
 
             # Create a new upload session that references the existing file
             # Generate a new ID for this import session

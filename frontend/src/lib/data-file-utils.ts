@@ -52,6 +52,7 @@ export interface DataFile {
 }
 
 export interface UploadedFileInfo {
+  fileId?: string;  // Used for tracking/removal
   filename: string;
   originalFilename: string;
   storagePath: string;
