@@ -44,6 +44,45 @@ export function useChat({
   const createdThreadsRef = useRef<Set<string>>(new Set());
   const creatingThreadsRef = useRef<Set<string>>(new Set());
 
+  // Track whether we've generated a title for this thread.
+  // Also keep the first user message so we can generate a title once the thread record exists.
+  const titleGeneratedRef = useRef<Set<string>>(new Set());
+  const pendingFirstMessageRef = useRef<string | null>(null);
+
+  const generateTitleForThread = useCallback(
+    async (currentThreadId: string, userMessage: string) => {
+      if (!config?.deploymentUrl || !session?.access_token) return;
+      if (titleGeneratedRef.current.has(currentThreadId)) return;
+
+      titleGeneratedRef.current.add(currentThreadId);
+
+      try {
+        const response = await fetch(
+          `${config.deploymentUrl}/api/threads/${encodeURIComponent(currentThreadId)}/generate-title`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ user_message: userMessage }),
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.generated) {
+            console.log(`[useChat] Generated title: ${data.title}`);
+            onHistoryRevalidate?.();
+          }
+        }
+      } catch (error) {
+        console.error("[useChat] Failed to generate title:", error);
+      }
+    },
+    [config?.deploymentUrl, session?.access_token, onHistoryRevalidate]
+  );
+
   // If the URL contains a threadId but the user isn't logged in, clear it.
   // This prevents unauthenticated users from accessing globally addressable threads.
   useEffect(() => {
@@ -82,12 +121,21 @@ export function useChat({
           console.log(`[useChat] Created thread record for: ${threadId.slice(0, 8)}...`);
           createdThreadsRef.current.add(threadId);
           onHistoryRevalidate?.();
+
+          // If we already sent the first message before the DB record existed,
+          // generate a title now that creation/verification succeeded.
+          const pendingFirstMessage = pendingFirstMessageRef.current;
+          if (pendingFirstMessage) {
+            pendingFirstMessageRef.current = null;
+            await generateTitleForThread(threadId, pendingFirstMessage);
+          }
           return;
         } else {
           const errorText = await response.text();
           // If the thread belongs to another user, clear it immediately to prevent data leakage.
           if (response.status === 403) {
             console.warn("[useChat] Thread ownership mismatch, clearing threadId");
+            pendingFirstMessageRef.current = null;
             setThreadId(null);
             toast.error("无权限访问该对话", {
               description: "该对话不属于当前账号，已为你切换到新对话。",
@@ -104,7 +152,7 @@ export function useChat({
     };
 
     createThread();
-  }, [threadId, session, config, onHistoryRevalidate, setThreadId]);
+  }, [threadId, session, config, onHistoryRevalidate, setThreadId, generateTitleForThread]);
 
   // Handle errors, especially 404 when thread doesn't exist
   const handleError = (error: unknown) => {
@@ -138,43 +186,6 @@ export function useChat({
     fetchStateHistory: true,
   });
 
-  // Track whether we've generated a title for this thread
-  const titleGeneratedRef = useRef<Set<string>>(new Set());
-
-  const generateTitleForThread = useCallback(
-    async (currentThreadId: string, userMessage: string) => {
-      if (!config?.deploymentUrl || !session?.access_token) return;
-      if (titleGeneratedRef.current.has(currentThreadId)) return;
-
-      titleGeneratedRef.current.add(currentThreadId);
-
-      try {
-        const response = await fetch(
-          `${config.deploymentUrl}/api/threads/${encodeURIComponent(currentThreadId)}/generate-title`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${session.access_token}`,
-            },
-            body: JSON.stringify({ user_message: userMessage }),
-          }
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.generated) {
-            console.log(`[useChat] Generated title: ${data.title}`);
-            onHistoryRevalidate?.();
-          }
-        }
-      } catch (error) {
-        console.error("[useChat] Failed to generate title:", error);
-      }
-    },
-    [config?.deploymentUrl, session?.access_token, onHistoryRevalidate]
-  );
-
   const sendMessage = useCallback(
     (content: string) => {
       const newMessage: Message = { id: uuidv4(), type: "human", content };
@@ -194,11 +205,15 @@ export function useChat({
       onHistoryRevalidate?.();
 
       // Generate title for new threads (first message)
-      if (isFirstMessage && threadId) {
-        // Delay title generation to ensure thread is created in DB
-        setTimeout(() => {
-          generateTitleForThread(threadId, content);
-        }, 1000);
+      if (isFirstMessage) {
+        // Capture the first user message so we can generate a title once the thread is created/verified.
+        pendingFirstMessageRef.current = content;
+
+        // If the thread record is already created/verified, generate immediately.
+        if (threadId && createdThreadsRef.current.has(threadId)) {
+          void generateTitleForThread(threadId, content);
+          pendingFirstMessageRef.current = null;
+        }
       }
     },
     [stream, activeAssistant?.config, onHistoryRevalidate, threadId, generateTitleForThread]

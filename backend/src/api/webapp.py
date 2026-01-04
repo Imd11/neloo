@@ -2281,7 +2281,8 @@ async def generate_thread_title_api(
 
         # Only generate if title is still default
         current_title = thread_record.get("title", "")
-        if current_title and current_title != "New Task":
+        normalized = current_title.strip().lower() if current_title else ""
+        if normalized and normalized not in {"new task", "新任务"}:
             # Title already customized, don't overwrite
             return GenerateTitleResponse(title=current_title, generated=False)
 

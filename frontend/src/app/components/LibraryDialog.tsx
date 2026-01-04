@@ -234,7 +234,7 @@ export function LibraryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
+      <DialogContent className="max-w-3xl h-[80vh] max-h-[80vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FolderOpen className="h-5 w-5" />
@@ -254,7 +254,7 @@ export function LibraryDialog({
         </div>
 
         {/* File list */}
-        <ScrollArea className="flex-1 min-h-[300px]">
+        <ScrollArea className="flex-1 min-h-0">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

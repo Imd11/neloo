@@ -111,7 +111,7 @@ function FileItem({
   isLoading?: boolean;
 }) {
   return (
-    <div className="group flex items-center justify-between gap-2 rounded-md px-3 py-1.5 hover:bg-muted/50 transition-colors">
+    <div className="group flex items-center justify-between gap-2 rounded-md py-1.5 pl-3 pr-10 hover:bg-muted/50 transition-colors">
       <div className="flex items-center gap-2 min-w-0 flex-1">
         <FileText size={14} className="text-muted-foreground flex-shrink-0" />
         <span className="text-xs truncate">{filename}</span>
@@ -121,7 +121,7 @@ function FileItem({
           </span>
         )}
       </div>
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="relative z-10 flex flex-shrink-0 items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
           onClick={onDownload}
           disabled={isLoading}
@@ -286,7 +286,7 @@ export function FilePanel({ messages, threadId, onClose, isStreamComplete }: Fil
   const totalItems = dbFiles.length;
 
   return (
-    <div className="flex h-full flex-col border-l border-border bg-background">
+    <div className="flex h-full flex-col overflow-hidden border-l border-border bg-background">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-3 py-2">
         <div className="flex items-center gap-2">
@@ -310,7 +310,7 @@ export function FilePanel({ messages, threadId, onClose, isStreamComplete }: Fil
       </div>
 
       {/* Content */}
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 min-h-0">
         <div className="py-2">
           {/* Uploaded Files Section */}
           <div className="mb-1">
