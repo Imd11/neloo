@@ -166,16 +166,31 @@ export function getLatestArtifact(
 
 /**
  * Remove artifact tags from content for display in chat.
- * Optionally replaces with a placeholder.
+ * Handles both complete and streaming (unclosed) artifacts.
  *
  * @param content - The message content
- * @param placeholder - Optional replacement text
+ * @param placeholder - Optional replacement text (empty string to hide completely)
  * @returns Content with artifact tags removed/replaced
  */
 export function stripArtifacts(
   content: string,
-  placeholder: string = "[Code rendered in preview panel]"
+  placeholder: string = ""
 ): string {
+  // First, remove complete artifacts
   ARTIFACT_REGEX.lastIndex = 0;
-  return content.replace(ARTIFACT_REGEX, placeholder);
+  let result = content.replace(ARTIFACT_REGEX, placeholder);
+
+  // Then, remove any streaming (unclosed) artifact
+  // This handles the case where <artifact ...> is open but </artifact> hasn't arrived yet
+  const streamingInfo = getStreamingArtifact(result);
+  if (streamingInfo.isStreaming) {
+    // Find the last unclosed <artifact> tag and remove everything from there
+    const lastOpenIndex = result.lastIndexOf("<artifact");
+    if (lastOpenIndex !== -1) {
+      result = result.substring(0, lastOpenIndex) + placeholder;
+    }
+  }
+
+  // Clean up: trim trailing whitespace and empty lines
+  return result.trim();
 }

@@ -471,6 +471,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                     stream={stream}
                     onResumeInterrupt={resumeInterrupt}
                     graphId={assistant?.graph_id}
+                    webDevMode={webDevMode}
                   />
                 );
               })}

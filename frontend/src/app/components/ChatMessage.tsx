@@ -20,6 +20,7 @@ import {
   stripUploadedFilesAnnotation,
   parseUploadedFilesAnnotation,
 } from "@/lib/uploadedFilesAnnotation";
+import { stripArtifacts } from "@/lib/artifactParser";
 import { MessageAttachments } from "@/app/components/MessageAttachments";
 
 interface ChatMessageProps {
@@ -32,6 +33,8 @@ interface ChatMessageProps {
   stream?: any;
   onResumeInterrupt?: (value: any) => void;
   graphId?: string;
+  /** When true, strip <artifact> tags from AI message content (for Web Dev Mode) */
+  webDevMode?: boolean;
 }
 
 export const ChatMessage = React.memo<ChatMessageProps>(
@@ -45,14 +48,23 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     stream,
     onResumeInterrupt,
     graphId,
+    webDevMode,
   }) => {
     const isUser = message.type === "human";
     const rawMessageContent = extractStringFromMessageContent(message);
 
     // For user messages, parse out file attachments and get clean display text
-    const messageContent = isUser
-      ? stripUploadedFilesAnnotation(rawMessageContent)
-      : rawMessageContent;
+    // For AI messages in webDevMode, strip artifact tags (code is shown in right panel)
+    const messageContent = useMemo(() => {
+      if (isUser) {
+        return stripUploadedFilesAnnotation(rawMessageContent);
+      }
+      // In Web Dev Mode, strip <artifact> tags from AI messages
+      if (webDevMode) {
+        return stripArtifacts(rawMessageContent);
+      }
+      return rawMessageContent;
+    }, [isUser, rawMessageContent, webDevMode]);
     const userAttachments = isUser
       ? parseUploadedFilesAnnotation(rawMessageContent)
       : [];
