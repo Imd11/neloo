@@ -102,6 +102,21 @@ export const ChatMessage = React.memo<ChatMessageProps>(
         }
       }
 
+      // Debug logging
+      if (isLastMessage && webDevMode) {
+        const hasArtifactTag = rawMessageContent.includes("<artifact");
+        const hasClosingTag = rawMessageContent.includes("</artifact>");
+        console.log("[ChatMessage] Artifact parsing:", {
+          isLastMessage,
+          isLoading,
+          hasArtifactTag,
+          hasClosingTag,
+          completedCount: completed.length,
+          hasStreaming: streaming !== null,
+          contentPreview: rawMessageContent.substring(0, 200) + "...",
+        });
+      }
+
       return { completed, streaming };
     }, [isUser, webDevMode, rawMessageContent, isLastMessage, isLoading]);
 
