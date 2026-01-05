@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, Suspense } from "react";
+import React, { useState, useEffect, useCallback, Suspense, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { getConfig, StandaloneConfig } from "@/lib/config";
@@ -39,8 +39,38 @@ function ChatWithFilePanel({
 }) {
   const { messages, isLoading, webDevMode, currentArtifact } = useChatContext();
 
-  // Determine which right panel to show (artifact preview takes priority)
-  const showArtifactPreview = webDevMode && currentArtifact?.artifact;
+  // Track if user manually closed the artifact panel
+  const [artifactPanelDismissed, setArtifactPanelDismissed] = useState(false);
+  // Track the last artifact ID to detect new artifacts
+  const lastArtifactIdRef = useRef<string | null>(null);
+
+  // Smart auto-open: reset dismissed state when a NEW artifact is detected
+  useEffect(() => {
+    if (currentArtifact?.artifact) {
+      const currentId = currentArtifact.artifact.id;
+      if (currentId !== lastArtifactIdRef.current) {
+        // New artifact detected, reset dismissed state to auto-show panel
+        setArtifactPanelDismissed(false);
+        lastArtifactIdRef.current = currentId;
+      }
+    }
+  }, [currentArtifact?.artifact]);
+
+  // Reset dismissed state when thread changes
+  useEffect(() => {
+    setArtifactPanelDismissed(false);
+    lastArtifactIdRef.current = null;
+  }, [threadId]);
+
+  // Handle closing the artifact panel
+  const handleCloseArtifactPanel = useCallback(() => {
+    setArtifactPanelDismissed(true);
+  }, []);
+
+  // Determine which right panel to show
+  // Artifact preview shows when: webDevMode + artifact exists + user hasn't dismissed
+  const showArtifactPreview =
+    webDevMode && currentArtifact?.artifact && !artifactPanelDismissed;
   const showFilePanelActual = showFilePanel && !showArtifactPreview;
   const showRightPanel = showArtifactPreview || showFilePanelActual;
 
@@ -55,6 +85,10 @@ function ChatWithFilePanel({
             assistant={assistant}
             onOpenFilePanel={onOpenFilePanel}
             showFilePanelButton={!!threadId}
+            // Pass artifact info for inline card display
+            currentArtifact={currentArtifact}
+            artifactPanelDismissed={artifactPanelDismissed}
+            onOpenArtifactPanel={() => setArtifactPanelDismissed(false)}
           />
         </div>
       </ResizablePanel>
@@ -67,6 +101,7 @@ function ChatWithFilePanel({
             <ArtifactPreview
               artifact={currentArtifact.artifact}
               isStreaming={!currentArtifact.isComplete}
+              onClose={handleCloseArtifactPanel}
             />
           </ResizablePanel>
         </>

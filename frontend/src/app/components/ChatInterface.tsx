@@ -43,6 +43,8 @@ import { useDataFileUpload } from "@/app/hooks/useDataFileUpload";
 import { DataFileUpload } from "@/app/components/DataFileUpload";
 import { LibraryDialog } from "@/app/components/LibraryDialog";
 import { WebDevToggle } from "@/app/components/WebDevToggle";
+import { ArtifactCard } from "@/app/components/ArtifactCard";
+import type { Artifact } from "@/lib/artifactParser";
 
 // Maximum visible characters before showing warning
 const MAX_VISIBLE_CHARS = 100000;
@@ -51,6 +53,10 @@ interface ChatInterfaceProps {
   assistant: Assistant | null;
   onOpenFilePanel?: () => void;
   showFilePanelButton?: boolean;
+  // Artifact panel control
+  currentArtifact?: { artifact: Artifact | null; isComplete: boolean } | null;
+  artifactPanelDismissed?: boolean;
+  onOpenArtifactPanel?: () => void;
 }
 
 const getStatusIcon = (status: TodoItem["status"], className?: string) => {
@@ -79,7 +85,14 @@ const getStatusIcon = (status: TodoItem["status"], className?: string) => {
   }
 };
 
-export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, onOpenFilePanel, showFilePanelButton }) => {
+export const ChatInterface = React.memo<ChatInterfaceProps>(({
+  assistant,
+  onOpenFilePanel,
+  showFilePanelButton,
+  currentArtifact,
+  artifactPanelDismissed,
+  onOpenArtifactPanel,
+}) => {
   const [metaOpen, setMetaOpen] = useState<"tasks" | "files" | null>(null);
   const tasksContainerRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -461,6 +474,18 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, onOpen
                   />
                 );
               })}
+
+              {/* Artifact Card - shows when panel is dismissed but artifact exists */}
+              {webDevMode && currentArtifact?.artifact && artifactPanelDismissed && (
+                <div className="mt-4 flex justify-start">
+                  <ArtifactCard
+                    artifact={currentArtifact.artifact}
+                    isStreaming={!currentArtifact.isComplete}
+                    isComplete={currentArtifact.isComplete}
+                    onPreview={onOpenArtifactPanel}
+                  />
+                </div>
+              )}
             </>
           )}
         </div>
