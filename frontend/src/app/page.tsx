@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, Suspense } from "react";
+import React, { useState, useEffect, useCallback, Suspense, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { getConfig, StandaloneConfig } from "@/lib/config";
-import { Assistant } from "@langchain/langgraph-sdk";
+import { Assistant, Message } from "@langchain/langgraph-sdk";
 import { ClientProvider, useClient } from "@/providers/ClientProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { ChatProvider, useChatContext } from "@/providers/ChatProvider";
@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/resizable";
 import { cn } from "@/lib/utils";
 import type { Artifact } from "@/lib/artifactParser";
+import { parseArtifacts, getStreamingArtifact } from "@/lib/artifactParser";
+import { extractStringFromMessageContent } from "@/app/utils/utils";
 
 // Wrapper component to access ChatContext for FilePanel and ArtifactPreview
 function ChatWithFilePanel({
@@ -44,22 +46,92 @@ function ChatWithFilePanel({
   const [selectedArtifact, setSelectedArtifact] = useState<Artifact | null>(null);
   // Track if we're currently streaming (for the preview panel)
   const [isArtifactStreaming, setIsArtifactStreaming] = useState(false);
+  // Track if we're subscribed to streaming updates (user clicked on streaming artifact)
+  const [isSubscribedToStreaming, setIsSubscribedToStreaming] = useState(false);
+
+  // Get the last AI message for streaming artifact tracking
+  const lastAiMessage = useMemo(() => {
+    if (!messages || messages.length === 0) return null;
+    // Find the last non-human message
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].type !== "human") {
+        return messages[i];
+      }
+    }
+    return null;
+  }, [messages]);
+
+  // Parse current artifact from the last AI message (for real-time updates)
+  const currentStreamingArtifact = useMemo(() => {
+    if (!lastAiMessage || !webDevMode || !isLoading) return null;
+
+    const content = extractStringFromMessageContent(lastAiMessage);
+    const streamingInfo = getStreamingArtifact(content);
+
+    if (streamingInfo.isStreaming && streamingInfo.type) {
+      return {
+        id: "streaming",
+        type: streamingInfo.type,
+        title: streamingInfo.title,
+        code: streamingInfo.partialCode || "",
+      } as Artifact;
+    }
+    return null;
+  }, [lastAiMessage, webDevMode, isLoading]);
+
+  // Parse completed artifact from the last AI message
+  const lastCompletedArtifact = useMemo(() => {
+    if (!lastAiMessage || !webDevMode) return null;
+
+    const content = extractStringFromMessageContent(lastAiMessage);
+    const artifacts = parseArtifacts(content);
+
+    return artifacts.length > 0 ? artifacts[artifacts.length - 1] : null;
+  }, [lastAiMessage, webDevMode]);
+
+  // Auto-update selectedArtifact when subscribed to streaming
+  useEffect(() => {
+    if (!isSubscribedToStreaming) return;
+
+    if (isLoading && currentStreamingArtifact) {
+      // Still streaming - update with latest content
+      setSelectedArtifact(currentStreamingArtifact);
+      setIsArtifactStreaming(true);
+    } else if (!isLoading && lastCompletedArtifact) {
+      // Streaming finished - switch to completed artifact
+      setSelectedArtifact(lastCompletedArtifact);
+      setIsArtifactStreaming(false);
+      setIsSubscribedToStreaming(false); // Unsubscribe after completion
+    } else if (!isLoading && !lastCompletedArtifact) {
+      // Streaming finished but no artifact found (parsing failed or AI didn't output artifact tags)
+      setIsSubscribedToStreaming(false);
+    }
+  }, [isSubscribedToStreaming, isLoading, currentStreamingArtifact, lastCompletedArtifact]);
 
   // Handle artifact selection from inline cards
   const handleArtifactSelect = useCallback((artifact: Artifact | null) => {
     setSelectedArtifact(artifact);
-    // If artifact id is "streaming", it's still being generated
-    setIsArtifactStreaming(artifact?.id === "streaming");
+
+    // If selecting a streaming artifact, subscribe to updates
+    if (artifact?.id === "streaming") {
+      setIsArtifactStreaming(true);
+      setIsSubscribedToStreaming(true);
+    } else {
+      setIsArtifactStreaming(false);
+      setIsSubscribedToStreaming(false);
+    }
   }, []);
 
   // Handle closing the artifact panel
   const handleCloseArtifactPanel = useCallback(() => {
     setSelectedArtifact(null);
+    setIsSubscribedToStreaming(false);
   }, []);
 
   // Reset selected artifact when thread changes
   useEffect(() => {
     setSelectedArtifact(null);
+    setIsSubscribedToStreaming(false);
   }, [threadId]);
 
   // Determine which right panel to show
