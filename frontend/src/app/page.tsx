@@ -15,7 +15,6 @@ import { SearchDialog } from "@/app/components/SearchDialog";
 import { LibraryDialog } from "@/app/components/LibraryDialog";
 import { ModelSelector } from "@/app/components/ModelSelector";
 import { ArtifactPreview } from "@/app/components/ArtifactPreview";
-import { UserAvatar, ThemeToggle } from "@/components/auth";
 import {
   ResizablePanelGroup,
   ResizablePanel,
@@ -207,7 +206,7 @@ interface HomePageInnerProps {
 function HomePageInner({ config }: HomePageInnerProps) {
   const client = useClient();
   const router = useRouter();
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [threadId, setThreadId] = useQueryState("threadId");
   const [filePanel, setFilePanel] = useQueryState("files");
 
@@ -283,11 +282,6 @@ function HomePageInner({ config }: HomePageInnerProps) {
     fetchAssistant(selectedModel);
   }, [fetchAssistant, selectedModel]);
 
-  const handleLogout = async () => {
-    await signOut();
-    router.push("/login");
-  };
-
   const handleNewThread = () => {
     if (!user) {
       router.push("/login");
@@ -328,11 +322,6 @@ function HomePageInner({ config }: HomePageInnerProps) {
         open={libraryOpen}
         onOpenChange={setLibraryOpen}
       />
-      {/* Theme Toggle and User Avatar - fixed top right */}
-      <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
-        <ThemeToggle />
-        <UserAvatar />
-      </div>
       {/* Model Selector - fixed top left of main content */}
       <div
         className={cn(
@@ -360,7 +349,6 @@ function HomePageInner({ config }: HomePageInnerProps) {
             onLibrary={handleLibrary}
             onThreadSelect={handleThreadSelect}
             onMutateReady={(fn) => setMutateThreads(() => fn)}
-            onLogout={handleLogout}
             currentThreadId={threadId}
             collapsed={sidebarCollapsed}
             onCollapsedChange={setSidebarCollapsed}

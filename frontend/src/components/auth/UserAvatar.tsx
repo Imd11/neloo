@@ -7,9 +7,10 @@ import { useAuth } from "@/providers/AuthProvider";
 
 interface UserAvatarProps {
   className?: string;
+  dropdownDirection?: "up" | "down";
 }
 
-export function UserAvatar({ className = "" }: UserAvatarProps) {
+export function UserAvatar({ className = "", dropdownDirection = "down" }: UserAvatarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -104,14 +105,17 @@ export function UserAvatar({ className = "" }: UserAvatarProps) {
       {/* Dropdown menu */}
       {isOpen && (
         <div
-          className="
-            absolute right-0 mt-2 w-56
+          className={`
+            absolute w-56
             bg-[var(--color-surface)]
             border border-[var(--color-border)]
             rounded-lg shadow-lg
             py-1 z-50
-            animate-in fade-in slide-in-from-top-2 duration-200
-          "
+            ${dropdownDirection === "up"
+              ? "bottom-full mb-2 left-0 animate-in fade-in slide-in-from-bottom-2 duration-200"
+              : "top-full mt-2 right-0 animate-in fade-in slide-in-from-top-2 duration-200"
+            }
+          `}
         >
           {/* User info */}
           <div className="px-4 py-3 border-b border-[var(--color-border)]">

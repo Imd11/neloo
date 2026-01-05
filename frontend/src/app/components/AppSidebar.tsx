@@ -15,9 +15,10 @@ import {
   SquarePen,
   Search,
   FolderOpen,
-  LogOut,
 } from "lucide-react";
 import { ThreadList } from "./ThreadList";
+import { ThemeToggle } from "@/components/auth/ThemeToggle";
+import { UserAvatar } from "@/components/auth/UserAvatar";
 
 interface AppSidebarProps {
   onNewThread: () => void;
@@ -26,7 +27,6 @@ interface AppSidebarProps {
   onThreadSelect: (id: string) => void;
   onMutateReady?: (mutate: () => void) => void;
   onInterruptCountChange?: (count: number) => void;
-  onLogout?: () => void;
   currentThreadId?: string | null;
   collapsed?: boolean;
   onCollapsedChange?: (collapsed: boolean) => void;
@@ -39,7 +39,6 @@ export function AppSidebar({
   onThreadSelect,
   onMutateReady,
   onInterruptCountChange,
-  onLogout,
   collapsed: controlledCollapsed,
   onCollapsedChange,
 }: AppSidebarProps) {
@@ -167,26 +166,25 @@ export function AppSidebar({
           <div className="flex-1" />
         )}
 
-        {/* Footer with logout */}
+        {/* Footer with theme toggle and user avatar */}
         <div className={cn(
           "border-t border-border p-2",
-          collapsed ? "flex flex-col items-center gap-1" : "flex items-center justify-between"
+          collapsed ? "flex flex-col items-center gap-2" : "flex items-center justify-between"
         )}>
-          {onLogout && (
+          <div className={cn(
+            "flex items-center",
+            collapsed ? "flex-col gap-2" : "gap-2"
+          )}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={onLogout}
-                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                >
-                  <LogOut className="h-4 w-4" />
-                </Button>
+                <div>
+                  <ThemeToggle />
+                </div>
               </TooltipTrigger>
-              <TooltipContent side="right">退出登录</TooltipContent>
+              {collapsed && <TooltipContent side="right">切换主题</TooltipContent>}
             </Tooltip>
-          )}
+            <UserAvatar dropdownDirection="up" />
+          </div>
           {!collapsed && (
             <span className="text-xs text-muted-foreground">v1.0.0</span>
           )}
