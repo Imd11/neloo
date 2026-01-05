@@ -5,8 +5,6 @@ import {
   Loader2,
   Code2,
   CheckCircle2,
-  AlertCircle,
-  Play,
   Eye,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -95,17 +93,20 @@ export function ArtifactCard({
     }
   }, [status]);
 
+  // Card is always clickable (even during streaming, to view code in real-time)
+  const isClickable = artifact !== null;
+
   return (
     <div
       className={cn(
         "inline-flex items-center gap-3 px-3 py-2 rounded-lg border bg-muted/30",
         "transition-all duration-200",
-        status === "complete" && "hover:bg-muted/50 cursor-pointer",
+        isClickable && "hover:bg-muted/50 cursor-pointer",
         className
       )}
-      onClick={status === "complete" ? onPreview : undefined}
-      role={status === "complete" ? "button" : undefined}
-      tabIndex={status === "complete" ? 0 : undefined}
+      onClick={isClickable ? onPreview : undefined}
+      role={isClickable ? "button" : undefined}
+      tabIndex={isClickable ? 0 : undefined}
     >
       {/* Status icon */}
       <div className="flex-shrink-0">{StatusIcon}</div>
@@ -124,8 +125,8 @@ export function ArtifactCard({
         </span>
       </div>
 
-      {/* Preview button - only when complete */}
-      {status === "complete" && (
+      {/* Action button */}
+      {isClickable && (
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -134,12 +135,14 @@ export function ArtifactCard({
           className={cn(
             "flex items-center gap-1 px-2 py-1 rounded-md",
             "text-xs font-medium",
-            "bg-primary text-primary-foreground",
-            "hover:bg-primary/90 transition-colors"
+            status === "generating"
+              ? "bg-primary/20 text-primary hover:bg-primary/30"
+              : "bg-primary text-primary-foreground hover:bg-primary/90",
+            "transition-colors"
           )}
         >
-          <Play className="h-3 w-3" />
-          预览
+          <Eye className="h-3 w-3" />
+          {status === "generating" ? "查看" : "预览"}
         </button>
       )}
     </div>
