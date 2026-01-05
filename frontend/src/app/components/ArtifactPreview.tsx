@@ -142,6 +142,10 @@ export function ArtifactPreview({
   const [copied, setCopied] = useState(false);
   const [sandpackKey, setSandpackKey] = useState(0);
   const codeRef = useRef<HTMLPreElement>(null);
+  // Track if we've already auto-switched to preview (to avoid forcing user back)
+  const hasAutoSwitchedRef = useRef(false);
+  // Track previous isStreaming state to detect transition
+  const prevIsStreamingRef = useRef(isStreaming);
 
   const template = getTemplate(artifact.type);
   const files = useMemo(
@@ -149,16 +153,30 @@ export function ArtifactPreview({
     [artifact.type, artifact.code]
   );
 
-  // Auto-switch to preview when streaming completes
+  // Auto-switch to preview when streaming completes (only once)
   useEffect(() => {
-    if (!isStreaming && viewMode === "code") {
-      // Small delay to let the user see the complete code
+    // Detect streaming -> complete transition
+    const justFinishedStreaming = prevIsStreamingRef.current && !isStreaming;
+    prevIsStreamingRef.current = isStreaming;
+
+    // Only auto-switch if:
+    // 1. Streaming just finished (transition from true to false)
+    // 2. We haven't already auto-switched
+    // 3. We're currently in code view
+    if (justFinishedStreaming && !hasAutoSwitchedRef.current && viewMode === "code") {
       const timer = setTimeout(() => {
         setViewMode("preview");
+        hasAutoSwitchedRef.current = true;
       }, 500);
       return () => clearTimeout(timer);
     }
   }, [isStreaming, viewMode]);
+
+  // Reset auto-switch flag when artifact changes (new artifact)
+  useEffect(() => {
+    hasAutoSwitchedRef.current = false;
+    prevIsStreamingRef.current = isStreaming;
+  }, [artifact.id]);
 
   // Auto-scroll code during streaming
   useEffect(() => {
@@ -342,26 +360,41 @@ export function ArtifactPreview({
           </div>
         ) : (
           /* Preview view - only show preview, no code editor */
-          <SandpackProvider
-            key={sandpackKey}
-            template={template}
-            files={files}
-            theme="auto"
-            customSetup={{
-              dependencies: {
-                ...(template === "react" && {
-                  react: "^18.0.0",
-                  "react-dom": "^18.0.0",
-                }),
-              },
-            }}
-          >
-            <SandpackPreview
-              showRefreshButton
-              showOpenInCodeSandbox={false}
-              style={{ height: "100%" }}
-            />
-          </SandpackProvider>
+          <div className="h-full sandpack-preview-container">
+            <SandpackProvider
+              key={sandpackKey}
+              template={template}
+              files={files}
+              theme="auto"
+              customSetup={{
+                dependencies: {
+                  ...(template === "react" && {
+                    react: "^18.0.0",
+                    "react-dom": "^18.0.0",
+                  }),
+                },
+              }}
+            >
+              <SandpackPreview
+                showRefreshButton={false}
+                showOpenInCodeSandbox={false}
+                style={{ height: "100%" }}
+              />
+            </SandpackProvider>
+            <style jsx global>{`
+              .sandpack-preview-container .sp-wrapper,
+              .sandpack-preview-container .sp-layout,
+              .sandpack-preview-container .sp-stack,
+              .sandpack-preview-container .sp-preview,
+              .sandpack-preview-container .sp-preview-container,
+              .sandpack-preview-container .sp-preview-iframe {
+                height: 100% !important;
+              }
+              .sandpack-preview-container .sp-preview-actions {
+                display: none !important;
+              }
+            `}</style>
+          </div>
         )}
       </div>
     </div>
