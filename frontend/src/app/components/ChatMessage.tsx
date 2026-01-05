@@ -24,6 +24,14 @@ import { stripArtifacts, parseArtifacts, getStreamingArtifact } from "@/lib/arti
 import type { Artifact } from "@/lib/artifactParser";
 import { MessageAttachments } from "@/app/components/MessageAttachments";
 import { ArtifactCard } from "@/app/components/ArtifactCard";
+import { Copy, Check, Pencil, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface ChatMessageProps {
   message: Message;
@@ -43,6 +51,10 @@ interface ChatMessageProps {
   onArtifactSelect?: (artifact: Artifact) => void;
   /** Currently selected artifact ID (to highlight the active card) */
   selectedArtifactId?: string;
+  /** Callback when user wants to edit their message */
+  onEditMessage?: (messageContent: string) => void;
+  /** Callback when user wants to regenerate AI response */
+  onRegenerate?: () => void;
 }
 
 export const ChatMessage = React.memo<ChatMessageProps>(
@@ -60,7 +72,11 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     isLastMessage,
     onArtifactSelect,
     selectedArtifactId,
+    onEditMessage,
+    onRegenerate,
   }) => {
+    const [copied, setCopied] = useState(false);
+    const [isHovered, setIsHovered] = useState(false);
     const isUser = message.type === "human";
     const rawMessageContent = extractStringFromMessageContent(message);
 
@@ -163,12 +179,110 @@ export const ChatMessage = React.memo<ChatMessageProps>(
       }));
     }, []);
 
+    // Copy message content to clipboard
+    const handleCopy = useCallback(async () => {
+      try {
+        // For AI messages, copy the raw content (including artifact code)
+        const textToCopy = isUser ? messageContent : rawMessageContent;
+        await navigator.clipboard.writeText(textToCopy);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch (err) {
+        console.error("Failed to copy:", err);
+      }
+    }, [isUser, messageContent, rawMessageContent]);
+
+    // Edit user message
+    const handleEdit = useCallback(() => {
+      if (onEditMessage && messageContent) {
+        onEditMessage(messageContent);
+      }
+    }, [onEditMessage, messageContent]);
+
+    // Regenerate AI response
+    const handleRegenerate = useCallback(() => {
+      if (onRegenerate) {
+        onRegenerate();
+      }
+    }, [onRegenerate]);
+
+    // Action buttons component
+    const MessageActions = ({ show }: { show: boolean }) => {
+      if (!show || isLoading) return null;
+
+      return (
+        <TooltipProvider delayDuration={0}>
+          <div className={cn(
+            "flex items-center gap-0.5 transition-opacity duration-200",
+            isHovered ? "opacity-100" : "opacity-0"
+          )}>
+            {/* Copy button - for both user and AI messages */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleCopy}
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                >
+                  {copied ? (
+                    <Check className="h-3.5 w-3.5 text-green-500" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                {copied ? "已复制" : "复制"}
+              </TooltipContent>
+            </Tooltip>
+
+            {/* Edit button - only for user messages */}
+            {isUser && onEditMessage && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleEdit}
+                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">编辑</TooltipContent>
+              </Tooltip>
+            )}
+
+            {/* Regenerate button - only for AI messages */}
+            {!isUser && onRegenerate && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleRegenerate}
+                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">重新生成</TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        </TooltipProvider>
+      );
+    };
+
     return (
       <div
         className={cn(
-          "flex w-full max-w-full overflow-x-hidden",
+          "flex w-full max-w-full overflow-x-hidden group",
           isUser && "flex-row-reverse"
         )}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       >
         <div
           className={cn(
@@ -183,7 +297,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
             </div>
           )}
           {(hasContent || (!isUser && userAttachments.length > 0)) && (
-            <div className={cn("relative flex items-end gap-0")}>
+            <div className={cn("relative flex items-end gap-2", isUser && "flex-row-reverse")}>
               <div
                 className={cn(
                   "mt-2 overflow-hidden break-words text-sm font-normal leading-[150%]",
@@ -207,6 +321,8 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                   <MarkdownContent content={messageContent} />
                 ) : null}
               </div>
+              {/* Action buttons */}
+              <MessageActions show={!!hasContent} />
             </div>
           )}
           {hasToolCalls && (

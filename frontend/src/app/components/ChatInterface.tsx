@@ -98,6 +98,9 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
   const [input, setInput] = useState("");
   const { scrollRef, contentRef } = useStickToBottom();
 
+  // Track which message is being edited (for highlight effect)
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+
   const {
     stream,
     messages,
@@ -250,6 +253,43 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
     },
     [fileUpload]
   );
+
+  // Handle edit message - populate input with message content
+  const handleEditMessage = useCallback(
+    (messageContent: string) => {
+      setInput(messageContent);
+      // Focus the textarea
+      textareaRef.current?.focus();
+      toast.info("消息已复制到输入框", {
+        description: "你可以编辑后重新发送",
+      });
+    },
+    []
+  );
+
+  // Handle regenerate - find the last user message and resend it
+  const handleRegenerate = useCallback(() => {
+    if (isLoading || !messages || messages.length === 0) return;
+
+    // Find the last human message
+    let lastUserMessage: Message | null = null;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].type === "human") {
+        lastUserMessage = messages[i];
+        break;
+      }
+    }
+
+    if (lastUserMessage) {
+      const content = extractStringFromMessageContent(lastUserMessage);
+      if (content) {
+        // TODO: Ideally we would use state history to rollback and regenerate
+        // For now, we'll send the same message again
+        sendMessage(content);
+        toast.info("正在重新生成回复...");
+      }
+    }
+  }, [isLoading, messages, sendMessage]);
 
   // Handle files selected from library
   const handleLibraryFilesSelected = useCallback(
@@ -452,6 +492,8 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                   (u: any) => u.metadata?.message_id === data.message.id
                 );
                 const isLastMessage = index === processedMessages.length - 1;
+                const isUserMessage = data.message.type === "human";
+                const isLastAiMessage = !isUserMessage && isLastMessage;
                 return (
                   <ChatMessage
                     key={data.message.id}
@@ -472,6 +514,8 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                     isLastMessage={isLastMessage}
                     onArtifactSelect={onArtifactSelect}
                     selectedArtifactId={selectedArtifact?.id}
+                    onEditMessage={isUserMessage ? handleEditMessage : undefined}
+                    onRegenerate={isLastAiMessage ? handleRegenerate : undefined}
                   />
                 );
               })}
