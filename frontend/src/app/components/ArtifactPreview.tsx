@@ -14,10 +14,8 @@ import {
   RefreshCw,
 } from "lucide-react";
 import {
-  Sandpack,
   SandpackProvider,
   SandpackPreview,
-  SandpackCodeEditor,
 } from "@codesandbox/sandpack-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -34,8 +32,9 @@ type ViewMode = "code" | "preview";
 
 /**
  * Get Sandpack template based on artifact type.
+ * Use "static" for HTML to avoid default index.js execution issues.
  */
-function getTemplate(type: ArtifactType): "react" | "vue" | "vanilla" {
+function getTemplate(type: ArtifactType): "react" | "vue" | "static" {
   switch (type) {
     case "react":
       return "react";
@@ -43,7 +42,7 @@ function getTemplate(type: ArtifactType): "react" | "vue" | "vanilla" {
       return "vue";
     case "html":
     default:
-      return "vanilla";
+      return "static";
   }
 }
 
@@ -342,24 +341,12 @@ export function ArtifactPreview({
             </div>
           </div>
         ) : (
-          /* Preview view with Sandpack */
-          <Sandpack
+          /* Preview view - only show preview, no code editor */
+          <SandpackProvider
             key={sandpackKey}
             template={template}
             files={files}
             theme="auto"
-            options={{
-              showConsole: true,
-              showConsoleButton: true,
-              showTabs: true,
-              showLineNumbers: true,
-              showRefreshButton: true,
-              editorHeight: "100%",
-              classes: {
-                "sp-wrapper": "!h-full",
-                "sp-layout": "!h-full !rounded-none !border-0",
-              },
-            }}
             customSetup={{
               dependencies: {
                 ...(template === "react" && {
@@ -368,7 +355,13 @@ export function ArtifactPreview({
                 }),
               },
             }}
-          />
+          >
+            <SandpackPreview
+              showRefreshButton
+              showOpenInCodeSandbox={false}
+              style={{ height: "100%" }}
+            />
+          </SandpackProvider>
         )}
       </div>
     </div>

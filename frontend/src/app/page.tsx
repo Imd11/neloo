@@ -89,6 +89,18 @@ function ChatWithFilePanel({
     return artifacts.length > 0 ? artifacts[artifacts.length - 1] : null;
   }, [lastAiMessage, webDevMode]);
 
+  // Auto-open panel when streaming artifact is detected (no user click required)
+  useEffect(() => {
+    if (!webDevMode || !isLoading) return;
+
+    // Auto-open panel when streaming artifact is detected
+    if (currentStreamingArtifact && !selectedArtifact) {
+      setSelectedArtifact(currentStreamingArtifact);
+      setIsArtifactStreaming(true);
+      setIsSubscribedToStreaming(true);
+    }
+  }, [webDevMode, isLoading, currentStreamingArtifact, selectedArtifact]);
+
   // Auto-update selectedArtifact when subscribed to streaming
   useEffect(() => {
     if (!isSubscribedToStreaming) return;
