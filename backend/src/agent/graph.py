@@ -1010,10 +1010,14 @@ def build_graph(model_id: str | None = None, mode: str = "default"):
 # LangGraph Server will expose these as separate assistants
 def _build_model_graphs() -> dict:
     """
-    Build graphs for each available model.
+    Build graphs for each available model, including web-dev variants.
 
     Returns a dict mapping model_id to compiled graph.
     Only builds graphs for models with configured API keys.
+
+    For each model, we build:
+    - {model_id}: Default mode graph
+    - {model_id}-web-dev: Web development mode graph with artifact output
     """
     graphs = {}
     for model_id in AVAILABLE_MODELS.keys():
@@ -1021,8 +1025,14 @@ def _build_model_graphs() -> dict:
         api_key = os.environ.get(config["env_key"])
         if api_key:
             try:
-                graphs[model_id] = build_graph(model_id)
+                # Build default mode graph
+                graphs[model_id] = build_graph(model_id, mode="default")
                 print(f"[graph.py] Built graph for model: {model_id}")
+
+                # Build web-dev mode graph
+                webdev_id = f"{model_id}-web-dev"
+                graphs[webdev_id] = build_graph(model_id, mode="web-dev")
+                print(f"[graph.py] Built graph for model: {webdev_id}")
             except Exception as e:
                 print(f"[graph.py] Failed to build graph for {model_id}: {e}")
     return graphs
@@ -1036,12 +1046,21 @@ _MODEL_GRAPHS = _build_model_graphs()
 graph = _MODEL_GRAPHS.get(get_default_model_id()) or build_graph()
 
 # Export individual graphs for LangGraph Server multi-assistant setup
+# Default mode graphs
 graph_deepseek_chat = _MODEL_GRAPHS.get("deepseek-chat")
 graph_deepseek_reasoner = _MODEL_GRAPHS.get("deepseek-reasoner")
 graph_qwen_plus = _MODEL_GRAPHS.get("qwen-plus")
 graph_qwen3_max = _MODEL_GRAPHS.get("qwen3-max")
 graph_minimax_m2 = _MODEL_GRAPHS.get("minimax-m2")
 graph_claude_opus = _MODEL_GRAPHS.get("claude-opus")
+
+# Web-dev mode graphs (with artifact output support)
+graph_deepseek_chat_webdev = _MODEL_GRAPHS.get("deepseek-chat-web-dev")
+graph_deepseek_reasoner_webdev = _MODEL_GRAPHS.get("deepseek-reasoner-web-dev")
+graph_qwen_plus_webdev = _MODEL_GRAPHS.get("qwen-plus-web-dev")
+graph_qwen3_max_webdev = _MODEL_GRAPHS.get("qwen3-max-web-dev")
+graph_minimax_m2_webdev = _MODEL_GRAPHS.get("minimax-m2-web-dev")
+graph_claude_opus_webdev = _MODEL_GRAPHS.get("claude-opus-web-dev")
 
 
 # =============================================================================

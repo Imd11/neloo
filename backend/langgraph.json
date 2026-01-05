@@ -8,7 +8,13 @@
     "qwen-plus": "src.agent.graph:graph_qwen_plus",
     "qwen3-max": "src.agent.graph:graph_qwen3_max",
     "minimax-m2": "src.agent.graph:graph_minimax_m2",
-    "claude-opus": "src.agent.graph:graph_claude_opus"
+    "claude-opus": "src.agent.graph:graph_claude_opus",
+    "deepseek-chat-web-dev": "src.agent.graph:graph_deepseek_chat_webdev",
+    "deepseek-reasoner-web-dev": "src.agent.graph:graph_deepseek_reasoner_webdev",
+    "qwen-plus-web-dev": "src.agent.graph:graph_qwen_plus_webdev",
+    "qwen3-max-web-dev": "src.agent.graph:graph_qwen3_max_webdev",
+    "minimax-m2-web-dev": "src.agent.graph:graph_minimax_m2_webdev",
+    "claude-opus-web-dev": "src.agent.graph:graph_claude_opus_webdev"
   },
   "http": {
     "app": "src.api.webapp:app"

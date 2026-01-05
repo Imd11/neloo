@@ -214,8 +214,22 @@ export function useChat({
     onHistoryRevalidate?.();
   };
 
+  // Compute the effective assistant ID based on web dev mode
+  // When webDevMode is active, use the -web-dev variant of the graph
+  const effectiveAssistantId = useMemo(() => {
+    const baseId = activeAssistant?.graph_id || activeAssistant?.assistant_id || "";
+    // If web dev mode is enabled and we have a base ID, use the web-dev variant
+    if (webDevMode && baseId && !baseId.endsWith("-web-dev")) {
+      const webDevId = `${baseId}-web-dev`;
+      console.log(`[useChat] Using web-dev graph: ${webDevId}`);
+      return webDevId;
+    }
+    console.log(`[useChat] Using default graph: ${baseId}`);
+    return baseId;
+  }, [activeAssistant?.graph_id, activeAssistant?.assistant_id, webDevMode]);
+
   const stream = useStream<StateType>({
-    assistantId: activeAssistant?.assistant_id || "",
+    assistantId: effectiveAssistantId,
     client: client ?? undefined,
     reconnectOnMount: true,
     threadId: threadId ?? null,
