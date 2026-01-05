@@ -412,6 +412,7 @@ async def create_thread(
     user_id: str,
     langgraph_thread_id: str,
     title: str = "New Task",
+    mode: str = "default",
 ) -> Optional[dict]:
     """
     Create or get a thread record in the threads table (idempotent/upsert pattern).
@@ -426,6 +427,7 @@ async def create_thread(
         user_id: The user's ID (from Supabase Auth)
         langgraph_thread_id: The LangGraph thread ID (UUID from frontend)
         title: Optional thread title (only used for new threads)
+        mode: Thread mode - "default" or "web-dev" (only used for new threads)
 
     Returns:
         The thread record (existing or newly created), or None if failed
@@ -458,6 +460,7 @@ async def create_thread(
             "user_id": user_id,
             "title": title,
             "langgraph_thread_id": langgraph_thread_id,
+            "mode": mode,  # Thread mode: "default" or "web-dev"
         }
 
         result = await supabase.table("threads").insert(thread_data).execute()

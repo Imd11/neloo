@@ -1899,6 +1899,7 @@ class ThreadCreate(BaseModel):
     """Request model for creating a thread."""
     langgraph_thread_id: str
     title: str = "New Task"
+    mode: str = "default"  # "default" or "web-dev"
 
 
 class ThreadInfo(BaseModel):
@@ -1907,6 +1908,7 @@ class ThreadInfo(BaseModel):
     user_id: str
     title: str
     langgraph_thread_id: str
+    mode: str = "default"  # "default" or "web-dev"
     created_at: str
     updated_at: str
 
@@ -1934,7 +1936,7 @@ async def create_thread_api(
     It creates the thread record that file associations will reference.
 
     Args:
-        data: Thread creation data (langgraph_thread_id, title)
+        data: Thread creation data (langgraph_thread_id, title, mode)
         user: Authenticated user
 
     Returns:
@@ -1957,6 +1959,7 @@ async def create_thread_api(
                 user_id=user_id,
                 langgraph_thread_id=data.langgraph_thread_id,
                 title=data.title,
+                mode=data.mode,
             )
 
         if not thread_record:
@@ -1967,6 +1970,7 @@ async def create_thread_api(
             user_id=thread_record["user_id"],
             title=thread_record["title"],
             langgraph_thread_id=thread_record["langgraph_thread_id"],
+            mode=thread_record.get("mode", "default"),
             created_at=thread_record["created_at"],
             updated_at=thread_record["updated_at"],
         )
@@ -2012,6 +2016,7 @@ async def list_threads_api(
                 user_id=t["user_id"],
                 title=t["title"],
                 langgraph_thread_id=t["langgraph_thread_id"],
+                mode=t.get("mode", "default"),
                 created_at=t["created_at"],
                 updated_at=t["updated_at"],
             ))
@@ -2060,6 +2065,7 @@ async def get_thread_api(
             user_id=thread_record["user_id"],
             title=thread_record["title"],
             langgraph_thread_id=thread_record["langgraph_thread_id"],
+            mode=thread_record.get("mode", "default"),
             created_at=thread_record["created_at"],
             updated_at=thread_record["updated_at"],
         )
@@ -2116,6 +2122,7 @@ async def update_thread_api(
             user_id=updated_record["user_id"],
             title=updated_record["title"],
             langgraph_thread_id=updated_record["langgraph_thread_id"],
+            mode=updated_record.get("mode", "default"),
             created_at=updated_record["created_at"],
             updated_at=updated_record["updated_at"],
         )

@@ -14,6 +14,7 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
+    "@codesandbox/sandpack-react": "^2.20.0",
     "@langchain/core": "^1.1.1",
     "@langchain/langgraph": "^1.0.2",
     "@langchain/langgraph-sdk": "^1.0.3",

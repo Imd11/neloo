@@ -14,6 +14,7 @@ import { AppSidebar } from "@/app/components/AppSidebar";
 import { SearchDialog } from "@/app/components/SearchDialog";
 import { LibraryDialog } from "@/app/components/LibraryDialog";
 import { ModelSelector } from "@/app/components/ModelSelector";
+import { ArtifactPreview } from "@/app/components/ArtifactPreview";
 import { UserAvatar, ThemeToggle } from "@/components/auth";
 import {
   ResizablePanelGroup,
@@ -22,7 +23,7 @@ import {
 } from "@/components/ui/resizable";
 import { cn } from "@/lib/utils";
 
-// Wrapper component to access ChatContext for FilePanel
+// Wrapper component to access ChatContext for FilePanel and ArtifactPreview
 function ChatWithFilePanel({
   assistant,
   showFilePanel,
@@ -36,14 +37,19 @@ function ChatWithFilePanel({
   onCloseFilePanel: () => void;
   threadId: string | null;
 }) {
-  const { messages, isLoading } = useChatContext();
+  const { messages, isLoading, webDevMode, currentArtifact } = useChatContext();
+
+  // Determine which right panel to show (artifact preview takes priority)
+  const showArtifactPreview = webDevMode && currentArtifact?.artifact;
+  const showFilePanelActual = showFilePanel && !showArtifactPreview;
+  const showRightPanel = showArtifactPreview || showFilePanelActual;
 
   return (
     <ResizablePanelGroup
       direction="horizontal"
       className="h-full"
     >
-      <ResizablePanel defaultSize={showFilePanel ? 75 : 100} minSize={50}>
+      <ResizablePanel defaultSize={showRightPanel ? 60 : 100} minSize={40}>
         <div className="flex h-full flex-col overflow-hidden">
           <ChatInterface
             assistant={assistant}
@@ -52,7 +58,22 @@ function ChatWithFilePanel({
           />
         </div>
       </ResizablePanel>
-      {showFilePanel && (
+
+      {/* Artifact Preview Panel (Web Dev Mode) */}
+      {showArtifactPreview && currentArtifact?.artifact && (
+        <>
+          <ResizableHandle withHandle />
+          <ResizablePanel defaultSize={40} minSize={25} maxSize={60}>
+            <ArtifactPreview
+              artifact={currentArtifact.artifact}
+              isStreaming={!currentArtifact.isComplete}
+            />
+          </ResizablePanel>
+        </>
+      )}
+
+      {/* File Panel */}
+      {showFilePanelActual && (
         <>
           <ResizableHandle withHandle />
           <ResizablePanel defaultSize={25} minSize={15} maxSize={40}>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useEffect } from "react";
+import { useCallback, useRef, useEffect, useState, useMemo } from "react";
 import { useStream } from "@langchain/langgraph-sdk/react";
 import {
   type Message,
@@ -15,6 +15,8 @@ import { useQueryState } from "nuqs";
 import { getConfig } from "@/lib/config";
 import { useAuth } from "@/providers/AuthProvider";
 import { toast } from "sonner";
+import { getLatestArtifact, type Artifact } from "@/lib/artifactParser";
+import { extractStringFromMessageContent } from "@/app/utils/utils";
 
 export type StateType = {
   messages: Message[];
@@ -43,6 +45,10 @@ export function useChat({
   const config = getConfig();
   const createdThreadsRef = useRef<Set<string>>(new Set());
   const creatingThreadsRef = useRef<Set<string>>(new Set());
+
+  // Web Development mode state
+  const [webDevMode, setWebDevMode] = useState(false);
+  const [threadMode, setThreadMode] = useState<string>("default");
 
   // Track whether we've generated a title for this thread.
   // Also keep the first user message so we can generate a title once the thread record exists.
@@ -114,12 +120,18 @@ export function useChat({
           body: JSON.stringify({
             langgraph_thread_id: threadId,
             title: "New Task",
+            mode: webDevMode ? "web-dev" : "default",
           }),
         });
 
         if (response.ok) {
-          console.log(`[useChat] Created thread record for: ${threadId.slice(0, 8)}...`);
+          const threadData = await response.json();
+          console.log(`[useChat] Created thread record for: ${threadId.slice(0, 8)}... mode=${threadData.mode}`);
           createdThreadsRef.current.add(threadId);
+
+          // Update thread mode from server response
+          setThreadMode(threadData.mode || "default");
+
           onHistoryRevalidate?.();
 
           // If we already sent the first message before the DB record existed,
@@ -152,7 +164,44 @@ export function useChat({
     };
 
     createThread();
-  }, [threadId, session, config, onHistoryRevalidate, setThreadId, generateTitleForThread]);
+  }, [threadId, session, config, onHistoryRevalidate, setThreadId, generateTitleForThread, webDevMode]);
+
+  // Fetch thread mode when switching to an existing thread
+  useEffect(() => {
+    if (!threadId || !session || !config) return;
+
+    const fetchThreadMode = async () => {
+      try {
+        const response = await fetch(
+          `${config.deploymentUrl}/api/threads/${encodeURIComponent(threadId)}`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          }
+        );
+
+        if (response.ok) {
+          const threadData = await response.json();
+          const mode = threadData.mode || "default";
+          setThreadMode(mode);
+          setWebDevMode(mode === "web-dev");
+        }
+      } catch (error) {
+        console.error("[useChat] Failed to fetch thread mode:", error);
+      }
+    };
+
+    fetchThreadMode();
+  }, [threadId, session, config]);
+
+  // Reset webDevMode when threadId is cleared (new thread)
+  useEffect(() => {
+    if (!threadId) {
+      setThreadMode("default");
+      // Don't reset webDevMode here - let user set it before first message
+    }
+  }, [threadId]);
 
   // Handle errors, especially 404 when thread doesn't exist
   const handleError = (error: unknown) => {
@@ -293,6 +342,45 @@ export function useChat({
     stream.stop();
   }, [stream]);
 
+  // Parse artifacts from the latest AI message when in web-dev mode
+  const currentArtifact = useMemo(() => {
+    if (!webDevMode && threadMode !== "web-dev") {
+      return null;
+    }
+
+    // Find the last AI message
+    const messages = stream.messages ?? [];
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i];
+      if (msg.type === "ai") {
+        const content = extractStringFromMessageContent(msg);
+        if (content) {
+          const result = getLatestArtifact(content, stream.isLoading);
+          if (result.artifact) {
+            return {
+              artifact: result.artifact,
+              isComplete: result.isComplete,
+            };
+          }
+        }
+        break; // Only check the last AI message
+      }
+    }
+    return null;
+  }, [stream.messages, stream.isLoading, webDevMode, threadMode]);
+
+  // Check if mode is locked (has messages)
+  const isModeLocked = useMemo(() => {
+    return (stream.messages ?? []).length > 0;
+  }, [stream.messages]);
+
+  // Enable web dev mode (only allowed before first message)
+  const enableWebDevMode = useCallback(() => {
+    if (!isModeLocked) {
+      setWebDevMode(true);
+    }
+  }, [isModeLocked]);
+
   return {
     stream,
     todos: stream.values.todos ?? [],
@@ -311,5 +399,10 @@ export function useChat({
     stopStream,
     markCurrentThreadAsResolved,
     resumeInterrupt,
+    // Web Dev mode
+    webDevMode: webDevMode || threadMode === "web-dev",
+    enableWebDevMode,
+    isModeLocked,
+    currentArtifact,
   };
 }

@@ -11,6 +11,7 @@ Architecture:
 - HumanInTheLoopMiddleware for sensitive operation approval
 - Custom tools: execute_python (sandbox), search_web (Tavily)
 - Context Engineering: Dual-form output + file storage (Manus strategy)
+- Web Development Mode: Specialized prompt for generating renderable code artifacts
 """
 
 import os
@@ -299,6 +300,79 @@ When writing Python code:
    ```
 
 4. Always copy the EXACT image URL from the tool result - do not modify or reconstruct it.
+"""
+
+# =============================================================================
+# Web Development Mode Prompt
+# =============================================================================
+# This prompt is appended when the thread is in "web-dev" mode.
+# It instructs the AI to output code wrapped in <artifact> tags for frontend rendering.
+
+WEB_DEV_PROMPT = """
+## Web Development Mode
+
+You are now in **Web Development Mode**. When the user asks you to create, modify, or build any UI component, webpage, or interactive element:
+
+### Output Format
+
+Always wrap your code in `<artifact>` tags with the following attributes:
+- `type`: Required. One of: `react`, `html`, `vue`
+- `title`: Optional. A short descriptive title for the component
+
+### Example Output
+
+<artifact type="react" title="Counter Component">
+import React, { useState } from 'react';
+
+export default function Counter() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <div className="p-4 text-center">
+      <h1 className="text-2xl font-bold mb-4">Counter: {count}</h1>
+      <button
+        onClick={() => setCount(c => c + 1)}
+        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+      >
+        Increment
+      </button>
+    </div>
+  );
+}
+</artifact>
+
+### Supported Types
+
+1. **react**: React functional components with hooks
+   - Must have a default export
+   - Can use useState, useEffect, useRef, etc.
+   - Tailwind CSS classes are available
+   - Import React at the top
+
+2. **html**: Plain HTML with inline CSS and JavaScript
+   - Self-contained HTML document or fragment
+   - Can include <style> and <script> tags
+   - Good for simple static pages
+
+3. **vue**: Vue 3 Single File Components
+   - Uses <script setup> syntax
+   - Can use ref, reactive, computed, etc.
+   - Tailwind CSS classes are available
+
+### Guidelines
+
+1. **Always output complete, runnable code** - no placeholders or "..."
+2. **One artifact per response** unless the user asks for multiple variants
+3. **Include necessary imports** at the top of the code
+4. **Use Tailwind CSS** for styling when possible (available in the preview)
+5. **Handle user interactions** properly with event handlers
+6. **Keep components focused** - do one thing well
+
+### When NOT to Use Artifacts
+
+- For data analysis code (use execute_python instead)
+- For explanations or discussions
+- For showing code snippets that aren't meant to be rendered
 """
 
 def _resolve_thread_id_from_config(config: RunnableConfig | None) -> str | None:
@@ -883,13 +957,16 @@ def get_model(model_id: str | None = None):
 # Create Deep Agent
 # =============================================================================
 
-def build_graph(model_id: str | None = None):
+def build_graph(model_id: str | None = None, mode: str = "default"):
     """
     Build the data analyst agent using Deep Agents architecture.
 
     Args:
         model_id: Specific model to use (e.g., "deepseek-chat", "qwen-plus").
                   If None, uses default based on available API keys.
+        mode: Agent mode. Options:
+              - "default": Standard data analyst mode
+              - "web-dev": Web development mode with artifact output
 
     This provides:
     - TodoListMiddleware: Automatic task planning with write_todos tool
@@ -908,13 +985,18 @@ def build_graph(model_id: str | None = None):
     """
     model = get_model(model_id)
 
+    # Build system prompt based on mode
+    system_prompt = DATA_ANALYST_PROMPT
+    if mode == "web-dev":
+        system_prompt = DATA_ANALYST_PROMPT + "\n\n" + WEB_DEV_PROMPT
+
     # Determine interrupt_on config based on ENABLE_HITL environment variable
     interrupt_on = INTERRUPT_ON_CONFIG if ENABLE_HITL else None
 
     return create_deep_agent(
         model=model,
         tools=CUSTOM_TOOLS,
-        system_prompt=DATA_ANALYST_PROMPT,
+        system_prompt=system_prompt,
         subagents=DATA_ANALYST_SUBAGENTS,  # Enable specialized subagents
         interrupt_on=interrupt_on,          # Enable HITL if configured
     )

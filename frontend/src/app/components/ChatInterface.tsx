@@ -19,6 +19,7 @@ import {
   FileIcon,
   AlertCircle,
   FolderOpen,
+  Code2,
 } from "lucide-react";
 import { ChatMessage } from "@/app/components/ChatMessage";
 import type {
@@ -41,6 +42,7 @@ import { formatFilesForMessage, getAcceptAttribute } from "@/lib/data-file-utils
 import { useDataFileUpload } from "@/app/hooks/useDataFileUpload";
 import { DataFileUpload } from "@/app/components/DataFileUpload";
 import { LibraryDialog } from "@/app/components/LibraryDialog";
+import { WebDevToggle } from "@/app/components/WebDevToggle";
 
 // Maximum visible characters before showing warning
 const MAX_VISIBLE_CHARS = 100000;
@@ -99,6 +101,9 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, onOpen
     sendMessage,
     stopStream,
     resumeInterrupt,
+    webDevMode,
+    enableWebDevMode,
+    isModeLocked,
   } = useChatContext();
 
   // DataFileUpload integration
@@ -698,7 +703,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, onOpen
               rows={1}
             />
             <div className="flex justify-between gap-2 p-3">
-              {/* File upload component */}
+              {/* File upload component and Web Dev toggle */}
               <div className="flex items-center gap-2">
                 <DataFileUpload
                   files={fileUpload.files}
@@ -722,6 +727,12 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({ assistant, onOpen
                     <span className="ml-1 text-xs">Files</span>
                   </Button>
                 )}
+                {/* Web Development Mode toggle */}
+                <WebDevToggle
+                  enabled={webDevMode}
+                  locked={isModeLocked}
+                  onEnable={enableWebDevMode}
+                />
               </div>
               <div className="flex justify-end gap-2">
                 <Button
