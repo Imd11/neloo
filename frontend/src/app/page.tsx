@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, Suspense, useRef } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { getConfig, StandaloneConfig } from "@/lib/config";
@@ -22,6 +22,7 @@ import {
   ResizableHandle,
 } from "@/components/ui/resizable";
 import { cn } from "@/lib/utils";
+import type { Artifact } from "@/lib/artifactParser";
 
 // Wrapper component to access ChatContext for FilePanel and ArtifactPreview
 function ChatWithFilePanel({
@@ -37,40 +38,32 @@ function ChatWithFilePanel({
   onCloseFilePanel: () => void;
   threadId: string | null;
 }) {
-  const { messages, isLoading, webDevMode, currentArtifact } = useChatContext();
+  const { messages, isLoading, webDevMode } = useChatContext();
 
-  // Track if user manually closed the artifact panel
-  const [artifactPanelDismissed, setArtifactPanelDismissed] = useState(false);
-  // Track the last artifact ID to detect new artifacts
-  const lastArtifactIdRef = useRef<string | null>(null);
+  // Selected artifact from inline cards - this is what drives the right panel
+  const [selectedArtifact, setSelectedArtifact] = useState<Artifact | null>(null);
+  // Track if we're currently streaming (for the preview panel)
+  const [isArtifactStreaming, setIsArtifactStreaming] = useState(false);
 
-  // Smart auto-open: reset dismissed state when a NEW artifact is detected
-  useEffect(() => {
-    if (currentArtifact?.artifact) {
-      const currentId = currentArtifact.artifact.id;
-      if (currentId !== lastArtifactIdRef.current) {
-        // New artifact detected, reset dismissed state to auto-show panel
-        setArtifactPanelDismissed(false);
-        lastArtifactIdRef.current = currentId;
-      }
-    }
-  }, [currentArtifact?.artifact]);
-
-  // Reset dismissed state when thread changes
-  useEffect(() => {
-    setArtifactPanelDismissed(false);
-    lastArtifactIdRef.current = null;
-  }, [threadId]);
+  // Handle artifact selection from inline cards
+  const handleArtifactSelect = useCallback((artifact: Artifact | null) => {
+    setSelectedArtifact(artifact);
+    // If artifact id is "streaming", it's still being generated
+    setIsArtifactStreaming(artifact?.id === "streaming");
+  }, []);
 
   // Handle closing the artifact panel
   const handleCloseArtifactPanel = useCallback(() => {
-    setArtifactPanelDismissed(true);
+    setSelectedArtifact(null);
   }, []);
 
+  // Reset selected artifact when thread changes
+  useEffect(() => {
+    setSelectedArtifact(null);
+  }, [threadId]);
+
   // Determine which right panel to show
-  // Artifact preview shows when: webDevMode + artifact exists + user hasn't dismissed
-  const showArtifactPreview =
-    webDevMode && currentArtifact?.artifact && !artifactPanelDismissed;
+  const showArtifactPreview = webDevMode && selectedArtifact !== null;
   const showFilePanelActual = showFilePanel && !showArtifactPreview;
   const showRightPanel = showArtifactPreview || showFilePanelActual;
 
@@ -85,22 +78,20 @@ function ChatWithFilePanel({
             assistant={assistant}
             onOpenFilePanel={onOpenFilePanel}
             showFilePanelButton={!!threadId}
-            // Pass artifact info for inline card display
-            currentArtifact={currentArtifact}
-            artifactPanelDismissed={artifactPanelDismissed}
-            onOpenArtifactPanel={() => setArtifactPanelDismissed(false)}
+            selectedArtifact={selectedArtifact}
+            onArtifactSelect={handleArtifactSelect}
           />
         </div>
       </ResizablePanel>
 
       {/* Artifact Preview Panel (Web Dev Mode) */}
-      {showArtifactPreview && currentArtifact?.artifact && (
+      {showArtifactPreview && selectedArtifact && (
         <>
           <ResizableHandle withHandle />
           <ResizablePanel defaultSize={40} minSize={25} maxSize={60}>
             <ArtifactPreview
-              artifact={currentArtifact.artifact}
-              isStreaming={!currentArtifact.isComplete}
+              artifact={selectedArtifact}
+              isStreaming={isArtifactStreaming}
               onClose={handleCloseArtifactPanel}
             />
           </ResizablePanel>

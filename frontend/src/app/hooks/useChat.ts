@@ -15,7 +15,6 @@ import { useQueryState } from "nuqs";
 import { getConfig } from "@/lib/config";
 import { useAuth } from "@/providers/AuthProvider";
 import { toast } from "sonner";
-import { getLatestArtifact, type Artifact } from "@/lib/artifactParser";
 import { extractStringFromMessageContent } from "@/app/utils/utils";
 
 export type StateType = {
@@ -356,33 +355,6 @@ export function useChat({
     stream.stop();
   }, [stream]);
 
-  // Parse artifacts from the latest AI message when in web-dev mode
-  const currentArtifact = useMemo(() => {
-    if (!webDevMode && threadMode !== "web-dev") {
-      return null;
-    }
-
-    // Find the last AI message
-    const messages = stream.messages ?? [];
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const msg = messages[i];
-      if (msg.type === "ai") {
-        const content = extractStringFromMessageContent(msg);
-        if (content) {
-          const result = getLatestArtifact(content, stream.isLoading);
-          if (result.artifact) {
-            return {
-              artifact: result.artifact,
-              isComplete: result.isComplete,
-            };
-          }
-        }
-        break; // Only check the last AI message
-      }
-    }
-    return null;
-  }, [stream.messages, stream.isLoading, webDevMode, threadMode]);
-
   // Check if mode is locked (has messages)
   const isModeLocked = useMemo(() => {
     return (stream.messages ?? []).length > 0;
@@ -417,6 +389,5 @@ export function useChat({
     webDevMode: webDevMode || threadMode === "web-dev",
     enableWebDevMode,
     isModeLocked,
-    currentArtifact,
   };
 }

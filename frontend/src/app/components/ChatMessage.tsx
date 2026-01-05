@@ -20,8 +20,10 @@ import {
   stripUploadedFilesAnnotation,
   parseUploadedFilesAnnotation,
 } from "@/lib/uploadedFilesAnnotation";
-import { stripArtifacts } from "@/lib/artifactParser";
+import { stripArtifacts, parseArtifacts, getStreamingArtifact } from "@/lib/artifactParser";
+import type { Artifact } from "@/lib/artifactParser";
 import { MessageAttachments } from "@/app/components/MessageAttachments";
+import { ArtifactCard } from "@/app/components/ArtifactCard";
 
 interface ChatMessageProps {
   message: Message;
@@ -33,8 +35,14 @@ interface ChatMessageProps {
   stream?: any;
   onResumeInterrupt?: (value: any) => void;
   graphId?: string;
-  /** When true, strip <artifact> tags from AI message content (for Web Dev Mode) */
+  /** When true, parse and display artifact cards for AI messages */
   webDevMode?: boolean;
+  /** Whether this is the last message (for streaming artifact detection) */
+  isLastMessage?: boolean;
+  /** Callback when user clicks an artifact card to preview it */
+  onArtifactSelect?: (artifact: Artifact) => void;
+  /** Currently selected artifact ID (to highlight the active card) */
+  selectedArtifactId?: string;
 }
 
 export const ChatMessage = React.memo<ChatMessageProps>(
@@ -49,6 +57,9 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     onResumeInterrupt,
     graphId,
     webDevMode,
+    isLastMessage,
+    onArtifactSelect,
+    selectedArtifactId,
   }) => {
     const isUser = message.type === "human";
     const rawMessageContent = extractStringFromMessageContent(message);
@@ -65,9 +76,36 @@ export const ChatMessage = React.memo<ChatMessageProps>(
       }
       return rawMessageContent;
     }, [isUser, rawMessageContent, webDevMode]);
+
     const userAttachments = isUser
       ? parseUploadedFilesAnnotation(rawMessageContent)
       : [];
+
+    // Parse artifacts from AI messages in Web Dev Mode
+    const messageArtifacts = useMemo(() => {
+      if (isUser || !webDevMode) return { completed: [], streaming: null };
+
+      // Get completed artifacts
+      const completed = parseArtifacts(rawMessageContent);
+
+      // Check for streaming artifact (only for last message when loading)
+      let streaming: Artifact | null = null;
+      if (isLastMessage && isLoading) {
+        const streamingInfo = getStreamingArtifact(rawMessageContent);
+        if (streamingInfo.isStreaming && streamingInfo.type) {
+          streaming = {
+            id: "streaming",
+            type: streamingInfo.type,
+            title: streamingInfo.title,
+            code: streamingInfo.partialCode || "",
+          };
+        }
+      }
+
+      return { completed, streaming };
+    }, [isUser, webDevMode, rawMessageContent, isLastMessage, isLoading]);
+
+    const hasArtifacts = messageArtifacts.completed.length > 0 || messageArtifacts.streaming !== null;
 
     const hasContent = messageContent && messageContent.trim() !== "";
     const hasToolCalls = toolCalls.length > 0;
@@ -223,6 +261,34 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                   )}
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Artifact Cards - inline with message in Web Dev Mode */}
+          {!isUser && hasArtifacts && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {/* Completed artifacts */}
+              {messageArtifacts.completed.map((artifact) => (
+                <ArtifactCard
+                  key={artifact.id}
+                  artifact={artifact}
+                  isStreaming={false}
+                  isComplete={true}
+                  onPreview={() => onArtifactSelect?.(artifact)}
+                  className={cn(
+                    selectedArtifactId === artifact.id && "ring-2 ring-primary"
+                  )}
+                />
+              ))}
+              {/* Streaming artifact */}
+              {messageArtifacts.streaming && (
+                <ArtifactCard
+                  artifact={messageArtifacts.streaming}
+                  isStreaming={true}
+                  isComplete={false}
+                  onPreview={() => onArtifactSelect?.(messageArtifacts.streaming!)}
+                />
+              )}
             </div>
           )}
         </div>

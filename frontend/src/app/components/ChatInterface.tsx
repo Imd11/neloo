@@ -43,7 +43,6 @@ import { useDataFileUpload } from "@/app/hooks/useDataFileUpload";
 import { DataFileUpload } from "@/app/components/DataFileUpload";
 import { LibraryDialog } from "@/app/components/LibraryDialog";
 import { WebDevToggle } from "@/app/components/WebDevToggle";
-import { ArtifactCard } from "@/app/components/ArtifactCard";
 import type { Artifact } from "@/lib/artifactParser";
 
 // Maximum visible characters before showing warning
@@ -53,10 +52,9 @@ interface ChatInterfaceProps {
   assistant: Assistant | null;
   onOpenFilePanel?: () => void;
   showFilePanelButton?: boolean;
-  // Artifact panel control
-  currentArtifact?: { artifact: Artifact | null; isComplete: boolean } | null;
-  artifactPanelDismissed?: boolean;
-  onOpenArtifactPanel?: () => void;
+  // Artifact panel control - new design: selected artifact from inline cards
+  selectedArtifact?: Artifact | null;
+  onArtifactSelect?: (artifact: Artifact | null) => void;
 }
 
 const getStatusIcon = (status: TodoItem["status"], className?: string) => {
@@ -89,9 +87,8 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
   assistant,
   onOpenFilePanel,
   showFilePanelButton,
-  currentArtifact,
-  artifactPanelDismissed,
-  onOpenArtifactPanel,
+  selectedArtifact,
+  onArtifactSelect,
 }) => {
   const [metaOpen, setMetaOpen] = useState<"tasks" | "files" | null>(null);
   const tasksContainerRef = useRef<HTMLDivElement | null>(null);
@@ -472,21 +469,12 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                     onResumeInterrupt={resumeInterrupt}
                     graphId={assistant?.graph_id}
                     webDevMode={webDevMode}
+                    isLastMessage={isLastMessage}
+                    onArtifactSelect={onArtifactSelect}
+                    selectedArtifactId={selectedArtifact?.id}
                   />
                 );
               })}
-
-              {/* Artifact Card - shows when panel is dismissed but artifact exists */}
-              {webDevMode && currentArtifact?.artifact && artifactPanelDismissed && (
-                <div className="mt-4 flex justify-start">
-                  <ArtifactCard
-                    artifact={currentArtifact.artifact}
-                    isStreaming={!currentArtifact.isComplete}
-                    isComplete={currentArtifact.isComplete}
-                    onPreview={onOpenArtifactPanel}
-                  />
-                </div>
-              )}
             </>
           )}
         </div>
