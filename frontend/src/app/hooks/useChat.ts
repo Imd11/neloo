@@ -213,19 +213,22 @@ export function useChat({
     onHistoryRevalidate?.();
   };
 
+  // Compute the effective web dev mode (either explicitly enabled or from thread mode)
+  const isWebDevModeActive = webDevMode || threadMode === "web-dev";
+
   // Compute the effective assistant ID based on web dev mode
   // When webDevMode is active, use the -web-dev variant of the graph
   const effectiveAssistantId = useMemo(() => {
     const baseId = activeAssistant?.graph_id || activeAssistant?.assistant_id || "";
     // If web dev mode is enabled and we have a base ID, use the web-dev variant
-    if (webDevMode && baseId && !baseId.endsWith("-web-dev")) {
+    if (isWebDevModeActive && baseId && !baseId.endsWith("-web-dev")) {
       const webDevId = `${baseId}-web-dev`;
       console.log(`[useChat] Using web-dev graph: ${webDevId}`);
       return webDevId;
     }
     console.log(`[useChat] Using default graph: ${baseId}`);
     return baseId;
-  }, [activeAssistant?.graph_id, activeAssistant?.assistant_id, webDevMode]);
+  }, [activeAssistant?.graph_id, activeAssistant?.assistant_id, isWebDevModeActive]);
 
   const stream = useStream<StateType>({
     assistantId: effectiveAssistantId,
@@ -386,7 +389,7 @@ export function useChat({
     markCurrentThreadAsResolved,
     resumeInterrupt,
     // Web Dev mode
-    webDevMode: webDevMode || threadMode === "web-dev",
+    webDevMode: isWebDevModeActive,
     enableWebDevMode,
     isModeLocked,
   };
