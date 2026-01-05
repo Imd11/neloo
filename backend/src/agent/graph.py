@@ -319,8 +319,16 @@ Always wrap your code in `<artifact>` tags with the following attributes:
 - `type`: Required. One of: `react`, `html`, `vue`
 - `title`: Optional. A short descriptive title for the component
 
-### Example Output
+### Supported Types
 
+1. **react** (RECOMMENDED for interactive components):
+   - React functional components with hooks
+   - Must have a default export
+   - Can use useState, useEffect, useRef, etc.
+   - Tailwind CSS classes are available
+   - Import React at the top
+
+Example:
 <artifact type="react" title="Counter Component">
 import React, { useState } from 'react';
 
@@ -341,18 +349,53 @@ export default function Counter() {
 }
 </artifact>
 
-### Supported Types
+2. **html**: Complete HTML document with embedded CSS and JavaScript
+   - MUST be a complete HTML document with <!DOCTYPE html>, <html>, <head>, and <body> tags
+   - Put CSS in <style> tag inside <head>
+   - Put JavaScript in <script> tag at the END of <body> (after all HTML elements)
+   - If using JavaScript with getElementById, ensure the element exists in HTML
 
-1. **react**: React functional components with hooks
-   - Must have a default export
-   - Can use useState, useEffect, useRef, etc.
-   - Tailwind CSS classes are available
-   - Import React at the top
+Example:
+<artifact type="html" title="Shopping Cart">
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: system-ui, sans-serif; }
+  </style>
+</head>
+<body class="p-4">
+  <div id="app">
+    <h1 class="text-2xl font-bold mb-4">Shopping Cart</h1>
+    <div id="items"></div>
+    <p id="total" class="font-bold mt-4"></p>
+  </div>
 
-2. **html**: Plain HTML with inline CSS and JavaScript
-   - Self-contained HTML document or fragment
-   - Can include <style> and <script> tags
-   - Good for simple static pages
+  <script>
+    // JavaScript runs after DOM is ready (placed at end of body)
+    const items = [
+      { name: 'Apple', price: 2.5 },
+      { name: 'Banana', price: 1.5 }
+    ];
+
+    const itemsDiv = document.getElementById('items');
+    const totalEl = document.getElementById('total');
+
+    items.forEach(item => {
+      const div = document.createElement('div');
+      div.textContent = `${item.name}: $${item.price}`;
+      itemsDiv.appendChild(div);
+    });
+
+    const total = items.reduce((sum, item) => sum + item.price, 0);
+    totalEl.textContent = `Total: $${total.toFixed(2)}`;
+  </script>
+</body>
+</html>
+</artifact>
 
 3. **vue**: Vue 3 Single File Components
    - Uses <script setup> syntax
@@ -363,10 +406,10 @@ export default function Counter() {
 
 1. **Always output complete, runnable code** - no placeholders or "..."
 2. **One artifact per response** unless the user asks for multiple variants
-3. **Include necessary imports** at the top of the code
-4. **Use Tailwind CSS** for styling when possible (available in the preview)
-5. **Handle user interactions** properly with event handlers
-6. **Keep components focused** - do one thing well
+3. **Use Tailwind CSS** for styling when possible (available in the preview)
+4. **For complex interactive apps, prefer React over HTML** - React is more reliable
+5. **For HTML: Always use complete document structure** with proper <head> and <body>
+6. **For HTML: Put <script> at END of body** so DOM elements exist when JS runs
 
 ### When NOT to Use Artifacts
 

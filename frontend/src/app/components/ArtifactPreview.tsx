@@ -61,12 +61,59 @@ function wrapCode(type: ArtifactType, code: string): Record<string, string> {
       };
     case "html":
     default:
-      // HTML: wrap in full HTML document if needed
+      // HTML: check if it's a full document
       const isFullDocument = code.toLowerCase().includes("<!doctype") || code.toLowerCase().includes("<html");
+
       if (isFullDocument) {
-        return { "/index.html": code };
+        // Ensure the HTML has a div#app if the code references it
+        // This fixes compatibility with JS that uses document.getElementById("app")
+        let processedCode = code;
+
+        // If the code has script that references "app" element but body doesn't have it
+        if (code.includes('getElementById("app")') || code.includes("getElementById('app')")) {
+          // Check if <div id="app"> exists
+          if (!code.includes('id="app"') && !code.includes("id='app'")) {
+            // Insert <div id="app"></div> at the beginning of body
+            processedCode = code.replace(/<body([^>]*)>/i, '<body$1>\n<div id="app"></div>');
+          }
+        }
+
+        return { "/index.html": processedCode };
       }
-      // Wrap fragment in basic HTML structure
+
+      // Check if it's JavaScript code that manipulates DOM
+      const isJavaScript = code.trim().startsWith("//") ||
+                          code.includes("document.") ||
+                          code.includes("function ") ||
+                          code.includes("const ") ||
+                          code.includes("let ") ||
+                          code.includes("var ");
+
+      if (isJavaScript) {
+        // Wrap JavaScript in HTML with proper DOM structure
+        return {
+          "/index.html": `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { margin: 0; font-family: system-ui, sans-serif; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="root"></div>
+  <script>
+${code}
+  </script>
+</body>
+</html>`,
+        };
+      }
+
+      // Wrap HTML fragment in basic HTML structure
       return {
         "/index.html": `<!DOCTYPE html>
 <html>
