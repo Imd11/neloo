@@ -1104,6 +1104,7 @@ graph_qwen_plus = _MODEL_GRAPHS.get("qwen-plus")
 graph_qwen3_max = _MODEL_GRAPHS.get("qwen3-max")
 graph_minimax_m2 = _MODEL_GRAPHS.get("minimax-m2")
 graph_claude_opus = _MODEL_GRAPHS.get("claude-opus")
+graph_claude_opus_or = _MODEL_GRAPHS.get("claude-opus-or")
 
 # Web-dev mode graphs (with artifact output support)
 graph_deepseek_chat_webdev = _MODEL_GRAPHS.get("deepseek-chat-web-dev")
@@ -1112,6 +1113,7 @@ graph_qwen_plus_webdev = _MODEL_GRAPHS.get("qwen-plus-web-dev")
 graph_qwen3_max_webdev = _MODEL_GRAPHS.get("qwen3-max-web-dev")
 graph_minimax_m2_webdev = _MODEL_GRAPHS.get("minimax-m2-web-dev")
 graph_claude_opus_webdev = _MODEL_GRAPHS.get("claude-opus-web-dev")
+graph_claude_opus_or_webdev = _MODEL_GRAPHS.get("claude-opus-or-web-dev")
 
 
 # =============================================================================
