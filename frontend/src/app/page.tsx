@@ -155,7 +155,7 @@ function ChatWithFilePanel({
       direction="horizontal"
       className="h-full"
     >
-      <ResizablePanel defaultSize={showRightPanel ? 60 : 100} minSize={40}>
+      <ResizablePanel defaultSize={showRightPanel ? 50 : 100} minSize={40}>
         <div className="flex h-full flex-col overflow-hidden">
           <ChatInterface
             assistant={assistant}
@@ -171,7 +171,7 @@ function ChatWithFilePanel({
       {showArtifactPreview && selectedArtifact && (
         <>
           <ResizableHandle withHandle />
-          <ResizablePanel defaultSize={40} minSize={25} maxSize={60}>
+          <ResizablePanel defaultSize={50} minSize={25} maxSize={60}>
             <ArtifactPreview
               artifact={selectedArtifact}
               isStreaming={isArtifactStreaming}
