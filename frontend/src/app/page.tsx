@@ -215,7 +215,25 @@ function HomePageInner({ config }: HomePageInnerProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<string | null>(null);
+  const [selectedModel, setSelectedModel] = useState<string | null>(() => {
+    // Initialize from localStorage
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("selectedModel");
+    }
+    return null;
+  });
+
+  // Persist model selection to localStorage
+  const handleModelChange = useCallback((model: string | null) => {
+    setSelectedModel(model);
+    if (typeof window !== "undefined") {
+      if (model) {
+        localStorage.setItem("selectedModel", model);
+      } else {
+        localStorage.removeItem("selectedModel");
+      }
+    }
+  }, []);
 
   const fetchAssistant = useCallback(async (modelId?: string | null) => {
     // Use selected model as graph ID if available, otherwise fall back to config
@@ -332,7 +350,7 @@ function HomePageInner({ config }: HomePageInnerProps) {
       >
         <ModelSelector
           selectedModel={selectedModel}
-          onModelChange={setSelectedModel}
+          onModelChange={handleModelChange}
         />
       </div>
       <div className="flex h-screen">
