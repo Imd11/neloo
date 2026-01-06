@@ -849,6 +849,7 @@ MODEL_PROFILES = {
     "qwen": {"max_input_tokens": 120000},         # Qwen: 128k context, leave buffer
     "minimax": {"max_input_tokens": 80000},       # MiniMax: estimate based on typical limits
     "openrouter": {"max_input_tokens": 180000},   # OpenRouter Claude: same as Anthropic
+    "zhipu": {"max_input_tokens": 120000},        # GLM-4: 128k context, leave buffer
 }
 
 # =============================================================================
@@ -912,6 +913,14 @@ AVAILABLE_MODELS = {
         "env_key": "OPENROUTER_API_KEY",
         "base_url_env": "OPENROUTER_BASE_URL",
         "profile_key": "openrouter",
+    },
+    "glm-4.7": {
+        "display_name": "GLM-4.7",
+        "model_name": "glm-4.7",
+        "provider": "openai",  # Zhipu uses OpenAI-compatible API
+        "env_key": "ZHIPU_API_KEY",
+        "base_url_env": "ZHIPU_BASE_URL",
+        "profile_key": "zhipu",
     },
 }
 
@@ -1106,6 +1115,7 @@ graph_qwen3_max = _MODEL_GRAPHS.get("qwen3-max")
 graph_minimax_m2 = _MODEL_GRAPHS.get("minimax-m2")
 graph_claude_opus = _MODEL_GRAPHS.get("claude-opus")
 graph_claude_opus_or = _MODEL_GRAPHS.get("claude-opus-or")
+graph_glm_4_7 = _MODEL_GRAPHS.get("glm-4.7")
 
 # Web-dev mode graphs (with artifact output support)
 graph_deepseek_chat_webdev = _MODEL_GRAPHS.get("deepseek-chat-web-dev")
@@ -1115,6 +1125,7 @@ graph_qwen3_max_webdev = _MODEL_GRAPHS.get("qwen3-max-web-dev")
 graph_minimax_m2_webdev = _MODEL_GRAPHS.get("minimax-m2-web-dev")
 graph_claude_opus_webdev = _MODEL_GRAPHS.get("claude-opus-web-dev")
 graph_claude_opus_or_webdev = _MODEL_GRAPHS.get("claude-opus-or-web-dev")
+graph_glm_4_7_webdev = _MODEL_GRAPHS.get("glm-4.7-web-dev")
 
 
 # =============================================================================
