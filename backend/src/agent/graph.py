@@ -849,8 +849,6 @@ MODEL_PROFILES = {
     "qwen": {"max_input_tokens": 120000},         # Qwen: 128k context, leave buffer
     "minimax": {"max_input_tokens": 80000},       # MiniMax: estimate based on typical limits
     "openrouter": {"max_input_tokens": 180000},   # OpenRouter Claude: same as Anthropic
-    "88api": {"max_input_tokens": 180000},        # 88api Claude: same as Anthropic
-    "88v1": {"max_input_tokens": 180000},         # 88v1 Claude: same as Anthropic
 }
 
 # =============================================================================
@@ -914,22 +912,6 @@ AVAILABLE_MODELS = {
         "env_key": "OPENROUTER_API_KEY",
         "base_url_env": "OPENROUTER_BASE_URL",
         "profile_key": "openrouter",
-    },
-    "claude-opus-88api": {
-        "display_name": "Claude Opus 4.5 (88api)",
-        "model_name": "claude-opus-4-5-20251101",
-        "provider": "openai",  # 88api uses OpenAI-compatible API
-        "env_key": "API_88_KEY",
-        "base_url_env": "API_88_BASE_URL",
-        "profile_key": "88api",
-    },
-    "claude-opus-88v1": {
-        "display_name": "Claude Opus 4.5 (88v1)",
-        "model_name": "claude-opus-4-5-20251101",
-        "provider": "openai",  # 88v1 uses OpenAI-compatible API
-        "env_key": "API_88V1_KEY",
-        "base_url_env": "API_88V1_BASE_URL",
-        "profile_key": "88v1",
     },
 }
 
@@ -1124,8 +1106,6 @@ graph_qwen3_max = _MODEL_GRAPHS.get("qwen3-max")
 graph_minimax_m2 = _MODEL_GRAPHS.get("minimax-m2")
 graph_claude_opus = _MODEL_GRAPHS.get("claude-opus")
 graph_claude_opus_or = _MODEL_GRAPHS.get("claude-opus-or")
-graph_claude_opus_88api = _MODEL_GRAPHS.get("claude-opus-88api")
-graph_claude_opus_88v1 = _MODEL_GRAPHS.get("claude-opus-88v1")
 
 # Web-dev mode graphs (with artifact output support)
 graph_deepseek_chat_webdev = _MODEL_GRAPHS.get("deepseek-chat-web-dev")
@@ -1135,8 +1115,6 @@ graph_qwen3_max_webdev = _MODEL_GRAPHS.get("qwen3-max-web-dev")
 graph_minimax_m2_webdev = _MODEL_GRAPHS.get("minimax-m2-web-dev")
 graph_claude_opus_webdev = _MODEL_GRAPHS.get("claude-opus-web-dev")
 graph_claude_opus_or_webdev = _MODEL_GRAPHS.get("claude-opus-or-web-dev")
-graph_claude_opus_88api_webdev = _MODEL_GRAPHS.get("claude-opus-88api-web-dev")
-graph_claude_opus_88v1_webdev = _MODEL_GRAPHS.get("claude-opus-88v1-web-dev")
 
 
 # =============================================================================
