@@ -14,6 +14,12 @@ import {
   RefreshCw,
 } from "lucide-react";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   SandpackProvider,
   SandpackPreview,
 } from "@codesandbox/sandpack-react";
@@ -238,19 +244,29 @@ export function ArtifactPreview({
           >
             代码
           </button>
-          <button
-            onClick={() => setViewMode("preview")}
-            disabled={isStreaming}
-            className={cn(
-              "px-3 py-1 text-xs font-medium rounded-md transition-colors",
-              viewMode === "preview"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
-              isStreaming && "opacity-50 cursor-not-allowed"
-            )}
-          >
-            预览
-          </button>
+          <TooltipProvider delayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => !isStreaming && setViewMode("preview")}
+                  className={cn(
+                    "px-3 py-1 text-xs font-medium rounded-md transition-colors",
+                    viewMode === "preview"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
+                    isStreaming && "opacity-50 cursor-not-allowed"
+                  )}
+                >
+                  预览
+                </button>
+              </TooltipTrigger>
+              {isStreaming && (
+                <TooltipContent side="bottom">
+                  预览将在生成完成后可用
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
         {/* Action buttons */}
@@ -329,16 +345,6 @@ export function ArtifactPreview({
         {viewMode === "code" ? (
           /* Code view */
           <div className="h-full flex flex-col">
-            {/* Streaming status bar */}
-            {isStreaming && (
-              <div className="px-4 py-2 bg-primary/10 border-b flex items-center gap-2 text-xs text-primary">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                <span>正在生成代码...</span>
-                <span className="text-muted-foreground">
-                  ({artifact.code.length} 字符)
-                </span>
-              </div>
-            )}
             {/* Code display */}
             <pre
               ref={codeRef}
@@ -351,11 +357,6 @@ export function ArtifactPreview({
               <span className="px-2 py-0.5 bg-muted rounded font-medium">
                 {artifact.type.toUpperCase()}
               </span>
-              {isStreaming ? (
-                <span>预览将在生成完成后可用</span>
-              ) : (
-                <span>点击"预览"查看渲染效果</span>
-              )}
             </div>
           </div>
         ) : (
