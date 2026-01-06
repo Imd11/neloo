@@ -904,6 +904,14 @@ AVAILABLE_MODELS = {
         "base_url_env": "ANTHROPIC_BASE_URL",
         "profile_key": "anthropic",
     },
+    "claude-opus-or": {
+        "display_name": "Claude Opus 4.5 (OR)",
+        "model_name": "anthropic/claude-opus-4.5",
+        "provider": "openai",  # OpenRouter uses OpenAI-compatible API
+        "env_key": "OPENROUTER_API_KEY",
+        "base_url_env": "OPENROUTER_BASE_URL",
+        "profile_key": "openrouter",
+    },
 }
 
 
