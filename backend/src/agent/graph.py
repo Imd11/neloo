@@ -848,6 +848,7 @@ MODEL_PROFILES = {
     "openai": {"max_input_tokens": 120000},       # GPT-4o: 128k context, leave buffer
     "qwen": {"max_input_tokens": 120000},         # Qwen: 128k context, leave buffer
     "minimax": {"max_input_tokens": 80000},       # MiniMax: estimate based on typical limits
+    "openrouter": {"max_input_tokens": 180000},   # OpenRouter Claude: same as Anthropic
 }
 
 # =============================================================================
