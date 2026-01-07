@@ -984,7 +984,7 @@ AVAILABLE_MODELS = {
         "profile_key": "openai",
     },
     "claude-opus-tuzi": {
-        "display_name": "Claude opus 4.5-tuzi",
+        "display_name": "Claude Opus 4.5 thinking(tuzi)",
         "model_name": "claude-opus-4-5-20251101-thinking",
         "provider": "anthropic",  # Tu-zi Anthropic-compatible API
         "env_key": "TUZI_ANTHROPIC_API_KEY",
