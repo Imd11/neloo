@@ -927,7 +927,7 @@ AVAILABLE_MODELS = {
         "profile_key": "zhipu",
     },
     "claude-opus-right": {
-        "display_name": "Claude Opus 4.5(right)",
+        "display_name": "Claude Opus 4.5",
         "model_name": "claude-opus-4-5-20251101",
         "provider": "openai",  # Right Code uses OpenAI-compatible API
         "env_key": "NEWAPI_API_KEY",
@@ -935,7 +935,7 @@ AVAILABLE_MODELS = {
         "profile_key": "anthropic",
     },
     "claude-opus-right-thinking": {
-        "display_name": "Claude Opus 4.5(right) 思考",
+        "display_name": "Claude Opus 4.5 thinking",
         "model_name": "claude-opus-4-5-20251101-thinking",
         "provider": "anthropic",  # Use native Anthropic API for thinking mode
         "env_key": "NEWAPI_API_KEY",
@@ -943,7 +943,7 @@ AVAILABLE_MODELS = {
         "profile_key": "anthropic",
     },
     "claude-sonnet-right": {
-        "display_name": "Claude Sonnet 4.5(right)",
+        "display_name": "Claude Sonnet 4.5",
         "model_name": "claude-sonnet-4-5-20250929",
         "provider": "openai",  # Right Code uses OpenAI-compatible API
         "env_key": "NEWAPI_API_KEY",
@@ -951,12 +951,28 @@ AVAILABLE_MODELS = {
         "profile_key": "anthropic",
     },
     "claude-sonnet-right-thinking": {
-        "display_name": "Claude Sonnet 4.5(right) 思考",
+        "display_name": "Claude Sonnet 4.5 thinking",
         "model_name": "claude-sonnet-4-5-20250929-thinking",
         "provider": "anthropic",  # Use native Anthropic API for thinking mode
         "env_key": "NEWAPI_API_KEY",
         "base_url_env": "NEWAPI_ANTHROPIC_BASE_URL",  # Anthropic-compatible endpoint
         "profile_key": "anthropic",
+    },
+    "gemini-3-pro": {
+        "display_name": "Gemini-3 pro",
+        "model_name": "gemini-3-pro-preview",
+        "provider": "openai",  # Tu-zi uses OpenAI-compatible API
+        "env_key": "TUZI_API_KEY",
+        "base_url_env": "TUZI_BASE_URL",
+        "profile_key": "google",
+    },
+    "gpt-5": {
+        "display_name": "GPT-5",
+        "model_name": "gpt-5",
+        "provider": "openai",  # Tu-zi uses OpenAI-compatible API
+        "env_key": "TUZI_API_KEY",
+        "base_url_env": "TUZI_BASE_URL",
+        "profile_key": "openai",
     },
 }
 
@@ -1169,6 +1185,10 @@ graph_claude_opus_right_thinking = _MODEL_GRAPHS.get("claude-opus-right-thinking
 graph_claude_sonnet_right = _MODEL_GRAPHS.get("claude-sonnet-right")
 graph_claude_sonnet_right_thinking = _MODEL_GRAPHS.get("claude-sonnet-right-thinking")
 
+# Tu-zi models (third-party API)
+graph_gemini_3_pro = _MODEL_GRAPHS.get("gemini-3-pro")
+graph_gpt_5 = _MODEL_GRAPHS.get("gpt-5")
+
 # Web-dev mode graphs (with artifact output support)
 graph_deepseek_chat_webdev = _MODEL_GRAPHS.get("deepseek-chat-web-dev")
 graph_deepseek_reasoner_webdev = _MODEL_GRAPHS.get("deepseek-reasoner-web-dev")
@@ -1183,6 +1203,10 @@ graph_claude_opus_right_webdev = _MODEL_GRAPHS.get("claude-opus-right-web-dev")
 graph_claude_opus_right_thinking_webdev = _MODEL_GRAPHS.get("claude-opus-right-thinking-web-dev")
 graph_claude_sonnet_right_webdev = _MODEL_GRAPHS.get("claude-sonnet-right-web-dev")
 graph_claude_sonnet_right_thinking_webdev = _MODEL_GRAPHS.get("claude-sonnet-right-thinking-web-dev")
+
+# Tu-zi web-dev mode graphs
+graph_gemini_3_pro_webdev = _MODEL_GRAPHS.get("gemini-3-pro-web-dev")
+graph_gpt_5_webdev = _MODEL_GRAPHS.get("gpt-5-web-dev")
 
 
 # =============================================================================

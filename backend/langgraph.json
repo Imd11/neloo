@@ -14,6 +14,8 @@
     "claude-opus-right-thinking": "src.agent.graph:graph_claude_opus_right_thinking",
     "claude-sonnet-right": "src.agent.graph:graph_claude_sonnet_right",
     "claude-sonnet-right-thinking": "src.agent.graph:graph_claude_sonnet_right_thinking",
+    "gemini-3-pro": "src.agent.graph:graph_gemini_3_pro",
+    "gpt-5": "src.agent.graph:graph_gpt_5",
     "deepseek-chat-web-dev": "src.agent.graph:graph_deepseek_chat_webdev",
     "deepseek-reasoner-web-dev": "src.agent.graph:graph_deepseek_reasoner_webdev",
     "qwen-plus-web-dev": "src.agent.graph:graph_qwen_plus_webdev",
@@ -24,7 +26,9 @@
     "claude-opus-right-web-dev": "src.agent.graph:graph_claude_opus_right_webdev",
     "claude-opus-right-thinking-web-dev": "src.agent.graph:graph_claude_opus_right_thinking_webdev",
     "claude-sonnet-right-web-dev": "src.agent.graph:graph_claude_sonnet_right_webdev",
-    "claude-sonnet-right-thinking-web-dev": "src.agent.graph:graph_claude_sonnet_right_thinking_webdev"
+    "claude-sonnet-right-thinking-web-dev": "src.agent.graph:graph_claude_sonnet_right_thinking_webdev",
+    "gemini-3-pro-web-dev": "src.agent.graph:graph_gemini_3_pro_webdev",
+    "gpt-5-web-dev": "src.agent.graph:graph_gpt_5_webdev"
   },
   "http": {
     "app": "src.api.webapp:app"
