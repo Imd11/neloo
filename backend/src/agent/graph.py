@@ -905,9 +905,9 @@ AVAILABLE_MODELS = {
     "minimax-m2": {
         "display_name": "MiniMax M2.1",
         "model_name": "MiniMax-M2.1",
-        "provider": "openai",  # Uses OpenAI-compatible mode
+        "provider": "anthropic",  # Uses Anthropic-compatible API for thinking support
         "env_key": "MINIMAX_API_KEY",
-        "base_url_env": "MINIMAX_BASE_URL",
+        "base_url_env": "MINIMAX_ANTHROPIC_BASE_URL",
         "profile_key": "minimax",
     },
     "claude-opus-or": {
@@ -951,7 +951,7 @@ AVAILABLE_MODELS = {
         "profile_key": "anthropic",
     },
     "claude-sonnet-right-thinking": {
-        "display_name": "Claude Sonnet 4(right) 思考",
+        "display_name": "Claude Sonnet 4.5(right) 思考",
         "model_name": "claude-sonnet-4-5-20250929-thinking",
         "provider": "anthropic",  # Use native Anthropic API for thinking mode
         "env_key": "NEWAPI_API_KEY",
