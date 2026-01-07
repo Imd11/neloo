@@ -987,7 +987,7 @@ AVAILABLE_MODELS = {
         "display_name": "Claude opus 4.5-tuzi",
         "model_name": "claude-opus-4-5-20251101-thinking",
         "provider": "anthropic",  # Tu-zi Anthropic-compatible API
-        "env_key": "TUZI_API_KEY",
+        "env_key": "TUZI_ANTHROPIC_API_KEY",
         "base_url_env": "TUZI_ANTHROPIC_BASE_URL",
         "profile_key": "anthropic",
     },
