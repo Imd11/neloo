@@ -9,24 +9,42 @@ export function cn(...inputs: ClassValue[]) {
 
 /**
  * Parse message content into structured ContentBlocks.
- * Handles both string content (OpenAI format with <think> tags) and
- * array content (Anthropic format with thinking blocks).
+ * Handles multiple formats:
+ * - OpenAI format: string content with <think> tags
+ * - Anthropic format: array content with thinking blocks
+ * - DeepSeek format: additional_kwargs.reasoning_content
  *
  * @param message - The message to parse
  * @returns Array of ContentBlocks in display order
  */
 export function parseMessageContentBlocks(message: Message): ContentBlock[] {
   const content = message.content;
+  const blocks: ContentBlock[] = [];
+
+  // Check for DeepSeek reasoning_content in additional_kwargs
+  // DeepSeek format: { content: "...", additional_kwargs: { reasoning_content: "..." } }
+  const additionalKwargs = (message as Record<string, unknown>).additional_kwargs as Record<string, unknown> | undefined;
+  const reasoningContent = additionalKwargs?.reasoning_content as string | undefined;
+
+  if (reasoningContent?.trim()) {
+    blocks.push({ type: "thinking", content: reasoningContent });
+  }
 
   // String format (OpenAI) - parse <think> tags as best-effort compatibility
   if (typeof content === "string") {
-    return parseThinkTagsFromString(content);
+    const stringBlocks = parseThinkTagsFromString(content);
+    // If we already have reasoning_content, only add text blocks from string parsing
+    // to avoid duplicate thinking blocks
+    if (blocks.length > 0) {
+      blocks.push(...stringBlocks.filter(b => b.type === "text"));
+    } else {
+      blocks.push(...stringBlocks);
+    }
+    return blocks;
   }
 
   // Array format (Anthropic) - map structured blocks
   if (Array.isArray(content)) {
-    const blocks: ContentBlock[] = [];
-
     for (const item of content as unknown[]) {
       if (typeof item === "string") {
         // Plain string in array
@@ -63,7 +81,7 @@ export function parseMessageContentBlocks(message: Message): ContentBlock[] {
     return blocks;
   }
 
-  return [];
+  return blocks;
 }
 
 /**
