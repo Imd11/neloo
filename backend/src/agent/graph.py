@@ -33,9 +33,21 @@ from ..context import (
 from ..storage import save_image_base64, get_image_url
 
 from ..runtime_context import user_id_ctx as _user_id_ctx, thread_id_ctx as _thread_id_ctx
+from ..sandbox import get_executor, get_e2b_backend_factory
 
 # API base URL for image serving (configurable via environment)
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:2024")
+
+# Global executor instance for E2B backend factory
+# This ensures the backend uses the same sandbox pool as execute_python tool
+_SANDBOX_EXECUTOR = None
+
+def _get_sandbox_executor():
+    """Get or create the global sandbox executor."""
+    global _SANDBOX_EXECUTOR
+    if _SANDBOX_EXECUTOR is None:
+        _SANDBOX_EXECUTOR = get_executor()
+    return _SANDBOX_EXECUTOR
 
 
 # =============================================================================
@@ -922,6 +934,38 @@ AVAILABLE_MODELS = {
         "base_url_env": "ZHIPU_BASE_URL",
         "profile_key": "zhipu",
     },
+    "claude-opus-right": {
+        "display_name": "Claude Opus 4.5(right)",
+        "model_name": "claude-opus-4-5-20251101",
+        "provider": "openai",  # Right Code uses OpenAI-compatible API
+        "env_key": "NEWAPI_API_KEY",
+        "base_url_env": "NEWAPI_BASE_URL",
+        "profile_key": "anthropic",
+    },
+    "claude-opus-right-thinking": {
+        "display_name": "Claude Opus 4.5(right) 思考",
+        "model_name": "claude-opus-4-5-20251101-thinking",
+        "provider": "openai",  # Right Code uses OpenAI-compatible API
+        "env_key": "NEWAPI_API_KEY",
+        "base_url_env": "NEWAPI_BASE_URL",
+        "profile_key": "anthropic",
+    },
+    "claude-sonnet-right": {
+        "display_name": "Claude Sonnet 4.5(right)",
+        "model_name": "claude-sonnet-4-5-20250929",
+        "provider": "openai",  # Right Code uses OpenAI-compatible API
+        "env_key": "NEWAPI_API_KEY",
+        "base_url_env": "NEWAPI_BASE_URL",
+        "profile_key": "anthropic",
+    },
+    "claude-sonnet-right-thinking": {
+        "display_name": "Claude Sonnet 4(right) 思考",
+        "model_name": "claude-sonnet-4-20250514-thinking",
+        "provider": "openai",  # Right Code uses OpenAI-compatible API
+        "env_key": "NEWAPI_API_KEY",
+        "base_url_env": "NEWAPI_BASE_URL",
+        "profile_key": "anthropic",
+    },
 }
 
 
@@ -1031,7 +1075,7 @@ def build_graph(model_id: str | None = None, mode: str = "default"):
 
     This provides:
     - TodoListMiddleware: Automatic task planning with write_todos tool
-    - FilesystemMiddleware: File operations (ls, read, write, edit, glob, grep)
+    - FilesystemMiddleware: File operations routed to E2B sandbox (unified filesystem)
     - SubAgentMiddleware: Parallel data analysis with specialized subagents
       - eda-analyst: Exploratory Data Analysis
       - stats-analyst: Statistical hypothesis testing
@@ -1043,6 +1087,11 @@ def build_graph(model_id: str | None = None, mode: str = "default"):
 
     Environment Variables:
     - ENABLE_HITL: Set to "true" to enable human approval for sensitive operations
+    - SANDBOX_MODE: "e2b" (default), "local", or "docker"
+
+    Note: When SANDBOX_MODE=e2b, Agent's write_file operations go to E2B sandbox,
+    ensuring a unified filesystem with execute_python. Files are automatically
+    synced to Supabase Storage for persistence beyond sandbox timeout.
     """
     model = get_model(model_id)
 
@@ -1054,12 +1103,18 @@ def build_graph(model_id: str | None = None, mode: str = "default"):
     # Determine interrupt_on config based on ENABLE_HITL environment variable
     interrupt_on = INTERRUPT_ON_CONFIG if ENABLE_HITL else None
 
+    # Create E2B backend factory for unified filesystem
+    # This routes write_file/read_file to E2B sandbox instead of LangGraph state
+    executor = _get_sandbox_executor()
+    backend_factory = get_e2b_backend_factory(executor)
+
     return create_deep_agent(
         model=model,
         tools=CUSTOM_TOOLS,
         system_prompt=system_prompt,
         subagents=DATA_ANALYST_SUBAGENTS,  # Enable specialized subagents
         interrupt_on=interrupt_on,          # Enable HITL if configured
+        backend=backend_factory,            # Route filesystem ops to E2B sandbox
     )
 
 

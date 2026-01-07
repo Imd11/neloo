@@ -6,7 +6,9 @@ Provides secure code execution environments:
 - Local: Subprocess execution (development only)
 - Docker: Container-based execution (self-hosted)
 
-Also provides file synchronization from Supabase Storage to sandbox.
+Also provides:
+- File synchronization from Supabase Storage to sandbox
+- E2B Sandbox Backend for DeepAgents FilesystemMiddleware integration
 """
 
 from .executor import get_executor, execute_python
@@ -19,6 +21,7 @@ from .file_sync import (
     get_sandbox_file_path,
     get_local_data_dir,
 )
+from .backend import E2BSandboxBackend, get_e2b_backend_factory
 
 __all__ = [
     "get_executor",
@@ -30,4 +33,6 @@ __all__ = [
     "sync_files_to_e2b",
     "get_sandbox_file_path",
     "get_local_data_dir",
+    "E2BSandboxBackend",
+    "get_e2b_backend_factory",
 ]

@@ -626,12 +626,13 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                               prev === "files" ? null : "files"
                             )
                           }
-                          className="flex flex-shrink-0 cursor-pointer items-center gap-2 px-[18px] py-3 text-left text-sm"
+                          className="flex flex-shrink-0 cursor-pointer items-center gap-2 px-[18px] py-3 text-left text-sm text-muted-foreground"
                           aria-expanded={metaOpen === "files"}
+                          title="Temporary in-memory files (use File Panel for persistent files)"
                         >
                           <FileIcon size={16} />
-                          Files (State)
-                          <span className="h-4 min-w-4 rounded-full bg-[#2F6868] px-0.5 text-center text-[10px] leading-[16px] text-white">
+                          Memory
+                          <span className="h-4 min-w-4 rounded-full bg-muted px-0.5 text-center text-[10px] leading-[16px] text-muted-foreground">
                             {Object.keys(files).length}
                           </span>
                         </button>
@@ -668,16 +669,17 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                     {hasFiles && (
                       <button
                         type="button"
-                        className="inline-flex items-center gap-2 py-3 pr-4 first:pl-[18px] aria-expanded:font-semibold"
+                        className="inline-flex items-center gap-2 py-3 pr-4 first:pl-[18px] aria-expanded:font-semibold text-muted-foreground"
                         onClick={() =>
                           setMetaOpen((prev) =>
                             prev === "files" ? null : "files"
                           )
                         }
                         aria-expanded={metaOpen === "files"}
+                        title="Temporary in-memory files"
                       >
-                        Files (State)
-                        <span className="h-4 min-w-4 rounded-full bg-[#2F6868] px-0.5 text-center text-[10px] leading-[16px] text-white">
+                        Memory
+                        <span className="h-4 min-w-4 rounded-full bg-muted px-0.5 text-center text-[10px] leading-[16px] text-muted-foreground">
                           {Object.keys(files).length}
                         </span>
                       </button>

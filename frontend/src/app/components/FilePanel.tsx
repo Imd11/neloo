@@ -10,12 +10,17 @@ import {
   FolderOpen,
   X,
   Loader2,
+  Copy,
+  Edit,
+  Eye,
+  Image as ImageIcon,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { getConfig } from "@/lib/config";
 import { Message } from "@langchain/langgraph-sdk";
 import { useAuth } from "@/providers/AuthProvider";
+import { FilePreviewDialog } from "@/app/components/FilePreviewDialog";
 
 // ============================================================================
 // Types
@@ -100,18 +105,23 @@ function SectionHeader({
 function FileItem({
   filename,
   size,
+  onPreview,
   onDownload,
   onDelete,
   isLoading,
 }: {
   filename: string;
   size?: number;
+  onPreview?: () => void;
   onDownload: () => void;
   onDelete?: () => void;
   isLoading?: boolean;
 }) {
   return (
-    <div className="group flex items-center justify-between gap-2 rounded-md py-1.5 pl-3 pr-10 hover:bg-muted/50 transition-colors">
+    <div
+      className="group flex items-center justify-between gap-2 rounded-md py-1.5 pl-3 pr-10 hover:bg-muted/50 transition-colors cursor-pointer"
+      onClick={onPreview}
+    >
       <div className="flex items-center gap-2 min-w-0 flex-1">
         <FileText size={14} className="text-muted-foreground flex-shrink-0" />
         <span className="text-xs truncate">{filename}</span>
@@ -122,8 +132,23 @@ function FileItem({
         )}
       </div>
       <div className="relative z-10 flex flex-shrink-0 items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {onPreview && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onPreview();
+            }}
+            className="p-1 rounded hover:bg-muted"
+            title="Preview"
+          >
+            <Eye size={12} className="text-muted-foreground" />
+          </button>
+        )}
         <button
-          onClick={onDownload}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDownload();
+          }}
           disabled={isLoading}
           className="p-1 rounded hover:bg-muted"
           title="Download"
@@ -136,7 +161,10 @@ function FileItem({
         </button>
         {onDelete && (
           <button
-            onClick={onDelete}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
             className="p-1 rounded hover:bg-destructive/10"
             title="Delete"
           >
@@ -168,6 +196,18 @@ export function FilePanel({ messages, threadId, onClose, isStreamComplete }: Fil
   // DB-authoritative files for THIS thread only (thread_files JOIN files)
   const [dbFiles, setDbFiles] = useState<DatabaseFile[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  // File preview state
+  const [previewFile, setPreviewFile] = useState<{
+    id: string;
+    filename: string;
+    content?: string;
+    downloadUrl?: string;
+    mimeType?: string;
+    size?: number;
+    isLoading?: boolean;
+  } | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   // Section open states
   const [uploadedOpen, setUploadedOpen] = useState(true);
@@ -278,6 +318,80 @@ export function FilePanel({ messages, threadId, onClose, isStreamComplete }: Fil
     [apiUrl, threadId, getAuthHeaders]
   );
 
+  // Preview file - fetch content and show dialog
+  const previewDbFile = useCallback(
+    async (file: DatabaseFile) => {
+      if (!apiUrl) return;
+
+      // Determine download URL
+      const downloadUrl = file.download_url
+        ? file.download_url.startsWith("http")
+          ? file.download_url
+          : `${apiUrl}${file.download_url}`
+        : file.id
+          ? `${apiUrl}/api/files/${encodeURIComponent(file.id)}/download`
+          : "";
+
+      // Set initial preview state (loading)
+      setPreviewFile({
+        id: file.id,
+        filename: file.original_filename || file.filename,
+        downloadUrl,
+        mimeType: file.mime_type,
+        size: file.size,
+        isLoading: true,
+      });
+      setPreviewOpen(true);
+
+      // Check if it's a text-based file that we can preview
+      const filename = file.original_filename || file.filename;
+      const ext = filename.split(".").pop()?.toLowerCase() || "";
+      const textExtensions = [
+        "txt", "md", "markdown", "json", "xml", "html", "css", "scss", "less",
+        "js", "jsx", "ts", "tsx", "py", "rb", "go", "rs", "java", "cpp", "c",
+        "cs", "php", "swift", "kt", "scala", "sh", "bash", "zsh", "sql",
+        "yaml", "yml", "toml", "ini", "dockerfile", "makefile", "csv",
+      ];
+      const imageExtensions = ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp"];
+
+      // For images, just set the URL, no content fetch needed
+      if (imageExtensions.includes(ext)) {
+        setPreviewFile((prev) =>
+          prev ? { ...prev, isLoading: false } : null
+        );
+        return;
+      }
+
+      // For text files, fetch content
+      if (textExtensions.includes(ext) && downloadUrl) {
+        try {
+          const response = await fetch(downloadUrl, { headers: getAuthHeaders() });
+          if (response.ok) {
+            const text = await response.text();
+            setPreviewFile((prev) =>
+              prev ? { ...prev, content: text, isLoading: false } : null
+            );
+          } else {
+            setPreviewFile((prev) =>
+              prev ? { ...prev, isLoading: false } : null
+            );
+          }
+        } catch (error) {
+          console.error("Failed to fetch file content:", error);
+          setPreviewFile((prev) =>
+            prev ? { ...prev, isLoading: false } : null
+          );
+        }
+      } else {
+        // Non-text file, just show download option
+        setPreviewFile((prev) =>
+          prev ? { ...prev, isLoading: false } : null
+        );
+      }
+    },
+    [apiUrl, getAuthHeaders]
+  );
+
   // Refresh all file lists
   const handleRefresh = useCallback(() => {
     fetchThreadFiles();
@@ -341,6 +455,7 @@ export function FilePanel({ messages, threadId, onClose, isStreamComplete }: Fil
                       key={file.id}
                       filename={file.original_filename || file.filename}
                       size={file.size}
+                      onPreview={() => previewDbFile(file)}
                       onDownload={() => downloadDbFile(file)}
                       onDelete={
                         threadId
@@ -383,6 +498,7 @@ export function FilePanel({ messages, threadId, onClose, isStreamComplete }: Fil
                       key={file.id}
                       filename={file.filename}
                       size={file.size}
+                      onPreview={() => previewDbFile(file)}
                       onDownload={() => downloadDbFile(file)}
                       onDelete={threadId ? () => unlinkFromThread(file.id) : undefined}
                     />
@@ -421,6 +537,7 @@ export function FilePanel({ messages, threadId, onClose, isStreamComplete }: Fil
                       key={file.id}
                       filename={file.original_filename || file.filename}
                       size={file.size}
+                      onPreview={() => previewDbFile(file)}
                       onDownload={() => downloadDbFile(file)}
                       onDelete={threadId ? () => unlinkFromThread(file.id) : undefined}
                     />
@@ -459,6 +576,7 @@ export function FilePanel({ messages, threadId, onClose, isStreamComplete }: Fil
                       key={file.id}
                       filename={file.original_filename || file.filename}
                       size={file.size}
+                      onPreview={() => previewDbFile(file)}
                       onDownload={() => downloadDbFile(file)}
                       onDelete={threadId ? () => unlinkFromThread(file.id) : undefined}
                     />
@@ -485,6 +603,17 @@ export function FilePanel({ messages, threadId, onClose, isStreamComplete }: Fil
           Refresh
         </Button>
       </div>
+
+      {/* File Preview Dialog */}
+      <FilePreviewDialog
+        file={previewFile}
+        open={previewOpen}
+        onClose={() => {
+          setPreviewOpen(false);
+          setPreviewFile(null);
+        }}
+        editDisabled={true}
+      />
     </div>
   );
 }
