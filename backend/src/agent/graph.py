@@ -975,6 +975,22 @@ AVAILABLE_MODELS = {
         "base_url_env": "TUZI_BASE_URL",
         "profile_key": "openai",
     },
+    "gpt-5-thinking": {
+        "display_name": "GPT-5 thinking",
+        "model_name": "gpt-5-thinking-all",
+        "provider": "openai",  # Tu-zi uses OpenAI-compatible API
+        "env_key": "TUZI_API_KEY",
+        "base_url_env": "TUZI_BASE_URL",
+        "profile_key": "openai",
+    },
+    "claude-opus-tuzi": {
+        "display_name": "Claude opus 4.5-tuzi",
+        "model_name": "claude-opus-4-5-20251101-thinking",
+        "provider": "anthropic",  # Tu-zi Anthropic-compatible API
+        "env_key": "TUZI_API_KEY",
+        "base_url_env": "TUZI_ANTHROPIC_BASE_URL",
+        "profile_key": "anthropic",
+    },
 }
 
 
@@ -1189,6 +1205,8 @@ graph_claude_sonnet_right_thinking = _MODEL_GRAPHS.get("claude-sonnet-right-thin
 # Tu-zi models (third-party API)
 graph_gemini_3_pro = _MODEL_GRAPHS.get("gemini-3-pro")
 graph_gpt_5 = _MODEL_GRAPHS.get("gpt-5")
+graph_gpt_5_thinking = _MODEL_GRAPHS.get("gpt-5-thinking")
+graph_claude_opus_tuzi = _MODEL_GRAPHS.get("claude-opus-tuzi")
 
 # Web-dev mode graphs (with artifact output support)
 graph_deepseek_chat_webdev = _MODEL_GRAPHS.get("deepseek-chat-web-dev")
@@ -1208,6 +1226,8 @@ graph_claude_sonnet_right_thinking_webdev = _MODEL_GRAPHS.get("claude-sonnet-rig
 # Tu-zi web-dev mode graphs
 graph_gemini_3_pro_webdev = _MODEL_GRAPHS.get("gemini-3-pro-web-dev")
 graph_gpt_5_webdev = _MODEL_GRAPHS.get("gpt-5-web-dev")
+graph_gpt_5_thinking_webdev = _MODEL_GRAPHS.get("gpt-5-thinking-web-dev")
+graph_claude_opus_tuzi_webdev = _MODEL_GRAPHS.get("claude-opus-tuzi-web-dev")
 
 
 # =============================================================================
