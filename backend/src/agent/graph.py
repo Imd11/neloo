@@ -14,6 +14,10 @@ Architecture:
 - Web Development Mode: Specialized prompt for generating renderable code artifacts
 """
 
+# Apply patches before importing other modules
+from ..patches.deepseek_reasoning import apply_patch as _apply_deepseek_patch
+_apply_deepseek_patch()
+
 import os
 from typing import Annotated
 from langchain_core.messages import HumanMessage
