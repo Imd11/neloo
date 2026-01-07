@@ -862,6 +862,7 @@ MODEL_PROFILES = {
     "minimax": {"max_input_tokens": 80000},       # MiniMax: estimate based on typical limits
     "openrouter": {"max_input_tokens": 180000},   # OpenRouter Claude: same as Anthropic
     "zhipu": {"max_input_tokens": 120000},        # GLM-4: 128k context, leave buffer
+    "google": {"max_input_tokens": 900000},       # Gemini: 1M context, leave buffer
 }
 
 # =============================================================================
