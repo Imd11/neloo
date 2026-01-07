@@ -42,17 +42,19 @@ class E2BSandboxBackend(BaseSandbox):
     - Compatible with existing E2BSandboxExecutor per-user sandbox management
     """
 
-    def __init__(self, sandbox: Any, user_id: str, sync_to_storage: bool = True):
+    def __init__(self, sandbox: Any, user_id: str, thread_id: Optional[str] = None, sync_to_storage: bool = True):
         """
         Initialize E2B Sandbox Backend.
 
         Args:
             sandbox: E2B Sandbox instance (from e2b_code_interpreter)
             user_id: User ID for file ownership and storage sync
+            thread_id: Thread ID for file-thread association
             sync_to_storage: Whether to sync written files to Supabase Storage
         """
         self.sandbox = sandbox
         self.user_id = user_id
+        self.thread_id = thread_id
         self.sync_to_storage = sync_to_storage
         self._ensure_data_dir()
 
@@ -126,12 +128,12 @@ class E2BSandboxBackend(BaseSandbox):
             else:
                 file_type = "generated"
 
-            # Save to storage
+            # Save to storage with thread association
             file_info = save_generated_file(
                 filename=filename,
                 data=content,
                 user_id=self.user_id,
-                thread_id=None,  # Will be set from context if available
+                thread_id=self.thread_id,
                 file_type=file_type,
             )
 
@@ -250,10 +252,11 @@ def get_e2b_backend_factory(executor: Any):
         """
         Factory function that creates E2BSandboxBackend for each agent invocation.
 
-        Gets user_id from ContextVar (set by middleware) and retrieves the appropriate sandbox.
+        Gets user_id and thread_id from ContextVar (set by middleware) and retrieves the appropriate sandbox.
         """
         # Get user_id from ContextVar (most reliable, set by FastAPI middleware)
         user_id = user_id_ctx.get()
+        thread_id = thread_id_ctx.get()
 
         # Fallback: try to get from runtime config if ContextVar not set
         if user_id == "default" and hasattr(runtime, 'config'):
@@ -261,8 +264,14 @@ def get_e2b_backend_factory(executor: Any):
             if isinstance(config, dict):
                 configurable = config.get('configurable', {})
                 user_id = configurable.get('user_id', user_id)
+                if thread_id == "default":
+                    thread_id = configurable.get('thread_id', thread_id)
 
-        print(f"[E2BSandboxBackend] Creating backend for user: {user_id}")
+        # Normalize thread_id (treat "default" as None for DB)
+        if thread_id == "default":
+            thread_id = None
+
+        print(f"[E2BSandboxBackend] Creating backend for user: {user_id}, thread: {thread_id}")
 
         # Get or create sandbox for this user
         if isinstance(executor, E2BSandboxExecutor):
@@ -270,6 +279,7 @@ def get_e2b_backend_factory(executor: Any):
             return E2BSandboxBackend(
                 sandbox=sandbox,
                 user_id=user_id,
+                thread_id=thread_id,
                 sync_to_storage=True,
             )
         else:

@@ -194,11 +194,11 @@ export function useChat({
     fetchThreadMode();
   }, [threadId, session, config]);
 
-  // Reset webDevMode when threadId is cleared (new thread)
+  // Reset mode when threadId is cleared (new thread)
   useEffect(() => {
     if (!threadId) {
       setThreadMode("default");
-      // Don't reset webDevMode here - let user set it before first message
+      setWebDevMode(false);  // Reset to default for new threads
     }
   }, [threadId]);
 
