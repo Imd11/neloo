@@ -11,6 +11,10 @@
     "claude-opus": "src.agent.graph:graph_claude_opus",
     "claude-opus-or": "src.agent.graph:graph_claude_opus_or",
     "glm-4.7": "src.agent.graph:graph_glm_4_7",
+    "claude-opus-right": "src.agent.graph:graph_claude_opus_right",
+    "claude-opus-right-thinking": "src.agent.graph:graph_claude_opus_right_thinking",
+    "claude-sonnet-right": "src.agent.graph:graph_claude_sonnet_right",
+    "claude-sonnet-right-thinking": "src.agent.graph:graph_claude_sonnet_right_thinking",
     "deepseek-chat-web-dev": "src.agent.graph:graph_deepseek_chat_webdev",
     "deepseek-reasoner-web-dev": "src.agent.graph:graph_deepseek_reasoner_webdev",
     "qwen-plus-web-dev": "src.agent.graph:graph_qwen_plus_webdev",
@@ -18,7 +22,11 @@
     "minimax-m2-web-dev": "src.agent.graph:graph_minimax_m2_webdev",
     "claude-opus-web-dev": "src.agent.graph:graph_claude_opus_webdev",
     "claude-opus-or-web-dev": "src.agent.graph:graph_claude_opus_or_webdev",
-    "glm-4.7-web-dev": "src.agent.graph:graph_glm_4_7_webdev"
+    "glm-4.7-web-dev": "src.agent.graph:graph_glm_4_7_webdev",
+    "claude-opus-right-web-dev": "src.agent.graph:graph_claude_opus_right_webdev",
+    "claude-opus-right-thinking-web-dev": "src.agent.graph:graph_claude_opus_right_thinking_webdev",
+    "claude-sonnet-right-web-dev": "src.agent.graph:graph_claude_sonnet_right_webdev",
+    "claude-sonnet-right-thinking-web-dev": "src.agent.graph:graph_claude_sonnet_right_thinking_webdev"
   },
   "http": {
     "app": "src.api.webapp:app"

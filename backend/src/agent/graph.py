@@ -1172,6 +1172,12 @@ graph_claude_opus = _MODEL_GRAPHS.get("claude-opus")
 graph_claude_opus_or = _MODEL_GRAPHS.get("claude-opus-or")
 graph_glm_4_7 = _MODEL_GRAPHS.get("glm-4.7")
 
+# Right Code Claude models (third-party API)
+graph_claude_opus_right = _MODEL_GRAPHS.get("claude-opus-right")
+graph_claude_opus_right_thinking = _MODEL_GRAPHS.get("claude-opus-right-thinking")
+graph_claude_sonnet_right = _MODEL_GRAPHS.get("claude-sonnet-right")
+graph_claude_sonnet_right_thinking = _MODEL_GRAPHS.get("claude-sonnet-right-thinking")
+
 # Web-dev mode graphs (with artifact output support)
 graph_deepseek_chat_webdev = _MODEL_GRAPHS.get("deepseek-chat-web-dev")
 graph_deepseek_reasoner_webdev = _MODEL_GRAPHS.get("deepseek-reasoner-web-dev")
@@ -1181,6 +1187,12 @@ graph_minimax_m2_webdev = _MODEL_GRAPHS.get("minimax-m2-web-dev")
 graph_claude_opus_webdev = _MODEL_GRAPHS.get("claude-opus-web-dev")
 graph_claude_opus_or_webdev = _MODEL_GRAPHS.get("claude-opus-or-web-dev")
 graph_glm_4_7_webdev = _MODEL_GRAPHS.get("glm-4.7-web-dev")
+
+# Right Code Claude web-dev mode graphs
+graph_claude_opus_right_webdev = _MODEL_GRAPHS.get("claude-opus-right-web-dev")
+graph_claude_opus_right_thinking_webdev = _MODEL_GRAPHS.get("claude-opus-right-thinking-web-dev")
+graph_claude_sonnet_right_webdev = _MODEL_GRAPHS.get("claude-sonnet-right-web-dev")
+graph_claude_sonnet_right_thinking_webdev = _MODEL_GRAPHS.get("claude-sonnet-right-thinking-web-dev")
 
 
 # =============================================================================

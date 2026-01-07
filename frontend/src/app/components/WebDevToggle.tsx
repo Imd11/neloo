@@ -1,6 +1,6 @@
 "use client";
 
-import { Code2 } from "lucide-react";
+import { Code2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -27,17 +27,21 @@ export function WebDevToggle({
   onEnable,
   className,
 }: WebDevToggleProps) {
-  // When mode is enabled, show indicator
+  // When mode is enabled, show prominent active indicator
   if (enabled) {
     return (
       <div
         className={cn(
-          "flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-full border border-primary/20",
+          "flex items-center gap-2 px-3 py-1.5 rounded-full",
+          "bg-gradient-to-r from-violet-500 to-purple-600",
+          "text-white shadow-md shadow-purple-500/30",
+          "border border-purple-400/50",
+          "animate-pulse-subtle",
           className
         )}
       >
-        <Code2 className="h-4 w-4 text-primary" />
-        <span className="text-sm font-medium text-primary">Web Dev</span>
+        <Sparkles className="h-4 w-4" />
+        <span className="text-sm font-semibold">Web Dev ON</span>
       </div>
     );
   }
@@ -50,7 +54,12 @@ export function WebDevToggle({
       size="sm"
       onClick={onEnable}
       disabled={locked}
-      className={cn("gap-2 h-8", className)}
+      className={cn(
+        "gap-2 h-8 transition-all duration-200",
+        "hover:border-purple-400 hover:bg-purple-50 hover:text-purple-700",
+        "dark:hover:bg-purple-950/30 dark:hover:text-purple-300",
+        className
+      )}
       title={locked ? "Cannot change mode after messages have been sent" : "Enable Web Development mode"}
     >
       <Code2 className="h-4 w-4" />

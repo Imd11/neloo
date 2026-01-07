@@ -369,6 +369,22 @@ button {
   }
 }
 
+/* Subtle pulse animation for Web Dev mode indicator */
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 4px 6px -1px rgb(168 85 247 / 0.3), 0 2px 4px -2px rgb(168 85 247 / 0.3);
+  }
+  50% {
+    opacity: 0.9;
+    box-shadow: 0 4px 12px -1px rgb(168 85 247 / 0.5), 0 2px 6px -2px rgb(168 85 247 / 0.4);
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s ease-in-out infinite;
+}
+
 /* Custom scrollbar styles */
 .scrollbar-pretty {
   overflow-y: scroll;
