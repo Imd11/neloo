@@ -4,16 +4,19 @@ import React, { useMemo, useState, useCallback } from "react";
 import { SubAgentIndicator } from "@/app/components/SubAgentIndicator";
 import { ToolCallBox } from "@/app/components/ToolCallBox";
 import { MarkdownContent } from "@/app/components/MarkdownContent";
+import { ThinkingBlock } from "@/app/components/ThinkingBlock";
 import type {
   SubAgent,
   ToolCall,
   ActionRequest,
   ReviewConfig,
+  ContentBlock,
 } from "@/app/types/types";
 import { Message } from "@langchain/langgraph-sdk";
 import {
   extractSubAgentContent,
   extractStringFromMessageContent,
+  parseMessageContentBlocks,
 } from "@/app/utils/utils";
 import { cn } from "@/lib/utils";
 import {
@@ -80,18 +83,44 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     const isUser = message.type === "human";
     const rawMessageContent = extractStringFromMessageContent(message);
 
+    // Parse message content into structured blocks (for AI messages)
+    // This handles both OpenAI format (<think> tags) and Anthropic format (thinking blocks)
+    const contentBlocks = useMemo(() => {
+      if (isUser) return [];
+      return parseMessageContentBlocks(message);
+    }, [isUser, message]);
+
+    // Check if we have any thinking blocks to render
+    const hasThinkingBlocks = contentBlocks.some(
+      (block) => block.type === "thinking" || block.type === "redacted_thinking"
+    );
+
     // For user messages, parse out file attachments and get clean display text
     // For AI messages in webDevMode, strip artifact tags (code is shown in right panel)
+    // For AI messages with content blocks, we use the blocks directly instead
     const messageContent = useMemo(() => {
       if (isUser) {
         return stripUploadedFilesAnnotation(rawMessageContent);
+      }
+      // If we have content blocks (Anthropic format), extract only text blocks
+      // The thinking blocks will be rendered separately
+      if (contentBlocks.length > 0 && hasThinkingBlocks) {
+        const textContent = contentBlocks
+          .filter((block): block is ContentBlock & { type: "text" } => block.type === "text")
+          .map((block) => block.content)
+          .join("\n\n");
+        // In Web Dev Mode, strip <artifact> tags
+        if (webDevMode) {
+          return stripArtifacts(textContent);
+        }
+        return textContent;
       }
       // In Web Dev Mode, strip <artifact> tags from AI messages
       if (webDevMode) {
         return stripArtifacts(rawMessageContent);
       }
       return rawMessageContent;
-    }, [isUser, rawMessageContent, webDevMode]);
+    }, [isUser, rawMessageContent, webDevMode, contentBlocks, hasThinkingBlocks]);
 
     const userAttachments = isUser
       ? parseUploadedFilesAnnotation(rawMessageContent)
@@ -296,6 +325,34 @@ export const ChatMessage = React.memo<ChatMessageProps>(
               <MessageAttachments attachments={userAttachments} />
             </div>
           )}
+          {/* Render thinking blocks for AI messages (before text content) */}
+          {!isUser && hasThinkingBlocks && (
+            <div className="mt-2">
+              {contentBlocks.map((block, index) => {
+                if (block.type === "thinking") {
+                  return (
+                    <ThinkingBlock
+                      key={`thinking-${index}`}
+                      content={block.content}
+                      defaultExpanded={true}
+                    />
+                  );
+                }
+                if (block.type === "redacted_thinking") {
+                  return (
+                    <ThinkingBlock
+                      key={`redacted-${index}`}
+                      content=""
+                      isRedacted={true}
+                      signature={block.signature}
+                    />
+                  );
+                }
+                return null;
+              })}
+            </div>
+          )}
+
           {(hasContent || (!isUser && userAttachments.length > 0)) && (
             <div className={cn("relative flex items-end gap-2", isUser && "flex-row-reverse")}>
               <div

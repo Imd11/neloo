@@ -1,9 +1,111 @@
 import { Message } from "@langchain/langgraph-sdk";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import type { ContentBlock } from "@/app/types/types";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+/**
+ * Parse message content into structured ContentBlocks.
+ * Handles both string content (OpenAI format with <think> tags) and
+ * array content (Anthropic format with thinking blocks).
+ *
+ * @param message - The message to parse
+ * @returns Array of ContentBlocks in display order
+ */
+export function parseMessageContentBlocks(message: Message): ContentBlock[] {
+  const content = message.content;
+
+  // String format (OpenAI) - parse <think> tags as best-effort compatibility
+  if (typeof content === "string") {
+    return parseThinkTagsFromString(content);
+  }
+
+  // Array format (Anthropic) - map structured blocks
+  if (Array.isArray(content)) {
+    const blocks: ContentBlock[] = [];
+
+    for (const item of content as unknown[]) {
+      if (typeof item === "string") {
+        // Plain string in array
+        if (item.trim()) {
+          blocks.push({ type: "text", content: item });
+        }
+      } else if (item && typeof item === "object") {
+        const block = item as Record<string, unknown>;
+        const blockType = block.type as string;
+
+        if (blockType === "thinking") {
+          // Anthropic thinking block: { type: "thinking", thinking: "..." }
+          const thinkingContent = block.thinking as string;
+          if (thinkingContent?.trim()) {
+            blocks.push({ type: "thinking", content: thinkingContent });
+          }
+        } else if (blockType === "redacted_thinking") {
+          // Redacted thinking block (signature only, no readable content)
+          blocks.push({
+            type: "redacted_thinking",
+            signature: block.signature as string | undefined,
+          });
+        } else if (blockType === "text") {
+          // Text block: { type: "text", text: "..." }
+          const textContent = block.text as string;
+          if (textContent?.trim()) {
+            blocks.push({ type: "text", content: textContent });
+          }
+        }
+        // Skip tool_use, tool_result, image, etc. - handled elsewhere
+      }
+    }
+
+    return blocks;
+  }
+
+  return [];
+}
+
+/**
+ * Parse <think> tags from string content (OpenAI format compatibility).
+ * This is best-effort parsing for models that output thinking in text.
+ */
+function parseThinkTagsFromString(content: string): ContentBlock[] {
+  const blocks: ContentBlock[] = [];
+  // Match <think>...</think> or <Think>...</Think> (case insensitive)
+  const thinkRegex = /<think>([\s\S]*?)<\/think>/gi;
+
+  let lastIndex = 0;
+  let match;
+
+  while ((match = thinkRegex.exec(content)) !== null) {
+    // Add text before this think block
+    const textBefore = content.slice(lastIndex, match.index).trim();
+    if (textBefore) {
+      blocks.push({ type: "text", content: textBefore });
+    }
+
+    // Add the thinking block
+    const thinkingContent = match[1].trim();
+    if (thinkingContent) {
+      blocks.push({ type: "thinking", content: thinkingContent });
+    }
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Add remaining text after last think block
+  const textAfter = content.slice(lastIndex).trim();
+  if (textAfter) {
+    blocks.push({ type: "text", content: textAfter });
+  }
+
+  // If no think tags found, return entire content as text
+  if (blocks.length === 0 && content.trim()) {
+    blocks.push({ type: "text", content: content });
+  }
+
+  return blocks;
 }
 
 export function extractStringFromMessageContent(message: Message): string {

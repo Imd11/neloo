@@ -55,3 +55,12 @@ export interface ToolApprovalInterruptData {
   action_requests: ActionRequest[];
   review_configs?: ReviewConfig[];
 }
+
+/**
+ * Content block types for structured message content (Anthropic format).
+ * These represent the different types of content that can appear in a message.
+ */
+export type ContentBlock =
+  | { type: "thinking"; content: string }
+  | { type: "redacted_thinking"; signature?: string }
+  | { type: "text"; content: string };
