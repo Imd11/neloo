@@ -910,14 +910,6 @@ AVAILABLE_MODELS = {
         "base_url_env": "MINIMAX_BASE_URL",
         "profile_key": "minimax",
     },
-    "claude-opus": {
-        "display_name": "Claude Opus 4.5",
-        "model_name": "claude-opus-4-5-20251101",
-        "provider": "anthropic",
-        "env_key": "ANTHROPIC_API_KEY",
-        "base_url_env": "ANTHROPIC_BASE_URL",
-        "profile_key": "anthropic",
-    },
     "claude-opus-or": {
         "display_name": "Claude Opus 4.5 (OR)",
         "model_name": "anthropic/claude-opus-4.5",
@@ -945,9 +937,9 @@ AVAILABLE_MODELS = {
     "claude-opus-right-thinking": {
         "display_name": "Claude Opus 4.5(right) 思考",
         "model_name": "claude-opus-4-5-20251101-thinking",
-        "provider": "openai",  # Right Code uses OpenAI-compatible API
+        "provider": "anthropic",  # Use native Anthropic API for thinking mode
         "env_key": "NEWAPI_API_KEY",
-        "base_url_env": "NEWAPI_BASE_URL",
+        "base_url_env": "NEWAPI_ANTHROPIC_BASE_URL",  # Anthropic-compatible endpoint
         "profile_key": "anthropic",
     },
     "claude-sonnet-right": {
@@ -960,10 +952,10 @@ AVAILABLE_MODELS = {
     },
     "claude-sonnet-right-thinking": {
         "display_name": "Claude Sonnet 4(right) 思考",
-        "model_name": "claude-sonnet-4-20250514-thinking",
-        "provider": "openai",  # Right Code uses OpenAI-compatible API
+        "model_name": "claude-sonnet-4-5-20250929-thinking",
+        "provider": "anthropic",  # Use native Anthropic API for thinking mode
         "env_key": "NEWAPI_API_KEY",
-        "base_url_env": "NEWAPI_BASE_URL",
+        "base_url_env": "NEWAPI_ANTHROPIC_BASE_URL",  # Anthropic-compatible endpoint
         "profile_key": "anthropic",
     },
 }
