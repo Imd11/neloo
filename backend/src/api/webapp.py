@@ -2253,19 +2253,22 @@ async def _generate_title_with_llm(user_message: str) -> str:
         from langchain_core.messages import SystemMessage, HumanMessage
 
         response = await model.ainvoke([
-            SystemMessage(content="""Generate a very short title (max 6 Chinese characters or 4 English words) for this data analysis task.
+            SystemMessage(content="""Generate a concise but descriptive title (7-15 Chinese characters or 5-8 English words) for this conversation.
+
 Rules:
-- Be concise and descriptive
-- Focus on the main topic/action
+- Include both the action AND the subject/topic
+- Be specific enough to distinguish from other conversations
 - Use the same language as the user's message
 - Do NOT use quotes or punctuation
 - Just output the title, nothing else
 
 Examples:
-- "帮我分析这个销售数据" → "销售数据分析"
-- "Analyze my sales data" → "Sales Analysis"
-- "用DID方法做因果推断" → "DID因果分析"
-- "画一个柱状图" → "柱状图绘制"
+- "帮我分析这个销售数据" → "销售数据趋势分析与洞察"
+- "Analyze my sales data" → "Sales Data Trend Analysis"
+- "帮我写一个Python爬虫" → "Python网页爬虫开发"
+- "Write a React component for login" → "React Login Component Development"
+- "解释一下量子计算的原理" → "量子计算原理详解"
+- "帮我翻译这篇文章" → "文章翻译与润色"
 """),
             HumanMessage(content=user_message),
         ])
@@ -2274,8 +2277,8 @@ Examples:
         # Clean up: remove quotes if present
         title = title.strip('"\'')
         # Limit length
-        if len(title) > 30:
-            title = title[:27] + "..."
+        if len(title) > 50:
+            title = title[:47] + "..."
 
         return title if title else _truncate_message(user_message)
 
