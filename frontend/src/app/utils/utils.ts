@@ -85,12 +85,46 @@ export function parseMessageContentBlocks(message: Message): ContentBlock[] {
 }
 
 /**
- * Parse <think> tags from string content (OpenAI format compatibility).
+ * Parse thinking content from string using multiple formats:
+ * 1. <think>...</think> tags (OpenAI/DeepSeek format)
+ * 2. Markdown blockquote format ending with "*Thought for Xs*" (GPT-5 thinking format)
+ *
  * This is best-effort parsing for models that output thinking in text.
  */
 function parseThinkTagsFromString(content: string): ContentBlock[] {
   const blocks: ContentBlock[] = [];
-  // Match <think>...</think> or <Think>...</Think> (case insensitive)
+
+  // First, try to parse GPT-5 thinking format:
+  // > **Title**\n> content...\n> *Thought for Xs*
+  // This format uses markdown blockquotes with a "Thought for Xs" marker at the end
+  const gpt5ThinkingMatch = content.match(
+    /^((?:>.*\n?)+>\s*\*Thought for \d+s\*\s*\n?)([\s\S]*)$/
+  );
+
+  if (gpt5ThinkingMatch) {
+    const thinkingPart = gpt5ThinkingMatch[1];
+    const textPart = gpt5ThinkingMatch[2].trim();
+
+    // Clean up the thinking content: remove > prefixes and the "Thought for Xs" line
+    const cleanedThinking = thinkingPart
+      .split("\n")
+      .map((line) => line.replace(/^>\s?/, ""))
+      .filter((line) => !line.match(/^\s*\*Thought for \d+s\*\s*$/))
+      .join("\n")
+      .trim();
+
+    if (cleanedThinking) {
+      blocks.push({ type: "thinking", content: cleanedThinking });
+    }
+
+    if (textPart) {
+      blocks.push({ type: "text", content: textPart });
+    }
+
+    return blocks;
+  }
+
+  // Fall back to <think>...</think> tag parsing
   const thinkRegex = /<think>([\s\S]*?)<\/think>/gi;
 
   let lastIndex = 0;
