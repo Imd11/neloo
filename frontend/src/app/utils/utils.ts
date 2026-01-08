@@ -95,17 +95,23 @@ function parseThinkTagsFromString(content: string): ContentBlock[] {
   const blocks: ContentBlock[] = [];
 
   // First, try to parse GPT-5 thinking format:
-  // > **Title**\n> content...\n> *Thought for Xs*
-  // This format uses markdown blockquotes with a "Thought for Xs" marker at the end
-  const gpt5ThinkingMatch = content.match(
-    /^((?:>.*\n?)+>\s*\*Thought for \d+s\*\s*\n?)([\s\S]*)$/
+  // The format has markdown blockquotes containing thinking, ending with "*Thought for Xs*"
+  // Pattern: lines starting with > containing thinking content, then *Thought for Ns* marker
+  // After the marker, there may be regular text content
+
+  // Look for the "*Thought for Xs*" marker which separates thinking from content
+  const thoughtMarkerMatch = content.match(
+    /^([\s\S]*?>\s*\*Thought for \d+s\*)\s*\n*([\s\S]*)$/
   );
 
-  if (gpt5ThinkingMatch) {
-    const thinkingPart = gpt5ThinkingMatch[1];
-    const textPart = gpt5ThinkingMatch[2].trim();
+  if (thoughtMarkerMatch) {
+    const thinkingPart = thoughtMarkerMatch[1];
+    const textPart = thoughtMarkerMatch[2].trim();
 
-    // Clean up the thinking content: remove > prefixes and the "Thought for Xs" line
+    // Clean up the thinking content:
+    // 1. Remove > prefixes from lines
+    // 2. Remove the "Thought for Xs" marker line
+    // 3. Remove empty lines at start/end
     const cleanedThinking = thinkingPart
       .split("\n")
       .map((line) => line.replace(/^>\s?/, ""))
