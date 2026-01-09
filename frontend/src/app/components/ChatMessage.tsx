@@ -173,6 +173,9 @@ export const ChatMessage = React.memo<ChatMessageProps>(
 
     const hasContent = messageContent && messageContent.trim() !== "";
     const hasToolCalls = toolCalls.length > 0;
+    // Track SubAgent start times for elapsed time calculation
+    const subAgentTimestampsRef = React.useRef<Record<string, { startedAt: number; completedAt?: number }>>({});
+
     const subAgents = useMemo(() => {
       return toolCalls
         .filter((toolCall: ToolCall) => {
@@ -187,13 +190,40 @@ export const ChatMessage = React.memo<ChatMessageProps>(
           const subagentType = (toolCall.args as Record<string, unknown>)[
             "subagent_type"
           ] as string;
+
+          // Map ToolCall status to SubAgent status
+          // ToolCall: "pending" | "completed" | "error" | "interrupted"
+          // SubAgent: "pending" | "active" | "completed" | "error"
+          let subAgentStatus: SubAgent["status"];
+          if (toolCall.status === "pending") {
+            // If pending and no result yet, it's actively running
+            subAgentStatus = toolCall.result ? "completed" : "active";
+          } else if (toolCall.status === "completed") {
+            subAgentStatus = "completed";
+          } else if (toolCall.status === "error" || toolCall.status === "interrupted") {
+            subAgentStatus = "error";
+          } else {
+            subAgentStatus = "pending";
+          }
+
+          // Track timestamps
+          const timestamps = subAgentTimestampsRef.current;
+          if (!timestamps[toolCall.id]) {
+            timestamps[toolCall.id] = { startedAt: Date.now() };
+          }
+          if (subAgentStatus === "completed" && !timestamps[toolCall.id].completedAt) {
+            timestamps[toolCall.id].completedAt = Date.now();
+          }
+
           return {
             id: toolCall.id,
             name: toolCall.name,
             subAgentName: subagentType,
             input: toolCall.args,
             output: toolCall.result ? { result: toolCall.result } : undefined,
-            status: toolCall.status,
+            status: subAgentStatus,
+            startedAt: timestamps[toolCall.id].startedAt,
+            completedAt: timestamps[toolCall.id].completedAt,
           } as SubAgent;
         });
     }, [toolCalls]);
@@ -334,11 +364,17 @@ export const ChatMessage = React.memo<ChatMessageProps>(
             <div className="mt-2">
               {contentBlocks.map((block, index) => {
                 if (block.type === "thinking") {
+                  // Determine if this thinking block is still streaming
+                  // It's streaming if: this is the last message, still loading, and it's the last thinking block
+                  const isLastThinkingBlock = index === contentBlocks.filter(b => b.type === "thinking").length - 1;
+                  const isThinkingStreaming = isLastMessage && isLoading && isLastThinkingBlock;
+
                   return (
                     <ThinkingBlock
                       key={`thinking-${index}`}
                       content={block.content}
-                      defaultExpanded={true}
+                      isStreaming={isThinkingStreaming}
+                      defaultExpanded={isThinkingStreaming}
                     />
                   );
                 }

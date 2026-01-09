@@ -13,6 +13,8 @@ export interface SubAgent {
   input: Record<string, unknown>;
   output?: Record<string, unknown>;
   status: "pending" | "active" | "completed" | "error";
+  startedAt?: number;
+  completedAt?: number;
 }
 
 export interface FileItem {

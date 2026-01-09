@@ -22,6 +22,7 @@ import subprocess
 import tempfile
 import base64
 import threading
+import asyncio
 from abc import ABC, abstractmethod
 from typing import Optional, Any
 from dataclasses import dataclass, field
@@ -563,6 +564,546 @@ class E2BSandboxExecutor(SandboxExecutor):
 
 
 # =============================================================================
+# Async E2B Cloud Sandbox Executor (Production) - Per-User Isolation
+# =============================================================================
+
+class AsyncE2BSandboxExecutor(SandboxExecutor):
+    """
+    Async E2B Cloud Sandbox Executor with Per-User Isolation
+
+    Uses AsyncSandbox and asyncio.Lock to enable true parallel SubAgent execution.
+    This executor does NOT block the asyncio event loop, allowing multiple SubAgents
+    to execute code concurrently.
+
+    Features:
+    - Per-user sandbox isolation (user_id -> sandbox mapping)
+    - Per-user asyncio.Lock (allows event loop to schedule other tasks)
+    - LRU eviction when max sandbox limit reached
+    - Automatic idle sandbox cleanup
+    - Pre-execution file sync guarantee
+
+    Pre-installed packages: pandas, numpy, scipy, statsmodels, matplotlib
+
+    Requires: E2B_API_KEY environment variable
+    """
+
+    # Configuration
+    SANDBOX_TIMEOUT = 600           # E2B sandbox lifetime (10 minutes)
+    IDLE_CLEANUP_THRESHOLD = 1800   # Cleanup sandboxes idle for 30 minutes
+    MAX_SANDBOXES = 50              # Maximum concurrent sandboxes
+
+    def __init__(self):
+        """
+        Initialize Async E2B executor with per-user sandbox management
+        """
+        self._sandboxes: dict[str, SandboxInfo] = {}  # user_id -> SandboxInfo
+        self._lock = asyncio.Lock()                    # Protects _sandboxes dict (async)
+        self._user_locks: dict[str, asyncio.Lock] = {}  # Per-user execution locks (async)
+        print(f"[AsyncE2BExecutor] Initialized with per-user isolation (max {self.MAX_SANDBOXES} sandboxes)")
+
+    async def _get_user_lock(self, user_id: str) -> asyncio.Lock:
+        """
+        Get or create a per-user execution lock (async).
+
+        This prevents concurrent code execution for the same user,
+        which could cause file conflicts within a sandbox.
+        Uses asyncio.Lock to allow event loop scheduling during wait.
+        """
+        async with self._lock:
+            if user_id not in self._user_locks:
+                self._user_locks[user_id] = asyncio.Lock()
+            return self._user_locks[user_id]
+
+    async def _get_sandbox(self, user_id: str, force_new: bool = False):
+        """
+        Get or create a sandbox for a specific user (async).
+
+        Each user gets their own isolated sandbox. Sandboxes are reused
+        within their lifetime to enable file pre-warming.
+
+        Args:
+            user_id: User identifier (must come from trusted JWT)
+            force_new: If True, always create a new sandbox (used after expiration)
+        """
+        async with self._lock:
+            now = datetime.now()
+
+            # Check if user already has a sandbox
+            if user_id in self._sandboxes and not force_new:
+                info = self._sandboxes[user_id]
+                # Check if sandbox is still valid (not expired)
+                elapsed = (now - info.created_at).total_seconds()
+                if elapsed < self.SANDBOX_TIMEOUT - 30:  # 30s buffer
+                    info.last_used = now
+                    print(f"[AsyncE2BExecutor] Reusing sandbox for user {user_id} (age: {elapsed:.0f}s)")
+                    return info.sandbox
+                else:
+                    # Sandbox expired, close it
+                    print(f"[AsyncE2BExecutor] Sandbox expired for user {user_id}, recreating")
+                    await self._close_sandbox_unlocked(user_id)
+
+            # Check if we need to evict old sandboxes
+            if len(self._sandboxes) >= self.MAX_SANDBOXES:
+                await self._evict_lru_sandbox_unlocked()
+
+            # Create new sandbox for this user
+            try:
+                from e2b_code_interpreter import AsyncSandbox
+                sandbox = await AsyncSandbox.create(timeout=self.SANDBOX_TIMEOUT)
+                self._sandboxes[user_id] = SandboxInfo(
+                    sandbox=sandbox,
+                    last_used=now,
+                    created_at=now
+                )
+                print(f"[AsyncE2BExecutor] Created new sandbox for user {user_id} (total: {len(self._sandboxes)})")
+                return sandbox
+            except ImportError:
+                raise ImportError(
+                    "e2b-code-interpreter is required for E2B sandbox. "
+                    "Install with: pip install e2b-code-interpreter"
+                )
+            except Exception as e:
+                raise RuntimeError(f"Failed to create E2B sandbox: {e}")
+
+    async def _close_sandbox_unlocked(self, user_id: str):
+        """Close sandbox for a user (must hold _lock)"""
+        if user_id in self._sandboxes:
+            try:
+                # AsyncSandbox uses kill() to terminate
+                await self._sandboxes[user_id].sandbox.kill()
+            except Exception as e:
+                print(f"[AsyncE2BExecutor] Error closing sandbox for {user_id}: {e}")
+            del self._sandboxes[user_id]
+
+    async def _evict_lru_sandbox_unlocked(self):
+        """
+        Evict the least recently used sandbox (must hold _lock).
+
+        Skips sandboxes that are currently executing to prevent
+        interrupting active code execution.
+        """
+        if not self._sandboxes:
+            return
+
+        # Find candidates that are NOT currently executing
+        candidates = [
+            user_id for user_id, info in self._sandboxes.items()
+            if not info.is_executing
+        ]
+
+        if not candidates:
+            # All sandboxes are executing, cannot evict safely
+            print(f"[AsyncE2BExecutor] WARNING: All {len(self._sandboxes)} sandboxes are executing, cannot evict")
+            return
+
+        # Find the user with oldest last_used time among non-executing sandboxes
+        oldest_user = min(
+            candidates,
+            key=lambda u: self._sandboxes[u].last_used
+        )
+        print(f"[AsyncE2BExecutor] Evicting LRU sandbox for user {oldest_user}")
+        await self._close_sandbox_unlocked(oldest_user)
+
+    async def cleanup_idle_sandboxes(self):
+        """
+        Clean up sandboxes and user locks that have been idle for too long (async).
+
+        This can be called periodically by a background task to
+        free up resources and reduce costs.
+        """
+        async with self._lock:
+            now = datetime.now()
+            to_remove = []
+
+            # Find idle sandboxes (skip those currently executing)
+            for user_id, info in self._sandboxes.items():
+                if info.is_executing:
+                    continue  # Don't cleanup executing sandboxes
+                idle_seconds = (now - info.last_used).total_seconds()
+                if idle_seconds > self.IDLE_CLEANUP_THRESHOLD:
+                    to_remove.append(user_id)
+
+            # Close idle sandboxes
+            for user_id in to_remove:
+                print(f"[AsyncE2BExecutor] Cleaning up idle sandbox for user {user_id}")
+                await self._close_sandbox_unlocked(user_id)
+
+            if to_remove:
+                print(f"[AsyncE2BExecutor] Cleaned up {len(to_remove)} idle sandboxes")
+
+            # Clean up orphaned user locks (users without sandboxes)
+            orphaned_locks = [
+                user_id for user_id in self._user_locks.keys()
+                if user_id not in self._sandboxes and not self._user_locks[user_id].locked()
+            ]
+
+            for user_id in orphaned_locks:
+                del self._user_locks[user_id]
+
+            if orphaned_locks:
+                print(f"[AsyncE2BExecutor] Cleaned up {len(orphaned_locks)} orphaned user locks")
+
+    async def _ensure_files_synced(self, sandbox, user_id: str):
+        """
+        Ensure all user files are synced to sandbox before execution (async).
+
+        This is the "兜底同步" (fallback sync) that guarantees files
+        are present even if pre-warming failed or sandbox was recreated.
+        """
+        try:
+            from .file_sync import list_supabase_files, SUPABASE_URL, SUPABASE_SERVICE_KEY, USE_LOCAL_STORAGE, BUCKET_NAME
+            print(f"[AsyncE2BExecutor] ========== FILE SYNC DEBUG ==========")
+            print(f"[AsyncE2BExecutor] user_id = '{user_id}' (type: {type(user_id).__name__})")
+            print(f"[AsyncE2BExecutor] Storage mode: {'LOCAL' if USE_LOCAL_STORAGE else 'SUPABASE'}")
+            print(f"[AsyncE2BExecutor] BUCKET_NAME = '{BUCKET_NAME}'")
+            print(f"[AsyncE2BExecutor] SUPABASE_URL configured: {bool(SUPABASE_URL)}")
+            print(f"[AsyncE2BExecutor] SUPABASE_SERVICE_KEY configured: {bool(SUPABASE_SERVICE_KEY)}")
+
+            remote_files = list_supabase_files(user_id=user_id)
+            print(f"[AsyncE2BExecutor] Found {len(remote_files)} files in storage for user {user_id}")
+
+            # Ensure the data directory exists even when there are no files to sync.
+            try:
+                await sandbox.files.make_dir("/home/user/data")
+            except Exception:
+                pass
+
+            if remote_files:
+                # Get list of files already in sandbox
+                data_dir = "/home/user/data"
+                try:
+                    existing_entries = await sandbox.files.list(data_dir)
+                    existing_files = {f.name for f in existing_entries}
+                except Exception:
+                    existing_files = set()
+
+                # Sync missing files (using async file operations)
+                synced_count = 0
+                for file_info in remote_files:
+                    storage_path = file_info.get("storage_path")
+                    if storage_path:
+                        # Extract filename from storage path
+                        filename = storage_path.split("/")[-1] if "/" in storage_path else storage_path
+                        if filename not in existing_files:
+                            # Use async sync function
+                            result = await self._async_sync_file_to_e2b(sandbox, storage_path)
+                            synced_count += 1
+                            print(f"[AsyncE2BExecutor] Synced missing file: {storage_path} -> {result}")
+
+                if synced_count > 0:
+                    print(f"[AsyncE2BExecutor] Synced {synced_count} missing files")
+                else:
+                    print(f"[AsyncE2BExecutor] All {len(remote_files)} files already in sandbox")
+            else:
+                print(f"[AsyncE2BExecutor] No files to sync for user {user_id}")
+
+        except Exception as e:
+            import traceback
+            print(f"[AsyncE2BExecutor] Warning: File sync check failed: {e}")
+            print(f"[AsyncE2BExecutor] Traceback: {traceback.format_exc()}")
+
+    async def _async_sync_file_to_e2b(self, sandbox, storage_path: str) -> str:
+        """
+        Async version of sync_file_to_e2b.
+        Downloads file from Supabase and uploads to E2B sandbox.
+        """
+        from .file_sync import SUPABASE_URL, SUPABASE_SERVICE_KEY, USE_LOCAL_STORAGE, BUCKET_NAME
+        import httpx
+
+        filename = storage_path.split("/")[-1] if "/" in storage_path else storage_path
+        e2b_path = f"/home/user/data/{filename}"
+
+        if USE_LOCAL_STORAGE:
+            # For local storage, read file directly
+            from .file_sync import get_local_data_dir
+            local_path = get_local_data_dir() / storage_path.split("/")[-1]
+            if local_path.exists():
+                content = local_path.read_bytes()
+                await sandbox.files.write(e2b_path, content)
+                return e2b_path
+            return f"File not found: {local_path}"
+
+        # Download from Supabase using async httpx
+        url = f"{SUPABASE_URL}/storage/v1/object/{BUCKET_NAME}/{storage_path}"
+        headers = {
+            "apikey": SUPABASE_SERVICE_KEY,
+            "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+        }
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, headers=headers)
+            if response.status_code == 200:
+                await sandbox.files.write(e2b_path, response.content)
+                return e2b_path
+            else:
+                return f"Download failed: {response.status_code}"
+
+    async def _set_executing(self, user_id: str, is_executing: bool):
+        """Set the is_executing flag for a user's sandbox (async thread-safe)"""
+        async with self._lock:
+            if user_id in self._sandboxes:
+                self._sandboxes[user_id].is_executing = is_executing
+
+    def execute(
+        self,
+        code: str,
+        timeout: int = 300,
+        user_id: str = "default",
+        thread_id: Optional[str] = None,
+    ) -> ExecutionResult:
+        """
+        Synchronous wrapper for async execute.
+        This is required by the SandboxExecutor interface.
+        """
+        # Run the async version in the event loop
+        try:
+            loop = asyncio.get_running_loop()
+            # If we're already in an async context, we need to use a different approach
+            # This shouldn't happen in normal usage as tools are called via ainvoke
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, self.aexecute(code, timeout, user_id, thread_id))
+                return future.result()
+        except RuntimeError:
+            # No running event loop, safe to use asyncio.run
+            return asyncio.run(self.aexecute(code, timeout, user_id, thread_id))
+
+    async def aexecute(
+        self,
+        code: str,
+        timeout: int = 300,
+        user_id: str = "default",
+        thread_id: Optional[str] = None,
+    ) -> ExecutionResult:
+        """
+        Execute code in user's isolated E2B sandbox (async).
+
+        Uses per-user asyncio.Lock to prevent concurrent execution
+        conflicts within the same sandbox, while allowing the event
+        loop to schedule other tasks (enabling true parallel SubAgent execution).
+        """
+        # Get per-user lock to prevent concurrent execution
+        user_lock = await self._get_user_lock(user_id)
+
+        async with user_lock:  # asyncio.Lock allows other coroutines to run
+            max_retries = 2  # Retry once if sandbox expired
+
+            for attempt in range(max_retries):
+                try:
+                    # Get user's sandbox (force new on retry)
+                    sandbox = await self._get_sandbox(user_id, force_new=(attempt > 0))
+
+                    # Mark sandbox as executing to prevent LRU eviction
+                    await self._set_executing(user_id, True)
+
+                    try:
+                        # Ensure files are synced before execution (兜底同步)
+                        await self._ensure_files_synced(sandbox, user_id)
+
+                        # Execute code
+                        result = await self._execute_in_sandbox(sandbox, code, timeout, user_id, thread_id)
+                        return result
+                    finally:
+                        # Always clear executing flag when done
+                        await self._set_executing(user_id, False)
+
+                except Exception as e:
+                    error_str = str(e)
+                    # Check if error is due to sandbox not found (expired)
+                    if "sandbox was not found" in error_str or "502" in error_str:
+                        if attempt < max_retries - 1:
+                            print(f"[AsyncE2BExecutor] Sandbox expired for user {user_id}, recreating (attempt {attempt + 2})")
+                            # Clear the stale reference
+                            async with self._lock:
+                                await self._close_sandbox_unlocked(user_id)
+                            continue  # Retry with new sandbox
+
+                    # Other errors or final attempt failed
+                    return ExecutionResult(
+                        success=False,
+                        error=f"E2B execution error: {error_str}",
+                    )
+
+            # Should not reach here
+            return ExecutionResult(
+                success=False,
+                error="E2B execution failed after retries",
+            )
+
+    async def _execute_in_sandbox(
+        self,
+        sandbox,
+        code: str,
+        timeout: int,
+        user_id: str = "default",
+        thread_id: Optional[str] = None,
+    ) -> ExecutionResult:
+        """
+        Internal method to execute code in a given sandbox (async).
+        """
+        try:
+            # Make sure /home/user/data exists
+            try:
+                await sandbox.files.make_dir("/home/user/data")
+            except Exception:
+                pass
+
+            print(f"[AsyncE2BExecutor] Executing code for user {user_id}")
+            execution = await sandbox.run_code(code, timeout=timeout)
+
+            # Process results
+            results = []
+            generated_files = []
+
+            if execution.results:
+                for r in execution.results:
+                    if hasattr(r, 'png') and r.png:
+                        results.append({"type": "image/png", "data": r.png})
+                    elif hasattr(r, 'html') and r.html:
+                        results.append({"type": "text/html", "data": r.html})
+                    elif hasattr(r, 'text') and r.text:
+                        results.append({"type": "text/plain", "data": r.text})
+                    elif hasattr(r, 'latex') and r.latex:
+                        results.append({"type": "text/latex", "data": r.latex})
+
+            # Sync generated files from E2B sandbox back to storage
+            try:
+                from ..storage.file_storage import save_generated_file
+
+                # List files in /home/user/data/
+                data_dir = "/home/user/data"
+                try:
+                    files_in_sandbox = await sandbox.files.list(data_dir)
+                    print(f"[AsyncE2BExecutor] Files in sandbox data dir: {[f.name for f in files_in_sandbox]}")
+                except Exception as e:
+                    print(f"[AsyncE2BExecutor] Could not list sandbox files: {e}")
+                    files_in_sandbox = []
+
+                # Process all generated files
+                for f in files_in_sandbox:
+                    file_path = f"{data_dir}/{f.name}"
+
+                    # Handle image files (PNG)
+                    if f.name.endswith('.png'):
+                        try:
+                            content = await sandbox.files.read(file_path, format="bytes")
+                            content_bytes = bytes(content)
+                            img_base64 = base64.b64encode(content_bytes).decode('utf-8')
+                            results.append({"type": "image/png", "data": img_base64})
+                            print(f"[AsyncE2BExecutor] Read image from sandbox: {file_path}")
+
+                            file_info = save_generated_file(
+                                filename=f.name,
+                                data=content_bytes,
+                                user_id=user_id,
+                                thread_id=thread_id,
+                                file_type="chart",
+                            )
+                            if file_info:
+                                generated_files.append({
+                                    "filename": f.name,
+                                    "sandbox_path": file_path,
+                                    "size": len(content_bytes),
+                                    "download_url": file_info["download_url"],
+                                    "file_id": file_info["file_id"],
+                                    "content_type": "image/png",
+                                    "file_type": "chart",
+                                })
+                                print(f"[AsyncE2BExecutor] Saved chart to storage: {file_info['download_url']}")
+                            else:
+                                generated_files.append({
+                                    "filename": f.name,
+                                    "sandbox_path": file_path,
+                                    "size": len(content_bytes),
+                                    "file_type": "chart",
+                                })
+                        except Exception as e:
+                            print(f"[AsyncE2BExecutor] Failed to read image {f.name}: {e}")
+
+                    # Handle other file types
+                    elif f.name.endswith(('.csv', '.xlsx', '.xls', '.json', '.txt', '.pdf', '.html', '.md')):
+                        try:
+                            if f.name.endswith(('.xlsx', '.xls', '.pdf')):
+                                content = await sandbox.files.read(file_path, format="bytes")
+                                content_bytes = bytes(content)
+                            else:
+                                content = await sandbox.files.read(file_path)
+                                content_bytes = content.encode('utf-8') if isinstance(content, str) else bytes(content)
+
+                            file_info = save_generated_file(
+                                filename=f.name,
+                                data=content_bytes,
+                                user_id=user_id,
+                                thread_id=thread_id,
+                                file_type="generated",
+                            )
+
+                            if file_info:
+                                generated_files.append({
+                                    "filename": f.name,
+                                    "sandbox_path": file_path,
+                                    "size": len(content_bytes),
+                                    "download_url": file_info["download_url"],
+                                    "file_id": file_info["file_id"],
+                                    "content_type": file_info["content_type"],
+                                    "file_type": "generated",
+                                })
+                                print(f"[AsyncE2BExecutor] Saved file to storage: {f.name} -> {file_info['download_url']}")
+                            else:
+                                generated_files.append({
+                                    "filename": f.name,
+                                    "sandbox_path": file_path,
+                                    "size": len(content_bytes),
+                                    "file_type": "generated",
+                                })
+
+                        except Exception as e:
+                            print(f"[AsyncE2BExecutor] Failed to read/save file {f.name}: {e}")
+                            generated_files.append({
+                                "filename": f.name,
+                                "sandbox_path": file_path,
+                            })
+
+            except Exception as e:
+                import traceback
+                print(f"[AsyncE2BExecutor] Warning: Failed to sync generated files: {e}")
+                print(f"[AsyncE2BExecutor] Traceback: {traceback.format_exc()}")
+
+            return ExecutionResult(
+                success=execution.error is None,
+                stdout=execution.logs.stdout if execution.logs else "",
+                stderr=execution.logs.stderr if execution.logs else "",
+                results=results,
+                error=str(execution.error) if execution.error else None,
+                generated_files=generated_files,
+            )
+
+        except Exception as e:
+            # Re-raise to let aexecute() handle retry logic
+            raise
+
+    def close(self) -> None:
+        """Close all user sandboxes (sync wrapper)"""
+        try:
+            loop = asyncio.get_running_loop()
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, self.aclose())
+                future.result()
+        except RuntimeError:
+            asyncio.run(self.aclose())
+
+    async def aclose(self) -> None:
+        """Close all user sandboxes (async)"""
+        async with self._lock:
+            for user_id in list(self._sandboxes.keys()):
+                await self._close_sandbox_unlocked(user_id)
+            self._sandboxes.clear()
+            self._user_locks.clear()
+            print("[AsyncE2BExecutor] Closed all sandboxes")
+
+
+# =============================================================================
 # Local Subprocess Executor (Development Only)
 # =============================================================================
 
@@ -922,9 +1463,11 @@ def get_executor() -> SandboxExecutor:
     Get the sandbox executor based on SANDBOX_MODE environment variable
 
     SANDBOX_MODE options:
-      - "e2b"   : E2B cloud sandbox (default, recommended for production)
-      - "local" : Local subprocess (development only, no isolation)
-      - "docker": Docker container (self-hosted, secure)
+      - "e2b"      : Async E2B cloud sandbox (default, recommended for production)
+                     Uses asyncio.Lock for true parallel SubAgent execution
+      - "e2b-sync" : Sync E2B cloud sandbox (legacy, uses threading.Lock)
+      - "local"    : Local subprocess (development only, no isolation)
+      - "docker"   : Docker container (self-hosted, secure)
 
     Returns:
         SandboxExecutor instance
@@ -940,8 +1483,12 @@ def get_executor() -> SandboxExecutor:
         _executor = LocalSubprocessExecutor()
     elif mode == "docker":
         _executor = DockerExecutor()
-    else:  # Default to e2b
+    elif mode == "e2b-sync":
+        # Legacy sync executor with threading.Lock
         _executor = E2BSandboxExecutor()
+    else:  # Default to async e2b
+        # Async executor with asyncio.Lock for parallel SubAgent execution
+        _executor = AsyncE2BSandboxExecutor()
 
     return _executor
 
@@ -984,8 +1531,8 @@ def execute_python(
     executor = get_executor()
 
     # Sync files if provided (for explicit file sync before execution)
-    # Note: E2BSandboxExecutor now handles file sync internally via _ensure_files_synced()
-    # This block is kept for backwards compatibility with explicit file lists
+    # Note: E2BSandboxExecutor and AsyncE2BSandboxExecutor handle file sync internally
+    # via _ensure_files_synced(), so we only need to handle local mode here
     if files:
         try:
             from .file_sync import sync_files_to_local, sync_files_to_e2b
@@ -994,10 +1541,11 @@ def execute_python(
 
             if mode == "local":
                 sync_files_to_local(files)
-            elif mode == "e2b" and isinstance(executor, E2BSandboxExecutor):
-                # Get user's sandbox (this will create one if needed)
+            elif mode == "e2b-sync" and isinstance(executor, E2BSandboxExecutor):
+                # Legacy sync executor - explicit file sync
                 sandbox = executor._get_sandbox(user_id)
                 sync_files_to_e2b(sandbox, files)
+            # AsyncE2BSandboxExecutor handles file sync internally in _ensure_files_synced()
             # Docker mode file sync not implemented yet
 
         except Exception as e:
