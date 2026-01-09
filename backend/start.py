@@ -38,9 +38,14 @@ app = RuntimeContextASGIMiddleware(app)
 
 # Add CORS middleware at the outermost layer to handle all routes
 # (including LangGraph's /api/models, /assistants/search, etc.)
+# Note: allow_credentials=True requires explicit origins, not wildcards
 app = CORSMiddleware(
     app,
-    allow_origins=["*"],  # Allow all origins (or specify: ["https://data-analyst-eta.vercel.app"])
+    allow_origins=[
+        "https://data-analyst-eta.vercel.app",
+        "http://localhost:3000",
+        "http://localhost:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
