@@ -165,34 +165,9 @@ export function useChat({
     createThread();
   }, [threadId, session, config, onHistoryRevalidate, setThreadId, generateTitleForThread, webDevMode]);
 
-  // Fetch thread mode when switching to an existing thread
-  useEffect(() => {
-    if (!threadId || !session || !config) return;
-
-    const fetchThreadMode = async () => {
-      try {
-        const response = await fetch(
-          `${config.deploymentUrl}/api/threads/${encodeURIComponent(threadId)}`,
-          {
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-            },
-          }
-        );
-
-        if (response.ok) {
-          const threadData = await response.json();
-          const mode = threadData.mode || "default";
-          setThreadMode(mode);
-          setWebDevMode(mode === "web-dev");
-        }
-      } catch (error) {
-        console.error("[useChat] Failed to fetch thread mode:", error);
-      }
-    };
-
-    fetchThreadMode();
-  }, [threadId, session, config]);
+  // Note: Thread mode is now fetched as part of the createThread flow above.
+  // The POST /api/threads endpoint returns the thread data (including mode) for both
+  // new and existing threads, so we don't need a separate GET request.
 
   // Reset mode when threadId is cleared (new thread)
   useEffect(() => {
