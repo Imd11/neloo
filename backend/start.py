@@ -18,6 +18,7 @@ sys.path.insert(0, str(backend_dir))
 import uvicorn
 from langgraph.server import GraphConfig
 from langgraph.server.app import create_app
+from starlette.middleware.cors import CORSMiddleware
 
 # Import our graph and webapp
 from src.agent.graph import graph
@@ -34,6 +35,17 @@ config = GraphConfig(
 
 app = create_app(config)
 app = RuntimeContextASGIMiddleware(app)
+
+# Add CORS middleware at the outermost layer to handle all routes
+# (including LangGraph's /api/models, /assistants/search, etc.)
+app = CORSMiddleware(
+    app,
+    allow_origins=["*"],  # Allow all origins (or specify: ["https://data-analyst-eta.vercel.app"])
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
