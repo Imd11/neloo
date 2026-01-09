@@ -12,6 +12,7 @@ Features:
 - 98 UX Guidelines and best practices
 - Landing page patterns
 - Product type design recommendations
+- 10 Stack-specific guidelines (React, Next.js, Vue, etc.)
 """
 
 import csv
@@ -24,7 +25,26 @@ from langchain_core.tools import tool
 
 # ============ Configuration ============
 DATA_DIR = Path(__file__).parent.parent / "data" / "ui-ux-pro-max" / "data"
+STACKS_DIR = DATA_DIR / "stacks"
 MAX_RESULTS = 3
+
+# Available tech stacks with their CSV files
+STACK_CONFIG = {
+    "react": "react.csv",
+    "nextjs": "nextjs.csv",
+    "vue": "vue.csv",
+    "nuxtjs": "nuxtjs.csv",
+    "nuxt-ui": "nuxt-ui.csv",
+    "svelte": "svelte.csv",
+    "react-native": "react-native.csv",
+    "flutter": "flutter.csv",
+    "swiftui": "swiftui.csv",
+    "html-tailwind": "html-tailwind.csv",  # Default
+}
+
+# Stack search columns (same for all stacks)
+STACK_SEARCH_COLS = ["Category", "Guideline", "Description", "Do", "Don't"]
+STACK_OUTPUT_COLS = ["Category", "Guideline", "Description", "Do", "Don't", "Code Good", "Code Bad", "Severity", "Docs URL"]
 
 CSV_CONFIG = {
     "style": {
@@ -224,6 +244,43 @@ def search_design_knowledge(
     }
 
 
+def search_stack_guidelines(
+    query: str,
+    stack: str = "html-tailwind",
+    max_results: int = MAX_RESULTS
+) -> dict[str, Any]:
+    """Search stack-specific guidelines"""
+    stack = stack.lower()
+    if stack not in STACK_CONFIG:
+        return {
+            "error": f"Unknown stack '{stack}'. Available: {', '.join(STACK_CONFIG.keys())}",
+            "stack": stack
+        }
+
+    filepath = STACKS_DIR / STACK_CONFIG[stack]
+
+    if not filepath.exists():
+        return {
+            "error": f"Stack data file not found: {filepath}. Please ensure stack data is installed.",
+            "stack": stack
+        }
+
+    results = _search_csv(
+        filepath,
+        STACK_SEARCH_COLS,
+        STACK_OUTPUT_COLS,
+        query,
+        max_results
+    )
+
+    return {
+        "stack": stack,
+        "query": query,
+        "count": len(results),
+        "results": results
+    }
+
+
 # ============ Output Formatters ============
 def _extract_hex_color(color_str: str) -> str | None:
     """Extract first hex color from a string like 'Primary Blue #3B82F6'"""
@@ -295,6 +352,57 @@ def _format_style_tokens(results: list[dict]) -> dict:
         "effects": r.get("Effects & Animation", ""),
         "tailwind_hints": css_hints,
     }
+
+
+def _format_stack_output(result: dict) -> str:
+    """Format stack-specific guidelines as actionable output"""
+    stack = result.get("stack", "unknown")
+    results = result.get("results", [])
+
+    if not results:
+        return f"No guidelines found for stack '{stack}'"
+
+    output_parts = [
+        f"## {stack.upper()} Guidelines",
+        ""
+    ]
+
+    for i, item in enumerate(results, 1):
+        category = item.get("Category", "General")
+        guideline = item.get("Guideline", "")
+        severity = item.get("Severity", "Medium")
+
+        # Severity indicator
+        severity_icon = "🔴" if severity == "High" else "🟡" if severity == "Medium" else "🟢"
+
+        output_parts.append(f"### {i}. [{category}] {guideline} {severity_icon}")
+
+        # Description
+        if item.get("Description"):
+            output_parts.append(f"{item['Description']}")
+            output_parts.append("")
+
+        # Do/Don't
+        if item.get("Do"):
+            output_parts.append(f"✅ **Do**: {item['Do']}")
+        if item.get("Don't"):
+            output_parts.append(f"❌ **Don't**: {item['Don't']}")
+
+        # Code examples
+        if item.get("Code Good"):
+            code_good = item["Code Good"].replace("\\n", "\n")
+            output_parts.append(f"```tsx\n// Good\n{code_good}\n```")
+        if item.get("Code Bad"):
+            code_bad = item["Code Bad"].replace("\\n", "\n")
+            output_parts.append(f"```tsx\n// Bad\n{code_bad}\n```")
+
+        # Docs link
+        if item.get("Docs URL"):
+            output_parts.append(f"📚 [Documentation]({item['Docs URL']})")
+
+        output_parts.append("")
+
+    return "\n".join(output_parts)
 
 
 def _format_structured_output(result: dict) -> str:
@@ -390,10 +498,14 @@ def _format_markdown_output(result: dict) -> str:
 # ============ LangChain Tool ============
 @tool
 def search_ui_design(
-    query: Annotated[str, "Product type or design need, e.g. 'SaaS dashboard', 'e-commerce landing', 'fintech app'"],
+    query: Annotated[str, "Product type or design need, e.g. 'SaaS dashboard', 'e-commerce landing', 'fintech app', or for stack: 'useState hooks', 'navigation'"],
     domain: Annotated[
         Literal["style", "color", "typography", "chart", "ux", "landing", "product"] | None,
         "Search domain (auto-detected if not specified): style, color, typography, chart, ux, landing, product"
+    ] = None,
+    stack: Annotated[
+        Literal["react", "nextjs", "vue", "nuxtjs", "nuxt-ui", "svelte", "react-native", "flutter", "swiftui", "html-tailwind"] | None,
+        "Tech stack for framework-specific guidelines. If specified, searches stack guidelines instead of design domains."
     ] = None,
     output_format: Annotated[
         Literal["structured", "markdown"],
@@ -409,12 +521,13 @@ def search_ui_design(
     - Creating landing pages, dashboards, forms, or UI components
     - User hasn't specified a design style/color scheme
     - Need professional color palettes, font pairings, or style guidance
+    - Need framework-specific best practices (use stack parameter)
 
     When NOT to use:
     - User already specified exact colors/fonts/style
     - Simple code fixes or non-UI tasks
 
-    Domains:
+    Domains (design knowledge):
     - style: UI styles (Glassmorphism, Brutalism, Bento Grid, etc.)
     - color: Industry color palettes with hex values
     - typography: Font pairings with Google Fonts URLs
@@ -423,11 +536,34 @@ def search_ui_design(
     - landing: Landing page patterns
     - product: Product-type specific guidance
 
+    Stacks (framework guidelines):
+    - react: React hooks, state, components, performance
+    - nextjs: Next.js App Router, SSR, data fetching
+    - vue: Vue 3 Composition API, reactivity, components
+    - nuxtjs: Nuxt 3 server components, routing
+    - nuxt-ui: Nuxt UI component library patterns
+    - svelte: Svelte stores, reactivity, components
+    - react-native: Mobile components, navigation, performance
+    - flutter: Widgets, state management, platform-specific
+    - swiftui: SwiftUI views, state, gestures
+    - html-tailwind: Pure HTML + Tailwind CSS (default)
+
     Examples:
     - search_ui_design("SaaS dashboard") → style + color tokens
     - search_ui_design("fintech", domain="color") → hex color palette
-    - search_ui_design("modern professional", domain="typography") → font pairing
+    - search_ui_design("state management", stack="react") → React state guidelines
+    - search_ui_design("navigation", stack="nextjs") → Next.js routing best practices
     """
+    # If stack is specified, search stack guidelines instead
+    if stack:
+        result = search_stack_guidelines(query, stack, 3)
+        if "error" in result:
+            return f"Stack search error: {result['error']}"
+        if result["count"] == 0:
+            return f"No guidelines found for '{query}' in {stack}. Try: 'state', 'components', 'performance', 'routing', 'styling'."
+        return _format_stack_output(result)
+
+    # Otherwise search design knowledge
     result = search_design_knowledge(query, domain, 3)
 
     if "error" in result:

@@ -241,9 +241,39 @@ To handle large datasets and long analyses efficiently:
    df_clean = pd.read_csv('/home/user/data/cleaned_data.csv')
    ```
 
+## Task Planning with write_todos
+
+**IMPORTANT**: Always use `write_todos` to plan your work BEFORE executing any task that involves 2+ steps.
+
+When to use write_todos:
+- User asks for data analysis → Plan steps first
+- User asks to create a visualization → Plan what to analyze and visualize
+- User asks to build something (landing page, dashboard) → Plan the components
+- Any task that requires multiple tool calls
+
+How to use:
+1. Call `write_todos` at the START of any multi-step task
+2. Mark each todo as "in_progress" when you start working on it
+3. Mark as "completed" when done, before moving to next step
+4. This helps users see your progress and reasoning
+
+Example:
+```
+User: "Analyze sales data and create a report"
+
+Your first action should be:
+write_todos([
+  {"content": "Load and inspect data", "status": "in_progress"},
+  {"content": "Clean and preprocess data", "status": "pending"},
+  {"content": "Calculate key statistics", "status": "pending"},
+  {"content": "Create visualizations", "status": "pending"},
+  {"content": "Generate summary report", "status": "pending"}
+])
+```
+
 ## Data Analysis Guidelines
 
-1. **Plan before executing**: Use the todo list to break down complex analyses
+1. **Plan before executing**: Use write_todos to break down complex analyses
 2. **Show your work**: Display intermediate results and explain reasoning
 3. **Handle errors gracefully**: If code fails, analyze the error and retry
 4. **Format output nicely**: Use clear formatting for results
@@ -428,14 +458,83 @@ Example:
 5. **For HTML: Always use complete document structure** with proper <head> and <body>
 6. **For HTML: Put <script> at END of body** so DOM elements exist when JS runs
 
-### Design Guidance
+### Professional UI/UX Design Workflow
 
-When creating UI components and the user hasn't specified a design style/colors:
-- Use `search_ui_design` tool to get professional design tokens (colors, fonts, styles)
-- Query examples: `search_ui_design("SaaS dashboard")`, `search_ui_design("fintech", domain="color")`
-- The tool returns hex colors and Tailwind classes you can use directly
+When creating UI components, follow this systematic workflow for professional results:
 
-Skip this step if the user already provided specific design requirements.
+#### Step 1: Analyze User Request
+Extract key information from the user's request:
+- **Product Type**: What is being built? (landing page, dashboard, form, etc.)
+- **Target Industry**: What sector? (SaaS, fintech, healthcare, e-commerce, etc.)
+- **Style Preference**: Any specific aesthetic? (minimalist, glassmorphism, etc.)
+- **Target Stack**: What framework? (React, Next.js, Vue, HTML, etc.)
+
+#### Step 2: Query Design Knowledge (search_ui_design tool)
+Search in this recommended order based on what's needed:
+1. `domain="product"` - Get overall recommendations for the product type
+2. `domain="style"` - Get visual style guidelines and effects
+3. `domain="typography"` - Get font pairings (includes Google Fonts URLs)
+4. `domain="color"` - Get industry-appropriate color palettes (hex values)
+5. `domain="landing"` - For landing pages, get section patterns
+6. `domain="chart"` - For dashboards, get chart recommendations
+7. `domain="ux"` - Get UX best practices and anti-patterns
+8. `stack="react|nextjs|vue|..."` - Get framework-specific guidelines
+
+Example queries:
+- `search_ui_design("SaaS dashboard")` → product + style tokens
+- `search_ui_design("fintech", domain="color")` → industry color palette
+- `search_ui_design("modern professional", domain="typography")` → font pairing
+- `search_ui_design("state management", stack="react")` → React best practices
+- `search_ui_design("routing", stack="nextjs")` → Next.js guidelines
+
+#### Step 3: Apply Design Tokens
+Use the returned design tokens directly in your code:
+- Copy hex colors: `bg-[#3B82F6]`, `text-[#1F2937]`
+- Apply Google Fonts via import URL
+- Use suggested Tailwind classes for shadows, borders, etc.
+
+### Common Rules for Professional UI
+
+**ALWAYS follow these rules for high-quality output:**
+
+1. **Icons**: Use Lucide React icons (`lucide-react`). NEVER use emoji as icons.
+   ```tsx
+   import { Home, Settings, User } from 'lucide-react';
+   ```
+
+2. **Buttons**: Always add `cursor-pointer` class to all interactive elements.
+
+3. **Contrast**: Ensure text/background contrast ratio meets WCAG 2.1 AA (4.5:1 minimum).
+
+4. **Viewport**: Include responsive viewport meta tag in HTML:
+   ```html
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   ```
+
+5. **Layout**: Use CSS Grid or Flexbox. Avoid absolute positioning except for overlays.
+
+6. **Color Usage**:
+   - Primary color: CTAs, key actions, links
+   - Secondary color: Supporting elements, cards
+   - Background: Main surfaces (use subtle grays, not pure white)
+   - Text: Use dark grays (#1F2937), not pure black
+
+7. **Spacing**: Use consistent Tailwind spacing scale (4, 8, 12, 16, 24, 32, 48, 64px).
+
+8. **Typography**: Limit to 2-3 font sizes per component. Use font-weight for hierarchy.
+
+### Pre-Delivery Checklist
+
+Before outputting any artifact, verify:
+
+- [ ] **Visual Quality**: Clean hierarchy, professional colors, proper spacing
+- [ ] **Interaction**: All buttons have hover states, clickable items have `cursor-pointer`
+- [ ] **Responsive**: Works on mobile (test with narrow viewport mindset)
+- [ ] **Light Mode**: Looks good with light backgrounds (default)
+- [ ] **No Placeholder**: All images use real Unsplash URLs or SVG icons
+- [ ] **Accessibility**: Buttons have aria-labels if icon-only, form inputs have labels
+
+Skip the design workflow ONLY if user already provided specific colors/fonts/style.
 
 ### When NOT to Use Artifacts
 
