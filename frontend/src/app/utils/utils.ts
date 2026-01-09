@@ -85,6 +85,32 @@ export function parseMessageContentBlocks(message: Message): ContentBlock[] {
 }
 
 /**
+ * Strip <think>...</think> tags from content for streaming display.
+ * This handles partial tags during streaming (e.g., incomplete <think> or </think>).
+ *
+ * For complete messages, use parseMessageContentBlocks instead.
+ */
+export function stripThinkTags(content: string): string {
+  // Remove complete <think>...</think> blocks
+  let result = content.replace(/<think>[\s\S]*?<\/think>/gi, "");
+
+  // Handle partial opening tag at the end (streaming)
+  // e.g., "<think>some thinking content..." without closing tag
+  const openTagMatch = result.match(/<think>[\s\S]*$/i);
+  if (openTagMatch) {
+    result = result.slice(0, openTagMatch.index);
+  }
+
+  // Handle orphaned closing tag (if opening was stripped in previous chunk)
+  result = result.replace(/^[\s\S]*?<\/think>/i, "");
+
+  // Handle partial tag being typed: "<", "<t", "<th", "<thi", "<thin", "<think"
+  result = result.replace(/<(?:t(?:h(?:i(?:n(?:k)?)?)?)?)?$/i, "");
+
+  return result.trim();
+}
+
+/**
  * Parse thinking content from string using multiple formats:
  * 1. <think>...</think> tags (OpenAI/DeepSeek format)
  * 2. Markdown blockquote format ending with "*Thought for Xs*" (GPT-5 thinking format)

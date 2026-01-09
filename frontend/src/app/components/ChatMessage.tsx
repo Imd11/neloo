@@ -17,6 +17,7 @@ import {
   extractSubAgentContent,
   extractStringFromMessageContent,
   parseMessageContentBlocks,
+  stripThinkTags,
 } from "@/app/utils/utils";
 import { cn } from "@/lib/utils";
 import {
@@ -115,11 +116,14 @@ export const ChatMessage = React.memo<ChatMessageProps>(
         }
         return textContent;
       }
-      // In Web Dev Mode, strip <artifact> tags from AI messages
+      // For AI messages, always strip <think> tags (handles streaming display)
+      // The thinking content will be parsed and shown in ThinkingBlock after message completes
+      let content = stripThinkTags(rawMessageContent);
+      // In Web Dev Mode, also strip <artifact> tags from AI messages
       if (webDevMode) {
-        return stripArtifacts(rawMessageContent);
+        content = stripArtifacts(content);
       }
-      return rawMessageContent;
+      return content;
     }, [isUser, rawMessageContent, webDevMode, contentBlocks, hasThinkingBlocks]);
 
     const userAttachments = isUser
