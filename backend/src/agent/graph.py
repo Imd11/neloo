@@ -28,6 +28,7 @@ from deepagents import create_deep_agent, SubAgent
 from ..tools.search import internet_search
 from ..tools.code_execution import execute_python_tool
 from ..tools.knowledge import search_knowledge as search_knowledge_tool, list_knowledge_categories
+from ..tools.ui_design import search_ui_design
 from ..context import (
     create_dual_output,
     save_result_to_file,
@@ -427,6 +428,15 @@ Example:
 5. **For HTML: Always use complete document structure** with proper <head> and <body>
 6. **For HTML: Put <script> at END of body** so DOM elements exist when JS runs
 
+### Design Guidance
+
+When creating UI components and the user hasn't specified a design style/colors:
+- Use `search_ui_design` tool to get professional design tokens (colors, fonts, styles)
+- Query examples: `search_ui_design("SaaS dashboard")`, `search_ui_design("fintech", domain="color")`
+- The tool returns hex colors and Tailwind classes you can use directly
+
+Skip this step if the user already provided specific design requirements.
+
 ### When NOT to Use Artifacts
 
 - For data analysis code (use execute_python instead)
@@ -696,7 +706,7 @@ def search_web(
 
 
 # Custom tools for the data analyst agent
-CUSTOM_TOOLS = [execute_python, search_web, search_knowledge_tool, list_knowledge_categories]
+CUSTOM_TOOLS = [execute_python, search_web, search_knowledge_tool, list_knowledge_categories, search_ui_design]
 
 
 # =============================================================================
