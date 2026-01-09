@@ -385,8 +385,9 @@ def _format_stack_output(result: dict) -> str:
         # Do/Don't
         if item.get("Do"):
             output_parts.append(f"✅ **Do**: {item['Do']}")
-        if item.get("Don't"):
-            output_parts.append(f"❌ **Don't**: {item['Don't']}")
+        dont_value = item.get("Don't")
+        if dont_value:
+            output_parts.append(f"❌ **Don't**: {dont_value}")
 
         # Code examples
         if item.get("Code Good"):
