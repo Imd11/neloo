@@ -194,7 +194,7 @@ export function ToolStep({
                     <span className="font-medium text-zinc-700 dark:text-zinc-300 truncate max-w-[600px] flex items-center gap-2">
                         {toolName === "search_web" ? (
                             <>
-                                <span className="text-zinc-400 font-normal">Searching</span>
+                                <span className="text-zinc-400 font-normal">正在搜索</span>
                                 <span className="text-zinc-800 dark:text-zinc-200">{displayInput}</span>
                             </>
                         ) : (

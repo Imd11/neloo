@@ -9,12 +9,21 @@ export interface ToolCall {
     status: "running" | "complete" | "error";
 }
 
+// Helper to estimate reading/generation time
+function estimateDuration(content: string): number {
+    // Estimate: 50ms per character (approx 20 chars/sec, conservative for thinking)
+    // Minimum 2 seconds
+    return Math.max(2000, content.length * 50);
+}
+
 export interface ThinkingContent {
     content: string;
     startTime: number;
     endTime?: number;
     isStreaming: boolean;
+    duration?: number;
 }
+
 
 export interface TaskGroup {
     id: string;
@@ -31,7 +40,13 @@ export interface MessageGroup {
     message: Message;
 }
 
-export type ChatItem = TaskGroup | MessageGroup;
+export interface GlobalThinkingGroup {
+    id: string;
+    type: "global_thinking";
+    items: ThinkingContent[];
+}
+
+export type ChatItem = TaskGroup | MessageGroup | GlobalThinkingGroup;
 
 /**
  * Sequential Replay Logic
@@ -41,6 +56,8 @@ export type ChatItem = TaskGroup | MessageGroup;
 export function groupMessagesByTask(messages: Message[]): ChatItem[] {
     const groups: ChatItem[] = [];
     let currentTask: TaskGroup | null = null;
+    let globalThinking: GlobalThinkingGroup | null = null;
+    let hasStartedTasks = false;
 
     // Track known tools to correlate results
     const toolCallMap = new Map<string, ToolCall>();
@@ -53,8 +70,40 @@ export function groupMessagesByTask(messages: Message[]): ChatItem[] {
         const toolCalls = anyMsg.tool_calls || anyMsg.additional_kwargs?.tool_calls || [];
         const content = extractStringFromMessageContent(msg);
 
+        // 0. Global Thinking Detection (Before any task starts)
+        // If we haven't started any tasks yet, and we see thinking content, add to global thinking
+        if (!hasStartedTasks && role === "assistant" && toolCalls.length === 0) {
+            const blocks = parseMessageContentBlocks(msg);
+            const thinkingBlocks = blocks.filter(b => b.type === "thinking");
+
+            // If we have ONLY thinking blocks (or empty text), treat as global think
+            // If there is meaningful text, it might be an intro message, handled by logic C
+            const textContent = stripThinkTags(content).trim();
+
+            if (thinkingBlocks.length > 0 && !textContent) {
+                if (!globalThinking) {
+                    globalThinking = {
+                        id: `global-think-${msg.id || Date.now()}`,
+                        type: "global_thinking",
+                        items: []
+                    };
+                    groups.push(globalThinking);
+                }
+
+                thinkingBlocks.forEach(block => {
+                    globalThinking!.items.push({
+                        content: block.content,
+                        startTime: Date.now(),
+                        isStreaming: false
+                    });
+                });
+                continue; // Skip the rest of the logic for this message
+            }
+        }
+
         // 1. Check for write_todos to start/update tasks
         if (role === "assistant" && toolCalls.length > 0) {
+            hasStartedTasks = true; // Mark that we entered task mode
             for (const tool of toolCalls) {
                 const toolName = tool.function?.name || tool.name;
                 if (toolName === "write_todos") {
@@ -90,6 +139,7 @@ export function groupMessagesByTask(messages: Message[]): ChatItem[] {
             const hasThinking = blocks.some(b => b.type === "thinking");
 
             if (toolCalls.length > 0 || hasThinking) {
+                hasStartedTasks = true;
                 // START IMPLICIT TASK GROUP
                 currentTask = {
                     id: `implicit-task-${msg.id || Date.now()}`,
@@ -129,32 +179,49 @@ export function groupMessagesByTask(messages: Message[]): ChatItem[] {
             if (role === "assistant") {
                 const blocks = parseMessageContentBlocks(msg);
 
+                // Check for injected thinking duration in result content
+                // The backend injects: \n\n<!-- think_duration: {ms} -->
+                const durationRegex = /<!-- think_duration: (\d+) -->/;
+                let injectedDuration: number | undefined;
+                const match = content.match(durationRegex);
+                if (match) {
+                    injectedDuration = parseInt(match[1], 10);
+                }
+
                 if (toolCalls.length > 0) {
                     // Case 1: Message has tool calls.
-                    // Treat ALL content (Thinking AND Text) as "Thinking/Context" for this task.
-                    // This prevents text before `write_todos` or other tools from disappearing.
                     const contentBlocks = blocks.filter(b => b.type === "thinking" || b.type === "text");
                     contentBlocks.forEach(block => {
                         // Skip empty text blocks
                         if (!block.content.trim()) return;
 
+                        // If it's a thinking block, use the injected duration if available
+                        const duration = block.type === "thinking" && injectedDuration
+                            ? injectedDuration
+                            : estimateDuration(block.content);
+
                         currentTask!.items.push({
                             content: block.content,
                             startTime: Date.now(),
-                            isStreaming: false
+                            isStreaming: false,
+                            duration: duration
                         } as ThinkingContent);
                     });
                 } else {
                     // Case 2: No tool calls.
-                    // Only extract explicit Thinking blocks here.
-                    // Text blocks will be handled by Logic C (Final Answer) below.
                     const thinkingBlocks = blocks.filter(b => b.type === "thinking");
                     if (thinkingBlocks.length > 0) {
                         thinkingBlocks.forEach(block => {
+                            // Use injected duration if available
+                            const duration = injectedDuration
+                                ? injectedDuration
+                                : estimateDuration(block.content);
+
                             currentTask!.items.push({
                                 content: block.content,
                                 startTime: Date.now(),
-                                isStreaming: false
+                                isStreaming: false,
+                                duration: duration
                             } as ThinkingContent);
                         });
                     }
@@ -180,6 +247,7 @@ export function groupMessagesByTask(messages: Message[]): ChatItem[] {
                 // If there is meaningful text content, it's likely the final answer
                 if (textContent.trim()) {
                     currentTask = null; // Break the task grouping
+                    hasStartedTasks = true;
 
                     groups.push({
                         id: msg.id || `msg-toplevel-${Date.now()}`,
@@ -193,8 +261,9 @@ export function groupMessagesByTask(messages: Message[]): ChatItem[] {
             // If user message, break task?
             if (role === "user") {
                 currentTask = null;
+                hasStartedTasks = true;
                 groups.push({
-                    id: msg.id || `msg-user-${content.substring(0, 10)}-${groups.length}`,
+                    id: msg.id || `msg-user-${groups.length}`,
                     type: "message",
                     message: msg
                 });
@@ -202,11 +271,24 @@ export function groupMessagesByTask(messages: Message[]): ChatItem[] {
 
         } else {
             // No active task, treat as top-level message
-            groups.push({
-                id: msg.id || `msg-toplevel-${content.substring(0, 10)}-${groups.length}`,
-                type: "message",
-                message: msg
-            });
+            if (role === "assistant") {
+                // Double check if we missed any content handled by global thinking
+                // If it's pure text, render as message
+                const textContent = stripThinkTags(content);
+                if (textContent.trim()) {
+                    groups.push({
+                        id: msg.id || `msg-toplevel-${groups.length}`,
+                        type: "message",
+                        message: msg
+                    });
+                }
+            } else {
+                groups.push({
+                    id: msg.id || `msg-toplevel-${groups.length}`,
+                    type: "message",
+                    message: msg
+                });
+            }
         }
     }
 

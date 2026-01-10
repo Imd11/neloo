@@ -107,6 +107,9 @@ export function stripThinkTags(content: string): string {
   // Handle partial tag being typed: "<", "<t", "<th", "<thi", "<thin", "<think"
   result = result.replace(/<(?:t(?:h(?:i(?:n(?:k)?)?)?)?)?$/i, "");
 
+  // Remove injected think_duration tag
+  result = result.replace(/<!-- think_duration: \d+ -->/g, "");
+
   return result.trim();
 }
 

@@ -494,20 +494,53 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                 const groupedItems = groupMessagesByTask(messages);
 
                 return (
-                  <div className="flex flex-col gap-4">
-                    {groupedItems.map((group) => {
+                  <div className="flex flex-col gap-0 relative">
+                    {/* Continuous Thread Line container if needed, but we'll do per-item lines */}
+
+                    {groupedItems.map((group, groupIdx) => {
+                      const isLastGroup = groupIdx === groupedItems.length - 1;
+
+                      if (group.type === "global_thinking") {
+                        return (
+                          <div key={group.id} className="flex flex-col">
+                            {group.items.map((item, idx) => {
+                              // Determine if active streaming
+                              // Global thoughts usually stream at the very beginning
+                              const isStreaming = isLoading && isLastGroup && (idx === group.items.length - 1) && ((item as any).isStreaming !== false);
+                              // Pass isLast=false always if there are subsequent groups (Tasks), effectively connecting deeply
+                              // Actually ThinkingBlock handles its own line logic, we might need a prop to Force the line to continue
+                              // But ThinkingBlock line is usually "bottom-0" if not last. 
+                              return (
+                                <ThinkingBlock
+                                  key={`global-think-${idx}`}
+                                  content={item.content}
+                                  startTime={item.startTime}
+                                  isStreaming={isStreaming}
+                                  duration={item.duration}
+                                  defaultExpanded={false} // User request: default collapsed
+                                  className={cn(
+                                    // Visual tweak to align with tasks
+                                    "mb-2"
+                                  )}
+                                  hasDoctype={true} // Special prop to indicate it's global context? or just styling
+                                />
+                              );
+                            })}
+                          </div>
+                        )
+                      }
+
                       if (group.type === "task") {
                         return (
                           <TaskCard
                             key={group.id}
                             title={group.title}
                             status={group.status}
+                            isLast={isLastGroup} // Pass isLast to control thread line
                           >
                             {group.items.map((item, idx) => {
                               // Render ToolStep
                               if ("toolName" in item) {
-                                // Find the original message content/result if available? 
-                                // My grouping logic attaches result to ToolCall item
                                 return (
                                   <ToolStep
                                     key={item.toolCallId}
@@ -515,19 +548,13 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                                     input={typeof item.args === 'string' ? item.args : JSON.stringify(item.args)}
                                     output={item.result}
                                     status={item.status}
-                                    isLast={idx === group.items.length - 1} // Logic to connect lines?
+                                    isLast={idx === group.items.length - 1}
                                   />
                                 );
                               }
 
                               // Render ThinkingContent inside Task
                               if ("content" in item && "isStreaming" in item) {
-                                // Determine if this thinking block is actively streaming
-                                // We check if:
-                                // 1. Global isLoading is true
-                                // 2. The task group is in progress
-                                // 3. This is the last item in this task group
-
                                 const isActive = isLoading && (group.status === "in_progress") && (idx === group.items.length - 1) && ((item as any).isStreaming !== undefined);
 
                                 return (
@@ -536,20 +563,18 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                                     content={item.content}
                                     startTime={item.startTime}
                                     isStreaming={isActive}
-                                    defaultExpanded={isActive}
+                                    duration={item.duration}
+                                    defaultExpanded={false} // User request: default collapsed
                                   />
                                 )
                               }
 
                               // Render Message (Thinking/Text) inside Task
                               if ("content" in item && "id" in item) { // Message interface
-                                // Find the enhanced data (toolCalls, etc) from processedMessages
-                                // We need to look it up to get UI components, ActionRequests, etc.
-                                // This is a bit inefficient but needed for compatibility
                                 const msgId = item.id;
                                 const processedData = processedMessages.find(pm => pm.message.id === msgId);
 
-                                if (!processedData) return null; // Should not happen
+                                if (!processedData) return null;
 
                                 const messageUi = ui?.filter(
                                   (u: any) => u.metadata?.message_id === msgId
@@ -580,7 +605,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                                     selectedArtifactId={selectedArtifact?.id}
                                     onEditMessage={isUserMessage ? handleEditMessage : undefined}
                                     onRegenerate={isLastAiMessage ? handleRegenerate : undefined}
-                                    hideTools={true} // Hide tools inside, they are rendered as ToolSteps
+                                    hideTools={true}
                                   />
                                 );
                               }
@@ -624,7 +649,6 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                             selectedArtifactId={selectedArtifact?.id}
                             onEditMessage={isUserMessage ? handleEditMessage : undefined}
                             onRegenerate={isLastAiMessage ? handleRegenerate : undefined}
-                          // Standard message, show everything
                           />
                         );
                       }

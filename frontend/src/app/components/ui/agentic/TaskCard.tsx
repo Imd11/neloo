@@ -14,12 +14,13 @@ interface TaskCardProps {
     onToggleExpand?: () => void;
     children: React.ReactNode;
     className?: string;
+    isLast?: boolean;
 }
 
 const STATUS_CONFIG: Record<TaskStatus, { icon: any; color: string }> = {
-    pending: { icon: Circle, color: "text-zinc-400" },
+    pending: { icon: Circle, color: "text-zinc-300 dark:text-zinc-700" },
     in_progress: { icon: Loader2, color: "text-blue-500 animate-spin" },
-    completed: { icon: CheckCircle2, color: "text-emerald-500" },
+    completed: { icon: CheckCircle2, color: "text-zinc-400" }, // Minimalist completed icon
     failed: { icon: XCircle, color: "text-red-500" },
 };
 
@@ -30,62 +31,59 @@ export function TaskCard({
     onToggleExpand,
     children,
     className,
+    isLast = false
 }: TaskCardProps) {
     const config = STATUS_CONFIG[status];
     const Icon = config.icon;
 
-    // Notion-like minimalist design:
-    // - No visually heavy borders or colored sides
-    // - Subtlety is key
-
     return (
-        <div className={cn(
-            "group my-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950/50 transition-all",
-            // Slight shadow only on hover
-            "hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:hover:shadow-none",
-            className
-        )}>
-            {/* Header - Styled like a Clickable List Item */}
+        <div className={cn("relative font-sans group", className)}>
+            {/* Thread Line connecting Task Header to Children OR Next Task */}
+            {/* Spans the entire height, children hide it if they have their own opaque backgrounds (they don't usually) */}
+            {/* Actually, since we render children below, we just need a line from Header center down */}
+
+            {/* Container Line */}
+            <div className={cn(
+                "absolute left-[11px] top-0 w-[1px] bg-zinc-100 dark:bg-zinc-800",
+                // If this is the last task/group, and it's collapsed, the line should stop at the icon.
+                // If expanded, the children draw lines.
+                // But simply: The line goes from Top to Bottom of this container.
+                isLast ? "bottom-auto h-6" : "bottom-0"
+            )} />
+
+            {/* Header - Styled like a Timeline Node */}
             <div
                 className={cn(
-                    "px-4 py-3 flex items-center gap-3 cursor-pointer select-none transition-colors rounded-t-lg",
-                    // Active state shading
-                    isExpanded ? "bg-zinc-50/50 dark:bg-zinc-900/50" : "hover:bg-zinc-50 dark:hover:bg-zinc-900/30",
-                    !isExpanded && "rounded-b-lg"
+                    "relative flex items-center gap-3 py-1 cursor-pointer select-none transition-colors",
+                    // Hover effect only on text area
+                    "group/header"
                 )}
                 onClick={onToggleExpand}
             >
-                {/* Status Icon - Subtle wrapper */}
-                <div className={cn(
-                    "flex items-center justify-center w-6 h-6 rounded-md transition-colors",
-                    status === 'in_progress' ? "bg-blue-50 dark:bg-blue-950/30" : "bg-transparent"
-                )}>
-                    <Icon className={cn(
-                        "h-4 w-4",
-                        config.color
-                    )} />
+                {/* Icon Area */}
+                <div className="relative z-10 flex h-6 w-6 shrink-0 items-center justify-center bg-white dark:bg-zinc-950">
+                    <Icon className={cn("h-4 w-4", config.color)} />
                 </div>
 
-                {/* Title */}
-                <span className={cn(
-                    "font-medium text-[15px] text-zinc-800 dark:text-zinc-200 flex-1 tracking-tight",
-                    status === "completed" && "text-zinc-500 dark:text-zinc-500"
-                )}>
-                    {title}
-                </span>
+                {/* Title Area */}
+                <div className="flex items-center gap-2 flex-1 min-w-0 p-1 rounded-md hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors">
+                    <span className={cn(
+                        "font-medium text-[14px] text-zinc-900 dark:text-zinc-100 flex-1 tracking-tight truncate",
+                        status === "completed" && "text-zinc-500 line-through decoration-zinc-300"
+                    )}>
+                        {title}
+                    </span>
 
-                {/* Duration / Metadata (Placeholder for now) */}
-
-                {/* Collapse Chevron - Only visible on hover or if expanded */}
-                <span className={cn(
-                    "text-zinc-300 dark:text-zinc-600 transition-colors group-hover:text-zinc-400",
-                    isExpanded && "text-zinc-400"
-                )}>
-                    {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                </span>
+                    <span className={cn(
+                        "text-zinc-300 dark:text-zinc-600 transition-colors group-hover/header:text-zinc-400",
+                        isExpanded && "text-zinc-400"
+                    )}>
+                        {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                    </span>
+                </div>
             </div>
 
-            {/* Content Container - Clean reveal */}
+            {/* Content Container */}
             <AnimatePresence>
                 {isExpanded && (
                     <motion.div
@@ -95,8 +93,8 @@ export function TaskCard({
                         transition={{ duration: 0.2, ease: "easeInOut" }}
                         className="overflow-hidden"
                     >
-                        {/* Nested Content Padding - Indented to align with title text (approx 48px left) */}
-                        <div className="px-4 pb-4 pt-1 pl-[3.25rem]">
+                        {/* No left padding, children align with the main thread */}
+                        <div className="flex flex-col">
                             {children}
                         </div>
                     </motion.div>

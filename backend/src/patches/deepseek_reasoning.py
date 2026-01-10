@@ -18,7 +18,8 @@ def apply_patch():
     """Apply the reasoning_content preservation patch to langchain_deepseek."""
     try:
         from langchain_deepseek.chat_models import ChatDeepSeek
-        from langchain_core.messages import BaseMessage
+        from langchain_core.messages import BaseMessage, AIMessageChunk
+        import time
     except ImportError:
         # langchain_deepseek not installed, skip patch
         return
@@ -76,6 +77,47 @@ def apply_patch():
 
         return payload
 
-    # Apply patch
+        return payload
+
+    # Store original stream method
+    _original_stream = ChatDeepSeek._stream
+
+    def _patched_stream(
+        self,
+        input_: Any,
+        config: Any = None,
+        *,
+        stop: list[str] | None = None,
+        **kwargs: Any,
+    ):
+        """Patched stream that measures reasoning time and injects duration metadata."""
+        start_time = time.time()
+        last_reasoning_time = start_time
+        has_reasoning = False
+        
+        # Iterate through the original stream
+        for chunk in _original_stream(self, input_, config=config, stop=stop, **kwargs):
+            # Check for reasoning content in the chunk
+            # Note: chunk is an AIMessageChunk
+            reasoning = chunk.additional_kwargs.get("reasoning_content")
+            
+            if reasoning:
+                has_reasoning = True
+                last_reasoning_time = time.time()
+            
+            yield chunk
+
+        # If we had reasoning content, inject the duration as a hidden tag
+        if has_reasoning:
+            # Calculate duration in milliseconds
+            duration_ms = int((last_reasoning_time - start_time) * 1000)
+            
+            # Create a final chunk with the metadata tag
+            # We append it to 'content' so it persists in the message history text
+            tag = f"\n\n<!-- think_duration: {duration_ms} -->"
+            yield AIMessageChunk(content=tag)
+
+    # Apply patches
     ChatDeepSeek._get_request_payload = _patched_get_request_payload
-    print("[Patch] Applied deepseek_reasoning patch for reasoning_content preservation")
+    ChatDeepSeek._stream = _patched_stream
+    print("[Patch] Applied deepseek_reasoning patch for reasoning_content preservation and timing injection")
