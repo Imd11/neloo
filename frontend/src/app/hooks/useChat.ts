@@ -49,6 +49,9 @@ export function useChat({
   const [webDevMode, setWebDevMode] = useState(false);
   const [threadMode, setThreadMode] = useState<string>("default");
 
+  // Track if thread history is unavailable (e.g., LangGraph checkpoint lost after restart)
+  const [historyUnavailable, setHistoryUnavailable] = useState(false);
+
   // Track whether we've generated a title for this thread.
   // Also keep the first user message so we can generate a title once the thread record exists.
   const titleGeneratedRef = useRef<Set<string>>(new Set());
@@ -169,22 +172,41 @@ export function useChat({
   // The POST /api/threads endpoint returns the thread data (including mode) for both
   // new and existing threads, so we don't need a separate GET request.
 
-  // Reset mode when threadId is cleared (new thread)
+  // Reset mode and historyUnavailable when threadId changes
   useEffect(() => {
     if (!threadId) {
       setThreadMode("default");
       setWebDevMode(false);  // Reset to default for new threads
     }
+    // Reset historyUnavailable flag when switching to a different thread
+    setHistoryUnavailable(false);
   }, [threadId]);
 
-  // Handle errors, especially 404 when thread doesn't exist
+  // Handle errors, especially 404 when thread history doesn't exist in LangGraph
   const handleError = (error: unknown) => {
-    // Check if it's a 404 error (thread not found)
     const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // Check if it's a 404 error (thread history not found in LangGraph checkpoint store)
+    // This happens when LangGraph Server restarts and loses in-memory checkpoints
     if (errorMessage.includes("404") || errorMessage.includes("not found")) {
-      console.warn("Thread not found, clearing threadId from URL");
-      setThreadId(null);
+      console.warn("[useChat] Thread history not found in LangGraph (checkpoint may have been lost):", threadId);
+
+      // Don't clear threadId - that causes blank UI and triggers new thread creation
+      // Instead, mark history as unavailable and show user notification
+      setHistoryUnavailable(true);
+
+      toast.warning("对话历史不可用", {
+        description: "该对话的消息历史已丢失（服务器重启后可能发生）。你可以继续发送新消息。",
+        duration: 6000,
+      });
+    } else {
+      // For other errors, show generic error toast
+      console.error("[useChat] Stream error:", error);
+      toast.error("发生错误", {
+        description: errorMessage.slice(0, 100),
+      });
     }
+
     onHistoryRevalidate?.();
   };
 
@@ -367,5 +389,7 @@ export function useChat({
     webDevMode: isWebDevModeActive,
     enableWebDevMode,
     isModeLocked,
+    // History unavailable flag - true when LangGraph checkpoint was lost
+    historyUnavailable,
   };
 }

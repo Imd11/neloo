@@ -44,6 +44,10 @@ dependencies = [
     # File Storage
     "supabase>=2.0.0",
 
+    # LangGraph Checkpoint Persistence (PostgreSQL)
+    "langgraph-checkpoint-postgres>=2.0.0",
+    "psycopg[binary,pool]>=3.1.0",
+
     # RAG (Retrieval-Augmented Generation)
     "langchain-chroma>=0.1.0",
     "langchain-text-splitters>=0.3.0",
