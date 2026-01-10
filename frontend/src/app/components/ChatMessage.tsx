@@ -4,7 +4,7 @@ import React, { useMemo, useState, useCallback } from "react";
 import { SubAgentIndicator } from "@/app/components/SubAgentIndicator";
 import { ToolCallBox } from "@/app/components/ToolCallBox";
 import { MarkdownContent } from "@/app/components/MarkdownContent";
-import { ThinkingBlock } from "@/app/components/ThinkingBlock";
+import { ThinkingBlock } from "@/app/components/ui/agentic/ThinkingBlock";
 import type {
   SubAgent,
   ToolCall,
@@ -59,6 +59,10 @@ interface ChatMessageProps {
   onEditMessage?: (messageContent: string) => void;
   /** Callback when user wants to regenerate AI response */
   onRegenerate?: () => void;
+  /** Whether to hide thinking blocks (managed by parent) */
+  hideThinking?: boolean;
+  /** Whether to hide tool calls (managed by parent) */
+  hideTools?: boolean;
 }
 
 export const ChatMessage = React.memo<ChatMessageProps>(
@@ -78,6 +82,8 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     selectedArtifactId,
     onEditMessage,
     onRegenerate,
+    hideThinking = false,
+    hideTools = false,
   }) => {
     const [copied, setCopied] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
@@ -360,7 +366,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
             </div>
           )}
           {/* Render thinking blocks for AI messages (before text content) */}
-          {!isUser && hasThinkingBlocks && (
+          {!isUser && !hideThinking && hasThinkingBlocks && (
             <div className="mt-2">
               {contentBlocks.map((block, index) => {
                 if (block.type === "thinking") {
@@ -422,7 +428,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
               <MessageActions show={!!hasContent} />
             </div>
           )}
-          {hasToolCalls && (
+          {hasToolCalls && !hideTools && (
             <div className="mt-4 flex w-full flex-col">
               {toolCalls.map((toolCall: ToolCall) => {
                 if (toolCall.name === "task") return null;
@@ -447,7 +453,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
               })}
             </div>
           )}
-          {!isUser && subAgents.length > 0 && (
+          {!isUser && !hideTools && subAgents.length > 0 && (
             <div className="flex w-fit max-w-full flex-col gap-4">
               {subAgents.map((subAgent) => (
                 <div

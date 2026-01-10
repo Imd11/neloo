@@ -19,9 +19,11 @@ import {
   FileIcon,
   AlertCircle,
   FolderOpen,
-  Code2,
 } from "lucide-react";
 import { ChatMessage } from "@/app/components/ChatMessage";
+import { TaskCard } from "@/app/components/ui/agentic/TaskCard";
+import { ToolStep } from "@/app/components/ui/agentic/ToolStep";
+import { groupMessagesByTask } from "@/lib/messageGrouping";
 import type {
   TodoItem,
   ToolCall,
@@ -98,8 +100,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
   const [input, setInput] = useState("");
   const { scrollRef, contentRef } = useStickToBottom();
 
-  // Track which message is being edited (for highlight effect)
-  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+
 
   const {
     stream,
@@ -456,369 +457,457 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
         onFilesSelected={handleLibraryFilesSelected}
       />
       <div className="flex flex-1 flex-col overflow-hidden">
-      <div
-        className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain"
-        ref={scrollRef}
-      >
         <div
-          className="mx-auto w-full max-w-[1024px] px-6 pb-6 pt-4"
-          ref={contentRef}
+          className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain"
+          ref={scrollRef}
         >
-          {/* Large conversation warning */}
-          {showLargeConversationWarning && (
-            <div className="mb-4 rounded-lg border border-orange-500/20 bg-orange-500/10 p-4">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-orange-500" />
-                <div className="flex-1">
-                  <h3 className="font-semibold text-orange-500">
-                    Large Conversation Warning
-                  </h3>
-                  <p className="mt-1 text-sm text-orange-500/90">
-                    This conversation has exceeded {MAX_VISIBLE_CHARS.toLocaleString()} characters.
-                    Performance may be affected. Consider starting a new thread for better performance.
-                  </p>
+          <div
+            className="mx-auto w-full max-w-[1024px] px-6 pb-6 pt-4"
+            ref={contentRef}
+          >
+            {/* Large conversation warning */}
+            {showLargeConversationWarning && (
+              <div className="mb-4 rounded-lg border border-orange-500/20 bg-orange-500/10 p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-orange-500" />
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-orange-500">
+                      Large Conversation Warning
+                    </h3>
+                    <p className="mt-1 text-sm text-orange-500/90">
+                      This conversation has exceeded {MAX_VISIBLE_CHARS.toLocaleString()} characters.
+                      Performance may be affected. Consider starting a new thread for better performance.
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-          {isThreadLoading && processedMessages.length === 0 ? (
-            <div className="flex items-center justify-center p-8">
-              <p className="text-muted-foreground">Loading...</p>
-            </div>
-          ) : (
-            <>
-              {processedMessages.map((data, index) => {
-                const messageUi = ui?.filter(
-                  (u: any) => u.metadata?.message_id === data.message.id
-                );
-                const isLastMessage = index === processedMessages.length - 1;
-                const isUserMessage = data.message.type === "human";
-                const isLastAiMessage = !isUserMessage && isLastMessage;
+            )}
+
+            {isThreadLoading && processedMessages.length === 0 ? (
+              <div className="flex items-center justify-center p-8">
+                <p className="text-muted-foreground">Loading...</p>
+              </div>
+            ) : (
+              /* New Grouped Rendering Logic */
+              (() => {
+                const groupedItems = groupMessagesByTask(messages);
+
                 return (
-                  <ChatMessage
-                    key={data.message.id}
-                    message={data.message}
-                    toolCalls={data.toolCalls}
-                    isLoading={isLoading}
-                    actionRequestsMap={
-                      isLastMessage ? actionRequestsMap : undefined
-                    }
-                    reviewConfigsMap={
-                      isLastMessage ? reviewConfigsMap : undefined
-                    }
-                    ui={messageUi}
-                    stream={stream}
-                    onResumeInterrupt={resumeInterrupt}
-                    graphId={assistant?.graph_id}
-                    webDevMode={webDevMode}
-                    isLastMessage={isLastMessage}
-                    onArtifactSelect={onArtifactSelect}
-                    selectedArtifactId={selectedArtifact?.id}
-                    onEditMessage={isUserMessage ? handleEditMessage : undefined}
-                    onRegenerate={isLastAiMessage ? handleRegenerate : undefined}
-                  />
+                  <div className="flex flex-col gap-4">
+                    {groupedItems.map((group) => {
+                      if (group.type === "task") {
+                        return (
+                          <TaskCard
+                            key={group.id}
+                            title={group.title}
+                            status={group.status}
+                          >
+                            {group.items.map((item, idx) => {
+                              // Render ToolStep
+                              if ("toolName" in item) {
+                                // Find the original message content/result if available? 
+                                // My grouping logic attaches result to ToolCall item
+                                return (
+                                  <ToolStep
+                                    key={item.toolCallId}
+                                    toolName={item.toolName}
+                                    input={typeof item.args === 'string' ? item.args : JSON.stringify(item.args)}
+                                    output={item.result}
+                                    status={item.status}
+                                    isLast={idx === group.items.length - 1} // Logic to connect lines?
+                                  />
+                                );
+                              }
+                              // Render Message (Thinking/Text) inside Task
+                              if ("content" in item && "id" in item) { // Message interface
+                                // Find the enhanced data (toolCalls, etc) from processedMessages
+                                // We need to look it up to get UI components, ActionRequests, etc.
+                                // This is a bit inefficient but needed for compatibility
+                                const msgId = item.id;
+                                const processedData = processedMessages.find(pm => pm.message.id === msgId);
+
+                                if (!processedData) return null; // Should not happen
+
+                                const messageUi = ui?.filter(
+                                  (u: any) => u.metadata?.message_id === msgId
+                                );
+                                const isLastMessage = msgId === messages[messages.length - 1].id;
+                                const isUserMessage = item.type === "human";
+                                const isLastAiMessage = !isUserMessage && isLastMessage;
+
+                                return (
+                                  <ChatMessage
+                                    key={msgId}
+                                    message={processedData.message}
+                                    toolCalls={processedData.toolCalls}
+                                    isLoading={isLoading}
+                                    actionRequestsMap={
+                                      isLastMessage ? actionRequestsMap : undefined
+                                    }
+                                    reviewConfigsMap={
+                                      isLastMessage ? reviewConfigsMap : undefined
+                                    }
+                                    ui={messageUi}
+                                    stream={stream}
+                                    onResumeInterrupt={resumeInterrupt}
+                                    graphId={assistant?.graph_id}
+                                    webDevMode={webDevMode}
+                                    isLastMessage={isLastMessage}
+                                    onArtifactSelect={onArtifactSelect}
+                                    selectedArtifactId={selectedArtifact?.id}
+                                    onEditMessage={isUserMessage ? handleEditMessage : undefined}
+                                    onRegenerate={isLastAiMessage ? handleRegenerate : undefined}
+                                    hideTools={true} // Hide tools inside, they are rendered as ToolSteps
+                                  />
+                                );
+                              }
+                              return null;
+                            })}
+                          </TaskCard>
+                        );
+                      } else {
+                        // Render Top Level Message
+                        const msgId = group.message.id;
+                        const processedData = processedMessages.find(pm => pm.message.id === msgId);
+
+                        if (!processedData) return null;
+
+                        const messageUi = ui?.filter(
+                          (u: any) => u.metadata?.message_id === msgId
+                        );
+                        const isLastMessage = msgId === messages[messages.length - 1].id;
+                        const isUserMessage = group.message.type === "human";
+                        const isLastAiMessage = !isUserMessage && isLastMessage;
+
+                        return (
+                          <ChatMessage
+                            key={msgId}
+                            message={processedData.message}
+                            toolCalls={processedData.toolCalls}
+                            isLoading={isLoading}
+                            actionRequestsMap={
+                              isLastMessage ? actionRequestsMap : undefined
+                            }
+                            reviewConfigsMap={
+                              isLastMessage ? reviewConfigsMap : undefined
+                            }
+                            ui={messageUi}
+                            stream={stream}
+                            onResumeInterrupt={resumeInterrupt}
+                            graphId={assistant?.graph_id}
+                            webDevMode={webDevMode}
+                            isLastMessage={isLastMessage}
+                            onArtifactSelect={onArtifactSelect}
+                            selectedArtifactId={selectedArtifact?.id}
+                            onEditMessage={isUserMessage ? handleEditMessage : undefined}
+                            onRegenerate={isLastAiMessage ? handleRegenerate : undefined}
+                          // Standard message, show everything
+                          />
+                        );
+                      }
+                    })}
+                  </div>
                 );
-              })}
-            </>
-          )}
-        </div>
-      </div>
+              })()
+            )}
+          </div >
+        </div >
 
-      <div className="flex-shrink-0 bg-background">
-        <div
-          className={cn(
-            "mx-4 mb-6 flex flex-shrink-0 flex-col overflow-hidden rounded-xl border border-border bg-background",
-            "mx-auto w-[calc(100%-32px)] max-w-[1024px] transition-colors duration-200 ease-in-out"
-          )}
-        >
-          {(hasTasks || hasFiles) && (
-            <div className="flex max-h-72 flex-col overflow-y-auto border-b border-border bg-sidebar empty:hidden">
-              {!metaOpen && (
-                <>
-                  {(() => {
-                    const activeTask = todos.find(
-                      (t) => t.status === "in_progress"
-                    );
+        <div className="flex-shrink-0 bg-background">
+          <div
+            className={cn(
+              "mx-4 mb-6 flex flex-shrink-0 flex-col overflow-hidden rounded-xl border border-border bg-background",
+              "mx-auto w-[calc(100%-32px)] max-w-[1024px] transition-colors duration-200 ease-in-out"
+            )}
+          >
+            {(hasTasks || hasFiles) && (
+              <div className="flex max-h-72 flex-col overflow-y-auto border-b border-border bg-sidebar empty:hidden">
+                {!metaOpen && (
+                  <>
+                    {(() => {
+                      const activeTask = todos.find(
+                        (t) => t.status === "in_progress"
+                      );
 
-                    const totalTasks = todos.length;
-                    const remainingTasks =
-                      totalTasks - groupedTodos.pending.length;
-                    const isCompleted = totalTasks === remainingTasks;
+                      const totalTasks = todos.length;
+                      const remainingTasks =
+                        totalTasks - groupedTodos.pending.length;
+                      const isCompleted = totalTasks === remainingTasks;
 
-                    const tasksTrigger = (() => {
-                      if (!hasTasks) return null;
-                      return (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setMetaOpen((prev) =>
-                              prev === "tasks" ? null : "tasks"
-                            )
-                          }
-                          className="grid w-full cursor-pointer grid-cols-[auto_auto_1fr] items-center gap-3 px-[18px] py-3 text-left"
-                          aria-expanded={metaOpen === "tasks"}
-                        >
-                          {(() => {
-                            if (isCompleted) {
+                      const tasksTrigger = (() => {
+                        if (!hasTasks) return null;
+                        return (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setMetaOpen((prev) =>
+                                prev === "tasks" ? null : "tasks"
+                              )
+                            }
+                            className="grid w-full cursor-pointer grid-cols-[auto_auto_1fr] items-center gap-3 px-[18px] py-3 text-left"
+                            aria-expanded={metaOpen === "tasks"}
+                          >
+                            {(() => {
+                              if (isCompleted) {
+                                return [
+                                  <CheckCircle
+                                    key="icon"
+                                    size={16}
+                                    className="text-success/80"
+                                  />,
+                                  <span
+                                    key="label"
+                                    className="ml-[1px] min-w-0 truncate text-sm"
+                                  >
+                                    All tasks completed
+                                  </span>,
+                                ];
+                              }
+
+                              if (activeTask != null) {
+                                return [
+                                  <div key="icon">
+                                    {getStatusIcon(activeTask.status)}
+                                  </div>,
+                                  <span
+                                    key="label"
+                                    className="ml-[1px] min-w-0 truncate text-sm"
+                                  >
+                                    Task{" "}
+                                    {totalTasks - groupedTodos.pending.length} of{" "}
+                                    {totalTasks}
+                                  </span>,
+                                  <span
+                                    key="content"
+                                    className="min-w-0 gap-2 truncate text-sm text-muted-foreground"
+                                  >
+                                    {activeTask.content}
+                                  </span>,
+                                ];
+                              }
+
                               return [
-                                <CheckCircle
+                                <Circle
                                   key="icon"
                                   size={16}
-                                  className="text-success/80"
+                                  className="text-tertiary/70"
                                 />,
                                 <span
                                   key="label"
                                   className="ml-[1px] min-w-0 truncate text-sm"
                                 >
-                                  All tasks completed
+                                  Task {totalTasks - groupedTodos.pending.length}{" "}
+                                  of {totalTasks}
                                 </span>,
                               ];
+                            })()}
+                          </button>
+                        );
+                      })();
+
+                      const filesTrigger = (() => {
+                        if (!hasFiles) return null;
+                        return (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setMetaOpen((prev) =>
+                                prev === "files" ? null : "files"
+                              )
                             }
+                            className="flex flex-shrink-0 cursor-pointer items-center gap-2 px-[18px] py-3 text-left text-sm text-muted-foreground"
+                            aria-expanded={metaOpen === "files"}
+                            title="Temporary in-memory files (use File Panel for persistent files)"
+                          >
+                            <FileIcon size={16} />
+                            Memory
+                            <span className="h-4 min-w-4 rounded-full bg-muted px-0.5 text-center text-[10px] leading-[16px] text-muted-foreground">
+                              {Object.keys(files).length}
+                            </span>
+                          </button>
+                        );
+                      })();
 
-                            if (activeTask != null) {
-                              return [
-                                <div key="icon">
-                                  {getStatusIcon(activeTask.status)}
-                                </div>,
-                                <span
-                                  key="label"
-                                  className="ml-[1px] min-w-0 truncate text-sm"
-                                >
-                                  Task{" "}
-                                  {totalTasks - groupedTodos.pending.length} of{" "}
-                                  {totalTasks}
-                                </span>,
-                                <span
-                                  key="content"
-                                  className="min-w-0 gap-2 truncate text-sm text-muted-foreground"
-                                >
-                                  {activeTask.content}
-                                </span>,
-                              ];
-                            }
-
-                            return [
-                              <Circle
-                                key="icon"
-                                size={16}
-                                className="text-tertiary/70"
-                              />,
-                              <span
-                                key="label"
-                                className="ml-[1px] min-w-0 truncate text-sm"
-                              >
-                                Task {totalTasks - groupedTodos.pending.length}{" "}
-                                of {totalTasks}
-                              </span>,
-                            ];
-                          })()}
-                        </button>
-                      );
-                    })();
-
-                    const filesTrigger = (() => {
-                      if (!hasFiles) return null;
                       return (
+                        <div className="grid grid-cols-[1fr_auto_auto] items-center">
+                          {tasksTrigger}
+                          {filesTrigger}
+                        </div>
+                      );
+                    })()}
+                  </>
+                )}
+
+                {metaOpen && (
+                  <>
+                    <div className="sticky top-0 flex items-stretch bg-sidebar text-sm">
+                      {hasTasks && (
                         <button
                           type="button"
+                          className="py-3 pr-4 first:pl-[18px] aria-expanded:font-semibold"
+                          onClick={() =>
+                            setMetaOpen((prev) =>
+                              prev === "tasks" ? null : "tasks"
+                            )
+                          }
+                          aria-expanded={metaOpen === "tasks"}
+                        >
+                          Tasks
+                        </button>
+                      )}
+                      {hasFiles && (
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-2 py-3 pr-4 first:pl-[18px] aria-expanded:font-semibold text-muted-foreground"
                           onClick={() =>
                             setMetaOpen((prev) =>
                               prev === "files" ? null : "files"
                             )
                           }
-                          className="flex flex-shrink-0 cursor-pointer items-center gap-2 px-[18px] py-3 text-left text-sm text-muted-foreground"
                           aria-expanded={metaOpen === "files"}
-                          title="Temporary in-memory files (use File Panel for persistent files)"
+                          title="Temporary in-memory files"
                         >
-                          <FileIcon size={16} />
                           Memory
                           <span className="h-4 min-w-4 rounded-full bg-muted px-0.5 text-center text-[10px] leading-[16px] text-muted-foreground">
                             {Object.keys(files).length}
                           </span>
                         </button>
-                      );
-                    })();
-
-                    return (
-                      <div className="grid grid-cols-[1fr_auto_auto] items-center">
-                        {tasksTrigger}
-                        {filesTrigger}
-                      </div>
-                    );
-                  })()}
-                </>
-              )}
-
-              {metaOpen && (
-                <>
-                  <div className="sticky top-0 flex items-stretch bg-sidebar text-sm">
-                    {hasTasks && (
+                      )}
                       <button
-                        type="button"
-                        className="py-3 pr-4 first:pl-[18px] aria-expanded:font-semibold"
-                        onClick={() =>
-                          setMetaOpen((prev) =>
-                            prev === "tasks" ? null : "tasks"
-                          )
-                        }
-                        aria-expanded={metaOpen === "tasks"}
-                      >
-                        Tasks
-                      </button>
-                    )}
-                    {hasFiles && (
-                      <button
-                        type="button"
-                        className="inline-flex items-center gap-2 py-3 pr-4 first:pl-[18px] aria-expanded:font-semibold text-muted-foreground"
-                        onClick={() =>
-                          setMetaOpen((prev) =>
-                            prev === "files" ? null : "files"
-                          )
-                        }
-                        aria-expanded={metaOpen === "files"}
-                        title="Temporary in-memory files"
-                      >
-                        Memory
-                        <span className="h-4 min-w-4 rounded-full bg-muted px-0.5 text-center text-[10px] leading-[16px] text-muted-foreground">
-                          {Object.keys(files).length}
-                        </span>
-                      </button>
-                    )}
-                    <button
-                      aria-label="Close"
-                      className="flex-1"
-                      onClick={() => setMetaOpen(null)}
-                    />
-                  </div>
-                  <div
-                    ref={tasksContainerRef}
-                    className="px-[18px]"
-                  >
-                    {metaOpen === "tasks" &&
-                      Object.entries(groupedTodos)
-                        .filter(([_, todos]) => todos.length > 0)
-                        .map(([status, todos]) => (
-                          <div
-                            key={status}
-                            className="mb-4"
-                          >
-                            <h3 className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-tertiary">
-                              {
+                        aria-label="Close"
+                        className="flex-1"
+                        onClick={() => setMetaOpen(null)}
+                      />
+                    </div>
+                    <div
+                      ref={tasksContainerRef}
+                      className="px-[18px]"
+                    >
+                      {metaOpen === "tasks" &&
+                        Object.entries(groupedTodos)
+                          .filter(([_, todos]) => todos.length > 0)
+                          .map(([status, todos]) => (
+                            <div
+                              key={status}
+                              className="mb-4"
+                            >
+                              <h3 className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-tertiary">
                                 {
-                                  pending: "Pending",
-                                  in_progress: "In Progress",
-                                  completed: "Completed",
-                                }[status]
-                              }
-                            </h3>
-                            <div className="grid grid-cols-[auto_1fr] gap-3 rounded-sm p-1 pl-0 text-sm">
-                              {todos.map((todo, index) => (
-                                <Fragment key={`${status}_${todo.id}_${index}`}>
-                                  {getStatusIcon(todo.status, "mt-0.5")}
-                                  <span className="break-words text-inherit">
-                                    {todo.content}
-                                  </span>
-                                </Fragment>
-                              ))}
+                                  {
+                                    pending: "Pending",
+                                    in_progress: "In Progress",
+                                    completed: "Completed",
+                                  }[status]
+                                }
+                              </h3>
+                              <div className="grid grid-cols-[auto_1fr] gap-3 rounded-sm p-1 pl-0 text-sm">
+                                {todos.map((todo, index) => (
+                                  <Fragment key={`${status}_${todo.id}_${index}`}>
+                                    {getStatusIcon(todo.status, "mt-0.5")}
+                                    <span className="break-words text-inherit">
+                                      {todo.content}
+                                    </span>
+                                  </Fragment>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
 
-                    {metaOpen === "files" && (
-                      <div className="mb-6">
-                        <FilesPopover
-                          files={files}
-                          setFiles={setFiles}
-                          editDisabled={
-                            isLoading === true || interrupt !== undefined
-                          }
-                        />
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-          <form
-            onSubmit={handleSubmit}
-            className="flex flex-col"
-          >
-            {/* Hidden file input for DataFileUpload */}
-            <input
-              ref={fileUpload.inputRef}
-              type="file"
-              multiple
-              accept={getAcceptAttribute()}
-              onChange={handleFileInputChange}
-              className="hidden"
-            />
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={isLoading ? "Running..." : "Write your message..."}
-              className="font-inherit field-sizing-content flex-1 resize-none border-0 bg-transparent px-[18px] pb-[13px] pt-[14px] text-sm leading-7 text-primary outline-none placeholder:text-tertiary"
-              rows={1}
-            />
-            <div className="flex justify-between gap-2 p-3">
-              {/* File upload component and Web Dev toggle */}
-              <div className="flex items-center gap-2">
-                <DataFileUpload
-                  files={fileUpload.files}
-                  onRemoveFile={fileUpload.removeFile}
-                  onTriggerSelect={() => fileUpload.inputRef.current?.click()}
-                  onTriggerLibrary={() => setLibraryDialogOpen(true)}
-                  isUploading={fileUpload.isUploading}
-                  isImporting={fileUpload.isImporting}
-                />
-                {/* FilePanel button - show when there's a thread OR local files */}
-                {(showFilePanelButton || hasUploadFiles) && onOpenFilePanel && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={onOpenFilePanel}
-                    className="h-8 px-2 text-muted-foreground hover:text-foreground"
-                    title="View files"
-                  >
-                    <FolderOpen size={16} />
-                    <span className="ml-1 text-xs">Files</span>
-                  </Button>
+                      {metaOpen === "files" && (
+                        <div className="mb-6">
+                          <FilesPopover
+                            files={files}
+                            setFiles={setFiles}
+                            editDisabled={
+                              isLoading === true || interrupt !== undefined
+                            }
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </>
                 )}
-                {/* Web Development Mode toggle */}
-                <WebDevToggle
-                  enabled={webDevMode}
-                  locked={isModeLocked}
-                  onEnable={enableWebDevMode}
-                />
               </div>
-              <div className="flex justify-end gap-2">
-                <Button
-                  type={isLoading ? "button" : "submit"}
-                  variant={isLoading ? "destructive" : "default"}
-                  onClick={isLoading ? stopStream : undefined}
-                  disabled={!isLoading && (submitDisabled || !input.trim())}
-                >
-                  {isLoading ? (
-                    <>
-                      <Square size={14} />
-                      <span>Stop</span>
-                    </>
-                  ) : (
-                    <>
-                      <ArrowUp size={18} />
-                      <span>Send</span>
-                    </>
+            )}
+            <form
+              onSubmit={handleSubmit}
+              className="flex flex-col"
+            >
+              {/* Hidden file input for DataFileUpload */}
+              <input
+                ref={fileUpload.inputRef}
+                type="file"
+                multiple
+                accept={getAcceptAttribute()}
+                onChange={handleFileInputChange}
+                className="hidden"
+              />
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={isLoading ? "Running..." : "Write your message..."}
+                className="font-inherit field-sizing-content flex-1 resize-none border-0 bg-transparent px-[18px] pb-[13px] pt-[14px] text-sm leading-7 text-primary outline-none placeholder:text-tertiary"
+                rows={1}
+              />
+              <div className="flex justify-between gap-2 p-3">
+                {/* File upload component and Web Dev toggle */}
+                <div className="flex items-center gap-2">
+                  <DataFileUpload
+                    files={fileUpload.files}
+                    onRemoveFile={fileUpload.removeFile}
+                    onTriggerSelect={() => fileUpload.inputRef.current?.click()}
+                    onTriggerLibrary={() => setLibraryDialogOpen(true)}
+                    isUploading={fileUpload.isUploading}
+                    isImporting={fileUpload.isImporting}
+                  />
+                  {/* FilePanel button - show when there's a thread OR local files */}
+                  {(showFilePanelButton || hasUploadFiles) && onOpenFilePanel && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={onOpenFilePanel}
+                      className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                      title="View files"
+                    >
+                      <FolderOpen size={16} />
+                      <span className="ml-1 text-xs">Files</span>
+                    </Button>
                   )}
-                </Button>
+                  {/* Web Development Mode toggle */}
+                  <WebDevToggle
+                    enabled={webDevMode}
+                    locked={isModeLocked}
+                    onEnable={enableWebDevMode}
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    type={isLoading ? "button" : "submit"}
+                    variant={isLoading ? "destructive" : "default"}
+                    onClick={isLoading ? stopStream : undefined}
+                    disabled={!isLoading && (submitDisabled || !input.trim())}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Square size={14} />
+                        <span>Stop</span>
+                      </>
+                    ) : (
+                      <>
+                        <ArrowUp size={18} />
+                        <span>Send</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
-      </div>
-      </div>
+      </div >
     </>
   );
 });
