@@ -23,6 +23,7 @@ import {
 import { ChatMessage } from "@/app/components/ChatMessage";
 import { TaskCard } from "@/app/components/ui/agentic/TaskCard";
 import { ToolStep } from "@/app/components/ui/agentic/ToolStep";
+import { ThinkingBlock } from "@/app/components/ui/agentic/ThinkingBlock";
 import { groupMessagesByTask } from "@/lib/messageGrouping";
 import type {
   TodoItem,
@@ -518,6 +519,28 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                                   />
                                 );
                               }
+
+                              // Render ThinkingContent inside Task
+                              if ("content" in item && "isStreaming" in item) {
+                                // Determine if this thinking block is actively streaming
+                                // We check if:
+                                // 1. Global isLoading is true
+                                // 2. The task group is in progress
+                                // 3. This is the last item in this task group
+
+                                const isActive = isLoading && (group.status === "in_progress") && (idx === group.items.length - 1) && ((item as any).isStreaming !== undefined);
+
+                                return (
+                                  <ThinkingBlock
+                                    key={`thinking-${idx}`}
+                                    content={item.content}
+                                    startTime={item.startTime}
+                                    isStreaming={isActive}
+                                    defaultExpanded={isActive}
+                                  />
+                                )
+                              }
+
                               // Render Message (Thinking/Text) inside Task
                               if ("content" in item && "id" in item) { // Message interface
                                 // Find the enhanced data (toolCalls, etc) from processedMessages

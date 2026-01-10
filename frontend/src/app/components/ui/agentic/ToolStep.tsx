@@ -141,11 +141,7 @@ export function ToolStep({
                     onClick={() => setIsExpanded(!isExpanded)}
                     className="flex items-center gap-2 text-sm w-full text-left group-hover:bg-zinc-50 dark:group-hover:bg-zinc-900/50 rounded px-2 -ml-2 py-1 transition-colors"
                 >
-                    <span className="font-medium text-zinc-700 dark:text-zinc-300">
-                        {config.label}
-                    </span>
-
-                    <span className="text-zinc-400 dark:text-zinc-500 truncate max-w-[200px]">
+                    <span className="font-medium text-zinc-700 dark:text-zinc-300 truncate max-w-[300px]">
                         {displayInput}
                     </span>
 

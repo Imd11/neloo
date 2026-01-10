@@ -1,5 +1,5 @@
 import { Message } from "@langchain/langgraph-sdk";
-import { extractStringFromMessageContent } from "@/app/utils/utils";
+import { extractStringFromMessageContent, parseMessageContentBlocks, stripThinkTags } from "@/app/utils/utils";
 
 export interface ToolCall {
     toolName: string;
@@ -99,10 +99,25 @@ export function groupMessagesByTask(messages: Message[]): ChatItem[] {
                         toolName: toolName,
                         args: typeof argsString === 'string' ? argsString : JSON.stringify(argsString),
                         toolCallId: tool.id,
-                        status: "running" // Will update when result found
+                        status: "running"
                     };
                     toolCallMap.set(tool.id, toolItem);
                     currentTask.items.push(toolItem);
+                }
+            }
+
+            // A2. Extract Thinking from Assistant Messages (Even if they have tool calls)
+            if (role === "assistant") {
+                const blocks = parseMessageContentBlocks(msg);
+                const thinkingBlocks = blocks.filter(b => b.type === "thinking");
+                if (thinkingBlocks.length > 0) {
+                    thinkingBlocks.forEach(block => {
+                        currentTask!.items.push({
+                            content: block.content,
+                            startTime: Date.now(),
+                            isStreaming: false
+                        } as ThinkingContent);
+                    });
                 }
             }
 
@@ -112,15 +127,27 @@ export function groupMessagesByTask(messages: Message[]): ChatItem[] {
                 if (toolCallId && toolCallMap.has(toolCallId)) {
                     const item = toolCallMap.get(toolCallId)!;
                     item.result = content;
-                    item.status = "complete"; // Or error if content implies
-                    // We don't push tool messages as separate items, we merge them into the ToolCall item
+                    item.status = "complete";
                 }
             }
 
-            // C. Thinking & Text
+            // C. Text Content (Final Answer detection)
+            // Only process text separation if there are NO tool calls (pure text response)
+            // If there ARE tool calls, any text is usually just context/thought which we handled in A2
             if (role === "assistant" && !toolCalls.length) {
-                // For V1 validity: Add text/thinking message
-                currentTask.items.push(msg);
+                const textContent = stripThinkTags(content);
+
+                // If there is meaningful text content, it's likely the final answer
+                if (textContent.trim()) {
+                    currentTask = null; // Break the task grouping
+
+                    groups.push({
+                        id: msg.id || `msg-toplevel-${Date.now()}`,
+                        type: "message",
+                        message: { ...msg, content: textContent }
+                    });
+                }
+                // Note: If it was just thinking, it was added to task in A2. 
             }
 
             // If user message, break task?

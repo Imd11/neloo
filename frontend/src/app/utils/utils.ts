@@ -178,10 +178,30 @@ function parseThinkTagsFromString(content: string): ContentBlock[] {
     lastIndex = match.index + match[0].length;
   }
 
-  // Add remaining text after last think block
-  const textAfter = content.slice(lastIndex).trim();
-  if (textAfter) {
-    blocks.push({ type: "text", content: textAfter });
+  // Handle unclosed <think> tag at the end (streaming scenario)
+  const remainingContent = content.slice(lastIndex);
+  const unclosedThinkMatch = remainingContent.match(/<think>([\s\S]*)$/i);
+
+  if (unclosedThinkMatch) {
+    // Add text before the unclosed think tag
+    const textBefore = remainingContent.slice(0, unclosedThinkMatch.index).trim();
+    if (textBefore) {
+      blocks.push({ type: "text", content: textBefore });
+    }
+
+    // Add the partial thinking block
+    const thinkingContent = unclosedThinkMatch[1].trim();
+    // We render specific partial content even if empty to show the block opening
+    blocks.push({ type: "thinking", content: thinkingContent });
+
+    // Update lastIndex to end of string so we don't add duplicates
+    lastIndex = content.length;
+  } else {
+    // Normal text remaining
+    const textAfter = remainingContent.trim();
+    if (textAfter) {
+      blocks.push({ type: "text", content: textAfter });
+    }
   }
 
   // If no think tags found, return entire content as text
@@ -196,7 +216,7 @@ export function extractStringFromMessageContent(message: Message): string {
   return typeof message.content === "string"
     ? message.content
     : Array.isArray(message.content)
-    ? message.content
+      ? message.content
         .filter(
           (c: unknown) =>
             (typeof c === "object" &&
@@ -209,11 +229,11 @@ export function extractStringFromMessageContent(message: Message): string {
           typeof c === "string"
             ? c
             : typeof c === "object" && c !== null && "text" in c
-            ? (c as { text?: string }).text || ""
-            : ""
+              ? (c as { text?: string }).text || ""
+              : ""
         )
         .join("")
-    : "";
+      : "";
 }
 
 export function extractSubAgentContent(data: unknown): string {
