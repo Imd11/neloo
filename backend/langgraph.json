@@ -1,6 +1,8 @@
 {
   "python_version": "3.11",
-  "dependencies": ["."],
+  "dependencies": [
+    "."
+  ],
   "graphs": {
     "data_analyst": "src.agent.graph:graph",
     "deepseek-chat": "src.agent.graph:graph_deepseek_chat",
@@ -32,7 +34,11 @@
     "gemini-3-pro-web-dev": "src.agent.graph:graph_gemini_3_pro_webdev",
     "gpt-5-web-dev": "src.agent.graph:graph_gpt_5_webdev",
     "gpt-5-thinking-web-dev": "src.agent.graph:graph_gpt_5_thinking_webdev",
-    "claude-opus-tuzi-web-dev": "src.agent.graph:graph_claude_opus_tuzi_webdev"
+    "claude-opus-tuzi-web-dev": "src.agent.graph:graph_claude_opus_tuzi_webdev",
+    "llama-4-maverick": "src.agent.graph:graph_llama_4_maverick",
+    "llama-4-maverick-web-dev": "src.agent.graph:graph_llama_4_maverick_webdev",
+    "llama-3.3-70b": "src.agent.graph:graph_llama_3_3_70b",
+    "llama-3.3-70b-web-dev": "src.agent.graph:graph_llama_3_3_70b_webdev"
   },
   "http": {
     "app": "src.api.webapp:app"

@@ -1358,6 +1358,12 @@ graph_gpt_5_webdev = _MODEL_GRAPHS.get("gpt-5-web-dev")
 graph_gpt_5_thinking_webdev = _MODEL_GRAPHS.get("gpt-5-thinking-web-dev")
 graph_claude_opus_tuzi_webdev = _MODEL_GRAPHS.get("claude-opus-tuzi-web-dev")
 
+# OpenRouter Llama models
+graph_llama_4_maverick = _MODEL_GRAPHS.get("llama-4-maverick")
+graph_llama_4_maverick_webdev = _MODEL_GRAPHS.get("llama-4-maverick-web-dev")
+graph_llama_3_3_70b = _MODEL_GRAPHS.get("llama-3.3-70b")
+graph_llama_3_3_70b_webdev = _MODEL_GRAPHS.get("llama-3.3-70b-web-dev")
+
 
 # =============================================================================
 # Convenience Functions
