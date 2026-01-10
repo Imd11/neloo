@@ -66,13 +66,14 @@ export function groupMessagesByTask(messages: Message[]): ChatItem[] {
 
                         if (inProgress) {
                             // START NEW TASK GROUP
+                            // Use tool.id as the stable seed for the task ID
                             currentTask = {
-                                id: `task-${Date.now()}-${inProgress.content.slice(0, 10)}`,
+                                id: `task-${tool.id}`,
                                 type: "task",
                                 title: inProgress.content,
                                 status: "in_progress",
                                 items: [],
-                                startTime: Date.now() // Approximation
+                                startTime: Date.now() // Timestamps for display are fine, just not for IDs
                             };
                             groups.push(currentTask);
                         }
@@ -126,7 +127,7 @@ export function groupMessagesByTask(messages: Message[]): ChatItem[] {
             if (role === "user") {
                 currentTask = null;
                 groups.push({
-                    id: msg.id || `msg-${Date.now()}`,
+                    id: msg.id || `msg-user-${content.substring(0, 10)}-${groups.length}`,
                     type: "message",
                     message: msg
                 });
@@ -135,7 +136,7 @@ export function groupMessagesByTask(messages: Message[]): ChatItem[] {
         } else {
             // No active task, treat as top-level message
             groups.push({
-                id: msg.id || `msg-${Date.now()}`,
+                id: msg.id || `msg-toplevel-${content.substring(0, 10)}-${groups.length}`,
                 type: "message",
                 message: msg
             });
