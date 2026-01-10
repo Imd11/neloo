@@ -81,33 +81,30 @@ export function ThinkingBlock({
         : (elapsed > 0 ? formatTime(elapsed) : null);
 
     return (
-        <div className={cn("relative flex gap-4 font-sans group", className)}>
-            {/* Thread Line */}
-            {/* Active: Animated Gradient / Idle: Solid Gray */}
-            <div className="absolute left-[11px] top-8 bottom-0 w-0.5 overflow-hidden bg-zinc-200 dark:bg-zinc-800">
+        <div className={cn("relative flex gap-3 font-sans group py-1", className)}>
+            {/* Thread Line - With gradient animation support */}
+            <div className="absolute left-[11px] top-0 bottom-0 w-[1px] overflow-hidden bg-zinc-100 dark:bg-zinc-800">
                 {isStreaming && (
                     <motion.div
-                        className="absolute inset-0 bg-gradient-to-b from-violet-500 via-blue-500 to-cyan-500"
+                        className="absolute inset-0 bg-gradient-to-b from-transparent via-violet-400 to-transparent opacity-50"
                         animate={{ translateY: ["-100%", "100%"] }}
-                        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                        transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
                     />
                 )}
             </div>
 
             {/* Icon Area */}
-            <div className="relative z-10 flex h-6 w-6 shrink-0 items-center justify-center">
+            <div className="relative z-10 flex h-6 w-6 shrink-0 items-center justify-center bg-white dark:bg-zinc-950">
                 <motion.div
                     className={cn(
-                        "flex h-6 w-6 items-center justify-center rounded-full ring-2 ring-background transition-colors",
-                        isStreaming ? "bg-violet-100 dark:bg-violet-900/30" : "bg-zinc-100 dark:bg-zinc-800"
+                        "flex h-4 w-4 items-center justify-center rounded-full transition-colors",
+                        // Subtle pulsing background only when active
+                        isStreaming ? "bg-violet-50 text-violet-500" : "bg-transparent text-zinc-400"
                     )}
-                    animate={isStreaming ? { opacity: [0.8, 1, 0.8], scale: [0.95, 1.05, 0.95] } : {}}
+                    animate={isStreaming ? { scale: [1, 1.1, 1] } : {}}
                     transition={{ duration: 2, repeat: Infinity }}
                 >
-                    <Brain className={cn(
-                        "h-3.5 w-3.5",
-                        isStreaming ? "text-violet-600 dark:text-violet-400" : "text-zinc-500 dark:text-zinc-400"
-                    )} />
+                    <Brain className="h-3.5 w-3.5" />
                 </motion.div>
             </div>
 
@@ -116,20 +113,22 @@ export function ThinkingBlock({
                 {/* Headers */}
                 <button
                     onClick={() => setIsExpanded(!isExpanded)}
-                    className="flex items-center gap-2 py-0.5 text-sm hover:opacity-80 transition-opacity w-full text-left"
+                    className="flex items-center gap-2 py-1 text-[13px] hover:bg-zinc-50 dark:hover:bg-zinc-900/50 rounded-md px-2 -ml-2 transition-colors w-full text-left group/btn"
                 >
                     <span className={cn(
-                        "font-medium",
+                        "font-medium transition-colors",
                         isStreaming ? "text-violet-600 dark:text-violet-400" : "text-zinc-600 dark:text-zinc-400"
                     )}>
                         {isStreaming ? "Thinking..." : "Thought Process"}
                     </span>
 
                     {timeDisplay && (
-                        <span className="text-xs text-zinc-400 font-mono">({timeDisplay})</span>
+                        <span className="text-[11px] text-zinc-400 font-mono tracking-tight ml-1">
+                            {timeDisplay}
+                        </span>
                     )}
 
-                    <span className="ml-auto text-zinc-400">
+                    <span className="ml-auto text-zinc-300 dark:text-zinc-600 opacity-0 group-hover/btn:opacity-100 transition-opacity">
                         {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                     </span>
                 </button>
@@ -144,12 +143,12 @@ export function ThinkingBlock({
                             transition={{ duration: 0.2 }}
                             className="overflow-hidden"
                         >
-                            <div className="pt-2 pb-4 pr-4">
+                            <div className="pt-1 pb-2 pr-2">
                                 <div className="prose prose-sm dark:prose-invert max-w-none 
                                        text-zinc-600 dark:text-zinc-400 
                                        text-[13px] leading-relaxed
                                        bg-zinc-50/50 dark:bg-zinc-900/30 
-                                       rounded-lg p-3 border border-zinc-100 dark:border-zinc-800/50">
+                                       rounded-lg p-3 border border-zinc-100 dark:border-zinc-800/50 font-serif">
                                     <MarkdownContent content={content} />
                                 </div>
                             </div>
