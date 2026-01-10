@@ -31,22 +31,22 @@ const TOOL_CONFIG: Record<string, { icon: any; color: string; label: string }> =
     search_web: {
         icon: Globe,
         color: "text-blue-500 bg-blue-100 dark:bg-blue-900/30",
-        label: "Browsing Web"
+        label: "Web Search"
     },
     execute_python: {
         icon: Terminal,
         color: "text-emerald-500 bg-emerald-100 dark:bg-emerald-900/30",
-        label: "Running Code"
+        label: "Execute Python"
     },
     read_file: {
         icon: FileText,
         color: "text-slate-500 bg-slate-100 dark:bg-slate-900/30",
-        label: "Reading File"
+        label: "Read File"
     },
     write_file: {
         icon: FolderOpen,
         color: "text-slate-500 bg-slate-100 dark:bg-slate-900/30",
-        label: "Writing File"
+        label: "Write File"
     },
     task: {
         icon: Bot,
@@ -65,13 +65,34 @@ function getToolConfig(name: string) {
     return TOOL_CONFIG[name] || TOOL_CONFIG.default;
 }
 
-function safeParseConfig(input: string) {
+function safeParseConfig(input: string, toolName: string) {
     try {
         const parsed = JSON.parse(input);
-        // Extract key info for display (e.g. query for search, code snippet for python)
-        if (parsed.query) return `"${parsed.query}"`;
+
+        // Python: Extract first comment or show "Python Script"
+        if (toolName === 'execute_python' && parsed.code) {
+            const firstLine = parsed.code.split('\n')[0].trim();
+            if (firstLine.startsWith('#')) {
+                return firstLine.substring(1).trim();
+            }
+            return "Python Script";
+        }
+
+        // Search: Show query
+        if (toolName === 'search_web' && parsed.query) {
+            return parsed.query;
+        }
+
+        // Files: Show file path
+        if ((toolName === 'read_file' || toolName === 'write_file') && parsed.file_path) {
+            return parsed.file_path.split("/").pop();
+        }
+
+        // Generic fallback
+        if (parsed.query) return parsed.query;
         if (parsed.code) return "Python Script";
         if (parsed.file_path) return parsed.file_path.split("/").pop();
+
         return "Arguments";
     } catch {
         return input.length > 50 ? input.slice(0, 50) + "..." : input;
@@ -89,7 +110,7 @@ export function ToolStep({
     const [isExpanded, setIsExpanded] = useState(false);
     const config = getToolConfig(toolName);
     const Icon = config.icon;
-    const displayInput = safeParseConfig(input);
+    const displayInput = safeParseConfig(input, toolName);
 
     return (
         <div className={cn("relative flex gap-4 font-sans group", className)}>

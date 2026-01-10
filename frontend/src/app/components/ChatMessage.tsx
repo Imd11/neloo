@@ -97,10 +97,27 @@ export const ChatMessage = React.memo<ChatMessageProps>(
       return parseMessageContentBlocks(message);
     }, [isUser, message]);
 
-    // Check if we have any thinking blocks to render
-    const hasThinkingBlocks = contentBlocks.some(
-      (block) => block.type === "thinking" || block.type === "redacted_thinking"
-    );
+    // Cache thinking blocks to prevent them from disappearing if tags are stripped in final message
+    const [cachedThinkingBlocks, setCachedThinkingBlocks] = useState<ContentBlock[]>([]);
+
+    React.useEffect(() => {
+      const thinking = contentBlocks.filter(
+        (block) => block.type === "thinking" || block.type === "redacted_thinking"
+      );
+      if (thinking.length > 0) {
+        setCachedThinkingBlocks(thinking);
+      }
+    }, [contentBlocks]);
+
+    // Check if we have any thinking blocks to render (current or cached)
+    const displayThinkingBlocks = useMemo(() => {
+      const currentThinking = contentBlocks.filter(
+        (block) => block.type === "thinking" || block.type === "redacted_thinking"
+      );
+      return currentThinking.length > 0 ? currentThinking : cachedThinkingBlocks;
+    }, [contentBlocks, cachedThinkingBlocks]);
+
+    const hasThinkingBlocks = displayThinkingBlocks.length > 0;
 
     // For user messages, parse out file attachments and get clean display text
     // For AI messages in webDevMode, strip artifact tags (code is shown in right panel)
@@ -368,12 +385,14 @@ export const ChatMessage = React.memo<ChatMessageProps>(
           {/* Render thinking blocks for AI messages (before text content) */}
           {!isUser && !hideThinking && hasThinkingBlocks && (
             <div className="mt-2">
-              {contentBlocks.map((block, index) => {
+              {displayThinkingBlocks.map((block, index) => {
                 if (block.type === "thinking") {
                   // Determine if this thinking block is still streaming
                   // It's streaming if: this is the last message, still loading, and it's the last thinking block
-                  const isLastThinkingBlock = index === contentBlocks.filter(b => b.type === "thinking").length - 1;
-                  const isThinkingStreaming = isLastMessage && isLoading && isLastThinkingBlock;
+                  // AND the current LIVE message actually has thinking content (otherwise we are showing cached static content)
+                  const isLiveThinking = contentBlocks.some(b => b.type === "thinking");
+                  const isLastThinkingBlock = index === displayThinkingBlocks.length - 1;
+                  const isThinkingStreaming = isLastMessage && isLoading && isLastThinkingBlock && isLiveThinking;
 
                   return (
                     <ThinkingBlock
