@@ -505,8 +505,9 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                           <div key={group.id} className="flex flex-col">
                             {group.items.map((item, idx) => {
                               // Determine if active streaming
-                              // Global thoughts usually stream at the very beginning
-                              const isStreaming = isLoading && isLastGroup && (idx === group.items.length - 1) && ((item as any).isStreaming !== false);
+                              // Global thoughts stream at the very beginning
+                              // Only true if item.isStreaming is explicitly true (not just !== false)
+                              const isStreaming = isLoading && isLastGroup && (idx === group.items.length - 1) && item.isStreaming === true;
                               // Pass isLast=false always if there are subsequent groups (Tasks), effectively connecting deeply
                               // Actually ThinkingBlock handles its own line logic, we might need a prop to Force the line to continue
                               // But ThinkingBlock line is usually "bottom-0" if not last. 
@@ -555,7 +556,13 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
 
                               // Render ThinkingContent inside Task
                               if ("content" in item && "isStreaming" in item) {
-                                const isActive = isLoading && (group.status === "in_progress") && (idx === group.items.length - 1) && ((item as any).isStreaming !== undefined);
+                                // Only mark as actively streaming if:
+                                // 1. Overall chat is loading
+                                // 2. This task is in progress
+                                // 3. This is the last item in the group
+                                // 4. This item's isStreaming is explicitly true (not just defined)
+                                const thinkingItem = item as { isStreaming: boolean };
+                                const isActive = isLoading && (group.status === "in_progress") && (idx === group.items.length - 1) && thinkingItem.isStreaming === true;
 
                                 return (
                                   <ThinkingBlock

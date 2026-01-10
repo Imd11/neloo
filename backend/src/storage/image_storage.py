@@ -61,19 +61,16 @@ def generate_image_id(thread_id: Optional[str] = None) -> str:
     """
     Generate a unique image ID.
 
-    Format: {timestamp}_{random}_{thread_hash}
-    - timestamp: For TTL cleanup
-    - random: 128-bit random for security
-    - thread_hash: Optional thread association for cleanup
+    Format: chart_{date}_{random}
+    - date: YYYYMMDD for cleanup and sorting
+    - random: 6 hex chars (16 million combinations per day)
+    
+    Old format was ~60 chars, new format is ~22 chars.
     """
-    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-    random_part = secrets.token_hex(16)  # 128 bits
-
-    if thread_id:
-        thread_hash = hashlib.sha256(thread_id.encode()).hexdigest()[:8]
-        return f"{timestamp}_{random_part}_{thread_hash}"
-
-    return f"{timestamp}_{random_part}"
+    date_part = datetime.now().strftime("%Y%m%d")
+    random_part = secrets.token_hex(3)  # 6 hex chars
+    
+    return f"chart_{date_part}_{random_part}"
 
 
 def generate_url_signature(image_id: str) -> str:

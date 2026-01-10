@@ -1909,6 +1909,7 @@ class ThreadInfo(BaseModel):
     title: str
     langgraph_thread_id: str
     mode: str = "default"  # "default" or "web-dev"
+    model_id: Optional[str] = None  # Per-thread model preference
     created_at: str
     updated_at: str
 
@@ -1922,6 +1923,7 @@ class ThreadListResponse(BaseModel):
 class ThreadUpdateRequest(BaseModel):
     """Request model for updating thread."""
     title: Optional[str] = None
+    model_id: Optional[str] = None  # Per-thread model preference
 
 
 @app.post("/api/threads", response_model=ThreadInfo)
@@ -2066,6 +2068,7 @@ async def get_thread_api(
             title=thread_record["title"],
             langgraph_thread_id=thread_record["langgraph_thread_id"],
             mode=thread_record.get("mode", "default"),
+            model_id=thread_record.get("model_id"),
             created_at=thread_record["created_at"],
             updated_at=thread_record["updated_at"],
         )
@@ -2114,6 +2117,13 @@ async def update_thread_api(
             if not success:
                 raise HTTPException(status_code=500, detail="Failed to update thread")
 
+        # Update model_id if provided (for per-thread model preference)
+        if data.model_id is not None:
+            from ..storage.supabase_db import update_thread_model_id
+            success = await update_thread_model_id(langgraph_thread_id, data.model_id)
+            if not success:
+                raise HTTPException(status_code=500, detail="Failed to update thread model")
+
         # Fetch updated record
         updated_record = await get_thread_by_langgraph_id(langgraph_thread_id)
 
@@ -2123,6 +2133,7 @@ async def update_thread_api(
             title=updated_record["title"],
             langgraph_thread_id=updated_record["langgraph_thread_id"],
             mode=updated_record.get("mode", "default"),
+            model_id=updated_record.get("model_id"),
             created_at=updated_record["created_at"],
             updated_at=updated_record["updated_at"],
         )

@@ -1104,6 +1104,22 @@ AVAILABLE_MODELS = {
         "base_url_env": "TUZI_ANTHROPIC_BASE_URL",
         "profile_key": "anthropic",
     },
+    "llama-4-maverick": {
+        "display_name": "Llama 4 Maverick",
+        "model_name": "meta-llama/llama-4-maverick",
+        "provider": "openai",  # OpenRouter uses OpenAI-compatible API
+        "env_key": "OPENROUTER_API_KEY",
+        "base_url_env": "OPENROUTER_BASE_URL",
+        "profile_key": "openrouter",
+    },
+    "llama-3.3-70b": {
+        "display_name": "Llama 3.3",
+        "model_name": "meta-llama/llama-3.3-70b-instruct",
+        "provider": "openai",  # OpenRouter uses OpenAI-compatible API
+        "env_key": "OPENROUTER_API_KEY",
+        "base_url_env": "OPENROUTER_BASE_URL",
+        "profile_key": "openrouter",
+    },
 }
 
 

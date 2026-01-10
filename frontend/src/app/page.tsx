@@ -206,7 +206,7 @@ interface HomePageInnerProps {
 function HomePageInner({ config }: HomePageInnerProps) {
   const client = useClient();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [threadId, setThreadId] = useQueryState("threadId");
   const [filePanel, setFilePanel] = useQueryState("files");
 
@@ -215,25 +215,78 @@ function HomePageInner({ config }: HomePageInnerProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<string | null>(() => {
-    // Initialize from localStorage
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("selectedModel");
-    }
-    return null;
-  });
+  const [selectedModel, setSelectedModel] = useState<string | null>(null);
 
-  // Persist model selection to localStorage
-  const handleModelChange = useCallback((model: string | null) => {
-    setSelectedModel(model);
-    if (typeof window !== "undefined") {
-      if (model) {
-        localStorage.setItem("selectedModel", model);
-      } else {
-        localStorage.removeItem("selectedModel");
+  // Load thread's model preference when thread changes
+  useEffect(() => {
+    async function loadThreadModel() {
+      if (!threadId || !config) return;
+
+      try {
+        const headers: Record<string, string> = {};
+        if (session?.access_token) {
+          headers["Authorization"] = `Bearer ${session.access_token}`;
+        }
+
+        const response = await fetch(
+          `${config.deploymentUrl}/api/threads/${threadId}`,
+          { headers }
+        );
+
+        if (response.ok) {
+          const thread = await response.json();
+          // Use thread's model_id if set, otherwise keep current or use default
+          if (thread.model_id) {
+            setSelectedModel(thread.model_id);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load thread model:", error);
       }
     }
-  }, []);
+
+    loadThreadModel();
+  }, [threadId, config, session?.access_token]);
+
+  // Reset model to default when starting new thread
+  useEffect(() => {
+    if (!threadId) {
+      // New thread - reset model to null (will use default)
+      setSelectedModel(null);
+    }
+  }, [threadId]);
+
+  // Save model selection to thread via API
+  const handleModelChange = useCallback(async (model: string | null) => {
+    setSelectedModel(model);
+
+    // If we have an active thread, save the model preference to the database
+    if (threadId && config && model) {
+      try {
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        };
+        if (session?.access_token) {
+          headers["Authorization"] = `Bearer ${session.access_token}`;
+        }
+
+        const response = await fetch(
+          `${config.deploymentUrl}/api/threads/${threadId}`,
+          {
+            method: "PATCH",
+            headers,
+            body: JSON.stringify({ model_id: model }),
+          }
+        );
+
+        if (!response.ok) {
+          console.error("Failed to save thread model preference");
+        }
+      } catch (error) {
+        console.error("Failed to save thread model:", error);
+      }
+    }
+  }, [threadId, config, session?.access_token]);
 
   const fetchAssistant = useCallback(async (modelId?: string | null) => {
     // Use selected model as graph ID if available, otherwise fall back to config

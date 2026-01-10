@@ -413,6 +413,7 @@ async def create_thread(
     langgraph_thread_id: str,
     title: str = "New Task",
     mode: str = "default",
+    model_id: Optional[str] = None,
 ) -> Optional[dict]:
     """
     Create or get a thread record in the threads table (idempotent/upsert pattern).
@@ -462,6 +463,10 @@ async def create_thread(
             "langgraph_thread_id": langgraph_thread_id,
             "mode": mode,  # Thread mode: "default" or "web-dev"
         }
+        
+        # Add model_id if provided (for per-thread model preference)
+        if model_id:
+            thread_data["model_id"] = model_id
 
         result = await supabase.table("threads").insert(thread_data).execute()
 
@@ -600,6 +605,45 @@ async def update_thread_title(
 
     except Exception as e:
         print(f"[SupabaseDB] Error updating thread title: {e}")
+        return False
+
+
+async def update_thread_model_id(
+    langgraph_thread_id: str,
+    model_id: Optional[str],
+) -> bool:
+    """
+    Update a thread's model_id for per-thread model preference.
+
+    Args:
+        langgraph_thread_id: The LangGraph thread ID
+        model_id: Model ID to use for this thread (e.g., "deepseek-r1", "qwen-plus")
+                  Pass None to reset to default model.
+
+    Returns:
+        True if successful, False otherwise
+    """
+    if not USE_SUPABASE_DB:
+        return False
+
+    try:
+        supabase = await get_supabase_client()
+        if not supabase:
+            return False
+
+        result = await supabase.table("threads")\
+            .update({"model_id": model_id, "updated_at": datetime.now().isoformat()})\
+            .eq("langgraph_thread_id", langgraph_thread_id)\
+            .execute()
+
+        if result.data:
+            print(f"[SupabaseDB] Updated thread model_id: {langgraph_thread_id[:8]}... -> {model_id}")
+            return True
+
+        return False
+
+    except Exception as e:
+        print(f"[SupabaseDB] Error updating thread model_id: {e}")
         return False
 
 

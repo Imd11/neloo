@@ -80,9 +80,9 @@ def execute_python_tool(
         if thread_id and user_id and user_id not in ("default", "anonymous"):
             from ..storage.file_storage import save_generated_file
 
-            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-            suffix = secrets.token_hex(4)
-            filename = f"{ts}_{suffix}_execute_python.py"
+            ts = datetime.now().strftime("%Y%m%d")
+            suffix = secrets.token_hex(2)  # 4 hex chars
+            filename = f"code_{ts}_{suffix}.py"
             code_bytes = code.encode("utf-8")
             file_info = save_generated_file(
                 filename=filename,

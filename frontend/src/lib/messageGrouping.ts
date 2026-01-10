@@ -62,6 +62,10 @@ export function groupMessagesByTask(messages: Message[]): ChatItem[] {
     // Track known tools to correlate results
     const toolCallMap = new Map<string, ToolCall>();
 
+    // Track messages whose thinking was already extracted to GlobalThinking
+    // This prevents duplicate ThinkingBlocks when a message is processed again in Step 3 A2
+    const globalExtractedMsgIds = new Set<string>();
+
     for (const msg of messages) {
         const role = msg.type === "human" ? "user" : (msg.type === "ai" ? "assistant" : (msg.type === "tool" ? "tool" : "video"));
 
@@ -72,7 +76,9 @@ export function groupMessagesByTask(messages: Message[]): ChatItem[] {
 
         // 0. Global Thinking Detection (Before any task starts)
         // If we haven't started any tasks yet, and we see thinking content, add to global thinking
-        if (!hasStartedTasks && role === "assistant" && toolCalls.length === 0) {
+        // NOTE: We extract initial thinking REGARDLESS of whether the message has tool calls.
+        // This ensures the first "Thought Process" appears at the top level, not nested in a task.
+        if (!hasStartedTasks && role === "assistant") {
             const blocks = parseMessageContentBlocks(msg);
 
             // Check for injected thinking duration
@@ -81,7 +87,6 @@ export function groupMessagesByTask(messages: Message[]): ChatItem[] {
             const injectedDuration = match ? parseInt(match[1], 10) : undefined;
 
             const thinkingBlocks = blocks.filter(b => b.type === "thinking");
-            const textContent = stripThinkTags(content).trim();
 
             if (thinkingBlocks.length > 0) {
                 if (!globalThinking) {
@@ -107,20 +112,20 @@ export function groupMessagesByTask(messages: Message[]): ChatItem[] {
                     });
                 });
 
-                // If there IS text content, we don't 'continue'. We let it fall through to be processed as a message.
-                // BUT we must ensure Step 2 doesn't create an implicit task just because of this thinking (which we already handled).
-                // Step 2 below checks (!currentTask). 'hasStartedTasks' is still false.
-                // We will handle the Text part in Step 3.
-
-                // If there is ONLY thinking (no text), we are done with this message.
-                if (!textContent) {
-                    continue;
+                // Mark this message as having its thinking globally extracted
+                if (msg.id) {
+                    globalExtractedMsgIds.add(msg.id);
                 }
-
-                // If there IS text, we want to proceed to Step 3 (Message Classification).
-                // But we must NOT trigger Step 2 (Implicit Task) based on 'thinking' because we just consumed it.
-                // We'll modify Step 2 to explicitly ignore thinking if !hasStartedTasks (since Step 0 handled it).
             }
+
+            // If this message has NO tool calls and no meaningful text, we can skip to next message
+            const textContent = stripThinkTags(content).trim();
+            if (toolCalls.length === 0 && !textContent) {
+                continue;
+            }
+
+            // Otherwise, fall through to process tool calls (Step 1) or text content (Step 3)
+            // The thinking has already been extracted to globalThinking, so we don't need to add it again
         }
 
         // 1. Check for write_todos to start/update tasks
@@ -206,7 +211,8 @@ export function groupMessagesByTask(messages: Message[]): ChatItem[] {
             }
 
             // A2. Extract Thinking Content from Assistant Messages (ONLY thinking, not text)
-            if (role === "assistant") {
+            // Skip if this message's thinking was already extracted to GlobalThinking in Step 0
+            if (role === "assistant" && !(msg.id && globalExtractedMsgIds.has(msg.id))) {
                 const blocks = parseMessageContentBlocks(msg);
 
                 // Check for injected thinking duration in result content

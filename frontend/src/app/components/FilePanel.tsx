@@ -213,7 +213,6 @@ export function FilePanel({ messages, threadId, onClose, isStreamComplete }: Fil
   const [uploadedOpen, setUploadedOpen] = useState(true);
   const [generatedOpen, setGeneratedOpen] = useState(true);
   const [chartsOpen, setChartsOpen] = useState(true);
-  const [codeOpen, setCodeOpen] = useState(true);
 
   const fetchThreadFiles = useCallback(async () => {
     if (!apiUrl || !threadId) {
@@ -268,14 +267,13 @@ export function FilePanel({ messages, threadId, onClose, isStreamComplete }: Fil
     const uploaded: DatabaseFile[] = [];
     const generated: DatabaseFile[] = [];
     const chart: DatabaseFile[] = [];
-    const code: DatabaseFile[] = [];
     for (const f of dbFiles) {
       if (f.file_type === "uploaded") uploaded.push(f);
       else if (f.file_type === "generated") generated.push(f);
       else if (f.file_type === "chart") chart.push(f);
-      else if (f.file_type === "code") code.push(f);
+      // Skip "code" type - not shown in FilePanel per user request
     }
-    return { uploaded, generated, chart, code };
+    return { uploaded, generated, chart };
   }, [dbFiles]);
 
   const downloadDbFile = useCallback(
@@ -547,44 +545,7 @@ export function FilePanel({ messages, threadId, onClose, isStreamComplete }: Fil
             )}
           </div>
 
-          {/* Code History Section */}
-          <div className="mb-1">
-            <SectionHeader
-              title="Code"
-              count={grouped.code.length}
-              isOpen={codeOpen}
-              onToggle={() => setCodeOpen(!codeOpen)}
-              icon={FileText}
-            />
-            {codeOpen && (
-              <div className="px-1 py-1">
-                {isLoading ? (
-                  <div className="flex items-center justify-center py-4">
-                    <Loader2 size={16} className="animate-spin text-muted-foreground" />
-                  </div>
-                ) : !threadId ? (
-                  <p className="px-3 py-2 text-xs text-muted-foreground">
-                    No thread selected
-                  </p>
-                ) : grouped.code.length === 0 ? (
-                  <p className="px-3 py-2 text-xs text-muted-foreground">
-                    No code saved yet
-                  </p>
-                ) : (
-                  grouped.code.map((file) => (
-                    <FileItem
-                      key={file.id}
-                      filename={file.original_filename || file.filename}
-                      size={file.size}
-                      onPreview={() => previewDbFile(file)}
-                      onDownload={() => downloadDbFile(file)}
-                      onDelete={threadId ? () => unlinkFromThread(file.id) : undefined}
-                    />
-                  ))
-                )}
-              </div>
-            )}
-          </div>
+          {/* Code section removed per user request - AI code history not needed in FilePanel */}
         </div>
       </ScrollArea>
 
