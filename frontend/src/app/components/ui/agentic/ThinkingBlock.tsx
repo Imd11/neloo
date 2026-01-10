@@ -65,15 +65,19 @@ export function ThinkingBlock({
     }, [isStreaming, duration]);
 
 
-    // Update expanded state if defaultExpanded changes (e.g. streaming starts)
+    // Auto-expand/collapse based on streaming state
     useEffect(() => {
-        if (defaultExpanded !== undefined) {
-            // If streaming starts, maybe we want to expand? User said default collapsed.
-            // "Default collapsed state... but see content"
-            // So even if streaming, we might keep collapsed?
-            // "Agent output first think... put at top."
-            // Let's respect defaultExpanded.
-            setIsExpanded(defaultExpanded);
+        if (isStreaming) {
+            setIsExpanded(true);
+        } else {
+            setIsExpanded(false);
+        }
+    }, [isStreaming]);
+
+    // Respect defaultExpanded mostly for initial render if provided explicitly true
+    useEffect(() => {
+        if (defaultExpanded && !isStreaming) {
+            setIsExpanded(true);
         }
     }, [defaultExpanded]);
 

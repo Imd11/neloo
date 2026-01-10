@@ -93,8 +93,8 @@ export function TaskCard({
                         transition={{ duration: 0.2, ease: "easeInOut" }}
                         className="overflow-hidden"
                     >
-                        {/* No left padding, children align with the main thread */}
-                        <div className="flex flex-col">
+                        {/* Indent children to show hierarchy/progression relative to the task line */}
+                        <div className="flex flex-col pl-6">
                             {children}
                         </div>
                     </motion.div>

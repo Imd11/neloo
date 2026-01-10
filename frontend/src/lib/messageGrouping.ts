@@ -74,13 +74,16 @@ export function groupMessagesByTask(messages: Message[]): ChatItem[] {
         // If we haven't started any tasks yet, and we see thinking content, add to global thinking
         if (!hasStartedTasks && role === "assistant" && toolCalls.length === 0) {
             const blocks = parseMessageContentBlocks(msg);
-            const thinkingBlocks = blocks.filter(b => b.type === "thinking");
 
-            // If we have ONLY thinking blocks (or empty text), treat as global think
-            // If there is meaningful text, it might be an intro message, handled by logic C
+            // Check for injected thinking duration
+            const durationRegex = /<!-- think_duration: (\d+) -->/;
+            const match = content.match(durationRegex);
+            const injectedDuration = match ? parseInt(match[1], 10) : undefined;
+
+            const thinkingBlocks = blocks.filter(b => b.type === "thinking");
             const textContent = stripThinkTags(content).trim();
 
-            if (thinkingBlocks.length > 0 && !textContent) {
+            if (thinkingBlocks.length > 0) {
                 if (!globalThinking) {
                     globalThinking = {
                         id: `global-think-${msg.id || Date.now()}`,
@@ -91,13 +94,32 @@ export function groupMessagesByTask(messages: Message[]): ChatItem[] {
                 }
 
                 thinkingBlocks.forEach(block => {
+                    // Use injected duration if available
+                    const duration = injectedDuration
+                        ? injectedDuration
+                        : estimateDuration(block.content);
+
                     globalThinking!.items.push({
                         content: block.content,
                         startTime: Date.now(),
-                        isStreaming: false
+                        isStreaming: false,
+                        duration: duration
                     });
                 });
-                continue; // Skip the rest of the logic for this message
+
+                // If there IS text content, we don't 'continue'. We let it fall through to be processed as a message.
+                // BUT we must ensure Step 2 doesn't create an implicit task just because of this thinking (which we already handled).
+                // Step 2 below checks (!currentTask). 'hasStartedTasks' is still false.
+                // We will handle the Text part in Step 3.
+
+                // If there is ONLY thinking (no text), we are done with this message.
+                if (!textContent) {
+                    continue;
+                }
+
+                // If there IS text, we want to proceed to Step 3 (Message Classification).
+                // But we must NOT trigger Step 2 (Implicit Task) based on 'thinking' because we just consumed it.
+                // We'll modify Step 2 to explicitly ignore thinking if !hasStartedTasks (since Step 0 handled it).
             }
         }
 
@@ -138,7 +160,15 @@ export function groupMessagesByTask(messages: Message[]): ChatItem[] {
             const blocks = parseMessageContentBlocks(msg);
             const hasThinking = blocks.some(b => b.type === "thinking");
 
-            if (toolCalls.length > 0 || hasThinking) {
+            // Only create implicit task if:
+            // 1. There are tool calls (ALWAYS create task for tools)
+            // 2. OR There is thinking AND we have already started tasks (meaning it's a mid-stream thought that lost its task context?)
+            //    If we haven't started tasks (!hasStartedTasks), Step 0 handled the thinking, so we DON'T want an implicit task.
+            const shouldCreateImplicitTask =
+                toolCalls.length > 0 ||
+                (hasThinking && hasStartedTasks);
+
+            if (shouldCreateImplicitTask) {
                 hasStartedTasks = true;
                 // START IMPLICIT TASK GROUP
                 currentTask = {
@@ -175,7 +205,7 @@ export function groupMessagesByTask(messages: Message[]): ChatItem[] {
                 }
             }
 
-            // A2. Extract Content from Assistant Messages
+            // A2. Extract Thinking Content from Assistant Messages (ONLY thinking, not text)
             if (role === "assistant") {
                 const blocks = parseMessageContentBlocks(msg);
 
@@ -188,15 +218,13 @@ export function groupMessagesByTask(messages: Message[]): ChatItem[] {
                     injectedDuration = parseInt(match[1], 10);
                 }
 
-                if (toolCalls.length > 0) {
-                    // Case 1: Message has tool calls.
-                    const contentBlocks = blocks.filter(b => b.type === "thinking" || b.type === "text");
-                    contentBlocks.forEach(block => {
-                        // Skip empty text blocks
-                        if (!block.content.trim()) return;
+                // Extract ONLY thinking blocks - text content is handled separately in Step C
+                const thinkingBlocks = blocks.filter(b => b.type === "thinking");
 
-                        // If it's a thinking block, use the injected duration if available
-                        const duration = block.type === "thinking" && injectedDuration
+                if (thinkingBlocks.length > 0) {
+                    thinkingBlocks.forEach(block => {
+                        // Use injected duration if available
+                        const duration = injectedDuration
                             ? injectedDuration
                             : estimateDuration(block.content);
 
@@ -207,24 +235,6 @@ export function groupMessagesByTask(messages: Message[]): ChatItem[] {
                             duration: duration
                         } as ThinkingContent);
                     });
-                } else {
-                    // Case 2: No tool calls.
-                    const thinkingBlocks = blocks.filter(b => b.type === "thinking");
-                    if (thinkingBlocks.length > 0) {
-                        thinkingBlocks.forEach(block => {
-                            // Use injected duration if available
-                            const duration = injectedDuration
-                                ? injectedDuration
-                                : estimateDuration(block.content);
-
-                            currentTask!.items.push({
-                                content: block.content,
-                                startTime: Date.now(),
-                                isStreaming: false,
-                                duration: duration
-                            } as ThinkingContent);
-                        });
-                    }
                 }
             }
 
