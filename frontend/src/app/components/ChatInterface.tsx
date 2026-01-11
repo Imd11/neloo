@@ -98,6 +98,11 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [libraryDialogOpen, setLibraryDialogOpen] = useState(false);
 
+  // Suggested follow-up questions state
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+
+
   const [input, setInput] = useState("");
   const { scrollRef, contentRef } = useStickToBottom();
 
@@ -339,6 +344,68 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
       });
     }
   }, [threadId, config, session?.access_token]);
+
+  // Fetch suggested follow-up questions after AI response completes
+  const fetchSuggestedQuestions = useCallback(async (aiResponse: string) => {
+    if (!threadId || !config || !session?.access_token) return;
+
+    setIsLoadingSuggestions(true);
+    try {
+      const response = await fetch(
+        `${config.deploymentUrl}/api/threads/${threadId}/generate-suggestions`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            ai_response: aiResponse,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setSuggestedQuestions(data.questions || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch suggestions:", error);
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  }, [threadId, config, session?.access_token]);
+
+  // Trigger suggestion generation when AI response completes
+  const prevIsLoadingRef = useRef(isLoading);
+  useEffect(() => {
+    // Detect when isLoading transitions from true to false (AI finished responding)
+    if (prevIsLoadingRef.current && !isLoading && messages && messages.length > 0) {
+      // Find the last AI message
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.type === "ai") {
+        const content = extractStringFromMessageContent(lastMessage);
+        if (content) {
+          fetchSuggestedQuestions(content);
+        }
+      }
+    }
+    prevIsLoadingRef.current = isLoading;
+  }, [isLoading, messages, fetchSuggestedQuestions]);
+
+  // Clear suggestions when user starts typing
+  useEffect(() => {
+    if (input.length > 0) {
+      setSuggestedQuestions([]);
+    }
+  }, [input]);
+
+  // Handle clicking a suggested question
+  const handleSuggestionClick = useCallback((question: string) => {
+    setInput(question);
+    setSuggestedQuestions([]);
+    textareaRef.current?.focus();
+  }, []);
 
   // Handle files selected from library
   const handleLibraryFilesSelected = useCallback(
@@ -714,6 +781,24 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
             )}
           </div >
         </div >
+
+        {/* Suggested follow-up questions */}
+        {suggestedQuestions.length > 0 && !isLoading && (
+          <div className="mx-auto w-full max-w-[1024px] px-4 pb-4">
+            <div className="flex flex-wrap gap-2">
+              {suggestedQuestions.map((question, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleSuggestionClick(question)}
+                  className="group flex items-center gap-1.5 rounded-full border border-border bg-background px-4 py-2 text-sm text-muted-foreground transition-all hover:border-primary/50 hover:bg-primary/5 hover:text-foreground"
+                >
+                  <span className="max-w-[300px] truncate">{question}</span>
+                  <span className="text-primary/60 group-hover:text-primary">→</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="flex-shrink-0 bg-background">
           <div

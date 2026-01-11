@@ -2367,6 +2367,143 @@ async def generate_thread_title_api(
 
 
 # =============================================================================
+# Suggested Follow-up Questions
+# =============================================================================
+
+class SuggestedQuestionsRequest(BaseModel):
+    """Request model for generating suggested questions."""
+    ai_response: str
+    conversation_context: Optional[str] = None
+
+
+class SuggestedQuestionsResponse(BaseModel):
+    """Response model for suggested questions."""
+    questions: list[str]
+
+
+async def _generate_suggested_questions(ai_response: str, context: str = "") -> list[str]:
+    """
+    Use LLM to generate 3 suggested follow-up questions based on AI response.
+    
+    Returns a list of 3 questions, or empty list on failure.
+    """
+    try:
+        from langchain.chat_models import init_chat_model
+        from langchain_core.messages import SystemMessage, HumanMessage
+
+        # Use a fast, cheap model
+        if os.environ.get("DEEPSEEK_API_KEY"):
+            model = init_chat_model(
+                "deepseek-chat",
+                model_provider="deepseek",
+                api_key=os.environ.get("DEEPSEEK_API_KEY"),
+                timeout=30,
+            )
+        elif os.environ.get("ANTHROPIC_API_KEY"):
+            model = init_chat_model(
+                "claude-3-5-haiku-latest",
+                model_provider="anthropic",
+                api_key=os.environ.get("ANTHROPIC_API_KEY"),
+                base_url=os.environ.get("ANTHROPIC_BASE_URL"),
+                timeout=30,
+            )
+        elif os.environ.get("OPENAI_API_KEY"):
+            model = init_chat_model(
+                "gpt-4o-mini",
+                model_provider="openai",
+                api_key=os.environ.get("OPENAI_API_KEY"),
+                timeout=30,
+            )
+        else:
+            return []
+
+        # Truncate context if too long
+        max_context = 2000
+        truncated_response = ai_response[:max_context] if len(ai_response) > max_context else ai_response
+
+        response = await model.ainvoke([
+            SystemMessage(content="""基于AI的回复内容，生成3个用户可能想继续问的后续问题。
+
+规则：
+- 问题要与AI回复的内容相关
+- 问题要有深度，能够延续对话
+- 使用与AI回复相同的语言（中文或英文）
+- 每个问题15-40个字符
+- 直接输出3个问题，每行一个
+- 不要加序号、引号或其他格式
+
+示例输出：
+这个方法在大数据量下性能如何？
+能否用其他语言实现相同功能？
+这种方案的安全性考虑有哪些？"""),
+            HumanMessage(content=f"AI回复:\n{truncated_response}"),
+        ])
+
+        # Parse response into list of questions
+        content = response.content.strip()
+        lines = [line.strip() for line in content.split("\n") if line.strip()]
+        
+        # Take first 3 non-empty lines
+        questions = []
+        for line in lines:
+            # Remove common prefixes like "1.", "-", "•", etc.
+            clean = line.lstrip("0123456789.-•·）) ")
+            if clean and len(clean) > 5:
+                questions.append(clean)
+            if len(questions) >= 3:
+                break
+        
+        return questions[:3]
+
+    except Exception as e:
+        print(f"[SuggestedQuestions] LLM failed: {e}")
+        return []
+
+
+@app.post("/api/threads/{langgraph_thread_id}/generate-suggestions", response_model=SuggestedQuestionsResponse)
+async def generate_suggested_questions_api(
+    langgraph_thread_id: str,
+    data: SuggestedQuestionsRequest,
+    user: dict = Depends(get_current_user),
+):
+    """
+    Generate suggested follow-up questions based on the AI's response.
+    
+    This endpoint uses LLM to generate 3 relevant follow-up questions
+    that the user might want to ask next.
+    """
+    user_id = auth_get_user_id(user)
+
+    if not USE_SUPABASE_DB:
+        raise HTTPException(status_code=503, detail="Database not configured")
+
+    try:
+        # Verify thread exists and user owns it
+        thread_record = await get_thread_by_langgraph_id(langgraph_thread_id)
+
+        if not thread_record:
+            raise HTTPException(status_code=404, detail="Thread not found")
+
+        if thread_record["user_id"] != user_id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+
+        # Generate questions
+        questions = await _generate_suggested_questions(
+            ai_response=data.ai_response,
+            context=data.conversation_context or ""
+        )
+
+        return SuggestedQuestionsResponse(questions=questions)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[SuggestedQuestions] Error: {e}")
+        # Return empty list on error, don't fail the request
+        return SuggestedQuestionsResponse(questions=[])
+
+
+# =============================================================================
 # Share Link Endpoints
 # =============================================================================
 
