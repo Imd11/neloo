@@ -785,6 +785,8 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                             } : undefined}
                             onRegenerate={isLastAiMessage ? handleRegenerate : undefined}
                             onShare={!isUserMessage ? handleShare : undefined}
+                            suggestedQuestions={isLastAiMessage && !isLoading ? suggestedQuestions : undefined}
+                            onSuggestionClick={isLastAiMessage ? handleSuggestionClick : undefined}
                           />
                         );
                       }
@@ -795,24 +797,6 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
             )}
           </div >
         </div >
-
-        {/* Suggested follow-up questions */}
-        {suggestedQuestions.length > 0 && !isLoading && (
-          <div className="mx-auto w-full max-w-[1024px] px-4 pb-4">
-            <div className="flex flex-wrap gap-2">
-              {suggestedQuestions.map((question, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleSuggestionClick(question)}
-                  className="group flex items-center gap-1.5 rounded-full border border-border bg-background px-4 py-2 text-sm text-muted-foreground transition-all hover:border-primary/50 hover:bg-primary/5 hover:text-foreground"
-                >
-                  <span className="max-w-[300px] truncate">{question}</span>
-                  <span className="text-primary/60 group-hover:text-primary">→</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
 
         <div className="flex-shrink-0 bg-background">
           <div

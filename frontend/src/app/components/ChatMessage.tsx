@@ -61,6 +61,10 @@ interface ChatMessageProps {
   onRegenerate?: () => void;
   /** Callback when user wants to share the conversation */
   onShare?: () => void;
+  /** Suggested follow-up questions to display */
+  suggestedQuestions?: string[];
+  /** Callback when user clicks a suggested question */
+  onSuggestionClick?: (question: string) => void;
   /** Whether to hide thinking blocks (managed by parent) */
   hideThinking?: boolean;
   /** Whether to hide tool calls (managed by parent) */
@@ -85,6 +89,8 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     onEditMessage,
     onRegenerate,
     onShare,
+    suggestedQuestions,
+    onSuggestionClick,
     hideThinking = false,
     hideTools = false,
   }) => {
@@ -473,6 +479,21 @@ export const ChatMessage = React.memo<ChatMessageProps>(
               {!isUser && hasContent && (
                 <div className="mt-2 flex justify-start">
                   <MessageActions show={true} alwaysVisible={true} />
+                </div>
+              )}
+              {/* Suggested follow-up questions - only for AI messages */}
+              {!isUser && suggestedQuestions && suggestedQuestions.length > 0 && onSuggestionClick && (
+                <div className="mt-3 flex flex-col gap-2">
+                  {suggestedQuestions.map((question, index) => (
+                    <button
+                      key={index}
+                      onClick={() => onSuggestionClick(question)}
+                      className="group flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-left text-sm text-muted-foreground transition-all hover:border-primary/50 hover:bg-primary/5 hover:text-foreground"
+                    >
+                      <span className="flex-1">{question}</span>
+                      <span className="text-primary/60 group-hover:text-primary">→</span>
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
