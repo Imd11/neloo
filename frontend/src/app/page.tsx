@@ -513,6 +513,10 @@ function HomePageInner() {
           onMutateReady: (fn: () => void) => setMutateThreads(() => fn),
           onInterruptCountChange: undefined
         }}
+        topBarProps={{
+          currentModelId: selectedModel || undefined,
+          onModelSelect: (id: string) => setSelectedModel(id),
+        }}
       >
         <div className="flex h-full flex-col">
           <ChatProvider

@@ -9,9 +9,10 @@ import { cn } from "@/lib/utils";
 interface MainLayoutProps {
     children: React.ReactNode;
     sidebarProps?: AppSidebarProps;
+    topBarProps?: React.ComponentProps<typeof TopBar>;
 }
 
-export function MainLayout({ children, sidebarProps }: MainLayoutProps) {
+export function MainLayout({ children, sidebarProps, topBarProps }: MainLayoutProps) {
     const { collapsed, width, setWidth, collapsedWidth, hideTopBar } = useSidebar();
     const [isDragging, setIsDragging] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -71,7 +72,7 @@ export function MainLayout({ children, sidebarProps }: MainLayoutProps) {
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col min-w-0">
-                {!hideTopBar && <TopBar />}
+                {!hideTopBar && <TopBar {...topBarProps} />}
                 <main className="flex-1 overflow-y-auto bg-background selection:bg-primary/10" style={{ scrollbarGutter: 'stable' }}>
                     {children}
                 </main>
