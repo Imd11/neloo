@@ -483,17 +483,23 @@ export const ChatMessage = React.memo<ChatMessageProps>(
               )}
               {/* Suggested follow-up questions - only for AI messages */}
               {!isUser && suggestedQuestions && suggestedQuestions.length > 0 && onSuggestionClick && (
-                <div className="mt-3 flex flex-col gap-2">
-                  {suggestedQuestions.map((question, index) => (
-                    <button
-                      key={index}
-                      onClick={() => onSuggestionClick(question)}
-                      className="group flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-left text-sm text-muted-foreground transition-all hover:border-primary/50 hover:bg-primary/5 hover:text-foreground"
-                    >
-                      <span className="flex-1">{question}</span>
-                      <span className="text-primary/60 group-hover:text-primary">→</span>
-                    </button>
-                  ))}
+                <div className="mt-4 rounded-lg bg-muted/30 p-3">
+                  <div className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span>💡</span>
+                    <span>你可能想继续问：</span>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    {suggestedQuestions.map((question, index) => (
+                      <button
+                        key={index}
+                        onClick={() => onSuggestionClick(question)}
+                        className="group inline-flex w-fit items-center gap-1 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      >
+                        <span>{question}</span>
+                        <span className="text-muted-foreground/50 group-hover:text-foreground">→</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
