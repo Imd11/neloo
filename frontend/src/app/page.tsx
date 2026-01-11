@@ -240,7 +240,10 @@ function HomePageInner({ config }: HomePageInnerProps) {
             setSelectedModel(thread.model_id);
           }
         }
+        // Note: 404 is expected for new threads before DB record is created
+        // (race condition with useChat's createThread), so we silently ignore it
       } catch (error) {
+        // Network errors only - 404s don't throw
         console.error("Failed to load thread model:", error);
       }
     }
