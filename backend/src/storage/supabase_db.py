@@ -1113,3 +1113,148 @@ def create_thread_file_link_sync(thread_id: str, file_id: str) -> bool:
     except Exception as e:
         print(f"[SupabaseDB] Sync wrapper error: {e}")
         return False
+
+
+# =============================================================================
+# Share Link Functions
+# =============================================================================
+
+import secrets
+import string
+
+def generate_share_id(length: int = 8) -> str:
+    """Generate a random share ID."""
+    alphabet = string.ascii_lowercase + string.digits
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+
+async def create_share(
+    user_id: str,
+    thread_id: str,
+) -> Optional[dict]:
+    """
+    Create a share link for a thread.
+    
+    Args:
+        user_id: Owner's user ID
+        thread_id: langgraph_thread_id of the thread to share
+        
+    Returns:
+        Share record dict with share_id, or None on failure
+    """
+    if not USE_SUPABASE_DB:
+        print("[SupabaseDB] Supabase not configured")
+        return None
+    
+    supabase = await get_supabase_client()
+    if not supabase:
+        return None
+    
+    try:
+        share_id = generate_share_id()
+        
+        result = await supabase.table("shared_conversations").insert({
+            "share_id": share_id,
+            "thread_id": thread_id,
+            "user_id": user_id,
+        }).execute()
+        
+        if result.data:
+            print(f"[SupabaseDB] Created share: {share_id} for thread {thread_id}")
+            return result.data[0]
+        return None
+    except Exception as e:
+        print(f"[SupabaseDB] Failed to create share: {e}")
+        return None
+
+
+async def get_share_by_id(share_id: str) -> Optional[dict]:
+    """
+    Get a share record by its share_id.
+    
+    Args:
+        share_id: The short share identifier
+        
+    Returns:
+        Share record dict or None if not found
+    """
+    if not USE_SUPABASE_DB:
+        return None
+    
+    supabase = await get_supabase_client()
+    if not supabase:
+        return None
+    
+    try:
+        result = await supabase.table("shared_conversations")\
+            .select("*")\
+            .eq("share_id", share_id)\
+            .execute()
+        
+        if result.data and len(result.data) > 0:
+            return result.data[0]
+        return None
+    except Exception as e:
+        print(f"[SupabaseDB] Failed to get share: {e}")
+        return None
+
+
+async def delete_share(share_id: str, user_id: str) -> bool:
+    """
+    Delete a share link (only owner can delete).
+    
+    Args:
+        share_id: The share identifier to delete
+        user_id: The user attempting to delete (must be owner)
+        
+    Returns:
+        True if deleted, False otherwise
+    """
+    if not USE_SUPABASE_DB:
+        return False
+    
+    supabase = await get_supabase_client()
+    if not supabase:
+        return False
+    
+    try:
+        result = await supabase.table("shared_conversations")\
+            .delete()\
+            .eq("share_id", share_id)\
+            .eq("user_id", user_id)\
+            .execute()
+        
+        return True
+    except Exception as e:
+        print(f"[SupabaseDB] Failed to delete share: {e}")
+        return False
+
+
+async def get_user_shares(user_id: str) -> list:
+    """
+    Get all shares created by a user.
+    
+    Args:
+        user_id: The user's ID
+        
+    Returns:
+        List of share records
+    """
+    if not USE_SUPABASE_DB:
+        return []
+    
+    supabase = await get_supabase_client()
+    if not supabase:
+        return []
+    
+    try:
+        result = await supabase.table("shared_conversations")\
+            .select("*")\
+            .eq("user_id", user_id)\
+            .order("created_at", desc=True)\
+            .execute()
+        
+        return result.data or []
+    except Exception as e:
+        print(f"[SupabaseDB] Failed to get user shares: {e}")
+        return []

@@ -2364,3 +2364,138 @@ async def generate_thread_title_api(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate title: {str(e)}")
+
+
+# =============================================================================
+# Share Link Endpoints
+# =============================================================================
+
+class ShareResponse(BaseModel):
+    """Response model for share link creation."""
+    share_id: str
+    share_url: str
+    created_at: str
+
+
+class SharedConversationResponse(BaseModel):
+    """Response model for viewing a shared conversation."""
+    title: str
+    messages: list
+    shared_at: str
+
+
+@app.post("/api/threads/{langgraph_thread_id}/share", response_model=ShareResponse)
+async def create_share_link(
+    langgraph_thread_id: str,
+    request: Request,
+    user: dict = Depends(get_current_user),
+):
+    """
+    Create a share link for a thread.
+    Only the thread owner can create share links.
+    """
+    user_id = auth_get_user_id(user)
+    
+    if not USE_SUPABASE_DB:
+        raise HTTPException(status_code=503, detail="Database not configured")
+    
+    # Verify thread exists and user owns it
+    thread_record = await get_thread_by_langgraph_id(langgraph_thread_id)
+    if not thread_record:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    if thread_record.get("user_id") != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Create the share
+    from ..storage.supabase_db import create_share
+    share = await create_share(user_id=user_id, thread_id=langgraph_thread_id)
+    
+    if not share:
+        raise HTTPException(status_code=500, detail="Failed to create share link")
+    
+    # Build share URL
+    # Use request origin or frontend URL
+    base_url = str(request.base_url).rstrip("/")
+    # For production, use the frontend URL pattern
+    share_url = f"{base_url.replace('/api', '')}/share/{share['share_id']}"
+    
+    return ShareResponse(
+        share_id=share["share_id"],
+        share_url=share_url,
+        created_at=share["created_at"],
+    )
+
+
+@app.get("/api/share/{share_id}", response_model=SharedConversationResponse)
+async def get_shared_conversation(share_id: str):
+    """
+    Get a shared conversation by share ID.
+    This endpoint is PUBLIC - no authentication required.
+    Returns 404 if the share doesn't exist or the original thread was deleted.
+    """
+    if not USE_SUPABASE_DB:
+        raise HTTPException(status_code=503, detail="Database not configured")
+    
+    # Get the share record
+    from ..storage.supabase_db import get_share_by_id
+    share = await get_share_by_id(share_id)
+    
+    if not share:
+        raise HTTPException(status_code=404, detail="分享链接不存在")
+    
+    # Check if the original thread still exists
+    thread_record = await get_thread_by_langgraph_id(share["thread_id"])
+    if not thread_record:
+        raise HTTPException(status_code=404, detail="该对话已被删除")
+    
+    # Get messages from LangGraph
+    try:
+        from langgraph_sdk import get_client
+        config = get_config()
+        client = get_client(url=config["deploymentUrl"])
+        
+        # Get thread state which includes messages
+        thread_state = await client.threads.get_state(share["thread_id"])
+        messages = thread_state.get("values", {}).get("messages", [])
+        
+        # Convert messages to serializable format
+        serialized_messages = []
+        for msg in messages:
+            if hasattr(msg, "dict"):
+                serialized_messages.append(msg.dict())
+            elif isinstance(msg, dict):
+                serialized_messages.append(msg)
+            else:
+                serialized_messages.append({"type": "unknown", "content": str(msg)})
+        
+        return SharedConversationResponse(
+            title=thread_record.get("title", "分享的对话"),
+            messages=serialized_messages,
+            shared_at=share["created_at"],
+        )
+    except Exception as e:
+        print(f"[Share] Failed to get messages: {e}")
+        raise HTTPException(status_code=500, detail="Failed to load conversation")
+
+
+@app.delete("/api/shares/{share_id}")
+async def delete_share_link(
+    share_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """
+    Delete a share link.
+    Only the share owner can delete it.
+    """
+    user_id = auth_get_user_id(user)
+    
+    if not USE_SUPABASE_DB:
+        raise HTTPException(status_code=503, detail="Database not configured")
+    
+    from ..storage.supabase_db import delete_share
+    success = await delete_share(share_id=share_id, user_id=user_id)
+    
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to delete share link")
+    
+    return {"success": True, "message": "Share link deleted"}

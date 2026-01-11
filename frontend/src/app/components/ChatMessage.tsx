@@ -28,7 +28,7 @@ import { stripArtifacts, parseArtifacts, getStreamingArtifact } from "@/lib/arti
 import type { Artifact } from "@/lib/artifactParser";
 import { MessageAttachments } from "@/app/components/MessageAttachments";
 import { ArtifactCard } from "@/app/components/ArtifactCard";
-import { Copy, Check, Pencil, RefreshCw } from "lucide-react";
+import { Copy, Check, Pencil, RefreshCw, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -59,6 +59,8 @@ interface ChatMessageProps {
   onEditMessage?: (messageContent: string) => void;
   /** Callback when user wants to regenerate AI response */
   onRegenerate?: () => void;
+  /** Callback when user wants to share the conversation */
+  onShare?: () => void;
   /** Whether to hide thinking blocks (managed by parent) */
   hideThinking?: boolean;
   /** Whether to hide tool calls (managed by parent) */
@@ -82,6 +84,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     selectedArtifactId,
     onEditMessage,
     onRegenerate,
+    onShare,
     hideThinking = false,
     hideTools = false,
   }) => {
@@ -356,6 +359,23 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top">重新生成</TooltipContent>
+              </Tooltip>
+            )}
+
+            {/* Share button - only for AI messages */}
+            {!isUser && onShare && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onShare}
+                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                  >
+                    <Share2 className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">分享对话</TooltipContent>
               </Tooltip>
             )}
           </div>

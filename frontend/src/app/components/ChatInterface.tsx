@@ -293,6 +293,53 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
     }
   }, [isLoading, messages, sendMessage]);
 
+  // Handle share - create share link and copy to clipboard
+  const handleShare = useCallback(async () => {
+    if (!threadId || !config) {
+      toast.error("无法分享", { description: "请先开始对话" });
+      return;
+    }
+
+    try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
+      const response = await fetch(
+        `${config.deploymentUrl}/api/threads/${threadId}/share`,
+        {
+          method: "POST",
+          headers,
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.detail || "创建分享链接失败");
+      }
+
+      const data = await response.json();
+
+      // Build the share URL using current window location
+      const shareUrl = `${window.location.origin}/share/${data.share_id}`;
+
+      // Copy to clipboard
+      await navigator.clipboard.writeText(shareUrl);
+
+      toast.success("链接已复制到剪贴板", {
+        description: "任何人都可以通过此链接查看对话",
+      });
+    } catch (error) {
+      console.error("Failed to create share link:", error);
+      toast.error("分享失败", {
+        description: error instanceof Error ? error.message : "请稍后重试",
+      });
+    }
+  }, [threadId, config, session?.access_token]);
+
   // Handle files selected from library
   const handleLibraryFilesSelected = useCallback(
     async (files: Array<{
@@ -656,6 +703,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                             selectedArtifactId={selectedArtifact?.id}
                             onEditMessage={isUserMessage ? handleEditMessage : undefined}
                             onRegenerate={isLastAiMessage ? handleRegenerate : undefined}
+                            onShare={!isUserMessage ? handleShare : undefined}
                           />
                         );
                       }
