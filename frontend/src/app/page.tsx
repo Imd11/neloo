@@ -60,9 +60,9 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature }: Landi
       <RotatingHeadline />
 
       {/* 2. Input Area */}
-      <div className="w-full max-w-2xl space-y-6">
+      <div className="w-full max-w-3xl space-y-6">
         <PromptInput
-          placeholder="输入你的任务，或者选择下方功能..."
+          placeholder="描述你想要创建的内容..."
           selectedFeature={selectedFeature}
           onClearFeature={() => onSelectFeature(null)}
           onSubmit={onPromptSubmit}

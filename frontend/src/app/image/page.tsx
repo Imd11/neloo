@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useCallback, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useCallback, useEffect, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquarePlus, ChevronDown, Check, Search } from "lucide-react";
+import { RotatingHeadline } from "@/app/components/RotatingHeadline";
 import { PromptInput } from "@/app/components/PromptInput";
 import { ImageConfigBar } from "@/app/components/ImageConfigBar";
 import { TabbedTemplateGrid } from "@/app/components/TabbedTemplateGrid";
@@ -16,7 +16,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Template, imageTemplates } from "@/data/featureTemplates";
+import { Template } from "@/data/featureTemplates";
 import { ImageMessage } from "@/types/imageChat";
 import { CanvasImage } from "@/types/canvas";
 import { useSidebar } from "@/app/context/SidebarContext";
@@ -28,59 +28,54 @@ import {
     ResizableHandle,
 } from "@/components/ui/resizable";
 
-// Mock logos for now since I don't have the assets. 
-// Ideally I should copy them or use urls.
-// For now I'll use placeholders or emoji.
+// Import logos for image models
+import nanoBananaLogo from "@/assets/logos/nano-banana.png";
+import klingLogo from "@/assets/logos/kling.png";
+import jimengLogo from "@/assets/logos/jimeng.png";
+import midjourneyLogo from "@/assets/logos/midjourney.png";
+import openaiLogo from "@/assets/logos/openai.png";
+import stabilityLogo from "@/assets/logos/stability.png";
+import minimaxLogo from "@/assets/logos/minimax.png";
+import qwenLogo from "@/assets/logos/qwen.png";
+
+// Logos that need dark background in light mode
+const lightLogos = [openaiLogo, midjourneyLogo];
+
 interface ModelInfo {
     name: string;
-    logo: string;
+    logo: typeof nanoBananaLogo;
 }
 
 const imageModels: ModelInfo[] = [
-    { name: "Nano Banana", logo: "🍌" },
-    { name: "可灵 AI", logo: "✨" },
-    { name: "即梦", logo: "🎨" },
-    { name: "Midjourney", logo: "⛵️" },
-    { name: "DALL·E 3", logo: "🤖" },
-    { name: "Stable Diffusion", logo: "🧨" },
-    { name: "MiniMax", logo: "Ⓜ️" },
-    { name: "通义万相", logo: "🏮" },
+    { name: "Nano Banana", logo: nanoBananaLogo },
+    { name: "可灵 AI", logo: klingLogo },
+    { name: "即梦", logo: jimengLogo },
+    { name: "Midjourney", logo: midjourneyLogo },
+    { name: "DALL·E 3", logo: openaiLogo },
+    { name: "Stable Diffusion", logo: stabilityLogo },
+    { name: "MiniMax", logo: minimaxLogo },
+    { name: "通义万相", logo: qwenLogo },
 ];
 
-import { Suspense } from "react";
-
 function ImagePageContent() {
-    const { setCollapsed, isMobile } = useSidebar();
-    const searchParams = useSearchParams();
-    const templateId = searchParams.get("template");
+    const { setCollapsed, setHideTopBar } = useSidebar();
     const [isEditMode, setIsEditMode] = useState(false);
     const [messages, setMessages] = useState<ImageMessage[]>([]);
     const [canvasImages, setCanvasImages] = useState<CanvasImage[]>([]);
     const [isGenerating, setIsGenerating] = useState(false);
     const [imageModel, setImageModel] = useState<ModelInfo>(imageModels[0]);
     const [searchQuery, setSearchQuery] = useState("");
-    const [initialPrompt, setInitialPrompt] = useState("");
     const [flyingImage, setFlyingImage] = useState<{
         id: string;
         src: string;
         startRect: DOMRect;
     } | null>(null);
 
-    // Handle template from URL
+    // Hide global TopBar in edit mode
     useEffect(() => {
-        if (templateId) {
-            const template = imageTemplates.find(t => t.id === Number(templateId));
-            if (template) {
-                setInitialPrompt(template.description);
-                toast.info(`已加载模板: ${template.title}`, {
-                    description: "你可以基于此模板修改提示词"
-                });
-            }
-        }
-    }, [templateId]);
-
-    // Note: setHideTopBar logic from AnyAI is skipped as Mello structure handles layout differently.
-    // We might want to hide Mello's TopBar if needed, but for now we follow page structure.
+        setHideTopBar(isEditMode);
+        return () => setHideTopBar(false);
+    }, [isEditMode, setHideTopBar]);
 
     const filteredModels = imageModels.filter((model) =>
         model.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -114,7 +109,7 @@ function ImagePageContent() {
         setMessages(prev => [...prev, loadingMessage]);
         setIsGenerating(true);
 
-        // Simulate image generation (replace with actual API call later)
+        // Simulate image generation (replace with actual API call)
         setTimeout(() => {
             // Use a placeholder image for demo
             const generatedImageUrl = `https://picsum.photos/seed/${Date.now()}/512/512`;
@@ -165,6 +160,13 @@ function ImagePageContent() {
         ));
     }, []);
 
+    // Handle going back to input mode
+    const handleBackToInput = useCallback(() => {
+        setIsEditMode(false);
+        setMessages([]);
+        setCanvasImages([]);
+    }, []);
+
     // Handle new conversation (stay in edit mode, clear messages)
     const handleNewConversation = useCallback(() => {
         setMessages([]);
@@ -175,11 +177,10 @@ function ImagePageContent() {
     // Handle template selection from chat panel
     const handleChatTemplateSelect = useCallback((prompt: string) => {
         toast.info(`已选择模板`);
-        handleSubmit(prompt);
-    }, [handleSubmit]);
+    }, []);
 
     return (
-        <div className="h-[calc(100vh-4rem)] flex flex-col overflow-hidden">
+        <div className="h-full flex flex-col overflow-hidden">
             <AnimatePresence mode="wait">
                 {!isEditMode ? (
                     // Input Mode - Original Layout
@@ -199,17 +200,18 @@ function ImagePageContent() {
                     >
                         {/* Top Section - Centered Content */}
                         <div className="flex-1 flex flex-col items-center px-6">
-                            <div className="w-full max-w-4xl flex flex-col items-center gap-8 pt-[15vh]">
-                                <h1 className="text-3xl font-semibold">AI 图片生成</h1>
+                            <div className="w-full max-w-4xl flex flex-col items-center gap-8 pt-[28vh]">
+                                {/* Rotating Headline */}
+                                <div>
+                                    <RotatingHeadline />
+                                </div>
 
                                 {/* Prompt Input */}
                                 <div className="w-full max-w-3xl mx-auto flex flex-col items-center gap-4">
                                     <ImageConfigBar />
                                     <PromptInput
                                         placeholder="描述你要生成的图..."
-                                        initialValue={initialPrompt}
                                         onSubmit={handleSubmit}
-                                        selectedFeature={{ id: 'image', title: 'Image', description: '', icon: '', templates: [], placeholder: '' }} // Mock
                                     />
                                 </div>
                             </div>
@@ -244,9 +246,18 @@ function ImagePageContent() {
                                 defaultSize={25}
                                 minSize={15}
                                 maxSize={50}
-                                className="h-full flex flex-col min-w-[320px]"
+                                className="h-full flex flex-col"
                             >
-                                <div className="h-full flex flex-col">
+                                <motion.div
+                                    initial={{ x: -60, opacity: 0 }}
+                                    animate={{ x: 0, opacity: 1 }}
+                                    transition={{
+                                        duration: 0.6,
+                                        ease: [0.16, 1, 0.3, 1],
+                                        delay: 0.15
+                                    }}
+                                    className="h-full flex flex-col"
+                                >
                                     {/* Chat Header - Model Selector (left) + New Conversation (right) */}
                                     <div className="h-14 shrink-0 flex items-center justify-between px-4 border-b border-border bg-background">
                                         {/* Model Selector */}
@@ -256,8 +267,8 @@ function ImagePageContent() {
                                                     variant="ghost"
                                                     className="gap-2 text-foreground font-medium hover:bg-hover-bg h-8 px-2"
                                                 >
-                                                    <span className={cn("w-5 h-5 rounded-full flex items-center justify-center")}>
-                                                        {imageModel.logo}
+                                                    <span className={cn("w-5 h-5 rounded-full flex items-center justify-center", lightLogos.includes(imageModel.logo) && "bg-foreground dark:bg-transparent")}>
+                                                        <img src={imageModel.logo.src} alt="" className="w-4 h-4 object-contain" />
                                                     </span>
                                                     <span className="text-sm truncate max-w-[100px]">{imageModel.name}</span>
                                                     <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
@@ -288,8 +299,8 @@ function ImagePageContent() {
                                                                 imageModel.name === model.name && "bg-accent"
                                                             )}
                                                         >
-                                                            <span className={cn("w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0")}>
-                                                                {model.logo}
+                                                            <span className={cn("w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0", lightLogos.includes(model.logo) && "bg-foreground dark:bg-transparent")}>
+                                                                <img src={model.logo.src} alt="" className="w-4 h-4 object-contain" />
                                                             </span>
                                                             <span className="text-sm flex-1">{model.name}</span>
                                                             {imageModel.name === model.name && (
@@ -323,22 +334,33 @@ function ImagePageContent() {
                                             onSelectTemplate={handleChatTemplateSelect}
                                         />
                                     </div>
-                                </div>
+                                </motion.div>
                             </ResizablePanel>
 
-                            {/* Resize Handle */}
+                            {/* Resize Handle - full height, styled like sidebar handle */}
                             <ResizableHandle
                                 className="w-[3px] bg-transparent hover:bg-primary/20 transition-colors cursor-col-resize relative after:absolute after:inset-y-0 after:left-1/2 after:-translate-x-1/2 after:w-px after:bg-border"
                             />
 
                             {/* Right - Canvas */}
                             <ResizablePanel defaultSize={75} className="h-full">
-                                <ImageCanvas
-                                    images={canvasImages}
-                                    onImagesChange={setCanvasImages}
-                                    flyingImage={flyingImage}
-                                    onFlyingComplete={handleFlyingComplete}
-                                />
+                                <motion.div
+                                    initial={{ x: 80, opacity: 0 }}
+                                    animate={{ x: 0, opacity: 1 }}
+                                    transition={{
+                                        duration: 0.6,
+                                        ease: [0.16, 1, 0.3, 1],
+                                        delay: 0.2
+                                    }}
+                                    className="h-full"
+                                >
+                                    <ImageCanvas
+                                        images={canvasImages}
+                                        onImagesChange={setCanvasImages}
+                                        flyingImage={flyingImage}
+                                        onFlyingComplete={handleFlyingComplete}
+                                    />
+                                </motion.div>
                             </ResizablePanel>
                         </ResizablePanelGroup>
                     </motion.div>

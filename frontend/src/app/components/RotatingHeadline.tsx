@@ -1,40 +1,55 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { useMemo } from "react";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/providers/AuthProvider";
 
-export function RotatingHeadline() {
-    const [index, setIndex] = useState(0);
-    const headlines = [
-        "有什么可以帮你的吗？",
-        "写一个 python 脚本",
-        "帮我写一个 PPT",
-        "帮我优化简历",
-        "帮我优化 prompt",
-        "分析一下这个数据",
-    ];
+// Headlines with {name} placeholder for personalization
+const headlines = [
+    "你好{name}，我能为你做什么？",
+    "你好{name}，准备好开始了吗？",
+    "{name}，今天想要完成什么？",
+    "你好{name}，有什么可以帮助你的？",
+    "{name}，让我们一起创造吧",
+    "你好{name}，开始你的下一个项目",
+    "{name}，需要灵感吗？",
+    "你好{name}，让想法变成现实",
+    "{name}，探索无限可能",
+    "你好{name}，你的创意助手已就绪",
+    "{name}，有问题尽管问",
+    "你好{name}，一起解决难题",
+];
 
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setIndex((prev) => (prev + 1) % headlines.length);
-        }, 3000);
-        return () => clearInterval(timer);
-    }, []);
+interface RotatingHeadlineProps {
+    className?: string;
+}
+
+export function RotatingHeadline({ className }: RotatingHeadlineProps) {
+    const { user } = useAuth();
+
+    // Extract username from email or use default
+    const userName = useMemo(() => {
+        if (user?.email) {
+            return user.email.split("@")[0];
+        }
+        return "朋友";
+    }, [user?.email]);
+
+    // Get one random headline on mount (stable across re-renders)
+    const headline = useMemo(() => {
+        const randomIndex = Math.floor(Math.random() * headlines.length);
+        return headlines[randomIndex].replace("{name}", userName);
+    }, [userName]);
 
     return (
-        <div className="h-12 flex items-center justify-center overflow-hidden">
-            <AnimatePresence mode="wait">
-                <motion.h1
-                    key={index}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.5 }}
-                    className="text-4xl font-semibold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 via-gray-700 to-gray-900 dark:from-white dark:via-gray-200 dark:to-white"
-                >
-                    {headlines[index]}
-                </motion.h1>
-            </AnimatePresence>
-        </div>
+        <h1
+            className={cn(
+                "text-3xl md:text-4xl font-medium text-foreground text-center",
+                "fade-in",
+                className
+            )}
+        >
+            {headline}
+        </h1>
     );
 }

@@ -1,6 +1,4 @@
-"use client";
-
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -9,18 +7,18 @@ import {
   Image,
   Video,
   FolderOpen,
-  Settings,
-  Share2,
-  MoreHorizontal,
   PanelLeft,
   Pin,
   Pencil,
   Trash2,
+  Loader2,
+  MoreHorizontal,
+  Settings,
+  Share2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/app/context/SidebarContext";
-import { ThreadList } from "./ThreadList";
 import {
   Tooltip,
   TooltipContent,
@@ -47,6 +45,10 @@ import { useAuth } from "@/providers/AuthProvider";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { SettingsDialog } from "./SettingsDialog";
 import { UserProfileDialog } from "./UserProfileDialog";
+import { useThreads } from "@/app/hooks/useThreads";
+import { getConfig } from "@/lib/config";
+import { toast } from "sonner";
+import { format } from "date-fns";
 
 // Define nav items - "search" has special behavior
 const navItems = [
@@ -55,22 +57,6 @@ const navItems = [
   { icon: Image, label: "生图", path: "/image" },
   { icon: Video, label: "生视频", path: "/video" },
   { icon: FolderOpen, label: "库", path: "/library" },
-];
-
-interface HistoryItem {
-  id: number;
-  title: string;
-  pinned?: boolean;
-}
-
-const initialHistoryItems: HistoryItem[] = [
-  { id: 1, title: "翻译图中英文" },
-  { id: 2, title: "倍率解释与应用" },
-  { id: 3, title: "翻译建议" },
-  { id: 4, title: "GitHub推送选择建议" },
-  { id: 5, title: "Supabase 文件上传路径" },
-  { id: 6, title: "React 组件优化" },
-  { id: 7, title: "API 接口设计" },
 ];
 
 export interface AppSidebarProps {
@@ -93,49 +79,124 @@ export function AppSidebar({
   const pathname = usePathname();
   const router = useRouter();
   const { collapsed, toggle } = useSidebar();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
+  const config = getConfig();
 
   const [logoHovered, setLogoHovered] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [historyItems, setHistoryItems] = useState<HistoryItem[]>(initialHistoryItems);
+
+  // Real threads data
+  const threads = useThreads({ limit: 20 });
+
+  // Local state for actions
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<HistoryItem | null>(null);
-  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [pinnedIds, setPinnedIds] = useState<string[]>([]);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
-  // Sort: pinned items first, then by id
-  const sortedHistory = [...historyItems].sort((a, b) => {
-    if (a.pinned && !b.pinned) return -1;
-    if (!a.pinned && b.pinned) return 1;
-    return 0;
-  });
+  // Load pinned IDs from local storage on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("pinned-threads");
+      if (saved) {
+        try {
+          setPinnedIds(JSON.parse(saved));
+        } catch (e) {
+          console.error("Failed to parse pinned threads", e);
+        }
+      }
+    }
+  }, []);
 
-  const handlePin = (item: HistoryItem) => {
-    setHistoryItems(prev =>
-      prev.map(h => (h.id === item.id ? { ...h, pinned: !h.pinned } : h))
+  // Save pinned IDs when changed
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("pinned-threads", JSON.stringify(pinnedIds));
+    }
+  }, [pinnedIds]);
+
+  // Flatten and sort threads
+  const sortedHistory = useMemo(() => {
+    const flatThreads = threads.data?.flat() ?? [];
+
+    // Sort: pinned items first, then by date (newest first)
+    return [...flatThreads].sort((a, b) => {
+      const aPinned = pinnedIds.includes(a.id);
+      const bPinned = pinnedIds.includes(b.id);
+
+      if (aPinned && !bPinned) return -1;
+      if (!aPinned && bPinned) return 1;
+
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
+  }, [threads.data, pinnedIds]);
+
+  const handlePin = (threadId: string) => {
+    setPinnedIds(prev =>
+      prev.includes(threadId)
+        ? prev.filter(id => id !== threadId)
+        : [...prev, threadId]
     );
   };
 
-  const handleRename = (item: HistoryItem) => {
-    const newTitle = prompt("请输入新标题", item.title);
-    if (newTitle && newTitle.trim()) {
-      setHistoryItems(prev =>
-        prev.map(h => (h.id === item.id ? { ...h, title: newTitle.trim() } : h))
+  const handleRename = async (threadId: string, currentTitle: string) => {
+    const newTitle = prompt("请输入新标题", currentTitle);
+    if (!newTitle || !newTitle.trim()) return;
+
+    if (!config?.deploymentUrl || !session?.access_token) return;
+
+    try {
+      const resp = await fetch(
+        `${config.deploymentUrl}/api/threads/${encodeURIComponent(threadId)}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ title: newTitle.trim() }),
+        }
       );
+
+      if (!resp.ok) throw new Error("Failed to update title");
+
+      await threads.mutate();
+      toast.success("已重命名");
+    } catch (e) {
+      toast.error("重命名失败");
     }
   };
 
-  const handleDeleteClick = (item: HistoryItem) => {
+  const handleDeleteClick = (item: { id: string; title: string }) => {
     setItemToDelete(item);
     setDeleteDialogOpen(true);
   };
 
-  const confirmDelete = () => {
-    if (itemToDelete) {
-      setHistoryItems(prev => prev.filter(h => h.id !== itemToDelete.id));
+  const confirmDelete = async () => {
+    if (!itemToDelete || !config?.deploymentUrl || !session?.access_token) return;
+
+    try {
+      const resp = await fetch(
+        `${config.deploymentUrl}/api/threads/${encodeURIComponent(itemToDelete.id)}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        }
+      );
+
+      if (!resp.ok) throw new Error("Failed to delete thread");
+
+      await threads.mutate();
+      // If the deleted thread was active (checked via URL or prop), we might want to redirect.
+      // For now, just deleting from list is enough.
+      toast.success("已删除");
+    } catch (e) {
+      toast.error("删除失败");
+    } finally {
+      setDeleteDialogOpen(false);
+      setItemToDelete(null);
     }
-    setDeleteDialogOpen(false);
-    setItemToDelete(null);
   };
 
   // Icon column width
@@ -321,8 +382,16 @@ export function AppSidebar({
             历史任务
           </div>
           <div className="flex-1 overflow-y-auto space-y-0.5">
+            {threads.isLoading && !threads.data && (
+              <div className="flex justify-center p-4">
+                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              </div>
+            )}
+
             {sortedHistory.map((item) => {
+              const isPinned = pinnedIds.includes(item.id);
               const isMenuOpen = openMenuId === item.id;
+
               return (
                 <div
                   key={item.id}
@@ -330,53 +399,54 @@ export function AppSidebar({
                     "group relative w-full flex items-center px-2 py-2 rounded-lg text-sm text-sidebar-foreground",
                     "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                     "transition-colors duration-150",
-                    isMenuOpen && "bg-sidebar-accent text-sidebar-accent-foreground"
+                    isMenuOpen ? "bg-sidebar-accent" : ""
                   )}
+                  onMouseEnter={() => setOpenMenuId(item.id)}
+                  onMouseLeave={() => setOpenMenuId(null)}
+                  onClick={() => onThreadSelect?.(item.id)}
                 >
-                  <span className="flex-1 truncate text-left">{item.title}</span>
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <MessageSquarePlus className="w-4 h-4 flex-shrink-0 text-sidebar-muted group-hover:text-sidebar-accent-foreground" />
+                    <span className="truncate">{item.title}</span>
+                  </div>
 
-                  {/* Pin icon - always visible when pinned */}
-                  {item.pinned && (
-                    <Pin className="w-3 h-3 text-muted-foreground flex-shrink-0 mr-1" />
-                  )}
+                  {/* Right Actions */}
+                  <div className={cn(
+                    "flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity",
+                    isMenuOpen ? "opacity-100" : ""
+                  )}>
+                    {isPinned && <Pin className="w-3 h-3 text-sidebar-muted mr-1" />}
 
-                  {/* Three-dot menu - visible on hover or when menu is open */}
-                  <DropdownMenu open={isMenuOpen} onOpenChange={(open) => setOpenMenuId(open ? item.id : null)}>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        className={cn(
-                          "flex-shrink-0 p-1.5 rounded-md cursor-pointer",
-                          "bg-transparent hover:bg-foreground/15 active:bg-foreground/20",
-                          "transition-colors duration-150",
-                          isMenuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                        )}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <MoreHorizontal className="w-4 h-4" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent side="right" align="start" className="w-32">
-                      <DropdownMenuItem onClick={() => { }}>
-                        <Share2 className="w-4 h-4 mr-2" />
-                        分享
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handlePin(item)}>
-                        <Pin className="w-4 h-4 mr-2" />
-                        {item.pinned ? "取消置顶" : "置顶"}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleRename(item)}>
-                        <Pencil className="w-4 h-4 mr-2" />
-                        重命名
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleDeleteClick(item)}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        删除
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                    <DropdownMenu open={isMenuOpen} onOpenChange={(open) => setOpenMenuId(open ? item.id : null)}>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <MoreHorizontal className="w-3 h-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-40">
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handlePin(item.id); }}>
+                          <Pin className="w-4 h-4 mr-2" />
+                          {isPinned ? "取消置顶" : "置顶"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleRename(item.id, item.title); }}>
+                          <Pencil className="w-4 h-4 mr-2" />
+                          重命名
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => { e.stopPropagation(); handleDeleteClick(item); }}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          删除
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
               );
             })}

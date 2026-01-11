@@ -15,7 +15,7 @@ interface PromptInputProps {
 }
 
 export function PromptInput({
-    placeholder = "输入你的任务...",
+    placeholder = "描述你想要创建的内容...",
     initialValue = "",
     onSubmit,
     className,
@@ -61,9 +61,9 @@ export function PromptInput({
             <div className="flex items-center gap-2 px-4 py-3">
                 {/* Plus Button */}
                 <Button
-                    variant="ghost"
-                    size="icon"
-                    className="shrink-0 w-9 h-9 text-muted-foreground hover:text-foreground rounded-full hover:bg-muted"
+                    variant="icon"
+                    size="icon-sm"
+                    className="shrink-0 text-muted-foreground hover:text-foreground"
                 >
                     <Plus className="w-5 h-5" />
                 </Button>
@@ -71,7 +71,7 @@ export function PromptInput({
                 {/* Selected Feature Tag */}
                 {selectedFeature && (
                     <div className={cn(
-                        "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium shrink-0 animate-in fade-in zoom-in duration-200",
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium shrink-0",
                         selectedFeature.id === "web-dev" && "bg-blue-500/15 text-blue-600 dark:text-blue-400",
                         selectedFeature.id === "slides" && "bg-orange-500/15 text-orange-600 dark:text-orange-400",
                         selectedFeature.id === "resume" && "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
@@ -104,21 +104,22 @@ export function PromptInput({
 
                 {/* Voice Button */}
                 <Button
-                    variant="ghost"
-                    size="icon"
-                    className="shrink-0 w-9 h-9 text-muted-foreground hover:text-foreground rounded-full hover:bg-muted"
+                    variant="icon"
+                    size="icon-sm"
+                    className="shrink-0 text-muted-foreground hover:text-foreground"
                 >
                     <Mic className="w-5 h-5" />
                 </Button>
 
                 {/* Send Button */}
                 <Button
-                    size="icon"
+                    variant="send"
+                    size="icon-sm"
                     onClick={handleSubmit}
                     disabled={!value.trim() || disabled}
                     className={cn(
-                        "shrink-0 w-9 h-9 rounded-full transition-all duration-200",
-                        value.trim() ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md" : "bg-muted text-muted-foreground opacity-50 cursor-not-allowed"
+                        "shrink-0 transition-all duration-200",
+                        !value.trim() && "opacity-50 cursor-not-allowed"
                     )}
                 >
                     <ArrowUp className="w-4 h-4" />
