@@ -483,12 +483,12 @@ export const ChatMessage = React.memo<ChatMessageProps>(
               )}
               {/* Suggested follow-up questions - only for AI messages */}
               {!isUser && suggestedQuestions && suggestedQuestions.length > 0 && onSuggestionClick && (
-                <div className="mt-4 rounded-lg bg-muted/30 p-3">
+                <div className="mt-4">
                   <div className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
                     <span>💡</span>
                     <span>你可能想继续问：</span>
                   </div>
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-col gap-1">
                     {suggestedQuestions.map((question, index) => (
                       <button
                         key={index}
