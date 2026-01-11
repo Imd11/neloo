@@ -293,14 +293,16 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     }, [onRegenerate]);
 
     // Action buttons component
-    const MessageActions = ({ show }: { show: boolean }) => {
+    // position="inline" (user messages): show on hover
+    // position="bottom" (AI messages): always visible
+    const MessageActions = ({ show, alwaysVisible = false }: { show: boolean; alwaysVisible?: boolean }) => {
       if (!show || isLoading) return null;
 
       return (
         <TooltipProvider delayDuration={0}>
           <div className={cn(
             "flex items-center gap-0.5 transition-opacity duration-200",
-            isHovered ? "opacity-100" : "opacity-0"
+            alwaysVisible ? "opacity-100" : (isHovered ? "opacity-100" : "opacity-0")
           )}>
             {/* Copy button - for both user and AI messages */}
             <Tooltip>
@@ -419,32 +421,40 @@ export const ChatMessage = React.memo<ChatMessageProps>(
           )}
 
           {(hasContent || (!isUser && userAttachments.length > 0)) && (
-            <div className={cn("relative flex items-end gap-2", isUser && "flex-row-reverse")}>
-              <div
-                className={cn(
-                  "mt-2 overflow-hidden break-words text-sm font-normal leading-[150%]",
-                  isUser
-                    ? "rounded-xl rounded-br-none border border-border px-3 py-2 text-foreground"
-                    : "mt-4 text-primary"
-                )}
-                style={
-                  isUser
-                    ? { backgroundColor: "var(--color-user-message-bg)" }
-                    : undefined
-                }
-              >
-                {isUser ? (
-                  hasContent && (
-                    <p className="m-0 whitespace-pre-wrap break-words text-sm leading-relaxed">
-                      {messageContent}
-                    </p>
-                  )
-                ) : hasContent ? (
-                  <MarkdownContent content={messageContent} />
-                ) : null}
+            <div className="relative">
+              <div className={cn("flex items-end gap-2", isUser && "flex-row-reverse")}>
+                <div
+                  className={cn(
+                    "mt-2 overflow-hidden break-words text-sm font-normal leading-[150%]",
+                    isUser
+                      ? "rounded-xl rounded-br-none border border-border px-3 py-2 text-foreground"
+                      : "mt-4 text-primary"
+                  )}
+                  style={
+                    isUser
+                      ? { backgroundColor: "var(--color-user-message-bg)" }
+                      : undefined
+                  }
+                >
+                  {isUser ? (
+                    hasContent && (
+                      <p className="m-0 whitespace-pre-wrap break-words text-sm leading-relaxed">
+                        {messageContent}
+                      </p>
+                    )
+                  ) : hasContent ? (
+                    <MarkdownContent content={messageContent} />
+                  ) : null}
+                </div>
+                {/* User message action buttons - show on hover, positioned at right */}
+                {isUser && <MessageActions show={!!hasContent} />}
               </div>
-              {/* Action buttons */}
-              <MessageActions show={!!hasContent} />
+              {/* AI message action buttons - always visible, positioned at bottom */}
+              {!isUser && hasContent && (
+                <div className="mt-2 flex justify-start">
+                  <MessageActions show={true} alwaysVisible={true} />
+                </div>
+              )}
             </div>
           )}
           {hasToolCalls && !hideTools && (
