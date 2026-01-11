@@ -367,6 +367,72 @@ export function useChat({
     }
   }, [isModeLocked]);
 
+  // Edit a message and re-run from that point (branching behavior)
+  // This truncates all messages after the edited message and re-generates AI response
+  const editMessageAndRerun = useCallback(
+    (messageIndex: number, newContent: string) => {
+      const currentMessages = stream.messages ?? [];
+      if (messageIndex < 0 || messageIndex >= currentMessages.length) {
+        console.error("[useChat] Invalid message index for edit:", messageIndex);
+        return;
+      }
+
+      // Truncate: keep messages before the edited one, then add the new message
+      const truncatedMessages = currentMessages.slice(0, messageIndex);
+      const newMessage: Message = { id: uuidv4(), type: "human", content: newContent };
+
+      // Submit with the truncated history + new message
+      stream.submit(
+        { messages: [...truncatedMessages, newMessage] },
+        {
+          optimisticValues: { messages: [...truncatedMessages, newMessage] },
+          config: { ...(activeAssistant?.config ?? {}), recursion_limit: 1000 },
+        }
+      );
+
+      onHistoryRevalidate?.();
+    },
+    [stream, activeAssistant?.config, onHistoryRevalidate]
+  );
+
+  // Regenerate the last AI response (removes it and re-runs from the last user message)
+  const regenerateLastResponse = useCallback(() => {
+    const currentMessages = stream.messages ?? [];
+    if (currentMessages.length === 0) return;
+
+    // Find the last human message index
+    let lastHumanIndex = -1;
+    for (let i = currentMessages.length - 1; i >= 0; i--) {
+      if (currentMessages[i].type === "human") {
+        lastHumanIndex = i;
+        break;
+      }
+    }
+
+    if (lastHumanIndex === -1) {
+      console.error("[useChat] No human message found for regenerate");
+      return;
+    }
+
+    // Get the last human message content
+    const lastHumanMessage = currentMessages[lastHumanIndex];
+    const content = extractStringFromMessageContent(lastHumanMessage);
+
+    // Truncate: keep messages up to and including the last human message
+    const truncatedMessages = currentMessages.slice(0, lastHumanIndex + 1);
+
+    // Re-submit to generate a new response
+    stream.submit(
+      { messages: truncatedMessages },
+      {
+        optimisticValues: { messages: truncatedMessages },
+        config: { ...(activeAssistant?.config ?? {}), recursion_limit: 1000 },
+      }
+    );
+
+    onHistoryRevalidate?.();
+  }, [stream, activeAssistant?.config, onHistoryRevalidate]);
+
   return {
     stream,
     todos: stream.values.todos ?? [],
@@ -385,6 +451,9 @@ export function useChat({
     stopStream,
     markCurrentThreadAsResolved,
     resumeInterrupt,
+    // Edit and regenerate with branching
+    editMessageAndRerun,
+    regenerateLastResponse,
     // Web Dev mode
     webDevMode: isWebDevModeActive,
     enableWebDevMode,

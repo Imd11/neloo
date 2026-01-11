@@ -124,6 +124,8 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
     webDevMode,
     enableWebDevMode,
     isModeLocked,
+    editMessageAndRerun,
+    regenerateLastResponse,
   } = useChatContext();
 
   // DataFileUpload integration
@@ -261,42 +263,46 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
     [fileUpload]
   );
 
-  // Handle edit message - populate input with message content
-  const handleEditMessage = useCallback(
-    (messageContent: string) => {
-      setInput(messageContent);
-      // Focus the textarea
-      textareaRef.current?.focus();
-      toast.info("消息已复制到输入框", {
-        description: "你可以编辑后重新发送",
-      });
+  // Handle edit message - show edit dialog or directly edit
+  // Now uses branching: truncates history and re-runs from edited point
+  const [editingMessageIndex, setEditingMessageIndex] = useState<number | null>(null);
+  const [editingMessageContent, setEditingMessageContent] = useState("");
+
+  const handleStartEdit = useCallback(
+    (messageIndex: number, messageContent: string) => {
+      setEditingMessageIndex(messageIndex);
+      setEditingMessageContent(messageContent);
     },
     []
   );
 
-  // Handle regenerate - find the last user message and resend it
+  const handleConfirmEdit = useCallback(() => {
+    if (editingMessageIndex === null || !editingMessageContent.trim()) return;
+
+    editMessageAndRerun(editingMessageIndex, editingMessageContent.trim());
+    toast.info("正在重新生成回复...", {
+      description: "历史消息已从编辑点重新开始",
+    });
+
+    // Clear editing state
+    setEditingMessageIndex(null);
+    setEditingMessageContent("");
+  }, [editingMessageIndex, editingMessageContent, editMessageAndRerun]);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingMessageIndex(null);
+    setEditingMessageContent("");
+  }, []);
+
+  // Handle regenerate - uses branching: removes last AI response and re-generates
   const handleRegenerate = useCallback(() => {
     if (isLoading || !messages || messages.length === 0) return;
 
-    // Find the last human message
-    let lastUserMessage: Message | null = null;
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].type === "human") {
-        lastUserMessage = messages[i];
-        break;
-      }
-    }
-
-    if (lastUserMessage) {
-      const content = extractStringFromMessageContent(lastUserMessage);
-      if (content) {
-        // TODO: Ideally we would use state history to rollback and regenerate
-        // For now, we'll send the same message again
-        sendMessage(content);
-        toast.info("正在重新生成回复...");
-      }
-    }
-  }, [isLoading, messages, sendMessage]);
+    regenerateLastResponse();
+    toast.info("正在重新生成回复...", {
+      description: "旧的 AI 回复已被替换",
+    });
+  }, [isLoading, messages, regenerateLastResponse]);
 
   // Handle share - create share link and copy to clipboard
   const handleShare = useCallback(async () => {
@@ -724,7 +730,11 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                                     isLastMessage={isLastMessage}
                                     onArtifactSelect={onArtifactSelect}
                                     selectedArtifactId={selectedArtifact?.id}
-                                    onEditMessage={isUserMessage ? handleEditMessage : undefined}
+                                    onEditMessage={isUserMessage ? (content) => {
+                                      // Find the message index in the original messages array
+                                      const msgIndex = messages?.findIndex(m => m.id === msgId) ?? -1;
+                                      if (msgIndex >= 0) handleStartEdit(msgIndex, content);
+                                    } : undefined}
                                     onRegenerate={isLastAiMessage ? handleRegenerate : undefined}
                                     hideTools={true}
                                   />
@@ -768,7 +778,11 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                             isLastMessage={isLastMessage}
                             onArtifactSelect={onArtifactSelect}
                             selectedArtifactId={selectedArtifact?.id}
-                            onEditMessage={isUserMessage ? handleEditMessage : undefined}
+                            onEditMessage={isUserMessage ? (content) => {
+                              // Find the message index in the original messages array
+                              const msgIndex = messages?.findIndex(m => m.id === msgId) ?? -1;
+                              if (msgIndex >= 0) handleStartEdit(msgIndex, content);
+                            } : undefined}
                             onRegenerate={isLastAiMessage ? handleRegenerate : undefined}
                             onShare={!isUserMessage ? handleShare : undefined}
                           />
