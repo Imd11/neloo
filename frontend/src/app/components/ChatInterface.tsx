@@ -801,12 +801,12 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
         <div className="flex-shrink-0 bg-background">
           <div
             className={cn(
-              "mx-4 mb-6 flex flex-shrink-0 flex-col overflow-hidden rounded-xl border border-border bg-background",
-              "mx-auto w-[calc(100%-32px)] max-w-[1024px] transition-colors duration-200 ease-in-out"
+              "mx-4 mb-6 flex flex-shrink-0 flex-col overflow-hidden rounded-3xl border border-border bg-input-bg shadow-sm transition-all duration-200 ease-in-out focus-within:border-ring focus-within:shadow-md",
+              "mx-auto w-[calc(100%-32px)] max-w-[1024px]"
             )}
           >
             {(hasTasks || hasFiles) && (
-              <div className="flex max-h-72 flex-col overflow-y-auto border-b border-border bg-sidebar empty:hidden">
+              <div className="flex max-h-72 flex-col overflow-y-auto border-b border-border/50 bg-muted/30 empty:hidden">
                 {!metaOpen && (
                   <>
                     {(() => {
@@ -829,7 +829,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                                 prev === "tasks" ? null : "tasks"
                               )
                             }
-                            className="grid w-full cursor-pointer grid-cols-[auto_auto_1fr] items-center gap-3 px-[18px] py-3 text-left"
+                            className="grid w-full cursor-pointer grid-cols-[auto_auto_1fr] items-center gap-3 px-[18px] py-3 text-left hover:bg-muted/50 transition-colors"
                             aria-expanded={metaOpen === "tasks"}
                           >
                             {(() => {
@@ -900,7 +900,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                                 prev === "files" ? null : "files"
                               )
                             }
-                            className="flex flex-shrink-0 cursor-pointer items-center gap-2 px-[18px] py-3 text-left text-sm text-muted-foreground"
+                            className="flex flex-shrink-0 cursor-pointer items-center gap-2 px-[18px] py-3 text-left text-sm text-muted-foreground hover:bg-muted/50 transition-colors"
                             aria-expanded={metaOpen === "files"}
                             title="Temporary in-memory files (use File Panel for persistent files)"
                           >
@@ -925,11 +925,11 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
 
                 {metaOpen && (
                   <>
-                    <div className="sticky top-0 flex items-stretch bg-sidebar text-sm">
+                    <div className="sticky top-0 flex items-stretch bg-muted/50 text-sm">
                       {hasTasks && (
                         <button
                           type="button"
-                          className="py-3 pr-4 first:pl-[18px] aria-expanded:font-semibold"
+                          className="py-3 pr-4 first:pl-[18px] aria-expanded:font-semibold hover:text-foreground transition-colors"
                           onClick={() =>
                             setMetaOpen((prev) =>
                               prev === "tasks" ? null : "tasks"
@@ -943,7 +943,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                       {hasFiles && (
                         <button
                           type="button"
-                          className="inline-flex items-center gap-2 py-3 pr-4 first:pl-[18px] aria-expanded:font-semibold text-muted-foreground"
+                          className="inline-flex items-center gap-2 py-3 pr-4 first:pl-[18px] aria-expanded:font-semibold text-muted-foreground hover:text-foreground transition-colors"
                           onClick={() =>
                             setMetaOpen((prev) =>
                               prev === "files" ? null : "files"
@@ -966,7 +966,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                     </div>
                     <div
                       ref={tasksContainerRef}
-                      className="px-[18px]"
+                      className="px-[18px] pb-2"
                     >
                       {metaOpen === "tasks" &&
                         Object.entries(groupedTodos)
@@ -1033,12 +1033,12 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={isLoading ? "Running..." : "Write your message..."}
-                className="font-inherit field-sizing-content flex-1 resize-none border-0 bg-transparent px-[18px] pb-[13px] pt-[14px] text-sm leading-7 text-primary outline-none placeholder:text-tertiary"
+                className="font-inherit field-sizing-content flex-1 resize-none border-0 bg-transparent px-4 pb-0 pt-4 text-sm leading-7 text-foreground outline-none placeholder:text-muted-foreground min-h-[56px] max-h-[200px]"
                 rows={1}
               />
-              <div className="flex justify-between gap-2 p-3">
-                {/* File upload component and Web Dev toggle */}
-                <div className="flex items-center gap-2">
+              <div className="flex justify-between items-center gap-2 px-2 pb-2">
+                {/* Left: Actions */}
+                <div className="flex items-center gap-1">
                   <DataFileUpload
                     files={fileUpload.files}
                     onRemoveFile={fileUpload.removeFile}
@@ -1052,39 +1052,42 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                     <Button
                       type="button"
                       variant="ghost"
-                      size="sm"
+                      size="icon"
                       onClick={onOpenFilePanel}
-                      className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                      className="h-9 w-9 text-muted-foreground hover:text-foreground rounded-full hover:bg-muted"
                       title="View files"
                     >
-                      <FolderOpen size={16} />
-                      <span className="ml-1 text-xs">Files</span>
+                      <FolderOpen size={18} />
                     </Button>
                   )}
                   {/* Web Development Mode toggle */}
-                  <WebDevToggle
-                    enabled={webDevMode}
-                    locked={isModeLocked}
-                    onEnable={enableWebDevMode}
-                  />
+                  <div className="ml-1">
+                    <WebDevToggle
+                      enabled={webDevMode}
+                      locked={isModeLocked}
+                      onEnable={enableWebDevMode}
+                    />
+                  </div>
                 </div>
+
+                {/* Right: Send/Stop Button */}
                 <div className="flex justify-end gap-2">
                   <Button
                     type={isLoading ? "button" : "submit"}
+                    size="icon" // Circle button
                     variant={isLoading ? "destructive" : "default"}
                     onClick={isLoading ? stopStream : undefined}
                     disabled={!isLoading && (submitDisabled || !input.trim())}
+                    className={cn(
+                      "h-9 w-9 rounded-full shadow-sm transition-all duration-200",
+                      !isLoading && input.trim() ? "bg-primary text-primary-foreground hover:bg-primary/90" :
+                        (isLoading ? "" : "bg-muted text-muted-foreground opacity-50")
+                    )}
                   >
                     {isLoading ? (
-                      <>
-                        <Square size={14} />
-                        <span>Stop</span>
-                      </>
+                      <Square className="h-4 w-4 fill-current" />
                     ) : (
-                      <>
-                        <ArrowUp size={18} />
-                        <span>Send</span>
-                      </>
+                      <ArrowUp className="h-5 w-5" />
                     )}
                   </Button>
                 </div>

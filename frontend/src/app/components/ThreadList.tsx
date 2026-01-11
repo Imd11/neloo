@@ -114,16 +114,15 @@ function EmptyState() {
 }
 
 interface ThreadListProps {
-  onThreadSelect: (id: string) => void;
+  className?: string;
+  onThreadSelect?: (id: string) => void;
   onMutateReady?: (mutate: () => void) => void;
-  onClose?: () => void;
   onInterruptCountChange?: (count: number) => void;
 }
 
 export function ThreadList({
   onThreadSelect,
   onMutateReady,
-  onClose,
   onInterruptCountChange,
 }: ThreadListProps) {
   const [currentThreadId, setCurrentThreadId] = useQueryState("threadId");
@@ -217,14 +216,13 @@ export function ThreadList({
         }
 
         await threads.mutate();
-        onClose?.();
       } catch (e) {
         toast.error("删除失败", {
           description: e instanceof Error ? e.message : String(e),
         });
       }
     },
-    [config?.deploymentUrl, currentThreadId, onClose, session?.access_token, setCurrentThreadId, threads]
+    [config?.deploymentUrl, currentThreadId, session?.access_token, setCurrentThreadId, threads]
   );
 
   const startEditingTitle = useCallback(
@@ -408,7 +406,7 @@ export function ThreadList({
                     {groupThreads.map((thread) => (
                       <div
                         key={thread.id}
-                        onClick={() => onThreadSelect(thread.id)}
+                        onClick={() => onThreadSelect?.(thread.id)}
                         className={cn(
                           "group grid w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors duration-200",
                           "hover:bg-accent",
@@ -500,7 +498,7 @@ export function ThreadList({
                                   className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    void handleDeleteThread(thread.id);
+                                    onThreadSelect?.(thread.id);
                                   }}
                                   aria-label="Delete thread"
                                 >

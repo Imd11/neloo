@@ -10,10 +10,9 @@ import { useAuth } from "@/providers/AuthProvider";
 import { ChatProvider, useChatContext } from "@/providers/ChatProvider";
 import { ChatInterface } from "@/app/components/ChatInterface";
 import { FilePanel } from "@/app/components/FilePanel";
-import { AppSidebar } from "@/app/components/AppSidebar";
+import { MainLayout } from "./components/layout/MainLayout";
 import { SearchDialog } from "@/app/components/SearchDialog";
 import { LibraryDialog } from "@/app/components/LibraryDialog";
-import { ModelSelector } from "@/app/components/ModelSelector";
 import { ArtifactPreview } from "@/app/components/ArtifactPreview";
 import {
   ResizablePanelGroup,
@@ -24,6 +23,68 @@ import { cn } from "@/lib/utils";
 import type { Artifact } from "@/lib/artifactParser";
 import { parseArtifacts, getStreamingArtifact } from "@/lib/artifactParser";
 import { extractStringFromMessageContent } from "@/app/utils/utils";
+import { Button } from "@/components/ui/button";
+import { RotatingHeadline } from "@/app/components/RotatingHeadline";
+import { PromptInput } from "@/app/components/PromptInput";
+import { FeatureButtons } from "@/app/components/FeatureButtons";
+import { FeatureTemplateGrid } from "@/app/components/FeatureTemplateGrid";
+import { Feature, Template } from "@/data/featureTemplates";
+import { motion, AnimatePresence } from "framer-motion";
+
+interface LandingViewProps {
+  onPromptSubmit: (value: string) => void;
+  onSelectFeature: (feature: Feature | null) => void;
+  selectedFeature: Feature | null;
+}
+
+function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature }: LandingViewProps) {
+  const router = useRouter();
+
+  // Handle template selection
+  const handleSelectTemplate = (template: Template) => {
+    if (selectedFeature?.id === 'image') {
+      router.push(`/image?template=${template.id}`);
+    } else if (selectedFeature?.id === 'video') {
+      router.push(`/video?template=${template.id}`);
+    } else {
+      // For text/chat features, we ideally start a new thread with this template
+      console.log("Selected template:", template);
+      // For now, just reset or maybe pre-fill input?
+      onSelectFeature(null);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[85vh] px-4 w-full max-w-5xl mx-auto space-y-10 animate-in fade-in duration-500">
+      {/* 1. Rotating Headline */}
+      <RotatingHeadline />
+
+      {/* 2. Input Area */}
+      <div className="w-full max-w-2xl space-y-6">
+        <PromptInput
+          placeholder="输入你的任务，或者选择下方功能..."
+          selectedFeature={selectedFeature}
+          onClearFeature={() => onSelectFeature(null)}
+          onSubmit={onPromptSubmit}
+          disabled={false}
+        />
+
+        <FeatureButtons
+          selectedFeature={selectedFeature}
+          onSelectFeature={onSelectFeature}
+        />
+      </div>
+
+      {/* 3. Feature Template Grid (Expandable) */}
+      <div className="w-full min-h-[200px]">
+        <FeatureTemplateGrid
+          feature={selectedFeature}
+          onSelectTemplate={handleSelectTemplate}
+        />
+      </div>
+    </div>
+  );
+}
 
 // Wrapper component to access ChatContext for FilePanel and ArtifactPreview
 function ChatWithFilePanel({
@@ -39,7 +100,8 @@ function ChatWithFilePanel({
   onCloseFilePanel: () => void;
   threadId: string | null;
 }) {
-  const { messages, isLoading, webDevMode } = useChatContext();
+  const { messages, isLoading, webDevMode, sendMessage } = useChatContext();
+  const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
 
   // Selected artifact from inline cards - this is what drives the right panel
   const [selectedArtifact, setSelectedArtifact] = useState<Artifact | null>(null);
@@ -145,10 +207,25 @@ function ChatWithFilePanel({
     setIsSubscribedToStreaming(false);
   }, [threadId]);
 
-  // Determine which right panel to show
+  // Determine view mode
+  const showLandingView = messages.length === 0;
+
+  // Determine right panel visibility
   const showArtifactPreview = webDevMode && selectedArtifact !== null;
   const showFilePanelActual = showFilePanel && !showArtifactPreview;
   const showRightPanel = showArtifactPreview || showFilePanelActual;
+
+  if (showLandingView) {
+    return (
+      <div className="flex-1 overflow-y-auto">
+        <LandingView
+          onPromptSubmit={sendMessage}
+          selectedFeature={selectedFeature}
+          onSelectFeature={setSelectedFeature}
+        />
+      </div>
+    );
+  }
 
   return (
     <ResizablePanelGroup
@@ -199,23 +276,55 @@ function ChatWithFilePanel({
   );
 }
 
-interface HomePageInnerProps {
-  config: StandaloneConfig;
+
+// Mock Login Component until authentic auth flow is integrated (or use real redirect)
+function LoginComponent() {
+  const router = useRouter();
+  useEffect(() => {
+    // In a real app we might redirect automatically:
+    // router.push("/login");
+  }, [router]);
+
+  return (
+    <div className="flex h-screen items-center justify-center">
+      <div className="text-center space-y-4">
+        <h1 className="text-2xl font-bold">Welcome to Mello</h1>
+        <p className="text-muted-foreground">Please sign in to continue</p>
+        <Button onClick={() => router.push("/login")}>Sign In</Button>
+      </div>
+    </div>
+  );
 }
 
-function HomePageInner({ config }: HomePageInnerProps) {
+function HomePageInner() {
   const client = useClient();
   const router = useRouter();
-  const { user, session } = useAuth();
+  const { user, session, loading: authLoading } = useAuth();
   const [threadId, setThreadId] = useQueryState("threadId");
   const [filePanel, setFilePanel] = useQueryState("files");
+
+  // Config state
+  const [config, setConfig] = useState<StandaloneConfig | null>(null);
+  const [configLoading, setConfigLoading] = useState(true);
+  const [assistantId, setAssistantId] = useQueryState("assistantId");
 
   const [mutateThreads, setMutateThreads] = useState<(() => void) | null>(null);
   const [assistant, setAssistant] = useState<Assistant | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
+
+  // Load config
+  useEffect(() => {
+    const savedConfig = getConfig();
+    if (savedConfig) {
+      setConfig(savedConfig);
+      if (!assistantId) {
+        setAssistantId(savedConfig.assistantId);
+      }
+    }
+    setConfigLoading(false);
+  }, [assistantId, setAssistantId]);
 
   // Load thread's model preference when thread changes
   useEffect(() => {
@@ -240,10 +349,7 @@ function HomePageInner({ config }: HomePageInnerProps) {
             setSelectedModel(thread.model_id);
           }
         }
-        // Note: 404 is expected for new threads before DB record is created
-        // (race condition with useChat's createThread), so we silently ignore it
       } catch (error) {
-        // Network errors only - 404s don't throw
         console.error("Failed to load thread model:", error);
       }
     }
@@ -259,39 +365,10 @@ function HomePageInner({ config }: HomePageInnerProps) {
     }
   }, [threadId]);
 
-  // Save model selection to thread via API
-  const handleModelChange = useCallback(async (model: string | null) => {
-    setSelectedModel(model);
-
-    // If we have an active thread, save the model preference to the database
-    if (threadId && config && model) {
-      try {
-        const headers: Record<string, string> = {
-          "Content-Type": "application/json",
-        };
-        if (session?.access_token) {
-          headers["Authorization"] = `Bearer ${session.access_token}`;
-        }
-
-        const response = await fetch(
-          `${config.deploymentUrl}/api/threads/${threadId}`,
-          {
-            method: "PATCH",
-            headers,
-            body: JSON.stringify({ model_id: model }),
-          }
-        );
-
-        if (!response.ok) {
-          console.error("Failed to save thread model preference");
-        }
-      } catch (error) {
-        console.error("Failed to save thread model:", error);
-      }
-    }
-  }, [threadId, config, session?.access_token]);
-
+  // Fetch assistant
   const fetchAssistant = useCallback(async (modelId?: string | null) => {
+    if (!config) return;
+
     // Use selected model as graph ID if available, otherwise fall back to config
     const graphId = modelId || config.assistantId;
 
@@ -349,12 +426,14 @@ function HomePageInner({ config }: HomePageInnerProps) {
         });
       }
     }
-  }, [client, config.assistantId]);
+  }, [client, config]);
 
-  // Fetch assistant when model changes
+  // Fetch assistant when model or config changes
   useEffect(() => {
-    fetchAssistant(selectedModel);
-  }, [fetchAssistant, selectedModel]);
+    if (config) {
+      fetchAssistant(selectedModel);
+    }
+  }, [fetchAssistant, selectedModel, config]);
 
   const handleNewThread = () => {
     if (!user) {
@@ -385,52 +464,57 @@ function HomePageInner({ config }: HomePageInnerProps) {
     setSearchOpen(false);
   };
 
+  // Auth Loading
+  if (authLoading || configLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  // Not Logged In
+  if (!session) {
+    return <LoginComponent />;
+  }
+
+  // No Config
+  if (!config) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold">Configuration Required</h1>
+          <p className="mt-2 text-muted-foreground">
+            Please configure the application using the setup wizard.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <SearchDialog
         open={searchOpen}
         onOpenChange={setSearchOpen}
-        onThreadSelect={handleThreadSelect}
+        onThreadSelect={(id) => { handleThreadSelect(id); }}
       />
       <LibraryDialog
         open={libraryOpen}
         onOpenChange={setLibraryOpen}
       />
-      {/* Model Selector - fixed top left of main content */}
-      <div
-        className={cn(
-          "fixed top-4 z-50 transition-all duration-300",
-          sidebarCollapsed ? "left-20" : "left-76"
-        )}
-        style={{ left: sidebarCollapsed ? "5rem" : "19rem" }}
-      >
-        <ModelSelector
-          selectedModel={selectedModel}
-          onModelChange={handleModelChange}
-        />
-      </div>
-      <div className="flex h-screen">
-        {/* Sidebar - fixed width based on collapsed state */}
-        <div
-          className={cn(
-            "flex-shrink-0 transition-all duration-300",
-            sidebarCollapsed ? "w-16" : "w-72"
-          )}
-        >
-          <AppSidebar
-            onNewThread={handleNewThread}
-            onSearch={handleSearch}
-            onLibrary={handleLibrary}
-            onThreadSelect={handleThreadSelect}
-            onMutateReady={(fn) => setMutateThreads(() => fn)}
-            currentThreadId={threadId}
-            collapsed={sidebarCollapsed}
-            onCollapsedChange={setSidebarCollapsed}
-          />
-        </div>
 
-        {/* Main content area */}
-        <div className="flex-1 min-w-0">
+      <MainLayout
+        sidebarProps={{
+          onNewThread: handleNewThread,
+          onSearch: handleSearch,
+          onLibrary: handleLibrary,
+          onThreadSelect: (id: string) => { handleThreadSelect(id); },
+          onMutateReady: (fn: () => void) => setMutateThreads(() => fn),
+          onInterruptCountChange: undefined
+        }}
+      >
+        <div className="flex h-full flex-col">
           <ChatProvider
             activeAssistant={assistant}
             onHistoryRevalidate={() => mutateThreads?.()}
@@ -444,63 +528,8 @@ function HomePageInner({ config }: HomePageInnerProps) {
             />
           </ChatProvider>
         </div>
-      </div>
+      </MainLayout>
     </>
-  );
-}
-
-function HomePageContent() {
-  const { loading: authLoading, session } = useAuth();
-  const [config, setConfig] = useState<StandaloneConfig | null>(null);
-  const [configLoading, setConfigLoading] = useState(true);
-  const [assistantId, setAssistantId] = useQueryState("assistantId");
-
-  // Load config from environment variables
-  useEffect(() => {
-    const savedConfig = getConfig();
-    if (savedConfig) {
-      setConfig(savedConfig);
-      if (!assistantId) {
-        setAssistantId(savedConfig.assistantId);
-      }
-    }
-    setConfigLoading(false);
-  }, [assistantId, setAssistantId]);
-
-  // Show loading while checking auth or config
-  if (authLoading || configLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <p className="text-muted-foreground">Loading...</p>
-      </div>
-    );
-  }
-
-  // If no config, show error message
-  if (!config) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">Configuration Required</h1>
-          <p className="mt-2 text-muted-foreground">
-            Please set NEXT_PUBLIC_API_URL environment variable
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Example: NEXT_PUBLIC_API_URL=http://localhost:2024
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <ClientProvider
-      deploymentUrl={config.deploymentUrl}
-      apiKey={config.langsmithApiKey || ""}
-      accessToken={session?.access_token}
-    >
-      <HomePageInner config={config} />
-    </ClientProvider>
   );
 }
 
@@ -513,7 +542,8 @@ export default function HomePage() {
         </div>
       }
     >
-      <HomePageContent />
+      <HomePageInner />
     </Suspense>
   );
 }
+
