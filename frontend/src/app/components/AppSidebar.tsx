@@ -59,9 +59,9 @@ export function AppSidebar({
             <>
               <div className="flex items-center gap-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2F6868]">
-                  <span className="text-sm font-bold text-white">DA</span>
+                  <span className="text-sm font-bold text-white">M</span>
                 </div>
-                <span className="font-semibold text-foreground">Data Analyst</span>
+                <span className="font-semibold text-foreground">Mello</span>
               </div>
               <Button
                 variant="ghost"
@@ -81,7 +81,7 @@ export function AppSidebar({
                 >
                   {/* Logo - visible by default, hidden on hover */}
                   <span className="text-sm font-bold text-white transition-opacity duration-200 group-hover:opacity-0">
-                    DA
+                    M
                   </span>
                   {/* Expand icon - hidden by default, visible on hover */}
                   <PanelLeft className="absolute h-4 w-4 text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100" />

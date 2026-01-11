@@ -77,7 +77,7 @@ export default function SharePage() {
                 <header className="flex h-14 items-center justify-between border-b border-border px-6">
                     <Link href="/" className="flex items-center gap-2 font-semibold">
                         <MessageSquare className="h-5 w-5 text-primary" />
-                        <span>Data Analyst</span>
+                        <span>Mello</span>
                     </Link>
                     <div className="flex items-center gap-2">
                         <Button variant="ghost" asChild>
@@ -102,7 +102,7 @@ export default function SharePage() {
                 <header className="flex h-14 items-center justify-between border-b border-border px-6">
                     <Link href="/" className="flex items-center gap-2 font-semibold">
                         <MessageSquare className="h-5 w-5 text-primary" />
-                        <span>Data Analyst</span>
+                        <span>Mello</span>
                     </Link>
                     <div className="flex items-center gap-2">
                         <Button variant="ghost" asChild>
@@ -133,7 +133,7 @@ export default function SharePage() {
             <header className="flex h-14 items-center justify-between border-b border-border px-6">
                 <Link href="/" className="flex items-center gap-2 font-semibold">
                     <MessageSquare className="h-5 w-5 text-primary" />
-                    <span>Data Analyst</span>
+                    <span>Mello</span>
                 </Link>
                 <div className="flex items-center gap-2">
                     <Button variant="ghost" asChild>
