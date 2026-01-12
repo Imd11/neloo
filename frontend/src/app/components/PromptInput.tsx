@@ -12,6 +12,7 @@ interface PromptInputProps {
     selectedFeature?: Feature | null;
     onClearFeature?: () => void;
     disabled?: boolean;
+    onPlusClick?: () => void;
 }
 
 export function PromptInput({
@@ -21,7 +22,8 @@ export function PromptInput({
     className,
     selectedFeature,
     onClearFeature,
-    disabled
+    disabled,
+    onPlusClick
 }: PromptInputProps) {
     const [value, setValue] = useState(initialValue);
     const [isFocused, setIsFocused] = useState(false);
@@ -64,6 +66,7 @@ export function PromptInput({
                     variant="icon"
                     size="icon-sm"
                     className="shrink-0 text-muted-foreground hover:text-foreground"
+                    onClick={onPlusClick}
                 >
                     <Plus className="w-5 h-5" />
                 </Button>
