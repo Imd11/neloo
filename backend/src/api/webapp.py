@@ -2588,8 +2588,11 @@ async def get_shared_conversation(share_id: str):
     # Get messages from LangGraph
     try:
         from langgraph_sdk import get_client
-        config = get_config()
-        client = get_client(url=config["deploymentUrl"])
+        
+        # Use LANGGRAPH_API_URL if set, otherwise use localhost
+        # In LangGraph Platform, the server runs on port 2024 by default
+        langgraph_url = os.environ.get("LANGGRAPH_API_URL", "http://localhost:2024")
+        client = get_client(url=langgraph_url)
         
         # Get thread state which includes messages
         thread_state = await client.threads.get_state(share["thread_id"])
@@ -2612,7 +2615,7 @@ async def get_shared_conversation(share_id: str):
         )
     except Exception as e:
         print(f"[Share] Failed to get messages: {e}")
-        raise HTTPException(status_code=500, detail="Failed to load conversation")
+        raise HTTPException(status_code=500, detail=f"Failed to load conversation: {str(e)}")
 
 
 @app.delete("/api/shares/{share_id}")

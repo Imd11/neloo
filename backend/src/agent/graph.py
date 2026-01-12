@@ -59,7 +59,7 @@ def _get_sandbox_executor():
 # Mello - General Purpose AI Assistant System Prompt
 # =============================================================================
 
-DATA_ANALYST_PROMPT = """You are Mello, a powerful AI assistant capable of solving complex tasks through reasoning and tool use.
+GENERAL_ASSISTANT_PROMPT = """You are Mello, a powerful AI assistant capable of solving complex tasks through reasoning and tool use.
 
 ## Core Capabilities
 
@@ -346,6 +346,54 @@ When writing Python code:
    ```
 
 4. Always copy the EXACT image URL from the tool result - do not modify or reconstruct it.
+"""
+
+# =============================================================================
+# Fortune Telling Mode Prompt (五行算命)
+# =============================================================================
+# This prompt completely replaces the default prompt when user selects "五行算命" feature.
+
+FORTUNE_PROMPT = """你现在是一个中国传统八字命理的专业研究人员。
+
+## 你的专业背景
+
+你熟读以下经典命理著作：
+- 《穷通宝典》、《三命通会》、《滴天髓》、《渊海子平》
+- 《千里命稿》、《协纪辨方书》、《果老星宗》、《子平真诠》、《神峰通考》
+
+## 排大运规则
+
+根据"排大运分阳年、阴年。阳年：甲丙戊庚壬。阴年：乙丁己辛癸，阳年男，阴年女为顺排，阴年男，阳年女为逆排，具体排法以月干支为基准，进行顺逆。小孩交大运前，以月柱干支为大运。"
+
+**十天干**：甲乙丙丁戊己庚辛壬癸
+**十二地支**：子丑寅卯辰巳午未申酉戌亥
+
+## 你的任务
+
+请你以一个专业四柱八字研究者的角色，根据以上我所提到的书籍，及相关四柱八字的书籍和经验，对用户的八字进行全面分析：
+
+1. **格局分析**：确定命格、用神、喜忌
+2. **五行喜忌**：分析五行强弱、喜用神、忌神
+3. **大运分析**：排列大运，分析每步大运吉凶
+4. **流年分析**：分析近年运势走向
+5. **事业运势**：职业发展建议
+6. **财运分析**：财富积累与投资建议
+7. **感情婚姻**：姻缘分析与建议
+8. **健康运势**：身体健康注意事项
+9. **家庭关系**：六亲关系分析
+
+## 输出要求
+
+- 解读既有**专业深度**，又能以**通俗易懂**的方式呈现
+- 使用传统命理术语时，附带简单解释
+- 如果用户提供了"前事验证信息"，请用于微调预测模型
+- 对于不确定的预测，请诚实说明
+
+## 重要提醒
+
+- 这是传统文化知识的学术讨论，仅供参考
+- 命运掌握在自己手中，八字只是参考
+- 重大人生决策应综合多方面因素考虑
 """
 
 # =============================================================================
@@ -1249,9 +1297,11 @@ def build_graph(model_id: str | None = None, mode: str = "default"):
     model = get_model(model_id)
 
     # Build system prompt based on mode
-    system_prompt = DATA_ANALYST_PROMPT
+    system_prompt = GENERAL_ASSISTANT_PROMPT
     if mode == "web-dev":
-        system_prompt = DATA_ANALYST_PROMPT + "\n\n" + WEB_DEV_PROMPT
+        system_prompt = GENERAL_ASSISTANT_PROMPT + "\n\n" + WEB_DEV_PROMPT
+    elif mode == "fortune":
+        system_prompt = FORTUNE_PROMPT  # Complete replacement for fortune telling
 
     # Determine interrupt_on config based on ENABLE_HITL environment variable
     interrupt_on = INTERRUPT_ON_CONFIG if ENABLE_HITL else None
@@ -1279,7 +1329,7 @@ def build_graph(model_id: str | None = None, mode: str = "default"):
 # LangGraph Server will expose these as separate assistants
 def _build_model_graphs() -> dict:
     """
-    Build graphs for each available model, including web-dev variants.
+    Build graphs for each available model, including web-dev and fortune variants.
 
     Returns a dict mapping model_id to compiled graph.
     Only builds graphs for models with configured API keys.
@@ -1287,6 +1337,7 @@ def _build_model_graphs() -> dict:
     For each model, we build:
     - {model_id}: Default mode graph
     - {model_id}-web-dev: Web development mode graph with artifact output
+    - {model_id}-fortune: Fortune telling mode graph (五行算命)
     """
     graphs = {}
     for model_id in AVAILABLE_MODELS.keys():
@@ -1302,6 +1353,11 @@ def _build_model_graphs() -> dict:
                 webdev_id = f"{model_id}-web-dev"
                 graphs[webdev_id] = build_graph(model_id, mode="web-dev")
                 print(f"[graph.py] Built graph for model: {webdev_id}")
+
+                # Build fortune mode graph (五行算命)
+                fortune_id = f"{model_id}-fortune"
+                graphs[fortune_id] = build_graph(model_id, mode="fortune")
+                print(f"[graph.py] Built graph for model: {fortune_id}")
             except Exception as e:
                 print(f"[graph.py] Failed to build graph for {model_id}: {e}")
     return graphs

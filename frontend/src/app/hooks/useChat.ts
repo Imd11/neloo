@@ -47,6 +47,7 @@ export function useChat({
 
   // Web Development mode state
   const [webDevMode, setWebDevMode] = useState(false);
+  const [fortuneMode, setFortuneMode] = useState(false);
   const [threadMode, setThreadMode] = useState<string>("default");
 
   // Track if thread history is unavailable (e.g., LangGraph checkpoint lost after restart)
@@ -213,19 +214,31 @@ export function useChat({
   // Compute the effective web dev mode (either explicitly enabled or from thread mode)
   const isWebDevModeActive = webDevMode || threadMode === "web-dev";
 
-  // Compute the effective assistant ID based on web dev mode
-  // When webDevMode is active, use the -web-dev variant of the graph
+  // Compute the effective fortune mode (either explicitly enabled or from thread mode)
+  const isFortuneModeActive = fortuneMode || threadMode === "fortune";
+
+  // Compute the effective assistant ID based on active mode
+  // Priority: fortune mode > web-dev mode > default
   const effectiveAssistantId = useMemo(() => {
     const baseId = activeAssistant?.graph_id || activeAssistant?.assistant_id || "";
-    // If web dev mode is enabled and we have a base ID, use the web-dev variant
+
+    // Fortune mode takes priority
+    if (isFortuneModeActive && baseId && !baseId.endsWith("-fortune")) {
+      const fortuneId = `${baseId}-fortune`;
+      console.log(`[useChat] Using fortune graph: ${fortuneId}`);
+      return fortuneId;
+    }
+
+    // Then web dev mode
     if (isWebDevModeActive && baseId && !baseId.endsWith("-web-dev")) {
       const webDevId = `${baseId}-web-dev`;
       console.log(`[useChat] Using web-dev graph: ${webDevId}`);
       return webDevId;
     }
+
     console.log(`[useChat] Using default graph: ${baseId}`);
     return baseId;
-  }, [activeAssistant?.graph_id, activeAssistant?.assistant_id, isWebDevModeActive]);
+  }, [activeAssistant?.graph_id, activeAssistant?.assistant_id, isWebDevModeActive, isFortuneModeActive]);
 
   const stream = useStream<StateType>({
     assistantId: effectiveAssistantId,
@@ -458,6 +471,9 @@ export function useChat({
     webDevMode: isWebDevModeActive,
     enableWebDevMode,
     isModeLocked,
+    // Fortune mode (五行算命)
+    fortuneMode: isFortuneModeActive,
+    setFortuneMode,
     // History unavailable flag - true when LangGraph checkpoint was lost
     historyUnavailable,
   };

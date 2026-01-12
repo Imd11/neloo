@@ -26,6 +26,7 @@ import { extractStringFromMessageContent } from "@/app/utils/utils";
 import { Button } from "@/components/ui/button";
 import { RotatingHeadline } from "@/app/components/RotatingHeadline";
 import { PromptInput } from "@/app/components/PromptInput";
+import { TemplatePromptInput } from "@/app/components/TemplatePromptInput";
 import { FeatureButtons } from "@/app/components/FeatureButtons";
 import { FeatureTemplateGrid } from "@/app/components/FeatureTemplateGrid";
 import { Feature, Template } from "@/data/featureTemplates";
@@ -35,10 +36,41 @@ interface LandingViewProps {
   onPromptSubmit: (value: string) => void;
   onSelectFeature: (feature: Feature | null) => void;
   selectedFeature: Feature | null;
+  setFortuneMode: (mode: boolean) => void;
 }
 
-function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature }: LandingViewProps) {
+function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFortuneMode }: LandingViewProps) {
   const router = useRouter();
+
+  // Track selected fortune template ID for prefix injection
+  const [selectedFortuneTemplateId, setSelectedFortuneTemplateId] = useState<number | null>(null);
+
+  // Import fortune template prefix helper
+  const { getFortuneTemplatePrefix } = require('@/data/fortuneTemplatePrefix');
+
+  // Wrapper to add fortune prefix when applicable
+  const handlePromptSubmit = (userInput: string) => {
+    if (selectedFeature?.id === 'fortune') {
+      // Enable fortune mode graph
+      setFortuneMode(true);
+
+      if (selectedFortuneTemplateId) {
+        // Add hidden prefix for fortune templates
+        const prefix = getFortuneTemplatePrefix(selectedFortuneTemplateId);
+        const fullMessage = prefix + userInput;
+        onPromptSubmit(fullMessage);
+      } else {
+        // Fortune mode without specific template (default to full analysis)
+        const defaultPrefix = getFortuneTemplatePrefix(1); // 八字全解
+        const fullMessage = defaultPrefix + userInput;
+        onPromptSubmit(fullMessage);
+      }
+    } else {
+      // Clear fortune mode when not in fortune feature
+      setFortuneMode(false);
+      onPromptSubmit(userInput);
+    }
+  };
 
   // Handle template selection
   const handleSelectTemplate = (template: Template) => {
@@ -46,6 +78,10 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature }: Landi
       router.push(`/image?template=${template.id}`);
     } else if (selectedFeature?.id === 'video') {
       router.push(`/video?template=${template.id}`);
+    } else if (selectedFeature?.id === 'fortune') {
+      // For fortune templates, save the template ID for prefix injection
+      setSelectedFortuneTemplateId(template.id);
+      console.log(`[Fortune] Selected template: ${template.title} (ID: ${template.id})`);
     } else {
       // For text/chat features, we ideally start a new thread with this template
       console.log("Selected template:", template);
@@ -61,13 +97,23 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature }: Landi
 
       {/* 2. Input Area */}
       <div className="w-full max-w-3xl space-y-6">
-        <PromptInput
-          placeholder="描述你想要创建的内容..."
-          selectedFeature={selectedFeature}
-          onClearFeature={() => onSelectFeature(null)}
-          onSubmit={onPromptSubmit}
-          disabled={false}
-        />
+        {/* 根据 fortune 模式切换输入组件 */}
+        {selectedFeature?.id === 'fortune' ? (
+          <TemplatePromptInput
+            placeholder="描述你想要创建的内容..."
+            selectedFeature={selectedFeature}
+            onClearFeature={() => onSelectFeature(null)}
+            onSubmit={handlePromptSubmit}
+          />
+        ) : (
+          <PromptInput
+            placeholder="描述你想要创建的内容..."
+            selectedFeature={selectedFeature}
+            onClearFeature={() => onSelectFeature(null)}
+            onSubmit={handlePromptSubmit}
+            disabled={false}
+          />
+        )}
 
         <FeatureButtons
           selectedFeature={selectedFeature}
@@ -100,7 +146,7 @@ function ChatWithFilePanel({
   onCloseFilePanel: () => void;
   threadId: string | null;
 }) {
-  const { messages, isLoading, webDevMode, sendMessage } = useChatContext();
+  const { messages, isLoading, webDevMode, sendMessage, setFortuneMode } = useChatContext();
   const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
 
   // Selected artifact from inline cards - this is what drives the right panel
@@ -222,6 +268,7 @@ function ChatWithFilePanel({
           onPromptSubmit={sendMessage}
           selectedFeature={selectedFeature}
           onSelectFeature={setSelectedFeature}
+          setFortuneMode={setFortuneMode}
         />
       </div>
     );
@@ -306,7 +353,7 @@ function HomePageInner() {
   // Config state
   const [config, setConfig] = useState<StandaloneConfig | null>(null);
   const [configLoading, setConfigLoading] = useState(true);
-  const [assistantId, setAssistantId] = useQueryState("assistantId");
+  // assistantId is now derived from config directly, not stored in URL
 
   const [mutateThreads, setMutateThreads] = useState<(() => void) | null>(null);
   const [assistant, setAssistant] = useState<Assistant | null>(null);
@@ -319,12 +366,9 @@ function HomePageInner() {
     const savedConfig = getConfig();
     if (savedConfig) {
       setConfig(savedConfig);
-      if (!assistantId) {
-        setAssistantId(savedConfig.assistantId);
-      }
     }
     setConfigLoading(false);
-  }, [assistantId, setAssistantId]);
+  }, []);
 
   // Load thread's model preference when thread changes
   useEffect(() => {

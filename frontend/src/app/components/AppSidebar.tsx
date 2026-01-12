@@ -56,7 +56,7 @@ const navItems = [
   { icon: Search, label: "搜索", path: null, action: "search" },
   { icon: Image, label: "生图", path: "/image" },
   { icon: Video, label: "生视频", path: "/video" },
-  { icon: FolderOpen, label: "库", path: "/library" },
+  { icon: FolderOpen, label: "库", path: null, action: "library" },
 ];
 
 export interface AppSidebarProps {
@@ -208,8 +208,8 @@ export function AppSidebar({
       if (pathname !== "/") router.push("/");
     } else if (item.action === "search") {
       onSearch?.();
-    } else if (item.path) {
-      if (item.label === "库") onLibrary?.();
+    } else if (item.action === "library") {
+      onLibrary?.();
     }
   };
 
