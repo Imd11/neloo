@@ -11,6 +11,12 @@ import React, {
 } from "react";
 import { Button } from "@/components/ui/button";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Square,
   ArrowUp,
   CheckCircle,
@@ -19,6 +25,11 @@ import {
   FileIcon,
   AlertCircle,
   FolderOpen,
+  Plus,
+  X,
+  Upload,
+  Loader2,
+  Mic,
 } from "lucide-react";
 import { ChatMessage } from "@/app/components/ChatMessage";
 import { TaskCard } from "@/app/components/ui/agentic/TaskCard";
@@ -95,7 +106,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
 }) => {
   const [metaOpen, setMetaOpen] = useState<"tasks" | "files" | null>(null);
   const tasksContainerRef = useRef<HTMLDivElement | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const [libraryDialogOpen, setLibraryDialogOpen] = useState(false);
 
   // Suggested follow-up questions state
@@ -410,7 +421,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
   const handleSuggestionClick = useCallback((question: string) => {
     setInput(question);
     setSuggestedQuestions([]);
-    textareaRef.current?.focus();
+    inputRef.current?.focus();
   }, []);
 
   // Handle files selected from library
@@ -1027,88 +1038,120 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                 onChange={handleFileInputChange}
                 className="hidden"
               />
-              {/* Input area with optional web-dev mode tag */}
-              <div className="flex items-start gap-2 px-4 pt-4 pb-0">
-                {/* Web Dev Mode Tag - shown when enabled, like ANYAI */}
+
+              {/* Single-line input layout like AnyAI: + | [tag] | input | mic | send */}
+              <div className="flex items-center gap-2 px-4 py-3">
+                {/* Plus Button with Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="icon"
+                      size="icon-sm"
+                      className="shrink-0 text-muted-foreground hover:text-foreground"
+                      disabled={isLoading}
+                    >
+                      {fileUpload.isUploading || fileUpload.isImporting ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <Plus className="h-5 w-5" />
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-48">
+                    <DropdownMenuItem onClick={() => fileUpload.inputRef.current?.click()}>
+                      <Upload className="h-4 w-4 mr-2" />
+                      <span>上传文件</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setLibraryDialogOpen(true)}>
+                      <FolderOpen className="h-4 w-4 mr-2" />
+                      <span>从库中选择</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Web Dev Mode Tag - shown when enabled */}
                 {webDevMode && (
                   <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium shrink-0 bg-blue-500/15 text-blue-600 dark:text-blue-400">
                     <span>网页开发</span>
-                    {!isModeLocked && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          // Clear web dev mode - need to implement this
-                          // For now, this is visual only since mode is locked after first message
-                        }}
-                        className="flex items-center justify-center w-4 h-4 rounded-full hover:bg-current/25 hover:scale-125 active:scale-95 transition-all duration-150"
-                      >
-                        <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M18 6L6 18M6 6l12 12" />
-                        </svg>
-                      </button>
-                    )}
                   </div>
                 )}
-                <textarea
-                  ref={textareaRef}
+
+                {/* File chips - show uploaded files inline */}
+                {fileUpload.files.map((file) => (
+                  <div
+                    key={file.id}
+                    className="flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-muted/50 border shrink-0"
+                  >
+                    <span className="max-w-[80px] truncate">{file.file.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => fileUpload.removeFile(file.id)}
+                      className="p-0.5 rounded-full hover:bg-muted"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+
+                {/* Input Field */}
+                <input
+                  ref={inputRef}
+                  type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      if (input.trim() && !isLoading) {
+                        handleSubmit();
+                      }
+                    }
+                  }}
                   placeholder={
                     isLoading
                       ? "Running..."
                       : webDevMode
                         ? "描述你想要开发的网页..."
-                        : "Write your message..."
+                        : "继续对话..."
                   }
-                  className="font-inherit field-sizing-content flex-1 resize-none border-0 bg-transparent pb-0 text-sm leading-7 text-foreground outline-none placeholder:text-muted-foreground min-h-[40px] max-h-[200px]"
-                  rows={1}
+                  disabled={isLoading}
+                  className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground text-base leading-5 outline-none min-w-0"
                 />
-              </div>
-              <div className="flex justify-between items-center gap-2 px-2 pb-2">
-                {/* Left: Actions */}
-                <div className="flex items-center gap-1">
-                  <DataFileUpload
-                    files={fileUpload.files}
-                    onRemoveFile={fileUpload.removeFile}
-                    onTriggerSelect={() => fileUpload.inputRef.current?.click()}
-                    onTriggerLibrary={() => setLibraryDialogOpen(true)}
-                    isUploading={fileUpload.isUploading}
-                    isImporting={fileUpload.isImporting}
-                  />
-                  {/* FilePanel button - show when there's a thread OR local files */}
-                  {(showFilePanelButton || hasUploadFiles) && onOpenFilePanel && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={onOpenFilePanel}
-                      className="h-9 w-9 text-muted-foreground hover:text-foreground rounded-full hover:bg-muted"
-                      title="View files"
-                    >
-                      <FolderOpen size={18} />
-                    </Button>
-                  )}
-                  {/* Web Development Mode toggle removed - now controlled via homepage */}
-                </div>
 
-                {/* Right: Send/Stop Button */}
-                <div className="flex justify-end gap-2">
+                {/* Voice Button */}
+                <Button
+                  type="button"
+                  variant="icon"
+                  size="icon-sm"
+                  className="shrink-0 text-muted-foreground hover:text-foreground"
+                  disabled={isLoading}
+                >
+                  <Mic className="h-5 w-5" />
+                </Button>
+
+                {/* Send/Stop Button */}
+                {isLoading ? (
                   <Button
-                    type={isLoading ? "button" : "submit"}
+                    type="button"
                     variant="send"
                     size="icon-sm"
-                    onClick={isLoading ? stopStream : undefined}
-                    disabled={!isLoading && (submitDisabled || !input.trim())}
+                    onClick={stopStream}
                     className="shrink-0"
                   >
-                    {isLoading ? (
-                      <Square className="h-3 h-3 fill-current" />
-                    ) : (
-                      <ArrowUp className="h-4 w-4" />
-                    )}
+                    <Square className="h-3 w-3 fill-current" />
                   </Button>
-                </div>
+                ) : (
+                  <Button
+                    type="submit"
+                    variant="send"
+                    size="icon-sm"
+                    disabled={submitDisabled || !input.trim()}
+                    className="shrink-0"
+                  >
+                    <ArrowUp className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </form>
           </div>
