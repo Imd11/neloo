@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { ChevronDown, Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,14 +8,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
+// Ratio options matching tu-zi API size parameter
 const ratios = [
-    { label: "1:1", value: "1:1" },
-    { label: "16:9", value: "16:9" },
-    { label: "9:16", value: "9:16" },
-    { label: "4:3", value: "4:3" },
-    { label: "3:4", value: "3:4" },
-    { label: "自定义", value: "custom" },
+    { label: "自动", value: "auto" },
+    { label: "1:1", value: "1x1" },
+    { label: "16:9", value: "16x9" },
+    { label: "9:16", value: "9x16" },
+    { label: "4:3", value: "4x3" },
+    { label: "3:4", value: "3x4" },
 ];
+export type ImageRatio = "auto" | "1x1" | "16x9" | "9x16" | "4x3" | "3x4";
 
 // Resolution options matching backend MODEL_MAP
 const resolutions = [
@@ -27,15 +28,20 @@ const resolutions = [
 export type Resolution = "1k" | "2k" | "4k";
 
 interface ImageConfigBarProps {
+    ratio?: ImageRatio;
+    onRatioChange?: (ratio: ImageRatio) => void;
     resolution?: Resolution;
     onResolutionChange?: (resolution: Resolution) => void;
 }
 
-export function ImageConfigBar({ resolution = "1k", onResolutionChange }: ImageConfigBarProps) {
-    const [selectedRatio, setSelectedRatio] = useState("1:1");
+export function ImageConfigBar({
+    ratio = "auto",
+    onRatioChange,
+    resolution = "1k",
+    onResolutionChange
+}: ImageConfigBarProps) {
+    const selectedRatio = ratios.find(r => r.value === ratio) || ratios[0];
     const selectedResolution = resolutions.find(r => r.value === resolution) || resolutions[0];
-    const [customWidth, setCustomWidth] = useState("");
-    const [customHeight, setCustomHeight] = useState("");
 
     return (
         <div className="flex flex-wrap items-center gap-3 justify-center">
@@ -47,7 +53,7 @@ export function ImageConfigBar({ resolution = "1k", onResolutionChange }: ImageC
                         size="sm"
                         className="gap-2 bg-input-bg border-border hover:bg-hover-bg"
                     >
-                        比例: {selectedRatio}
+                        比例: {selectedRatio.label}
                         <ChevronDown className="w-4 h-4" />
                     </Button>
                 </DropdownMenuTrigger>
@@ -55,45 +61,24 @@ export function ImageConfigBar({ resolution = "1k", onResolutionChange }: ImageC
                     align="start"
                     className="bg-popover border-border min-w-32"
                 >
-                    {ratios.map((ratio) => (
+                    {ratios.map((r) => (
                         <DropdownMenuItem
-                            key={ratio.value}
-                            onClick={() => setSelectedRatio(ratio.value)}
+                            key={r.value}
+                            onClick={() => onRatioChange?.(r.value as ImageRatio)}
                             className={cn(
                                 "flex items-center justify-between cursor-pointer",
                                 "text-foreground hover:bg-hover-bg focus:bg-hover-bg",
-                                selectedRatio === ratio.value && "bg-accent"
+                                selectedRatio.value === r.value && "bg-accent"
                             )}
                         >
-                            {ratio.label}
-                            {selectedRatio === ratio.value && (
+                            {r.label}
+                            {selectedRatio.value === r.value && (
                                 <Check className="w-4 h-4" />
                             )}
                         </DropdownMenuItem>
                     ))}
                 </DropdownMenuContent>
             </DropdownMenu>
-
-            {/* Custom Size Input (shown when custom is selected) */}
-            {selectedRatio === "custom" && (
-                <div className="flex items-center gap-2">
-                    <input
-                        type="number"
-                        placeholder="宽"
-                        value={customWidth}
-                        onChange={(e) => setCustomWidth(e.target.value)}
-                        className="w-16 px-2 py-1.5 text-sm bg-input-bg border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                    />
-                    <span className="text-muted-foreground">×</span>
-                    <input
-                        type="number"
-                        placeholder="高"
-                        value={customHeight}
-                        onChange={(e) => setCustomHeight(e.target.value)}
-                        className="w-16 px-2 py-1.5 text-sm bg-input-bg border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                    />
-                </div>
-            )}
 
             {/* Resolution Selector (model is now in TopBar) */}
             <DropdownMenu>

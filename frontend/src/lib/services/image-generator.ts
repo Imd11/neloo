@@ -14,6 +14,7 @@ const MODEL_MAP: Record<string, string> = {
 };
 
 export type ResolutionTier = "1k" | "2k" | "4k";
+export type ImageSize = "1x1" | "16x9" | "9x16" | "4x3" | "3x4" | "2x3" | "3x2" | "4x5" | "5x4" | "21x9" | undefined;
 
 type NormalizedImage = {
     base64Data?: string;
@@ -79,6 +80,7 @@ export async function generateImage(
     prompt: string,
     apiKey: string,
     resolution: ResolutionTier = "1k",
+    size: ImageSize = "1x1",
     options: GenerationOptions = {},
     timeoutMs = 120000
 ): Promise<string[] | null> {
@@ -107,6 +109,7 @@ export async function generateImage(
             prompt: attemptPrompt,
             n: options.expectCount || 1,
             response_format: "url",
+            ...(size && { size }),
             ...(resolution ? { quality: resolution } : {})
         };
     };

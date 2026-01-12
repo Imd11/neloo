@@ -42,8 +42,10 @@ function VideoPageContent() {
             {/* Top Section - Centered Content */}
             <div className="flex-1 flex flex-col items-center px-6">
                 <div className="w-full max-w-4xl flex flex-col items-center gap-8 pt-[20vh]">
-                    {/* Headline */}
-                    <h1 className="text-3xl font-semibold">AI 视频生成</h1>
+                    {/* Rotating Headline */}
+                    <div>
+                        <RotatingHeadline />
+                    </div>
 
                     {/* Prompt Input */}
                     <div className="w-full max-w-3xl mx-auto">
@@ -51,14 +53,6 @@ function VideoPageContent() {
                             placeholder="描述你要生成的视频..."
                             initialValue={initialPrompt}
                             onSubmit={handleSubmit}
-                            selectedFeature={{
-                                id: 'video',
-                                title: 'Video',
-                                description: '',
-                                icon: '',
-                                templates: [],
-                                placeholder: ''
-                            }} // Mock
                         />
                     </div>
                 </div>

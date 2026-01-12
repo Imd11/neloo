@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateImage, ResolutionTier } from "@/lib/services/image-generator";
+import { generateImage, ResolutionTier, ImageSize } from "@/lib/services/image-generator";
 
 export const maxDuration = 120;
 
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { prompt, resolution = "1k" } = body;
+        const { prompt, resolution = "1k", size = "1x1" } = body;
 
         if (!prompt || typeof prompt !== "string") {
             return NextResponse.json(
@@ -27,7 +27,8 @@ export async function POST(req: NextRequest) {
         const images = await generateImage(
             prompt,
             apiKey,
-            resolution as ResolutionTier
+            resolution as ResolutionTier,
+            size as ImageSize
         );
 
         if (!images || images.length === 0) {

@@ -1,26 +1,10 @@
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/providers/AuthProvider";
-import { ThemeProvider } from "@/providers/ThemeProvider";
+import { ThemeProvider } from "next-themes";
 import { AppProviders } from "@/providers/AppProviders";
 import { LanguageProvider } from "@/providers/LanguageProvider";
 import "./globals.css";
-
-// Script to set theme before React hydration to prevent flash
-const themeScript = `
-(function() {
-  try {
-    var theme = localStorage.getItem('data-analyst-theme');
-    if (theme === 'light') {
-      document.documentElement.classList.remove('dark');
-    } else {
-      document.documentElement.classList.add('dark');
-    }
-  } catch (e) {
-    document.documentElement.classList.add('dark');
-  }
-})();
-`;
 
 export default function RootLayout({
   children,
@@ -30,24 +14,26 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className="dark"
       suppressHydrationWarning
     >
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-      </head>
+      <head />
       <body
         suppressHydrationWarning
       >
-        <LanguageProvider>
-          <ThemeProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <LanguageProvider>
             <AuthProvider>
               <AppProviders>
                 <NuqsAdapter>{children}</NuqsAdapter>
               </AppProviders>
             </AuthProvider>
-          </ThemeProvider>
-        </LanguageProvider>
+          </LanguageProvider>
+        </ThemeProvider>
         <Toaster />
       </body>
     </html>

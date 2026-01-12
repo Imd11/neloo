@@ -57,7 +57,19 @@ const CHAT_MODELS: ModelInfo[] = [
 ];
 
 // Logos that need dark background/inversion in light mode
-const LIGHT_LOGOS = ["/logos/openai.png", "/logos/grok.png", "/logos/kimi.png", "/logos/midjourney.png"];
+const LIGHT_LOGOS = ["/logos/openai.png", "/logos/grok.png", "/logos/kimi.png", "/logos/midjourney.png", "/logos/sora.png", "/logos/runway.png", "/logos/pika.png", "/logos/luma.png", "/logos/hailuo.png", "/logos/vidu.png"];
+
+// Video generation models
+const VIDEO_MODELS: ModelInfo[] = [
+    { id: "kling", name: "可灵 AI", logo: "/logos/kling.png", provider: "Kuaishou" },
+    { id: "sora", name: "Sora", logo: "/logos/sora.png", provider: "OpenAI" },
+    { id: "runway-gen3", name: "Runway Gen-3", logo: "/logos/runway.png", provider: "Runway" },
+    { id: "pika", name: "Pika", logo: "/logos/pika.png", provider: "Pika Labs" },
+    { id: "luma", name: "Luma Dream Machine", logo: "/logos/luma.png", provider: "Luma AI" },
+    { id: "hailuo", name: "海螺 AI", logo: "/logos/hailuo.png", provider: "MiniMax" },
+    { id: "jimeng", name: "即梦", logo: "/logos/jimeng.png", provider: "ByteDance" },
+    { id: "vidu", name: "Vidu", logo: "/logos/vidu.png", provider: "Shengshu AI" },
+];
 
 interface TopBarProps {
     hideUserActions?: boolean;
@@ -68,14 +80,18 @@ interface TopBarProps {
 export function TopBar({ hideUserActions = false, currentModelId, onModelSelect }: TopBarProps) {
     const { toggle, collapsed, isMobile } = useSidebar();
     const [searchQuery, setSearchQuery] = useState("");
+    const pathname = usePathname();
+
+    const isImagePage = pathname === "/image";
+    const isVideoPage = pathname === "/video";
+
+    // Select model list based on current page
+    const models = isVideoPage ? VIDEO_MODELS : CHAT_MODELS;
 
     // Derived state from props or default
-    const currentModel = CHAT_MODELS.find(m => m.id === currentModelId) || CHAT_MODELS[0];
+    const currentModel = models.find(m => m.id === currentModelId) || models[0];
 
-    const pathname = usePathname();
-    const isImagePage = pathname === "/image";
-
-    const filteredModels = CHAT_MODELS.filter((model) =>
+    const filteredModels = models.filter((model) =>
         model.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 

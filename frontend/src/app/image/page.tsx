@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquarePlus, ChevronDown, Check, Search } from "lucide-react";
 import { RotatingHeadline } from "@/app/components/RotatingHeadline";
 import { PromptInput } from "@/app/components/PromptInput";
-import { ImageConfigBar, Resolution } from "@/app/components/ImageConfigBar";
+import { ImageConfigBar, Resolution, ImageRatio } from "@/app/components/ImageConfigBar";
 import { TabbedTemplateGrid } from "@/app/components/TabbedTemplateGrid";
 import { ImageChatPanel } from "@/app/components/chat/ImageChatPanel";
 import { ImageCanvas } from "@/app/components/canvas/ImageCanvas";
@@ -49,17 +49,18 @@ const lightLogos = [openaiLogo, midjourneyLogo];
 interface ModelInfo {
     name: string;
     logo: typeof nanoBananaLogo;
+    available: boolean; // true = 可用, false = 即将上线
 }
 
 const imageModels: ModelInfo[] = [
-    { name: "Nano Banana", logo: nanoBananaLogo },
-    { name: "可灵 AI", logo: klingLogo },
-    { name: "即梦", logo: jimengLogo },
-    { name: "Midjourney", logo: midjourneyLogo },
-    { name: "DALL·E 3", logo: openaiLogo },
-    { name: "Stable Diffusion", logo: stabilityLogo },
-    { name: "MiniMax", logo: minimaxLogo },
-    { name: "通义万相", logo: qwenLogo },
+    { name: "Nano Banana", logo: nanoBananaLogo, available: true },
+    { name: "可灵 AI", logo: klingLogo, available: false },
+    { name: "即梦", logo: jimengLogo, available: false },
+    { name: "Midjourney", logo: midjourneyLogo, available: false },
+    { name: "DALL·E 3", logo: openaiLogo, available: false },
+    { name: "Stable Diffusion", logo: stabilityLogo, available: false },
+    { name: "MiniMax", logo: minimaxLogo, available: false },
+    { name: "通义万相", logo: qwenLogo, available: false },
 ];
 
 function ImagePageContent() {
@@ -70,6 +71,7 @@ function ImagePageContent() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [imageModel, setImageModel] = useState<ModelInfo>(imageModels[0]);
     const [resolution, setResolution] = useState<Resolution>("1k");
+    const [ratio, setRatio] = useState<ImageRatio>("auto");
     const [searchQuery, setSearchQuery] = useState("");
     const [flyingImage, setFlyingImage] = useState<{
         id: string;
@@ -122,7 +124,8 @@ function ImagePageContent() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     prompt: value,
-                    resolution: resolution
+                    resolution: resolution,
+                    ...(ratio !== "auto" && { size: ratio })
                 })
             });
 
@@ -241,6 +244,8 @@ function ImagePageContent() {
                                 {/* Prompt Input */}
                                 <div className="w-full max-w-3xl mx-auto flex flex-col items-center gap-4">
                                     <ImageConfigBar
+                                        ratio={ratio}
+                                        onRatioChange={setRatio}
                                         resolution={resolution}
                                         onResolutionChange={setResolution}
                                     />
@@ -324,13 +329,18 @@ function ImagePageContent() {
                                                     {filteredModels.map((model) => (
                                                         <DropdownMenuItem
                                                             key={model.name}
+                                                            disabled={!model.available}
                                                             onClick={() => {
-                                                                setImageModel(model);
-                                                                setSearchQuery("");
+                                                                if (model.available) {
+                                                                    setImageModel(model);
+                                                                    setSearchQuery("");
+                                                                }
                                                             }}
                                                             className={cn(
                                                                 "flex items-center gap-2 cursor-pointer rounded-md",
-                                                                "text-foreground hover:bg-hover-bg focus:bg-hover-bg",
+                                                                model.available
+                                                                    ? "text-foreground hover:bg-hover-bg focus:bg-hover-bg"
+                                                                    : "text-muted-foreground cursor-not-allowed opacity-60",
                                                                 imageModel.name === model.name && "bg-accent"
                                                             )}
                                                         >
@@ -338,7 +348,10 @@ function ImagePageContent() {
                                                                 <img src={model.logo.src} alt="" className="w-4 h-4 object-contain" />
                                                             </span>
                                                             <span className="text-sm flex-1">{model.name}</span>
-                                                            {imageModel.name === model.name && (
+                                                            {!model.available && (
+                                                                <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">即将上线</span>
+                                                            )}
+                                                            {imageModel.name === model.name && model.available && (
                                                                 <Check className="w-4 h-4 text-foreground flex-shrink-0" />
                                                             )}
                                                         </DropdownMenuItem>
