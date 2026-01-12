@@ -31,38 +31,39 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useLanguage, LOCALE_NAMES, type Locale, SUPPORTED_LOCALES } from "@/providers/LanguageProvider";
 
 interface SettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-const settingsTabs = [
-  { id: "general", label: "常规", icon: Settings },
-  { id: "notifications", label: "通知", icon: Bell },
-  { id: "personalization", label: "个性化", icon: Palette },
-  { id: "privacy", label: "隐私与安全", icon: Shield },
-  { id: "data", label: "数据管理", icon: Database },
-  { id: "help", label: "获取帮助", icon: HelpCircle },
-];
-
 type ThemeOption = "light" | "dark" | "system";
-
-const themeOptions: { value: ThemeOption; label: string; icon: typeof Sun }[] = [
-  { value: "light", label: "浅色", icon: Sun },
-  { value: "dark", label: "深色", icon: Moon },
-  { value: "system", label: "跟随系统", icon: Monitor },
-];
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [activeTab, setActiveTab] = useState("general");
   const { theme, setTheme } = useTheme();
-  const [language, setLanguage] = useState("zh-CN");
+  const { locale, setLocale, t } = useLanguage();
   const [notifications, setNotifications] = useState({
     email: true,
     push: false,
     updates: true,
   });
+
+  const settingsTabs = [
+    { id: "general", label: t("settings.general"), icon: Settings },
+    { id: "notifications", label: t("settings.notifications"), icon: Bell },
+    { id: "personalization", label: t("settings.personalization"), icon: Palette },
+    { id: "privacy", label: t("settings.privacy"), icon: Shield },
+    { id: "data", label: t("settings.data"), icon: Database },
+    { id: "help", label: t("settings.help"), icon: HelpCircle },
+  ];
+
+  const themeOptions: { value: ThemeOption; label: string; icon: typeof Sun }[] = [
+    { value: "light", label: t("settings.theme_light"), icon: Sun },
+    { value: "dark", label: t("settings.theme_dark"), icon: Moon },
+    { value: "system", label: t("settings.theme_system"), icon: Monitor },
+  ];
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -70,12 +71,12 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-medium text-foreground mb-4">常规</h3>
+              <h3 className="text-lg font-medium text-foreground mb-4">{t("settings.general")}</h3>
 
               {/* Theme Selector */}
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm text-foreground mb-3 block">外观</label>
+                  <label className="text-sm text-foreground mb-3 block">{t("settings.appearance")}</label>
                   <div className="flex gap-3">
                     {themeOptions.map((option) => (
                       <button
@@ -121,17 +122,18 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 {/* Language Selector */}
                 <div className="flex items-center justify-between py-3 border-t border-border">
                   <div>
-                    <label className="text-sm text-foreground">语言</label>
+                    <label className="text-sm text-foreground">{t("settings.language")}</label>
                   </div>
-                  <Select value={language} onValueChange={setLanguage}>
+                  <Select value={locale} onValueChange={(value) => setLocale(value as Locale)}>
                     <SelectTrigger className="w-40 bg-card">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-popover border-border">
-                      <SelectItem value="zh-CN">简体中文</SelectItem>
-                      <SelectItem value="zh-TW">繁體中文</SelectItem>
-                      <SelectItem value="en">English</SelectItem>
-                      <SelectItem value="ja">日本語</SelectItem>
+                      {SUPPORTED_LOCALES.map((loc) => (
+                        <SelectItem key={loc} value={loc}>
+                          {LOCALE_NAMES[loc]}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -143,14 +145,14 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       case "notifications":
         return (
           <div className="space-y-6">
-            <h3 className="text-lg font-medium text-foreground mb-4">通知</h3>
+            <h3 className="text-lg font-medium text-foreground mb-4">{t("settings.notifications")}</h3>
 
             <div className="space-y-4">
               <div className="flex items-center justify-between py-3 border-b border-border">
                 <div>
-                  <p className="text-sm text-foreground">邮件通知</p>
+                  <p className="text-sm text-foreground">{t("settings.email_notifications")}</p>
                   <p className="text-xs text-muted-foreground">
-                    接收重要更新的邮件通知
+                    {t("settings.email_notifications_desc")}
                   </p>
                 </div>
                 <Switch
@@ -163,9 +165,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
               <div className="flex items-center justify-between py-3 border-b border-border">
                 <div>
-                  <p className="text-sm text-foreground">推送通知</p>
+                  <p className="text-sm text-foreground">{t("settings.push_notifications")}</p>
                   <p className="text-xs text-muted-foreground">
-                    在浏览器中接收推送通知
+                    {t("settings.push_notifications_desc")}
                   </p>
                 </div>
                 <Switch
@@ -178,9 +180,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
               <div className="flex items-center justify-between py-3 border-b border-border">
                 <div>
-                  <p className="text-sm text-foreground">产品更新</p>
+                  <p className="text-sm text-foreground">{t("settings.product_updates")}</p>
                   <p className="text-xs text-muted-foreground">
-                    接收新功能和改进的通知
+                    {t("settings.product_updates_desc")}
                   </p>
                 </div>
                 <Switch
@@ -198,15 +200,15 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         return (
           <div className="space-y-6">
             <h3 className="text-lg font-medium text-foreground mb-4">
-              个性化
+              {t("settings.personalization")}
             </h3>
 
             <div className="space-y-4">
               <div className="flex items-center justify-between py-3 border-b border-border">
                 <div>
-                  <p className="text-sm text-foreground">接收独家内容</p>
+                  <p className="text-sm text-foreground">{t("settings.exclusive_content")}</p>
                   <p className="text-xs text-muted-foreground">
-                    获取独家优惠、活动更新、优秀案例示例和新功能指南
+                    {t("settings.exclusive_content_desc")}
                   </p>
                 </div>
                 <Switch defaultChecked />
@@ -214,9 +216,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
               <div className="flex items-center justify-between py-3 border-b border-border">
                 <div>
-                  <p className="text-sm text-foreground">任务完成通知</p>
+                  <p className="text-sm text-foreground">{t("settings.task_notifications")}</p>
                   <p className="text-xs text-muted-foreground">
-                    当任务完成排队并开始处理时发送通知
+                    {t("settings.task_notifications_desc")}
                   </p>
                 </div>
                 <Switch defaultChecked />
@@ -224,9 +226,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
               <div className="flex items-center justify-between py-3 border-b border-border">
                 <div>
-                  <p className="text-sm text-foreground">显示所有模型</p>
+                  <p className="text-sm text-foreground">{t("settings.show_all_models")}</p>
                   <p className="text-xs text-muted-foreground">
-                    在模型选择器中显示所有可用模型
+                    {t("settings.show_all_models_desc")}
                   </p>
                 </div>
                 <Switch defaultChecked />
@@ -239,15 +241,15 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         return (
           <div className="space-y-6">
             <h3 className="text-lg font-medium text-foreground mb-4">
-              隐私与安全
+              {t("settings.privacy")}
             </h3>
 
             <div className="space-y-4">
               <div className="flex items-center justify-between py-3 border-b border-border">
                 <div>
-                  <p className="text-sm text-foreground">数据收集</p>
+                  <p className="text-sm text-foreground">{t("settings.data_collection")}</p>
                   <p className="text-xs text-muted-foreground">
-                    允许收集使用数据以改进服务
+                    {t("settings.data_collection_desc")}
                   </p>
                 </div>
                 <Switch />
@@ -255,9 +257,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
               <div className="flex items-center justify-between py-3 border-b border-border">
                 <div>
-                  <p className="text-sm text-foreground">对话历史</p>
+                  <p className="text-sm text-foreground">{t("settings.conversation_history")}</p>
                   <p className="text-xs text-muted-foreground">
-                    保存对话历史记录
+                    {t("settings.conversation_history_desc")}
                   </p>
                 </div>
                 <Switch defaultChecked />
@@ -265,10 +267,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
               <div className="flex items-center justify-between py-3">
                 <div>
-                  <p className="text-sm text-foreground">管理 Cookies</p>
+                  <p className="text-sm text-foreground">{t("settings.manage_cookies")}</p>
                 </div>
                 <Button variant="outline" size="sm">
-                  管理
+                  {t("settings.manage")}
                 </Button>
               </div>
             </div>
@@ -279,27 +281,27 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         return (
           <div className="space-y-6">
             <h3 className="text-lg font-medium text-foreground mb-4">
-              数据管理
+              {t("settings.data")}
             </h3>
 
             <div className="space-y-4">
               <div className="flex items-center justify-between py-3 border-b border-border">
                 <div>
-                  <p className="text-sm text-foreground">导出数据</p>
+                  <p className="text-sm text-foreground">{t("settings.export_data")}</p>
                   <p className="text-xs text-muted-foreground">
-                    下载您的所有对话和数据
+                    {t("settings.export_data_desc")}
                   </p>
                 </div>
                 <Button variant="outline" size="sm">
-                  导出
+                  {t("settings.export")}
                 </Button>
               </div>
 
               <div className="flex items-center justify-between py-3 border-b border-border">
                 <div>
-                  <p className="text-sm text-foreground">清除对话历史</p>
+                  <p className="text-sm text-foreground">{t("settings.clear_history")}</p>
                   <p className="text-xs text-muted-foreground">
-                    删除所有保存的对话记录
+                    {t("settings.clear_history_desc")}
                   </p>
                 </div>
                 <Button
@@ -307,15 +309,15 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   size="sm"
                   className="text-destructive hover:text-destructive"
                 >
-                  清除
+                  {t("settings.clear")}
                 </Button>
               </div>
 
               <div className="flex items-center justify-between py-3">
                 <div>
-                  <p className="text-sm text-foreground">删除账户</p>
+                  <p className="text-sm text-foreground">{t("settings.delete_account")}</p>
                   <p className="text-xs text-muted-foreground">
-                    永久删除您的账户和所有数据
+                    {t("settings.delete_account_desc")}
                   </p>
                 </div>
                 <Button
@@ -323,7 +325,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   size="sm"
                   className="text-destructive hover:text-destructive"
                 >
-                  删除
+                  {t("common.delete")}
                 </Button>
               </div>
             </div>
@@ -334,7 +336,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         return (
           <div className="space-y-6">
             <h3 className="text-lg font-medium text-foreground mb-4">
-              获取帮助
+              {t("settings.help")}
             </h3>
 
             <div className="space-y-2">
@@ -342,7 +344,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 href="#"
                 className="flex items-center justify-between py-3 px-4 rounded-lg hover:bg-accent transition-colors"
               >
-                <span className="text-sm text-foreground">帮助中心</span>
+                <span className="text-sm text-foreground">{t("settings.help_center")}</span>
                 <ExternalLink className="w-4 h-4 text-muted-foreground" />
               </a>
 
@@ -350,7 +352,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 href="#"
                 className="flex items-center justify-between py-3 px-4 rounded-lg hover:bg-accent transition-colors"
               >
-                <span className="text-sm text-foreground">常见问题</span>
+                <span className="text-sm text-foreground">{t("settings.faq")}</span>
                 <ExternalLink className="w-4 h-4 text-muted-foreground" />
               </a>
 
@@ -358,7 +360,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 href="#"
                 className="flex items-center justify-between py-3 px-4 rounded-lg hover:bg-accent transition-colors"
               >
-                <span className="text-sm text-foreground">联系支持</span>
+                <span className="text-sm text-foreground">{t("settings.contact_support")}</span>
                 <ExternalLink className="w-4 h-4 text-muted-foreground" />
               </a>
 
@@ -366,7 +368,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 href="#"
                 className="flex items-center justify-between py-3 px-4 rounded-lg hover:bg-accent transition-colors"
               >
-                <span className="text-sm text-foreground">服务状态</span>
+                <span className="text-sm text-foreground">{t("settings.service_status")}</span>
                 <ExternalLink className="w-4 h-4 text-muted-foreground" />
               </a>
             </div>
@@ -389,7 +391,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 <div className="w-7 h-7 rounded-lg bg-foreground flex items-center justify-center">
                   <span className="text-background font-bold text-xs">M</span>
                 </div>
-                <span className="text-foreground">设置</span>
+                <span className="text-foreground">{t("settings.title")}</span>
               </DialogTitle>
             </DialogHeader>
 

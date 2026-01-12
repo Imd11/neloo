@@ -3,6 +3,7 @@ import { Toaster } from "sonner";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import { AppProviders } from "@/providers/AppProviders";
+import { LanguageProvider } from "@/providers/LanguageProvider";
 import "./globals.css";
 
 // Script to set theme before React hydration to prevent flash
@@ -38,13 +39,15 @@ export default function RootLayout({
       <body
         suppressHydrationWarning
       >
-        <ThemeProvider>
-          <AuthProvider>
-            <AppProviders>
-              <NuqsAdapter>{children}</NuqsAdapter>
-            </AppProviders>
-          </AuthProvider>
-        </ThemeProvider>
+        <LanguageProvider>
+          <ThemeProvider>
+            <AuthProvider>
+              <AppProviders>
+                <NuqsAdapter>{children}</NuqsAdapter>
+              </AppProviders>
+            </AuthProvider>
+          </ThemeProvider>
+        </LanguageProvider>
         <Toaster />
       </body>
     </html>
