@@ -1070,6 +1070,20 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                   </DropdownMenuContent>
                 </DropdownMenu>
 
+                {/* FilePanel button - show when there's a thread OR local files */}
+                {(showFilePanelButton || fileUpload.files.length > 0) && onOpenFilePanel && (
+                  <Button
+                    type="button"
+                    variant="icon"
+                    size="icon-sm"
+                    onClick={onOpenFilePanel}
+                    className="shrink-0 text-muted-foreground hover:text-foreground"
+                    title="查看文件"
+                  >
+                    <FolderOpen className="h-5 w-5" />
+                  </Button>
+                )}
+
                 {/* Web Dev Mode Tag - shown when enabled */}
                 {webDevMode && (
                   <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium shrink-0 bg-blue-500/15 text-blue-600 dark:text-blue-400">
