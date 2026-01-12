@@ -404,7 +404,13 @@ export function AppSidebar({
                   onClick={() => onThreadSelect?.(item.id)}
                 >
                   <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <MessageSquarePlus className="w-4 h-4 flex-shrink-0 text-sidebar-muted group-hover:text-sidebar-accent-foreground" />
+                    {item.type === "image" ? (
+                      <Image className="w-4 h-4 flex-shrink-0 text-sidebar-muted group-hover:text-sidebar-accent-foreground" />
+                    ) : item.type === "video" ? (
+                      <Video className="w-4 h-4 flex-shrink-0 text-sidebar-muted group-hover:text-sidebar-accent-foreground" />
+                    ) : (
+                      <MessageSquarePlus className="w-4 h-4 flex-shrink-0 text-sidebar-muted group-hover:text-sidebar-accent-foreground" />
+                    )}
                     <span className="truncate">{item.title}</span>
                   </div>
 

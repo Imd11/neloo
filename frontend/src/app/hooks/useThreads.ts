@@ -10,6 +10,7 @@ export interface ThreadItem {
   title: string;
   description: string;
   assistantId?: string;
+  type?: "chat" | "image" | "video";  // 对话类型
 }
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -89,6 +90,7 @@ export function useThreads(props: {
         title: t.title || "Untitled Thread",
         description: "",
         assistantId: undefined,
+        type: t.type || "chat",  // 默认为 chat
       }));
     },
     {

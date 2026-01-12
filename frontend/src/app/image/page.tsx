@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, Suspense } from "react";
+import { useState, useCallback, useEffect, Suspense, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquarePlus, ChevronDown, Check, Search } from "lucide-react";
@@ -32,6 +32,9 @@ import {
     ResizablePanel,
     ResizableHandle,
 } from "@/components/ui/resizable";
+import { v4 as uuidv4 } from "uuid";
+import { getConfig } from "@/lib/config";
+import { useThreads } from "@/app/hooks/useThreads";
 
 // Import logos for image models
 import nanoBananaLogo from "@/assets/logos/nano-banana.png";
@@ -65,6 +68,10 @@ const imageModels: ModelInfo[] = [
 
 function ImagePageContent() {
     const { setCollapsed, setHideTopBar } = useSidebar();
+    const { session } = useAuth();
+    const config = getConfig();
+    const threads = useThreads({ limit: 20 });
+
     const [isEditMode, setIsEditMode] = useState(false);
     const [messages, setMessages] = useState<ImageMessage[]>([]);
     const [canvasImages, setCanvasImages] = useState<CanvasImage[]>([]);
@@ -78,6 +85,74 @@ function ImagePageContent() {
         src: string;
         startRect: DOMRect;
     } | null>(null);
+
+    // Thread/conversation state for history
+    const [threadId, setThreadId] = useState<string | null>(null);
+    const threadCreatedRef = useRef(false);
+    const titleGeneratedRef = useRef(false);
+
+    // Create thread for image generation history
+    const createImageThread = useCallback(async (firstMessage: string) => {
+        if (!config?.deploymentUrl || !session?.access_token) return null;
+        if (threadCreatedRef.current) return threadId;
+
+        const newThreadId = uuidv4();
+        threadCreatedRef.current = true;
+
+        try {
+            const response = await fetch(`${config.deploymentUrl}/api/threads`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({
+                    langgraph_thread_id: newThreadId,
+                    title: firstMessage.slice(0, 30) + (firstMessage.length > 30 ? "..." : ""),
+                    type: "image",  // Mark as image type
+                }),
+            });
+
+            if (response.ok) {
+                console.log("[ImagePage] Created thread:", newThreadId.slice(0, 8));
+                setThreadId(newThreadId);
+                threads.mutate?.();  // Refresh sidebar
+                return newThreadId;
+            }
+        } catch (error) {
+            console.error("[ImagePage] Failed to create thread:", error);
+        }
+        return null;
+    }, [config, session, threadId, threads]);
+
+    // Generate smart title for thread
+    const generateTitle = useCallback(async (currentThreadId: string, userMessage: string) => {
+        if (!config?.deploymentUrl || !session?.access_token) return;
+        if (titleGeneratedRef.current) return;
+
+        titleGeneratedRef.current = true;
+
+        try {
+            const response = await fetch(
+                `${config.deploymentUrl}/api/threads/${encodeURIComponent(currentThreadId)}/generate-title`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${session.access_token}`,
+                    },
+                    body: JSON.stringify({ user_message: userMessage }),
+                }
+            );
+
+            if (response.ok) {
+                console.log("[ImagePage] Generated title for thread");
+                threads.mutate?.();  // Refresh sidebar
+            }
+        } catch (error) {
+            console.error("[ImagePage] Failed to generate title:", error);
+        }
+    }, [config, session, threads]);
 
     // Hide global TopBar in edit mode
     useEffect(() => {
@@ -104,6 +179,16 @@ function ImagePageContent() {
             timestamp: new Date()
         };
         setMessages(prev => [...prev, userMessage]);
+
+        // Create thread for history (first message only)
+        const isFirstMessage = messages.length === 0;
+        if (isFirstMessage) {
+            const newThreadId = await createImageThread(value);
+            if (newThreadId) {
+                // Generate smart title after a short delay
+                setTimeout(() => generateTitle(newThreadId, value), 1000);
+            }
+        }
 
         // Add loading AI message
         const aiMessageId = `ai-${Date.now()}`;
@@ -164,7 +249,7 @@ function ImagePageContent() {
             setIsGenerating(false);
             toast.error(error instanceof Error ? error.message : "图片生成失败");
         }
-    }, [setCollapsed]);
+    }, [setCollapsed, messages, createImageThread, generateTitle]);
 
     const handleSelectTemplate = (template: Template) => {
         toast.info(`已选择模板: ${template.title}`);
