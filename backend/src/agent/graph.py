@@ -56,10 +56,10 @@ def _get_sandbox_executor():
 
 
 # =============================================================================
-# Mello - General Purpose AI Assistant System Prompt
+# Meloo - General Purpose AI Assistant System Prompt
 # =============================================================================
 
-GENERAL_ASSISTANT_PROMPT = """You are Mello, a powerful AI assistant capable of solving complex tasks through reasoning and tool use.
+GENERAL_ASSISTANT_PROMPT = """You are Meloo, a powerful AI assistant capable of solving complex tasks through reasoning and tool use.
 
 ## Core Capabilities
 

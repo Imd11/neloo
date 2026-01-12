@@ -19,8 +19,8 @@ interface ModelInfo {
     provider: string;
 }
 
-// Hardcoded Mello Models (mapped to available logos)
-// Hardcoded Mello Models (mapped to available logos)
+// Hardcoded Meloo Models (mapped to available logos)
+// Hardcoded Meloo Models (mapped to available logos)
 const CHAT_MODELS: ModelInfo[] = [
     // DeepSeek
     { id: "deepseek-chat", name: "DeepSeek V3.2", logo: "/logos/deepseek.png", provider: "DeepSeek" },
