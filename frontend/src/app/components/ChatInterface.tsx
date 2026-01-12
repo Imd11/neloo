@@ -316,7 +316,8 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
   }, [isLoading, messages, regenerateLastResponse]);
 
   // Handle share - create share link and copy to clipboard
-  const handleShare = useCallback(async () => {
+  // messageIndex: if provided, creates a share for only that message pair (user question + AI response)
+  const handleShare = useCallback(async (messageIndex?: number) => {
     if (!threadId || !config) {
       toast.error("无法分享", { description: "请先开始对话" });
       return;
@@ -335,6 +336,9 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
         {
           method: "POST",
           headers,
+          body: JSON.stringify({
+            message_index: messageIndex ?? null,
+          }),
         }
       );
 
@@ -352,7 +356,9 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
       await navigator.clipboard.writeText(shareUrl);
 
       toast.success("链接已复制到剪贴板", {
-        description: "任何人都可以通过此链接查看对话",
+        description: messageIndex !== undefined
+          ? "任何人都可以通过此链接查看这条消息"
+          : "任何人都可以通过此链接查看对话",
       });
     } catch (error) {
       console.error("Failed to create share link:", error);
@@ -795,7 +801,11 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                               if (msgIndex >= 0) handleStartEdit(msgIndex, content);
                             } : undefined}
                             onRegenerate={isLastAiMessage ? handleRegenerate : undefined}
-                            onShare={!isUserMessage ? handleShare : undefined}
+                            onShare={!isUserMessage ? () => {
+                              // Find the message index for single message sharing
+                              const msgIndex = messages?.findIndex(m => m.id === msgId) ?? -1;
+                              if (msgIndex >= 0) handleShare(msgIndex);
+                            } : undefined}
                             suggestedQuestions={isLastAiMessage && !isLoading ? suggestedQuestions : undefined}
                             onSuggestionClick={isLastAiMessage ? handleSuggestionClick : undefined}
                           />

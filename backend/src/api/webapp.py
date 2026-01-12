@@ -2514,22 +2514,32 @@ class ShareResponse(BaseModel):
     created_at: str
 
 
+class ShareRequest(BaseModel):
+    """Request model for share link creation."""
+    message_index: Optional[int] = None  # If provided, share only this message pair
+
+
 class SharedConversationResponse(BaseModel):
     """Response model for viewing a shared conversation."""
     title: str
     messages: list
     shared_at: str
+    message_index: Optional[int] = None  # If set, only show this message pair
 
 
 @app.post("/api/threads/{langgraph_thread_id}/share", response_model=ShareResponse)
 async def create_share_link(
     langgraph_thread_id: str,
     request: Request,
+    body: Optional[ShareRequest] = None,
     user: dict = Depends(get_current_user),
 ):
     """
-    Create a share link for a thread.
+    Create a share link for a thread or a single message.
     Only the thread owner can create share links.
+    
+    If message_index is provided in the body, only that message pair (user question + AI response) 
+    will be visible in the shared link.
     """
     user_id = auth_get_user_id(user)
     
@@ -2543,9 +2553,16 @@ async def create_share_link(
     if thread_record.get("user_id") != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
     
+    # Get message_index from request body if provided
+    message_index = body.message_index if body else None
+    
     # Create the share
     from ..storage.supabase_db import create_share
-    share = await create_share(user_id=user_id, thread_id=langgraph_thread_id)
+    share = await create_share(
+        user_id=user_id, 
+        thread_id=langgraph_thread_id,
+        message_index=message_index,
+    )
     
     if not share:
         raise HTTPException(status_code=500, detail="Failed to create share link")
@@ -2612,6 +2629,7 @@ async def get_shared_conversation(share_id: str):
             title=thread_record.get("title", "分享的对话"),
             messages=serialized_messages,
             shared_at=share["created_at"],
+            message_index=share.get("message_index"),  # For single message sharing
         )
     except Exception as e:
         print(f"[Share] Failed to get messages: {e}")

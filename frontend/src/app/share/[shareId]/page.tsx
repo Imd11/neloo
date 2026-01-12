@@ -17,6 +17,7 @@ interface SharedConversation {
     title: string;
     messages: SharedMessage[];
     shared_at: string;
+    message_index?: number | null;  // If set, only show this message pair
 }
 
 function extractMessageContent(msg: SharedMessage): string {
@@ -151,7 +152,7 @@ export default function SharePage() {
                     {/* Title section */}
                     <div className="mb-8 border-b border-border pb-6">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <span>📤 分享的对话</span>
+                            <span>{conversation!.message_index !== null && conversation!.message_index !== undefined ? "📌 分享的消息" : "📤 分享的对话"}</span>
                             <span>•</span>
                             <span>
                                 {new Date(conversation!.shared_at).toLocaleDateString("zh-CN", {
@@ -168,32 +169,45 @@ export default function SharePage() {
 
                     {/* Messages */}
                     <div className="space-y-6">
-                        {conversation!.messages.map((msg, index) => {
-                            const content = extractMessageContent(msg);
-                            if (!content) return null;
+                        {(() => {
+                            // Filter messages based on message_index
+                            let displayMessages = conversation!.messages;
 
-                            const isUser = msg.type === "human";
+                            if (conversation!.message_index !== null && conversation!.message_index !== undefined) {
+                                // Single message sharing: show the AI response at message_index
+                                // and the user question before it (message_index - 1)
+                                const msgIdx = conversation!.message_index;
+                                const startIdx = Math.max(0, msgIdx - 1);  // Include user question if exists
+                                displayMessages = conversation!.messages.slice(startIdx, msgIdx + 1);
+                            }
 
-                            return (
-                                <div
-                                    key={index}
-                                    className={`flex ${isUser ? "justify-end" : "justify-start"}`}
-                                >
+                            return displayMessages.map((msg, index) => {
+                                const content = extractMessageContent(msg);
+                                if (!content) return null;
+
+                                const isUser = msg.type === "human";
+
+                                return (
                                     <div
-                                        className={`max-w-[85%] ${isUser
-                                            ? "rounded-xl rounded-br-none border border-border bg-muted px-4 py-3"
-                                            : "text-foreground"
-                                            }`}
+                                        key={index}
+                                        className={`flex ${isUser ? "justify-end" : "justify-start"}`}
                                     >
-                                        {isUser ? (
-                                            <p className="whitespace-pre-wrap text-sm">{content}</p>
-                                        ) : (
-                                            <MarkdownContent content={content} />
-                                        )}
+                                        <div
+                                            className={`max-w-[85%] ${isUser
+                                                ? "rounded-xl rounded-br-none border border-border bg-muted px-4 py-3"
+                                                : "text-foreground"
+                                                }`}
+                                        >
+                                            {isUser ? (
+                                                <p className="whitespace-pre-wrap text-sm">{content}</p>
+                                            ) : (
+                                                <MarkdownContent content={content} />
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            );
-                        })}
+                                );
+                            });
+                        })()}
                     </div>
 
                     {/* CTA */}

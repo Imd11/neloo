@@ -1131,13 +1131,16 @@ def generate_share_id(length: int = 8) -> str:
 async def create_share(
     user_id: str,
     thread_id: str,
+    message_index: Optional[int] = None,
 ) -> Optional[dict]:
     """
-    Create a share link for a thread.
+    Create a share link for a thread or a single message.
     
     Args:
         user_id: Owner's user ID
         thread_id: langgraph_thread_id of the thread to share
+        message_index: Optional index of AI response to share (user question + AI response).
+                      If None, shares the entire conversation.
         
     Returns:
         Share record dict with share_id, or None on failure
@@ -1153,14 +1156,21 @@ async def create_share(
     try:
         share_id = generate_share_id()
         
-        result = await supabase.table("shared_conversations").insert({
+        share_data = {
             "share_id": share_id,
             "thread_id": thread_id,
             "user_id": user_id,
-        }).execute()
+        }
+        
+        # Add message_index if provided (for single message sharing)
+        if message_index is not None:
+            share_data["message_index"] = message_index
+        
+        result = await supabase.table("shared_conversations").insert(share_data).execute()
         
         if result.data:
-            print(f"[SupabaseDB] Created share: {share_id} for thread {thread_id}")
+            print(f"[SupabaseDB] Created share: {share_id} for thread {thread_id}" + 
+                  (f" (msg {message_index})" if message_index is not None else ""))
             return result.data[0]
         return None
     except Exception as e:
