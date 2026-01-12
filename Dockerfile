@@ -39,7 +39,6 @@ ENV PORT=8000
 # 暴露端口
 EXPOSE 8000
 
-# 启动命令 - 使用 langgraph dev 启动完整服务
-# --allow-blocking 允许阻塞操作（解决 os.getcwd() 等阻塞调用问题）
-# --host 0.0.0.0 让服务监听所有网络接口（Railway 需要）
-CMD ["python", "-m", "langgraph_cli", "dev", "--port", "8000", "--host", "0.0.0.0", "--allow-blocking"]
+# 启动命令 - 使用 start.py 启动生产服务
+# start.py 配置了 PostgreSQL checkpointer，确保对话历史持久化
+CMD ["python", "start.py"]
