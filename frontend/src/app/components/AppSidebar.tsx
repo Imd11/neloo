@@ -396,13 +396,11 @@ export function AppSidebar({
                 <div
                   key={item.id}
                   className={cn(
-                    "group relative w-full flex items-center px-2 py-2 rounded-lg text-sm text-sidebar-foreground",
+                    "group relative w-full flex items-center px-2 py-2 rounded-lg text-sm text-sidebar-foreground cursor-pointer",
                     "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                     "transition-colors duration-150",
-                    isMenuOpen ? "bg-sidebar-accent" : ""
+                    isMenuOpen && "bg-sidebar-accent text-sidebar-accent-foreground"
                   )}
-                  onMouseEnter={() => setOpenMenuId(item.id)}
-                  onMouseLeave={() => setOpenMenuId(null)}
                   onClick={() => onThreadSelect?.(item.id)}
                 >
                   <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -410,10 +408,10 @@ export function AppSidebar({
                     <span className="truncate">{item.title}</span>
                   </div>
 
-                  {/* Right Actions */}
+                  {/* Right Actions - visible on hover or when menu is open */}
                   <div className={cn(
-                    "flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity",
-                    isMenuOpen ? "opacity-100" : ""
+                    "flex items-center gap-1 transition-opacity",
+                    isMenuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                   )}>
                     {isPinned && <Pin className="w-3 h-3 text-sidebar-muted mr-1" />}
 
@@ -422,7 +420,7 @@ export function AppSidebar({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-6 w-6"
+                          className="h-6 w-6 hover:bg-foreground/15"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <MoreHorizontal className="w-3 h-3" />
