@@ -119,62 +119,66 @@ export function ImageChatPanel({
                                     message.role === "user" ? "justify-end" : "justify-start"
                                 )}
                             >
-                                <div
-                                    className={cn(
-                                        "max-w-[85%] rounded-2xl px-4 py-2.5",
-                                        message.role === "user"
-                                            ? "bg-primary text-primary-foreground"
-                                            : "bg-muted text-foreground"
-                                    )}
-                                >
-                                    {/* Text Content */}
-                                    {message.content && (
+                                {/* User Message - with bubble */}
+                                {message.role === "user" && (
+                                    <div className="max-w-[85%] rounded-2xl px-4 py-2.5 bg-primary text-primary-foreground">
                                         <p className="text-sm leading-relaxed">{message.content}</p>
-                                    )}
+                                    </div>
+                                )}
 
-                                    {/* Image Content */}
-                                    {message.imageUrl && (
-                                        <motion.div
-                                            className="mt-2 cursor-pointer group relative"
-                                            whileHover={{ scale: 1.02 }}
-                                            transition={{ duration: 0.2 }}
-                                        >
-                                            <img
-                                                ref={(el) => handleImageRef(message.id, el)}
-                                                src={message.imageUrl}
-                                                alt="Generated"
-                                                className="rounded-lg max-w-full h-auto"
-                                                onClick={(e) => handleImageClick(message.imageUrl!, e)}
-                                            />
-                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                                                <span className="text-white text-sm font-medium">
-                                                    点击添加到画布
-                                                </span>
+                                {/* AI Message - no bubble, fixed image size */}
+                                {message.role === "assistant" && (
+                                    <div className="flex flex-col items-start">
+                                        {/* Text Content (if any) */}
+                                        {message.content && (
+                                            <p className="text-sm text-muted-foreground mb-2">{message.content}</p>
+                                        )}
+
+                                        {/* Image Content - fixed size, no bubble */}
+                                        {message.imageUrl && (
+                                            <motion.div
+                                                className="cursor-pointer group relative"
+                                                whileHover={{ scale: 1.02 }}
+                                                transition={{ duration: 0.2 }}
+                                            >
+                                                <img
+                                                    ref={(el) => handleImageRef(message.id, el)}
+                                                    src={message.imageUrl}
+                                                    alt="Generated"
+                                                    className="rounded-lg shadow-md"
+                                                    style={{ width: '120px', height: 'auto' }}
+                                                    onClick={(e) => handleImageClick(message.imageUrl!, e)}
+                                                />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                                                    <span className="text-white text-xs font-medium">
+                                                        添加到画布
+                                                    </span>
+                                                </div>
+                                            </motion.div>
+                                        )}
+
+                                        {/* Loading State */}
+                                        {message.isLoading && (
+                                            <div className="flex items-center gap-1 py-2">
+                                                <motion.span
+                                                    className="w-2 h-2 bg-muted-foreground rounded-full"
+                                                    animate={{ opacity: [0.4, 1, 0.4] }}
+                                                    transition={{ duration: 1.2, repeat: Infinity }}
+                                                />
+                                                <motion.span
+                                                    className="w-2 h-2 bg-muted-foreground rounded-full"
+                                                    animate={{ opacity: [0.4, 1, 0.4] }}
+                                                    transition={{ duration: 1.2, repeat: Infinity, delay: 0.2 }}
+                                                />
+                                                <motion.span
+                                                    className="w-2 h-2 bg-muted-foreground rounded-full"
+                                                    animate={{ opacity: [0.4, 1, 0.4] }}
+                                                    transition={{ duration: 1.2, repeat: Infinity, delay: 0.4 }}
+                                                />
                                             </div>
-                                        </motion.div>
-                                    )}
-
-                                    {/* Loading State */}
-                                    {message.isLoading && (
-                                        <div className="flex items-center gap-1 py-1">
-                                            <motion.span
-                                                className="w-2 h-2 bg-current rounded-full"
-                                                animate={{ opacity: [0.4, 1, 0.4] }}
-                                                transition={{ duration: 1.2, repeat: Infinity }}
-                                            />
-                                            <motion.span
-                                                className="w-2 h-2 bg-current rounded-full"
-                                                animate={{ opacity: [0.4, 1, 0.4] }}
-                                                transition={{ duration: 1.2, repeat: Infinity, delay: 0.2 }}
-                                            />
-                                            <motion.span
-                                                className="w-2 h-2 bg-current rounded-full"
-                                                animate={{ opacity: [0.4, 1, 0.4] }}
-                                                transition={{ duration: 1.2, repeat: Infinity, delay: 0.4 }}
-                                            />
-                                        </div>
-                                    )}
-                                </div>
+                                        )}
+                                    </div>
+                                )}
                             </motion.div>
                         ))}
                     </AnimatePresence>

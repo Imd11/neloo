@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Copy, Trash2, ArrowUpToLine, ArrowDownToLine, Download, Wand2 } from "lucide-react";
+import { Trash2, Download, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ImageContextMenuProps {
@@ -7,9 +7,6 @@ interface ImageContextMenuProps {
     y: number;
     onClose: () => void;
     onDelete: () => void;
-    onDuplicate: () => void;
-    onBringToFront: () => void;
-    onSendToBack: () => void;
     onDownload: () => void;
     onAIEdit?: () => void;
 }
@@ -19,9 +16,6 @@ export function ImageContextMenu({
     y,
     onClose,
     onDelete,
-    onDuplicate,
-    onBringToFront,
-    onSendToBack,
     onDownload,
     onAIEdit,
 }: ImageContextMenuProps) {
@@ -52,13 +46,9 @@ export function ImageContextMenu({
     const menuItems = [
         { icon: Wand2, label: "AI 改图", onClick: onAIEdit, highlight: true },
         { divider: true },
-        { icon: Copy, label: "复制", shortcut: "⌘D", onClick: onDuplicate },
-        { icon: Download, label: "下载", onClick: onDownload },
+        { icon: Download, label: "下载图片", onClick: onDownload },
         { divider: true },
-        { icon: ArrowUpToLine, label: "置于顶层", onClick: onBringToFront },
-        { icon: ArrowDownToLine, label: "置于底层", onClick: onSendToBack },
-        { divider: true },
-        { icon: Trash2, label: "删除", shortcut: "⌫", onClick: onDelete, danger: true },
+        { icon: Trash2, label: "删除", onClick: onDelete, danger: true },
     ];
 
     return (

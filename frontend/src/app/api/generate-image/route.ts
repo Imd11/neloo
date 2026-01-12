@@ -24,25 +24,21 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const result = await generateImage(
+        const images = await generateImage(
             prompt,
             apiKey,
             resolution as ResolutionTier,
             size as ImageSize
         );
 
-        if (!result || result.images.length === 0) {
+        if (!images || images.length === 0) {
             return NextResponse.json(
                 { error: "Failed to generate image" },
                 { status: 500 }
             );
         }
 
-        // 返回文字和图片
-        return NextResponse.json({
-            text: result.text,
-            images: result.images
-        });
+        return NextResponse.json({ images });
     } catch (error) {
         console.error("[API Generate] Error:", error);
         return NextResponse.json(

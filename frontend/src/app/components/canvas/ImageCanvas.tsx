@@ -2,7 +2,6 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { CanvasImage, ViewState, CanvasTool } from "@/types/canvas";
-import { CanvasToolbar } from "./CanvasToolbar";
 import { CanvasTopBar } from "./CanvasTopBar";
 import { ImageContextMenu } from "./ImageContextMenu";
 import { InpaintEditor } from "./InpaintEditor";
@@ -342,19 +341,20 @@ export function ImageCanvas({
                     {images.map((image) => (
                         <motion.div
                             key={image.id}
-                            initial={{ opacity: 0, scale: 0.8 }}
+                            initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 0.3 }}
                             className={cn(
-                                "absolute",
+                                "absolute select-none",
                                 activeTool === 'select' ? "cursor-move" : "cursor-pointer",
-                                image.isSelected && "ring-2 ring-primary shadow-lg"
+                                image.isSelected
+                                    ? "ring-2 ring-blue-500 shadow-2xl shadow-blue-500/20"
+                                    : "shadow-2xl shadow-black/50"
                             )}
                             style={{
                                 left: image.x,
                                 top: image.y,
-                                width: image.width,
-                                height: image.height,
-                                transform: `rotate(${image.rotation}deg)`
+                                width: '300px',  // Fixed width like aso
                             }}
                             onMouseDown={(e) => handleImageMouseDown(image.id, e)}
                             onContextMenu={(e) => handleImageContextMenu(image.id, e)}
@@ -362,25 +362,12 @@ export function ImageCanvas({
                             <img
                                 src={image.src}
                                 alt="Canvas image"
-                                className="w-full h-full object-contain rounded-lg"
+                                className="w-full h-auto object-contain rounded-[32px] pointer-events-none"
                                 draggable={false}
                             />
                             {image.isSelected && (
                                 <>
-                                    {/* Selection handles */}
-                                    <div className="absolute -top-2 -left-2 w-4 h-4 bg-background border-2 border-primary rounded-full cursor-nwse-resize shadow-sm" />
-                                    <div className="absolute -top-2 -right-2 w-4 h-4 bg-background border-2 border-primary rounded-full cursor-nesw-resize shadow-sm" />
-                                    <div className="absolute -bottom-2 -left-2 w-4 h-4 bg-background border-2 border-primary rounded-full cursor-nesw-resize shadow-sm" />
-                                    <div className="absolute -bottom-2 -right-2 w-4 h-4 bg-background border-2 border-primary rounded-full cursor-nwse-resize shadow-sm" />
-                                    {/* Edge handles for resizing */}
-                                    <div className="absolute top-1/2 -left-2 w-3 h-6 -translate-y-1/2 bg-background border-2 border-primary rounded-sm cursor-ew-resize shadow-sm" />
-                                    <div className="absolute top-1/2 -right-2 w-3 h-6 -translate-y-1/2 bg-background border-2 border-primary rounded-sm cursor-ew-resize shadow-sm" />
-                                    <div className="absolute -top-2 left-1/2 w-6 h-3 -translate-x-1/2 bg-background border-2 border-primary rounded-sm cursor-ns-resize shadow-sm" />
-                                    <div className="absolute -bottom-2 left-1/2 w-6 h-3 -translate-x-1/2 bg-background border-2 border-primary rounded-sm cursor-ns-resize shadow-sm" />
-                                    {/* Rotation handle */}
-                                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 w-5 h-5 bg-background border-2 border-primary rounded-full cursor-grab shadow-sm flex items-center justify-center">
-                                        <div className="w-0.5 h-4 absolute -bottom-4 bg-primary/50" />
-                                    </div>
+                                    {/* Simple selection indicator - blue ring only, no resize handles */}
                                 </>
                             )}
                         </motion.div>
@@ -424,18 +411,6 @@ export function ImageCanvas({
                 </AnimatePresence>
             </div>
 
-            {/* Bottom Toolbar - Only shows when image is selected */}
-            <CanvasToolbar
-                activeTool={activeTool}
-                onToolChange={setActiveTool}
-                brushSize={brushSize}
-                onBrushSizeChange={setBrushSize}
-                hasSelection={selectedImageId !== null}
-                onCancel={() => {
-                    setSelectedImageId(null);
-                    onImagesChange(images.map(img => ({ ...img, isSelected: false })));
-                }}
-            />
 
             {/* Context Menu */}
             {contextMenu && (
@@ -444,9 +419,6 @@ export function ImageCanvas({
                     y={contextMenu.y}
                     onClose={() => setContextMenu(null)}
                     onDelete={() => handleDeleteImage(contextMenu.imageId)}
-                    onDuplicate={() => handleDuplicateImage(contextMenu.imageId)}
-                    onBringToFront={() => handleBringToFront(contextMenu.imageId)}
-                    onSendToBack={() => handleSendToBack(contextMenu.imageId)}
                     onDownload={() => handleDownloadImage(contextMenu.imageId)}
                     onAIEdit={() => handleAIEdit(contextMenu.imageId)}
                 />
