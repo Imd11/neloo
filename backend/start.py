@@ -70,28 +70,52 @@ def create_checkpointer():
     Create PostgreSQL checkpointer if connection string is available.
     Returns None if no database is configured (falls back to in-memory).
     """
+    print("[Checkpointer] Initializing checkpoint storage...")
+    
     conn_string = get_postgres_connection_string()
     
     if not conn_string:
         print("⚠️  WARNING: No PostgreSQL connection configured. Thread history will NOT persist across restarts.")
         print("   Set DATABASE_URL or SUPABASE_DB_HOST + SUPABASE_DB_PASSWORD to enable persistence.")
+        print(f"   DATABASE_URL present: {bool(os.environ.get('DATABASE_URL'))}")
+        print(f"   SUPABASE_DB_HOST present: {bool(os.environ.get('SUPABASE_DB_HOST'))}")
         return None
+    
+    # Mask password for logging
+    masked_conn = conn_string
+    if "@" in conn_string:
+        parts = conn_string.split("@")
+        prefix = parts[0]
+        if ":" in prefix:
+            user_part = prefix.rsplit(":", 1)[0]
+            masked_conn = f"{user_part}:****@{parts[1]}"
+    print(f"[Checkpointer] Found connection string: {masked_conn}")
     
     try:
         from langgraph.checkpoint.postgres import PostgresSaver
+        print("[Checkpointer] Imported PostgresSaver successfully")
         
         # Create PostgresSaver with connection string
         # Using sync version since GraphConfig expects sync checkpointer
         checkpointer = PostgresSaver.from_conn_string(conn_string)
+        print("[Checkpointer] Created PostgresSaver instance")
         
         # Setup tables (idempotent - safe to call on every startup)
         checkpointer.setup()
+        print("[Checkpointer] Database tables setup complete")
         
         print("✅ PostgreSQL checkpointer configured. Thread history will persist across restarts.")
         return checkpointer
         
+    except ImportError as e:
+        print(f"⚠️  WARNING: Failed to import PostgresSaver: {e}")
+        print("   Make sure langgraph-checkpoint-postgres is installed.")
+        return None
     except Exception as e:
+        import traceback
         print(f"⚠️  WARNING: Failed to configure PostgreSQL checkpointer: {e}")
+        print(f"   Error type: {type(e).__name__}")
+        print(f"   Traceback:\n{traceback.format_exc()}")
         print("   Falling back to in-memory storage. Thread history will NOT persist.")
         return None
 
