@@ -150,6 +150,7 @@ export async function generateImage(
             }
 
             const raw = await res.json();
+            console.log("[AI Image] Raw API Response:", JSON.stringify(raw, null, 2));
 
             if (!hasImageInResponse(raw)) {
                 console.warn(`[AI Image] Attempt ${attempt + 1}: No images in response`);
@@ -172,6 +173,8 @@ export async function generateImage(
                     if (img?.url) images.push(img.url);
                 });
             }
+
+            console.log("[AI Image] Extracted image URLs:", images);
 
             pushImages(images);
 
