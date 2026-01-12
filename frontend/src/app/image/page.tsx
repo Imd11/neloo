@@ -86,7 +86,7 @@ function ImagePageContent() {
         model.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const handleSubmit = useCallback((value: string) => {
+    const handleSubmit = useCallback(async (value: string) => {
         // Collapse sidebar
         setCollapsed(true);
 
@@ -114,10 +114,28 @@ function ImagePageContent() {
         setMessages(prev => [...prev, loadingMessage]);
         setIsGenerating(true);
 
-        // Simulate image generation (replace with actual API call)
-        setTimeout(() => {
-            // Use a placeholder image for demo
-            const generatedImageUrl = `https://picsum.photos/seed/${Date.now()}/512/512`;
+        try {
+            // Call real API
+            const response = await fetch("/api/generate-image", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    prompt: value,
+                    resolution: "1k" // TODO: get from resolution selector
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || "生成失败");
+            }
+
+            const data = await response.json();
+            const generatedImageUrl = data.images?.[0];
+
+            if (!generatedImageUrl) {
+                throw new Error("未收到生成的图片");
+            }
 
             // Preload image then trigger auto fly animation
             const img = new Image();
@@ -130,8 +148,16 @@ function ImagePageContent() {
                 setIsGenerating(false);
                 toast.success("图片生成完成!");
             };
+            img.onerror = () => {
+                throw new Error("图片加载失败");
+            };
             img.src = generatedImageUrl;
-        }, 2000);
+        } catch (error) {
+            console.error("[ImagePage] Generation failed:", error);
+            setMessages(prev => prev.filter(msg => msg.id !== aiMessageId));
+            setIsGenerating(false);
+            toast.error(error instanceof Error ? error.message : "图片生成失败");
+        }
     }, [setCollapsed]);
 
     const handleSelectTemplate = (template: Template) => {

@@ -426,7 +426,11 @@ export function AppSidebar({
                           <MoreHorizontal className="w-3 h-3" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-40">
+                      <DropdownMenuContent side="right" align="start" className="w-32">
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); /* TODO: implement share */ }}>
+                          <Share2 className="w-4 h-4 mr-2" />
+                          分享
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handlePin(item.id); }}>
                           <Pin className="w-4 h-4 mr-2" />
                           {isPinned ? "取消置顶" : "置顶"}

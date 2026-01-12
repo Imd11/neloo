@@ -1027,15 +1027,44 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                 onChange={handleFileInputChange}
                 className="hidden"
               />
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={isLoading ? "Running..." : "Write your message..."}
-                className="font-inherit field-sizing-content flex-1 resize-none border-0 bg-transparent px-4 pb-0 pt-4 text-sm leading-7 text-foreground outline-none placeholder:text-muted-foreground min-h-[56px] max-h-[200px]"
-                rows={1}
-              />
+              {/* Input area with optional web-dev mode tag */}
+              <div className="flex items-start gap-2 px-4 pt-4 pb-0">
+                {/* Web Dev Mode Tag - shown when enabled, like ANYAI */}
+                {webDevMode && (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium shrink-0 bg-blue-500/15 text-blue-600 dark:text-blue-400">
+                    <span>网页开发</span>
+                    {!isModeLocked && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // Clear web dev mode - need to implement this
+                          // For now, this is visual only since mode is locked after first message
+                        }}
+                        className="flex items-center justify-center w-4 h-4 rounded-full hover:bg-current/25 hover:scale-125 active:scale-95 transition-all duration-150"
+                      >
+                        <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M18 6L6 18M6 6l12 12" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                )}
+                <textarea
+                  ref={textareaRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={
+                    isLoading
+                      ? "Running..."
+                      : webDevMode
+                        ? "描述你想要开发的网页..."
+                        : "Write your message..."
+                  }
+                  className="font-inherit field-sizing-content flex-1 resize-none border-0 bg-transparent pb-0 text-sm leading-7 text-foreground outline-none placeholder:text-muted-foreground min-h-[40px] max-h-[200px]"
+                  rows={1}
+                />
+              </div>
               <div className="flex justify-between items-center gap-2 px-2 pb-2">
                 {/* Left: Actions */}
                 <div className="flex items-center gap-1">
@@ -1060,14 +1089,16 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                       <FolderOpen size={18} />
                     </Button>
                   )}
-                  {/* Web Development Mode toggle */}
-                  <div className="ml-1">
-                    <WebDevToggle
-                      enabled={webDevMode}
-                      locked={isModeLocked}
-                      onEnable={enableWebDevMode}
-                    />
-                  </div>
+                  {/* Web Development Mode toggle - only show when NOT in webDevMode */}
+                  {!webDevMode && (
+                    <div className="ml-1">
+                      <WebDevToggle
+                        enabled={webDevMode}
+                        locked={isModeLocked}
+                        onEnable={enableWebDevMode}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Right: Send/Stop Button */}

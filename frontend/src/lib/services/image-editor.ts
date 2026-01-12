@@ -1,6 +1,5 @@
-const API_BASE_URL = "https://api.tu-zi.com";
+const API_BASE_URL = process.env.NEXT_PUBLIC_IMAGE_API_URL || "https://api.tu-zi.com";
 const CHAT_ENDPOINT = `${API_BASE_URL}/v1/chat/completions`;
-const DEFAULT_KEY = "sk-owanaNMiGg9GF8bbrtCMLz5R8fGmHQi5DifqjyNslbbnN2u6";
 const MODEL = "gemini-3-pro-image-preview";
 
 /**
@@ -13,7 +12,8 @@ const MODEL = "gemini-3-pro-image-preview";
 export async function editImage(
     originalImageUrl: string,
     markedImageDataUrl: string,
-    prompt: string
+    prompt: string,
+    apiKey: string
 ): Promise<string[]> {
     const systemPrompt = `你是一个专业的图片编辑AI。用户会给你两张图片：
 1. 第一张是原始图片（需要被修改的干净完整图片）
@@ -46,7 +46,7 @@ ${prompt}
         const res = await fetch(CHAT_ENDPOINT, {
             method: "POST",
             headers: {
-                "Authorization": `Bearer ${DEFAULT_KEY}`,
+                "Authorization": `Bearer ${apiKey}`,
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
