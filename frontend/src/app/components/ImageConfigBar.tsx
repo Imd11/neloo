@@ -18,17 +18,22 @@ const ratios = [
     { label: "自定义", value: "custom" },
 ];
 
-// Resolution options (replaces model selector since model is in TopBar)
+// Resolution options matching backend MODEL_MAP
 const resolutions = [
-    { label: "标准", value: "standard", desc: "512×512" },
-    { label: "高清", value: "hd", desc: "1024×1024" },
-    { label: "2K", value: "2k", desc: "2048×2048" },
-    { label: "4K", value: "4k", desc: "4096×4096" },
+    { label: "1K", value: "1k", desc: "标准质量" },
+    { label: "2K", value: "2k", desc: "高清质量" },
+    { label: "4K", value: "4k", desc: "超高清质量" },
 ];
+export type Resolution = "1k" | "2k" | "4k";
 
-export function ImageConfigBar() {
+interface ImageConfigBarProps {
+    resolution?: Resolution;
+    onResolutionChange?: (resolution: Resolution) => void;
+}
+
+export function ImageConfigBar({ resolution = "1k", onResolutionChange }: ImageConfigBarProps) {
     const [selectedRatio, setSelectedRatio] = useState("1:1");
-    const [selectedResolution, setSelectedResolution] = useState(resolutions[0]);
+    const selectedResolution = resolutions.find(r => r.value === resolution) || resolutions[0];
     const [customWidth, setCustomWidth] = useState("");
     const [customHeight, setCustomHeight] = useState("");
 
@@ -107,21 +112,21 @@ export function ImageConfigBar() {
                     align="start"
                     className="bg-popover border-border min-w-40"
                 >
-                    {resolutions.map((resolution) => (
+                    {resolutions.map((res) => (
                         <DropdownMenuItem
-                            key={resolution.value}
-                            onClick={() => setSelectedResolution(resolution)}
+                            key={res.value}
+                            onClick={() => onResolutionChange?.(res.value as Resolution)}
                             className={cn(
                                 "flex items-center justify-between cursor-pointer",
                                 "text-foreground hover:bg-hover-bg focus:bg-hover-bg",
-                                selectedResolution.value === resolution.value && "bg-accent"
+                                selectedResolution.value === res.value && "bg-accent"
                             )}
                         >
                             <div className="flex flex-col">
-                                <span>{resolution.label}</span>
-                                <span className="text-xs text-muted-foreground">{resolution.desc}</span>
+                                <span>{res.label}</span>
+                                <span className="text-xs text-muted-foreground">{res.desc}</span>
                             </div>
-                            {selectedResolution.value === resolution.value && (
+                            {selectedResolution.value === res.value && (
                                 <Check className="w-4 h-4" />
                             )}
                         </DropdownMenuItem>

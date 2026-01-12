@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquarePlus, ChevronDown, Check, Search } from "lucide-react";
 import { RotatingHeadline } from "@/app/components/RotatingHeadline";
 import { PromptInput } from "@/app/components/PromptInput";
-import { ImageConfigBar } from "@/app/components/ImageConfigBar";
+import { ImageConfigBar, Resolution } from "@/app/components/ImageConfigBar";
 import { TabbedTemplateGrid } from "@/app/components/TabbedTemplateGrid";
 import { ImageChatPanel } from "@/app/components/chat/ImageChatPanel";
 import { ImageCanvas } from "@/app/components/canvas/ImageCanvas";
@@ -69,6 +69,7 @@ function ImagePageContent() {
     const [canvasImages, setCanvasImages] = useState<CanvasImage[]>([]);
     const [isGenerating, setIsGenerating] = useState(false);
     const [imageModel, setImageModel] = useState<ModelInfo>(imageModels[0]);
+    const [resolution, setResolution] = useState<Resolution>("1k");
     const [searchQuery, setSearchQuery] = useState("");
     const [flyingImage, setFlyingImage] = useState<{
         id: string;
@@ -121,7 +122,7 @@ function ImagePageContent() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     prompt: value,
-                    resolution: "1k" // TODO: get from resolution selector
+                    resolution: resolution
                 })
             });
 
@@ -239,7 +240,10 @@ function ImagePageContent() {
 
                                 {/* Prompt Input */}
                                 <div className="w-full max-w-3xl mx-auto flex flex-col items-center gap-4">
-                                    <ImageConfigBar />
+                                    <ImageConfigBar
+                                        resolution={resolution}
+                                        onResolutionChange={setResolution}
+                                    />
                                     <PromptInput
                                         placeholder="描述你要生成的图..."
                                         onSubmit={handleSubmit}
