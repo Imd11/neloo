@@ -23,7 +23,8 @@ COPY backend/README.md ./
 # 安装 Python 依赖
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir . && \
-    pip install --no-cache-dir "langgraph-cli[inmem]"
+    pip install --no-cache-dir "langgraph-cli[inmem]" && \
+    pip install --no-cache-dir "langgraph-api>=0.0.1"
 
 # 复制应用代码
 COPY backend/ .
