@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Copy, Trash2, ArrowUpToLine, ArrowDownToLine, Download, RotateCw } from "lucide-react";
+import { Copy, Trash2, ArrowUpToLine, ArrowDownToLine, Download, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ImageContextMenuProps {
@@ -11,6 +11,7 @@ interface ImageContextMenuProps {
     onBringToFront: () => void;
     onSendToBack: () => void;
     onDownload: () => void;
+    onAIEdit?: () => void;
 }
 
 export function ImageContextMenu({
@@ -22,6 +23,7 @@ export function ImageContextMenu({
     onBringToFront,
     onSendToBack,
     onDownload,
+    onAIEdit,
 }: ImageContextMenuProps) {
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -48,6 +50,8 @@ export function ImageContextMenu({
     }, [onClose]);
 
     const menuItems = [
+        { icon: Wand2, label: "AI 改图", onClick: onAIEdit, highlight: true },
+        { divider: true },
         { icon: Copy, label: "复制", shortcut: "⌘D", onClick: onDuplicate },
         { icon: Download, label: "下载", onClick: onDownload },
         { divider: true },
@@ -81,7 +85,9 @@ export function ImageContextMenu({
                             "w-full flex items-center gap-3 px-3 py-2 text-sm transition-colors",
                             mItem.danger
                                 ? "text-destructive hover:bg-destructive/10"
-                                : "text-foreground hover:bg-hover-bg"
+                                : mItem.highlight
+                                    ? "text-primary font-medium hover:bg-primary/10"
+                                    : "text-foreground hover:bg-hover-bg"
                         )}
                     >
                         <Icon className="w-4 h-4" />

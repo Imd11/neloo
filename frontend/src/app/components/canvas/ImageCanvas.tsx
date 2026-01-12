@@ -5,6 +5,7 @@ import { CanvasImage, ViewState, CanvasTool } from "@/types/canvas";
 import { CanvasToolbar } from "./CanvasToolbar";
 import { CanvasTopBar } from "./CanvasTopBar";
 import { ImageContextMenu } from "./ImageContextMenu";
+import { InpaintEditor } from "./InpaintEditor";
 import { toast } from "sonner";
 
 interface ImageCanvasProps {
@@ -44,6 +45,12 @@ export function ImageCanvas({
         x: number;
         y: number;
         imageId: string;
+    } | null>(null);
+
+    // Inpaint editor state
+    const [inpaintEditor, setInpaintEditor] = useState<{
+        imageId: string;
+        imageUrl: string;
     } | null>(null);
 
     // Calculate target position for flying image (center-left of canvas)
@@ -244,6 +251,31 @@ export function ImageCanvas({
         setContextMenu(null);
     }, [images]);
 
+    // AI 改图
+    const handleAIEdit = useCallback((id: string) => {
+        const image = images.find(img => img.id === id);
+        if (image) {
+            setInpaintEditor({
+                imageId: id,
+                imageUrl: image.src
+            });
+        }
+        setContextMenu(null);
+    }, [images]);
+
+    const handleInpaintSave = useCallback((newUrl: string) => {
+        if (inpaintEditor) {
+            // 替换原图为编辑后的图
+            onImagesChange(images.map(img =>
+                img.id === inpaintEditor.imageId
+                    ? { ...img, src: newUrl }
+                    : img
+            ));
+            toast.success("AI 改图完成！");
+        }
+        setInpaintEditor(null);
+    }, [inpaintEditor, images, onImagesChange]);
+
     // Handle keyboard shortcuts
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -416,6 +448,16 @@ export function ImageCanvas({
                     onBringToFront={() => handleBringToFront(contextMenu.imageId)}
                     onSendToBack={() => handleSendToBack(contextMenu.imageId)}
                     onDownload={() => handleDownloadImage(contextMenu.imageId)}
+                    onAIEdit={() => handleAIEdit(contextMenu.imageId)}
+                />
+            )}
+
+            {/* Inpaint Editor */}
+            {inpaintEditor && (
+                <InpaintEditor
+                    imageUrl={inpaintEditor.imageUrl}
+                    onClose={() => setInpaintEditor(null)}
+                    onSave={handleInpaintSave}
                 />
             )}
         </div>
