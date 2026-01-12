@@ -1,6 +1,6 @@
 "use client";
 
-import { Paperclip, X, FileSpreadsheet, Loader2, Upload, FolderOpen } from "lucide-react";
+import { Plus, X, FileSpreadsheet, Loader2, Upload, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -44,33 +44,32 @@ export function DataFileUpload({
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      {/* Upload Button with Dropdown */}
+      {/* Upload Button with Dropdown - Plus icon like AnyAI */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             type="button"
             variant="ghost"
-            size="sm"
+            size="icon"
             disabled={disabled || isProcessing}
-            className="h-8 px-2 text-muted-foreground hover:text-foreground"
+            className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-full"
           >
             {isProcessing ? (
-              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              <Loader2 className="h-5 w-5 animate-spin" />
             ) : (
-              <Paperclip className="h-4 w-4 mr-1" />
+              <Plus className="h-5 w-5" />
             )}
-            <span className="text-xs">上传文件</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-40">
+        <DropdownMenuContent align="start" className="w-48">
           <DropdownMenuItem onClick={onTriggerSelect}>
             <Upload className="h-4 w-4 mr-2" />
-            <span>从本地上传</span>
+            <span>上传文件</span>
           </DropdownMenuItem>
           {onTriggerLibrary && (
             <DropdownMenuItem onClick={onTriggerLibrary}>
               <FolderOpen className="h-4 w-4 mr-2" />
-              <span>从库导入</span>
+              <span>从库中选择</span>
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>
