@@ -1096,20 +1096,16 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                 <div className="flex justify-end gap-2">
                   <Button
                     type={isLoading ? "button" : "submit"}
-                    size="icon" // Circle button
-                    variant={isLoading ? "destructive" : "default"}
+                    variant="send"
+                    size="icon-sm"
                     onClick={isLoading ? stopStream : undefined}
                     disabled={!isLoading && (submitDisabled || !input.trim())}
-                    className={cn(
-                      "h-9 w-9 rounded-full shadow-sm transition-all duration-200",
-                      !isLoading && input.trim() ? "bg-primary text-primary-foreground hover:bg-primary/90" :
-                        (isLoading ? "" : "bg-muted text-muted-foreground opacity-50")
-                    )}
+                    className="shrink-0"
                   >
                     {isLoading ? (
-                      <Square className="h-4 w-4 fill-current" />
+                      <Square className="h-3 h-3 fill-current" />
                     ) : (
-                      <ArrowUp className="h-5 w-5" />
+                      <ArrowUp className="h-4 w-4" />
                     )}
                   </Button>
                 </div>
