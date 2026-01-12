@@ -55,7 +55,7 @@
     --input-bg: 0 0% 94%;
     --hover-bg: 0 0% 92%;
     --active-bg: 0 0% 88%;
-    --glow: 0 0% 0% / 0.05;
+    --glow: 210 40% 50%;
 
     /* Template placeholder accent (blue) */
     --placeholder-accent: 199 89% 48%;
@@ -116,7 +116,7 @@
     --input-bg: 0 0% 14%;
     --hover-bg: 0 0% 20%;
     --active-bg: 0 0% 22%;
-    --glow: 0 0% 100% / 0.05;
+    --glow: 210 40% 60%;
 
     /* Template placeholder accent (blue) */
     --placeholder-accent: 199 89% 58%;

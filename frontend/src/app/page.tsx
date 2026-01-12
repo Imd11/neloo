@@ -37,9 +37,10 @@ interface LandingViewProps {
   onSelectFeature: (feature: Feature | null) => void;
   selectedFeature: Feature | null;
   setFortuneMode: (mode: boolean) => void;
+  enableWebDevMode: () => void;
 }
 
-function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFortuneMode }: LandingViewProps) {
+function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFortuneMode, enableWebDevMode }: LandingViewProps) {
   const router = useRouter();
 
   // Track selected fortune template ID for prefix injection
@@ -65,6 +66,11 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
         const fullMessage = defaultPrefix + userInput;
         onPromptSubmit(fullMessage);
       }
+    } else if (selectedFeature?.id === 'web-dev') {
+      // Enable web-dev mode graph
+      enableWebDevMode();
+      setFortuneMode(false);
+      onPromptSubmit(userInput);
     } else {
       // Clear fortune mode when not in fortune feature
       setFortuneMode(false);
@@ -146,7 +152,7 @@ function ChatWithFilePanel({
   onCloseFilePanel: () => void;
   threadId: string | null;
 }) {
-  const { messages, isLoading, webDevMode, sendMessage, setFortuneMode } = useChatContext();
+  const { messages, isLoading, webDevMode, sendMessage, setFortuneMode, enableWebDevMode } = useChatContext();
   const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
 
   // Selected artifact from inline cards - this is what drives the right panel
@@ -269,6 +275,7 @@ function ChatWithFilePanel({
           selectedFeature={selectedFeature}
           onSelectFeature={setSelectedFeature}
           setFortuneMode={setFortuneMode}
+          enableWebDevMode={enableWebDevMode}
         />
       </div>
     );

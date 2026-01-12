@@ -86,6 +86,8 @@ export default {
       },
       boxShadow: {
         xs: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+        glow: "0 0 20px hsl(var(--glow) / 0.3)",
+        subtle: "0 2px 8px rgba(0, 0, 0, 0.1)",
       },
       backgroundColor: {
         primary: "var(--bg-primary)",

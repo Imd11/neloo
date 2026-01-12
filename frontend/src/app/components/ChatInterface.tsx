@@ -45,7 +45,7 @@ import { formatFilesForMessage, getAcceptAttribute } from "@/lib/data-file-utils
 import { useDataFileUpload } from "@/app/hooks/useDataFileUpload";
 import { DataFileUpload } from "@/app/components/DataFileUpload";
 import { LibraryDialog } from "@/app/components/LibraryDialog";
-import { WebDevToggle } from "@/app/components/WebDevToggle";
+// WebDevToggle removed - web-dev mode is now set via homepage feature selection
 import type { Artifact } from "@/lib/artifactParser";
 
 // Maximum visible characters before showing warning
@@ -1089,16 +1089,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                       <FolderOpen size={18} />
                     </Button>
                   )}
-                  {/* Web Development Mode toggle - only show when NOT in webDevMode */}
-                  {!webDevMode && (
-                    <div className="ml-1">
-                      <WebDevToggle
-                        enabled={webDevMode}
-                        locked={isModeLocked}
-                        onEnable={enableWebDevMode}
-                      />
-                    </div>
-                  )}
+                  {/* Web Development Mode toggle removed - now controlled via homepage */}
                 </div>
 
                 {/* Right: Send/Stop Button */}
