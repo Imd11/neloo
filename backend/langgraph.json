@@ -43,5 +43,9 @@
   "http": {
     "app": "src.api.webapp:app"
   },
+  "store": {
+    "type": "postgres",
+    "uri": "${DATABASE_URL}"
+  },
   "env": ".env"
 }
