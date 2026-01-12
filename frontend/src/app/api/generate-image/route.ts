@@ -6,7 +6,7 @@ export const maxDuration = 120;
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { prompt, resolution = "1k", size = "1x1" } = body;
+        const { prompt, resolution = "1k", size } = body;
 
         if (!prompt || typeof prompt !== "string") {
             return NextResponse.json(
@@ -24,21 +24,25 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const images = await generateImage(
+        const result = await generateImage(
             prompt,
             apiKey,
             resolution as ResolutionTier,
             size as ImageSize
         );
 
-        if (!images || images.length === 0) {
+        if (!result || result.images.length === 0) {
             return NextResponse.json(
                 { error: "Failed to generate image" },
                 { status: 500 }
             );
         }
 
-        return NextResponse.json({ images });
+        // 返回文字和图片
+        return NextResponse.json({
+            text: result.text,
+            images: result.images
+        });
     } catch (error) {
         console.error("[API Generate] Error:", error);
         return NextResponse.json(

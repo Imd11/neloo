@@ -137,7 +137,9 @@ function ImagePageContent() {
             const data = await response.json();
             console.log("[ImagePage] API Response:", JSON.stringify(data, null, 2));
             const generatedImageUrl = data.images?.[0];
+            const aiText = data.text || "";  // AI 返回的文字
             console.log("[ImagePage] Generated Image URL:", generatedImageUrl);
+            console.log("[ImagePage] AI Text:", aiText);
 
             if (!generatedImageUrl) {
                 throw new Error("未收到生成的图片");
@@ -148,7 +150,7 @@ function ImagePageContent() {
             img.onload = () => {
                 setMessages(prev => prev.map(msg =>
                     msg.id === aiMessageId
-                        ? { ...msg, content: "已为你生成图片:", imageUrl: generatedImageUrl, isLoading: false, autoFly: true }
+                        ? { ...msg, content: aiText, imageUrl: generatedImageUrl, isLoading: false, autoFly: true }
                         : msg
                 ));
                 setIsGenerating(false);
