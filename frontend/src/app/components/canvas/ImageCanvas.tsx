@@ -70,15 +70,17 @@ export function ImageCanvas({
                     width: 300,
                     height: 300,
                     rotation: 0,
-                    isSelected: true
+                    isSelected: false // 默认不选中，避免显示线框
                 };
                 onImagesChange([...images, newImage]);
-                setSelectedImageId(newImage.id);
+                // 不自动选中
+                // setSelectedImageId(newImage.id);
                 onFlyingComplete();
             }, 800); // animation duration
             return () => clearTimeout(timer);
         }
     }, [flyingImage, onFlyingComplete, images, onImagesChange, getTargetPosition]);
+
 
     // Pan handlers
     const handleMouseDown = useCallback((e: React.MouseEvent) => {
