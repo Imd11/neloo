@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, Suspense } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquarePlus, ChevronDown, Check, Search } from "lucide-react";
 import { RotatingHeadline } from "@/app/components/RotatingHeadline";
@@ -9,6 +10,9 @@ import { ImageConfigBar } from "@/app/components/ImageConfigBar";
 import { TabbedTemplateGrid } from "@/app/components/TabbedTemplateGrid";
 import { ImageChatPanel } from "@/app/components/chat/ImageChatPanel";
 import { ImageCanvas } from "@/app/components/canvas/ImageCanvas";
+import { MainLayout } from "@/app/components/layout/MainLayout";
+import { SearchDialog } from "@/app/components/SearchDialog";
+import { LibraryDialog } from "@/app/components/LibraryDialog";
 import { Button } from "@/components/ui/button";
 import {
     DropdownMenu,
@@ -20,6 +24,7 @@ import { Template } from "@/data/featureTemplates";
 import { ImageMessage } from "@/types/imageChat";
 import { CanvasImage } from "@/types/canvas";
 import { useSidebar } from "@/app/context/SidebarContext";
+import { useAuth } from "@/providers/AuthProvider";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -371,13 +376,63 @@ function ImagePageContent() {
 }
 
 export default function ImagePage() {
+    const router = useRouter();
+    const { user } = useAuth();
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [libraryOpen, setLibraryOpen] = useState(false);
+
+    const handleNewThread = () => {
+        router.push("/");
+    };
+
+    const handleSearch = () => {
+        if (!user) {
+            router.push("/login");
+            return;
+        }
+        setSearchOpen(true);
+    };
+
+    const handleLibrary = () => {
+        if (!user) {
+            router.push("/login");
+            return;
+        }
+        setLibraryOpen(true);
+    };
+
+    const handleThreadSelect = async (id: string) => {
+        router.push(`/?threadId=${id}`);
+        setSearchOpen(false);
+    };
+
     return (
-        <Suspense fallback={
-            <div className="flex h-screen items-center justify-center">
-                <p className="text-muted-foreground">Loading...</p>
-            </div>
-        }>
-            <ImagePageContent />
-        </Suspense>
+        <>
+            <SearchDialog
+                open={searchOpen}
+                onOpenChange={setSearchOpen}
+                onThreadSelect={handleThreadSelect}
+            />
+            <LibraryDialog
+                open={libraryOpen}
+                onOpenChange={setLibraryOpen}
+            />
+            <MainLayout
+                sidebarProps={{
+                    onNewThread: handleNewThread,
+                    onSearch: handleSearch,
+                    onLibrary: handleLibrary,
+                    onThreadSelect: handleThreadSelect,
+                }}
+            >
+                <Suspense fallback={
+                    <div className="flex h-screen items-center justify-center">
+                        <p className="text-muted-foreground">Loading...</p>
+                    </div>
+                }>
+                    <ImagePageContent />
+                </Suspense>
+            </MainLayout>
+        </>
     );
 }

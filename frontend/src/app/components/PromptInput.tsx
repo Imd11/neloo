@@ -99,7 +99,7 @@ export function PromptInput({
                     onKeyDown={handleKeyDown}
                     disabled={disabled}
                     placeholder={selectedFeature?.placeholder || placeholder}
-                    className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground text-base leading-none outline-none min-w-0 translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground text-base leading-none outline-none ring-0 focus:ring-0 focus:outline-none border-none min-w-0 translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed"
                 />
 
                 {/* Voice Button */}
