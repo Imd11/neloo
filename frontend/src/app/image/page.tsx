@@ -135,7 +135,9 @@ function ImagePageContent() {
             }
 
             const data = await response.json();
+            console.log("[ImagePage] API Response:", JSON.stringify(data, null, 2));
             const generatedImageUrl = data.images?.[0];
+            console.log("[ImagePage] Generated Image URL:", generatedImageUrl);
 
             if (!generatedImageUrl) {
                 throw new Error("未收到生成的图片");

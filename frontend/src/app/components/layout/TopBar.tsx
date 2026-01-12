@@ -59,6 +59,18 @@ const CHAT_MODELS: ModelInfo[] = [
 // Logos that need dark background/inversion in light mode
 const LIGHT_LOGOS = ["/logos/openai.png", "/logos/grok.png", "/logos/kimi.png", "/logos/midjourney.png", "/logos/sora.png", "/logos/runway.png", "/logos/pika.png", "/logos/luma.png", "/logos/hailuo.png", "/logos/vidu.png"];
 
+// Image generation models
+const IMAGE_MODELS: ModelInfo[] = [
+    { id: "nano-banana", name: "Nano Banana", logo: "/logos/nano-banana.png", provider: "Tu-zi" },
+    { id: "kling-image", name: "可灵 AI", logo: "/logos/kling.png", provider: "Kuaishou" },
+    { id: "jimeng-image", name: "即梦", logo: "/logos/jimeng.png", provider: "ByteDance" },
+    { id: "midjourney", name: "Midjourney", logo: "/logos/midjourney.png", provider: "Midjourney" },
+    { id: "dall-e-3", name: "DALL·E 3", logo: "/logos/openai.png", provider: "OpenAI" },
+    { id: "stable-diffusion", name: "Stable Diffusion", logo: "/logos/stability.png", provider: "Stability AI" },
+    { id: "minimax-image", name: "MiniMax", logo: "/logos/minimax.png", provider: "MiniMax" },
+    { id: "tongyi-wanxiang", name: "通义万相", logo: "/logos/qwen.png", provider: "Alibaba Cloud" },
+];
+
 // Video generation models
 const VIDEO_MODELS: ModelInfo[] = [
     { id: "kling", name: "可灵 AI", logo: "/logos/kling.png", provider: "Kuaishou" },
@@ -86,7 +98,7 @@ export function TopBar({ hideUserActions = false, currentModelId, onModelSelect 
     const isVideoPage = pathname === "/video";
 
     // Select model list based on current page
-    const models = isVideoPage ? VIDEO_MODELS : CHAT_MODELS;
+    const models = isVideoPage ? VIDEO_MODELS : isImagePage ? IMAGE_MODELS : CHAT_MODELS;
 
     // Derived state from props or default
     const currentModel = models.find(m => m.id === currentModelId) || models[0];
