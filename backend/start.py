@@ -9,8 +9,14 @@ IMPORTANT: This script now configures PostgresSaver for checkpoint persistence.
 Without this, thread history is lost on every restart.
 """
 
-import os
+# Immediate output to confirm start.py is running
 import sys
+print("=" * 60, flush=True)
+print("[START.PY] Starting Data Analyst Backend...", flush=True)
+print(f"[START.PY] Python version: {sys.version}", flush=True)
+print("=" * 60, flush=True)
+
+import os
 import asyncio
 from pathlib import Path
 
