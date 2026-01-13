@@ -102,38 +102,41 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[85vh] px-4 w-full max-w-5xl mx-auto space-y-10 animate-in fade-in duration-500">
-      {/* 1. Rotating Headline */}
-      <RotatingHeadline />
+    <div className="flex-1 flex flex-col items-center px-6 overflow-y-auto">
+      <div className="w-full max-w-4xl flex flex-col items-center gap-8 pt-[28vh]">
+        {/* 1. Rotating Headline */}
+        <div>
+          <RotatingHeadline />
+        </div>
 
-      {/* 2. Input Area */}
-      <div className="w-full max-w-3xl space-y-6">
-        {/* 根据 fortune 模式切换输入组件 */}
-        {selectedFeature?.id === 'fortune' ? (
-          <TemplatePromptInput
-            placeholder="描述你想要创建的内容..."
-            selectedFeature={selectedFeature}
-            onClearFeature={() => onSelectFeature(null)}
-            onSubmit={handlePromptSubmit}
-          />
-        ) : (
-          <PromptInput
-            placeholder="描述你想要创建的内容..."
-            selectedFeature={selectedFeature}
-            onClearFeature={() => onSelectFeature(null)}
-            onSubmit={handlePromptSubmit}
-            disabled={false}
-          />
-        )}
+        {/* 2. Input Area */}
+        <div className="w-full max-w-3xl mx-auto">
+          {/* 根据 fortune 模式切换输入组件 */}
+          {selectedFeature?.id === 'fortune' ? (
+            <TemplatePromptInput
+              placeholder="描述你想要创建的内容..."
+              selectedFeature={selectedFeature}
+              onClearFeature={() => onSelectFeature(null)}
+              onSubmit={handlePromptSubmit}
+            />
+          ) : (
+            <PromptInput
+              placeholder="描述你想要创建的内容..."
+              selectedFeature={selectedFeature}
+              onClearFeature={() => onSelectFeature(null)}
+              onSubmit={handlePromptSubmit}
+              disabled={false}
+            />
+          )}
+        </div>
 
+        {/* 3. Feature Buttons */}
         <FeatureButtons
           selectedFeature={selectedFeature}
           onSelectFeature={onSelectFeature}
         />
-      </div>
 
-      {/* 3. Feature Template Grid (Expandable) */}
-      <div className="w-full min-h-[200px]">
+        {/* 4. Feature Template Grid (Expandable) */}
         <FeatureTemplateGrid
           feature={selectedFeature}
           onSelectTemplate={handleSelectTemplate}
