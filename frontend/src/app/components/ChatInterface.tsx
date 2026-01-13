@@ -137,6 +137,8 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
     isModeLocked,
     editMessageAndRerun,
     regenerateLastResponse,
+    fortuneMode,
+    activeFeatureId,
   } = useChatContext();
 
   // DataFileUpload integration
@@ -1094,12 +1096,24 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                   </Button>
                 )}
 
-                {/* Web Dev Mode Tag - shown when enabled */}
-                {webDevMode && (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium shrink-0 bg-blue-500/15 text-blue-600 dark:text-blue-400">
-                    <span>网页开发</span>
-                  </div>
-                )}
+                {/* Feature Mode Tags - shown when a feature is active (locked after sending) */}
+                {activeFeatureId && (() => {
+                  const featureConfig: Record<string, { label: string; color: string }> = {
+                    'web-dev': { label: '网页开发', color: 'bg-blue-500/15 text-blue-600 dark:text-blue-400' },
+                    'fortune': { label: '五行算命', color: 'bg-orange-500/15 text-orange-600 dark:text-orange-400' },
+                    'slides': { label: '制作幻灯片', color: 'bg-purple-500/15 text-purple-600 dark:text-purple-400' },
+                    'resume': { label: '制作简历', color: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' },
+                    'prompt-optimize': { label: '提示词优化', color: 'bg-violet-500/15 text-violet-600 dark:text-violet-400' },
+                    'deai': { label: '去AI化', color: 'bg-rose-500/15 text-rose-600 dark:text-rose-400' },
+                  };
+                  const config = featureConfig[activeFeatureId];
+                  if (!config) return null;
+                  return (
+                    <div className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium shrink-0", config.color)}>
+                      <span>{config.label}</span>
+                    </div>
+                  );
+                })()}
 
                 {/* File chips - show uploaded files inline */}
                 {fileUpload.files.map((file) => (

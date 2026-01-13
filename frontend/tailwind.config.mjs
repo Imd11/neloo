@@ -393,7 +393,7 @@ export default {
   plugins: [
     containerQueries,
     typography,
-    forms,
+    forms({ strategy: 'class' }),  // Use class strategy to avoid auto-styling forms
     tailwindcssAnimate,
     headlessui,
     plugin(({ addUtilities, addBase }) => {

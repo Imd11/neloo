@@ -17,6 +17,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  updateDisplayName: (displayName: string) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -103,6 +104,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
   }, [supabase]);
 
+  // Update user display name in Supabase user_metadata
+  const updateDisplayName = useCallback(async (displayName: string) => {
+    try {
+      const { error, data } = await supabase.auth.updateUser({
+        data: { display_name: displayName }
+      });
+      if (error) {
+        return { error };
+      }
+      // Update local user state with new metadata
+      if (data.user) {
+        setUser(data.user);
+      }
+      return { error: null };
+    } catch (error) {
+      return { error: error as Error };
+    }
+  }, [supabase]);
+
   return (
     <AuthContext.Provider
       value={{
@@ -112,6 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signIn,
         signUp,
         signOut,
+        updateDisplayName,
       }}
     >
       {children}

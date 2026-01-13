@@ -27,13 +27,16 @@ interface RotatingHeadlineProps {
 export function RotatingHeadline({ className }: RotatingHeadlineProps) {
     const { user } = useAuth();
 
-    // Extract username from email or use default
+    // Extract username: prefer display_name from user_metadata, then email prefix
     const userName = useMemo(() => {
+        if (user?.user_metadata?.display_name) {
+            return user.user_metadata.display_name as string;
+        }
         if (user?.email) {
             return user.email.split("@")[0];
         }
         return "朋友";
-    }, [user?.email]);
+    }, [user?.user_metadata?.display_name, user?.email]);
 
     // Get one random headline on mount (stable across re-renders)
     const headline = useMemo(() => {

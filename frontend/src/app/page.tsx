@@ -33,14 +33,15 @@ import { Feature, Template } from "@/data/featureTemplates";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface LandingViewProps {
-  onPromptSubmit: (value: string) => void;
+  onPromptSubmit: (value: string, hiddenPrefix?: string) => void;
   onSelectFeature: (feature: Feature | null) => void;
   selectedFeature: Feature | null;
   setFortuneMode: (mode: boolean) => void;
   enableWebDevMode: () => void;
+  setActiveFeatureId: (featureId: string | null) => void;
 }
 
-function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFortuneMode, enableWebDevMode }: LandingViewProps) {
+function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFortuneMode, enableWebDevMode, setActiveFeatureId }: LandingViewProps) {
   const router = useRouter();
 
   // Track selected fortune template ID for prefix injection
@@ -54,26 +55,30 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
     if (selectedFeature?.id === 'fortune') {
       // Enable fortune mode graph
       setFortuneMode(true);
+      setActiveFeatureId('fortune');
 
-      if (selectedFortuneTemplateId) {
-        // Add hidden prefix for fortune templates
-        const prefix = getFortuneTemplatePrefix(selectedFortuneTemplateId);
-        const fullMessage = prefix + userInput;
-        onPromptSubmit(fullMessage);
-      } else {
-        // Fortune mode without specific template (default to full analysis)
-        const defaultPrefix = getFortuneTemplatePrefix(1); // 八字全解
-        const fullMessage = defaultPrefix + userInput;
-        onPromptSubmit(fullMessage);
-      }
+      // Get the prefix (hidden from user, sent to backend)
+      const prefix = selectedFortuneTemplateId
+        ? getFortuneTemplatePrefix(selectedFortuneTemplateId)
+        : getFortuneTemplatePrefix(1); // Default to 八字全解
+
+      // Send user input for display, prefix as hidden for backend
+      onPromptSubmit(userInput, prefix);
     } else if (selectedFeature?.id === 'web-dev') {
       // Enable web-dev mode graph
       enableWebDevMode();
       setFortuneMode(false);
+      setActiveFeatureId('web-dev');
+      onPromptSubmit(userInput);
+    } else if (selectedFeature) {
+      // Other features (slides, resume, prompt-optimize, deai)
+      setFortuneMode(false);
+      setActiveFeatureId(selectedFeature.id);
       onPromptSubmit(userInput);
     } else {
-      // Clear fortune mode when not in fortune feature
+      // No feature selected
       setFortuneMode(false);
+      setActiveFeatureId(null);
       onPromptSubmit(userInput);
     }
   };
@@ -152,7 +157,7 @@ function ChatWithFilePanel({
   onCloseFilePanel: () => void;
   threadId: string | null;
 }) {
-  const { messages, isLoading, webDevMode, sendMessage, setFortuneMode, enableWebDevMode } = useChatContext();
+  const { messages, isLoading, webDevMode, sendMessage, setFortuneMode, enableWebDevMode, setActiveFeatureId } = useChatContext();
   const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
 
   // Selected artifact from inline cards - this is what drives the right panel
@@ -276,6 +281,7 @@ function ChatWithFilePanel({
           onSelectFeature={setSelectedFeature}
           setFortuneMode={setFortuneMode}
           enableWebDevMode={enableWebDevMode}
+          setActiveFeatureId={setActiveFeatureId}
         />
       </div>
     );

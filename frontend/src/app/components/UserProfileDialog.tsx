@@ -51,12 +51,13 @@ export function UserProfileDialog({
     open,
     onOpenChange,
 }: UserProfileDialogProps) {
-    const { user, signOut } = useAuth();
+    const { user, signOut, updateDisplayName } = useAuth();
     const [activeTab, setActiveTab] = useState("account");
     const [isEditingName, setIsEditingName] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
 
-    // Get user info from auth
-    const displayName = user?.email?.split('@')[0] || "User";
+    // Get user info from auth - prefer display_name from user_metadata
+    const displayName = (user?.user_metadata?.display_name as string) || user?.email?.split('@')[0] || "User";
     const email = user?.email || "user@example.com";
 
     const [userName, setUserName] = useState(displayName);
@@ -64,14 +65,26 @@ export function UserProfileDialog({
 
     // Update userName when user changes
     useEffect(() => {
-        const newName = user?.email?.split('@')[0] || "User";
+        const newName = (user?.user_metadata?.display_name as string) || user?.email?.split('@')[0] || "User";
         setUserName(newName);
         setTempName(newName);
     }, [user]);
 
-    const handleSaveName = () => {
-        setUserName(tempName);
-        setIsEditingName(false);
+    const handleSaveName = async () => {
+        if (!tempName.trim()) return;
+
+        setIsSaving(true);
+        try {
+            const { error } = await updateDisplayName(tempName.trim());
+            if (error) {
+                console.error("Failed to update display name:", error);
+                return;
+            }
+            setUserName(tempName.trim());
+            setIsEditingName(false);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleCancelEdit = () => {

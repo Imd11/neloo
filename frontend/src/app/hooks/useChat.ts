@@ -50,6 +50,9 @@ export function useChat({
   const [fortuneMode, setFortuneMode] = useState(false);
   const [threadMode, setThreadMode] = useState<string>("default");
 
+  // Generic active feature tracking (for slides, resume, prompt-optimize, deai, etc.)
+  const [activeFeatureId, setActiveFeatureId] = useState<string | null>(null);
+
   // Track if thread history is unavailable (e.g., LangGraph checkpoint lost after restart)
   const [historyUnavailable, setHistoryUnavailable] = useState(false);
 
@@ -262,16 +265,25 @@ export function useChat({
   });
 
   const sendMessage = useCallback(
-    (content: string) => {
-      const newMessage: Message = { id: uuidv4(), type: "human", content };
+    (content: string, hiddenPrefix?: string) => {
+      // For display: only show user content
+      // For backend: prepend hiddenPrefix if provided
+      const displayContent = content;
+      const backendContent = hiddenPrefix ? hiddenPrefix + content : content;
+
+      // Create message with display content for UI
+      const displayMessage: Message = { id: uuidv4(), type: "human", content: displayContent };
+      // Create message with full content for backend
+      const backendMessage: Message = { id: displayMessage.id, type: "human", content: backendContent };
+
       const currentMessages = stream.messages ?? [];
       const isFirstMessage = currentMessages.length === 0;
 
       stream.submit(
-        { messages: [newMessage] },
+        { messages: [backendMessage] },  // Send full content to backend
         {
           optimisticValues: (prev) => ({
-            messages: [...(prev.messages ?? []), newMessage],
+            messages: [...(prev.messages ?? []), displayMessage],  // Show only user content in UI
           }),
           config: { ...(activeAssistant?.config ?? {}), recursion_limit: 1000 },
         }
@@ -279,14 +291,14 @@ export function useChat({
       // Update thread list immediately when sending a message
       onHistoryRevalidate?.();
 
-      // Generate title for new threads (first message)
+      // Generate title for new threads (first message) - use display content for title
       if (isFirstMessage) {
         // Capture the first user message so we can generate a title once the thread is created/verified.
-        pendingFirstMessageRef.current = content;
+        pendingFirstMessageRef.current = displayContent;
 
         // If the thread record is already created/verified, generate immediately.
         if (threadId && createdThreadsRef.current.has(threadId)) {
-          void generateTitleForThread(threadId, content);
+          void generateTitleForThread(threadId, displayContent);
           pendingFirstMessageRef.current = null;
         }
       }
@@ -474,6 +486,9 @@ export function useChat({
     // Fortune mode (五行算命)
     fortuneMode: isFortuneModeActive,
     setFortuneMode,
+    // Generic feature mode (slides, resume, prompt-optimize, deai)
+    activeFeatureId,
+    setActiveFeatureId,
     // History unavailable flag - true when LangGraph checkpoint was lost
     historyUnavailable,
   };

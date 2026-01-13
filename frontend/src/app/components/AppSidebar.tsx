@@ -199,6 +199,46 @@ export function AppSidebar({
     }
   };
 
+  // Handle share entire thread (no message_index = share all messages)
+  const handleShareThread = async (threadId: string) => {
+    if (!config?.deploymentUrl || !session?.access_token) {
+      toast.error("无法分享", { description: "请先登录" });
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${config.deploymentUrl}/api/threads/${encodeURIComponent(threadId)}/share`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ message_index: null }),  // null = share entire conversation
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.detail || "创建分享链接失败");
+      }
+
+      const data = await response.json();
+      const shareUrl = `${window.location.origin}/share/${data.share_id}`;
+
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("链接已复制到剪贴板", {
+        description: "任何人都可以通过此链接查看整个对话",
+      });
+    } catch (error) {
+      console.error("Failed to share thread:", error);
+      toast.error("分享失败", {
+        description: error instanceof Error ? error.message : "请稍后重试",
+      });
+    }
+  };
+
   // Icon column width
   const iconColWidth = "w-12";
 
@@ -213,9 +253,10 @@ export function AppSidebar({
     }
   };
 
-  const userInitials = user?.email
-    ? user.email.split("@")[0].substring(0, 2).toUpperCase()
-    : "U";
+  // Get display name from user_metadata, fallback to email prefix
+  const userDisplayName = (user?.user_metadata?.display_name as string) || user?.email?.split("@")[0] || "User";
+
+  const userInitials = userDisplayName.substring(0, 2).toUpperCase();
 
   const userEmail = user?.email || "User";
 
@@ -433,7 +474,7 @@ export function AppSidebar({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent side="right" align="start" className="w-32">
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); /* TODO: implement share */ }}>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleShareThread(item.id); }}>
                           <Share2 className="w-4 h-4 mr-2" />
                           分享
                         </DropdownMenuItem>
@@ -602,7 +643,7 @@ export function AppSidebar({
                   collapsed ? "opacity-0" : "opacity-100"
                 )}
               >
-                <div className="text-sm text-foreground truncate">{userEmail}</div>
+                <div className="text-sm text-foreground truncate">{userDisplayName}</div>
               </div>
             </div>
           </div>

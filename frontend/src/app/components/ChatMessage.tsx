@@ -477,7 +477,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
               </div>
               {/* AI message action buttons - always visible, positioned at bottom */}
               {!isUser && hasContent && (
-                <div className="mt-2 flex justify-center">
+                <div className="mt-2 flex justify-start">
                   <MessageActions show={true} alwaysVisible={true} />
                 </div>
               )}
