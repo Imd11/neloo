@@ -46,267 +46,405 @@ export interface GlobalThinkingGroup {
     items: ThinkingContent[];
 }
 
-export type ChatItem = TaskGroup | MessageGroup | GlobalThinkingGroup;
+// New timeline item types for flat rendering
+export interface TimelineThinking {
+    id: string;
+    type: "timeline_thinking";
+    content: string;
+    duration?: number;
+}
+
+export interface TimelineToolCall {
+    id: string;
+    type: "timeline_tool_call";
+    toolName: string;
+    args: string;
+    toolCallId: string;
+    status: "running" | "complete" | "error";
+    result?: string;
+}
+
+export interface TimelineText {
+    id: string;
+    type: "timeline_text";
+    content: string;
+    messageId?: string;
+}
+
+export type TimelineItem = TimelineThinking | TimelineToolCall | TimelineText | MessageGroup;
+
+export type ChatItem = TaskGroup | MessageGroup | GlobalThinkingGroup | TimelineItem;
 
 /**
- * Sequential Replay Logic
- * Iterates through the flat message history and groups items into Task Cards
- * based on `write_todos` calls.
+ * Flat Timeline Logic - NEW
+ * 
+ * Renders each content block in the exact order received from backend.
+ * No grouping, no reordering. Simple and predictable.
  */
-export function groupMessagesByTask(messages: Message[]): ChatItem[] {
-    const groups: ChatItem[] = [];
-    let currentTask: TaskGroup | null = null;
-    let globalThinking: GlobalThinkingGroup | null = null;
-    let hasStartedTasks = false;
-
-    // Track known tools to correlate results
-    const toolCallMap = new Map<string, ToolCall>();
-
-    // Track messages whose thinking was already extracted to GlobalThinking
-    // This prevents duplicate ThinkingBlocks when a message is processed again in Step 3 A2
-    const globalExtractedMsgIds = new Set<string>();
+export function flattenMessagesToTimeline(messages: Message[]): ChatItem[] {
+    const items: ChatItem[] = [];
+    const toolCallMap = new Map<string, TimelineToolCall>();
+    let blockIndex = 0;
 
     for (const msg of messages) {
-        const role = msg.type === "human" ? "user" : (msg.type === "ai" ? "assistant" : (msg.type === "tool" ? "tool" : "video"));
+        const role = msg.type === "human" ? "user" : (msg.type === "ai" ? "assistant" : (msg.type === "tool" ? "tool" : "other"));
 
-        // helper to access properties safely
-        const anyMsg = msg as any;
-        const toolCalls = anyMsg.tool_calls || anyMsg.additional_kwargs?.tool_calls || [];
-        const content = extractStringFromMessageContent(msg);
+        if (role === "user") {
+            // User messages always render as MessageGroup
+            items.push({
+                id: msg.id || `user-${blockIndex++}`,
+                type: "message",
+                message: msg
+            });
+            continue;
+        }
 
-        // 0. Global Thinking Detection (Before any task starts)
-        // If we haven't started any tasks yet, and we see thinking content, add to global thinking
-        // NOTE: We extract initial thinking REGARDLESS of whether the message has tool calls.
-        // This ensures the first "Thought Process" appears at the top level, not nested in a task.
-        if (!hasStartedTasks && role === "assistant") {
+        if (role === "tool") {
+            // Tool result - update the corresponding tool call OR create standalone result
+            const anyMsg = msg as any;
+            const toolCallId = anyMsg.tool_call_id;
+            const toolContent = extractStringFromMessageContent(msg);
+
+            if (toolCallId && toolCallMap.has(toolCallId)) {
+                // Found matching tool call - update it
+                const toolItem = toolCallMap.get(toolCallId)!;
+                toolItem.result = toolContent;
+                toolItem.status = "complete";
+            } else {
+                // No matching tool call found (history reload scenario)
+                // Create a standalone tool result item
+                items.push({
+                    id: `tool-result-${msg.id || toolCallId || blockIndex++}`,
+                    type: "timeline_tool_call",
+                    toolName: "Tool Result",  // We don't know the tool name from ToolMessage alone
+                    args: "",
+                    toolCallId: toolCallId || "",
+                    status: "complete",
+                    result: toolContent
+                });
+            }
+            continue;
+        }
+
+        if (role === "assistant") {
+            // Parse content blocks in order
             const blocks = parseMessageContentBlocks(msg);
 
             // Check for injected thinking duration
+            const content = extractStringFromMessageContent(msg);
             const durationRegex = /<!-- think_duration: (\d+) -->/;
             const match = content.match(durationRegex);
             const injectedDuration = match ? parseInt(match[1], 10) : undefined;
 
-            const thinkingBlocks = blocks.filter(b => b.type === "thinking");
-
-            if (thinkingBlocks.length > 0) {
-                if (!globalThinking) {
-                    globalThinking = {
-                        id: `global-think-${msg.id || Date.now()}`,
-                        type: "global_thinking",
-                        items: []
-                    };
-                    groups.push(globalThinking);
-                }
-
-                thinkingBlocks.forEach(block => {
-                    // Use injected duration if available
-                    const duration = injectedDuration
-                        ? injectedDuration
-                        : estimateDuration(block.content);
-
-                    globalThinking!.items.push({
+            // Process each block in array order (time order)
+            for (const block of blocks) {
+                if (block.type === "thinking") {
+                    const duration = injectedDuration ?? estimateDuration(block.content);
+                    items.push({
+                        id: `thinking-${msg.id}-${blockIndex++}`,
+                        type: "timeline_thinking",
                         content: block.content,
-                        startTime: Date.now(),
-                        isStreaming: false,
                         duration: duration
                     });
-                });
-
-                // Mark this message as having its thinking globally extracted
-                if (msg.id) {
-                    globalExtractedMsgIds.add(msg.id);
-                }
-            }
-
-            // If this message has NO tool calls and no meaningful text, we can skip to next message
-            const textContent = stripThinkTags(content).trim();
-            if (toolCalls.length === 0 && !textContent) {
-                continue;
-            }
-
-            // Otherwise, fall through to process tool calls (Step 1) or text content (Step 3)
-            // The thinking has already been extracted to globalThinking, so we don't need to add it again
-        }
-
-        // 1. Check for write_todos to start/update tasks
-        if (role === "assistant" && toolCalls.length > 0) {
-            hasStartedTasks = true; // Mark that we entered task mode
-            for (const tool of toolCalls) {
-                const toolName = tool.function?.name || tool.name;
-                if (toolName === "write_todos") {
-                    try {
-                        const argsString = tool.function?.arguments || tool.args;
-                        const args = typeof argsString === 'string' ? JSON.parse(argsString) : argsString;
-                        // args is usually { todos: [...] }
-                        const inProgress = args.todos?.find((t: any) => t.status === "in_progress");
-
-                        if (inProgress) {
-                            // START NEW TASK GROUP
-                            // Use tool.id as the stable seed for the task ID
-                            currentTask = {
-                                id: `task-${tool.id}`,
-                                type: "task",
-                                title: inProgress.content,
-                                status: "in_progress",
-                                items: [],
-                                startTime: Date.now() // Timestamps for display are fine, just not for IDs
-                            };
-                            groups.push(currentTask);
-                        }
-                    } catch {
-                        // Ignore parse errors
+                } else if (block.type === "text") {
+                    if (block.content.trim()) {
+                        items.push({
+                            id: `text-${msg.id}-${blockIndex++}`,
+                            type: "timeline_text",
+                            content: block.content,
+                            messageId: msg.id
+                        });
                     }
-                }
-            }
-        }
+                } else if (block.type === "tool_use") {
+                    // Skip write_todos (control tool)
+                    if (block.name === "write_todos") continue;
 
-        // 2. Implicit Task Support: If no current task, but we have tools/thinking, start an implicit one.
-        if (!currentTask && role === "assistant") {
-            const blocks = parseMessageContentBlocks(msg);
-            const hasThinking = blocks.some(b => b.type === "thinking");
-
-            // Only create implicit task if:
-            // 1. There are tool calls (ALWAYS create task for tools)
-            // 2. OR There is thinking AND we have already started tasks (meaning it's a mid-stream thought that lost its task context?)
-            //    If we haven't started tasks (!hasStartedTasks), Step 0 handled the thinking, so we DON'T want an implicit task.
-            const shouldCreateImplicitTask =
-                toolCalls.length > 0 ||
-                (hasThinking && hasStartedTasks);
-
-            if (shouldCreateImplicitTask) {
-                hasStartedTasks = true;
-                // START IMPLICIT TASK GROUP
-                currentTask = {
-                    id: `implicit-task-${msg.id || Date.now()}`,
-                    type: "task",
-                    title: "Processing Request...", // Default title for implicit tasks
-                    status: "in_progress",
-                    items: [],
-                    startTime: Date.now()
-                };
-                groups.push(currentTask);
-            }
-        }
-
-        // 3. Classify the message content
-        if (currentTask) {
-            // If we have an active task, put items into it
-
-            // A. Tool Calls
-            if (role === "assistant" && toolCalls.length > 0) {
-                for (const tool of toolCalls) {
-                    const toolName = tool.function?.name || tool.name;
-                    if (toolName === "write_todos") continue; // Skip the control tool itself
-
-                    const argsString = tool.function?.arguments || tool.args;
-                    const toolItem: ToolCall = {
-                        toolName: toolName,
-                        args: typeof argsString === 'string' ? argsString : JSON.stringify(argsString),
-                        toolCallId: tool.id,
+                    const toolItem: TimelineToolCall = {
+                        id: `tool-${block.id}-${blockIndex++}`,
+                        type: "timeline_tool_call",
+                        toolName: block.name,
+                        args: typeof block.input === 'string' ? block.input : JSON.stringify(block.input),
+                        toolCallId: block.id,
                         status: "running"
                     };
-                    toolCallMap.set(tool.id, toolItem);
-                    currentTask.items.push(toolItem);
+                    toolCallMap.set(block.id, toolItem);
+                    items.push(toolItem);
                 }
             }
 
-            // A2. Extract Thinking Content from Assistant Messages (ONLY thinking, not text)
-            // Skip if this message's thinking was already extracted to GlobalThinking in Step 0
-            if (role === "assistant" && !(msg.id && globalExtractedMsgIds.has(msg.id))) {
-                const blocks = parseMessageContentBlocks(msg);
+            // Also check msg.tool_calls for tools not in content array
+            const anyMsg = msg as any;
+            const toolCalls = anyMsg.tool_calls || anyMsg.additional_kwargs?.tool_calls || [];
+            for (const tool of toolCalls) {
+                const toolId = tool.id || tool.function?.id;
+                const toolName = tool.function?.name || tool.name;
 
-                // Check for injected thinking duration in result content
-                // The backend injects: \n\n<!-- think_duration: {ms} -->
-                const durationRegex = /<!-- think_duration: (\d+) -->/;
-                let injectedDuration: number | undefined;
-                const match = content.match(durationRegex);
-                if (match) {
-                    injectedDuration = parseInt(match[1], 10);
-                }
+                // Skip if already added from content blocks
+                if (toolCallMap.has(toolId)) continue;
+                // Skip control tool
+                if (toolName === "write_todos") continue;
 
-                // Extract ONLY thinking blocks - text content is handled separately in Step C
-                const thinkingBlocks = blocks.filter(b => b.type === "thinking");
-
-                if (thinkingBlocks.length > 0) {
-                    thinkingBlocks.forEach(block => {
-                        // Use injected duration if available
-                        const duration = injectedDuration
-                            ? injectedDuration
-                            : estimateDuration(block.content);
-
-                        currentTask!.items.push({
-                            content: block.content,
-                            startTime: Date.now(),
-                            isStreaming: false,
-                            duration: duration
-                        } as ThinkingContent);
-                    });
-                }
+                const argsString = tool.function?.arguments || tool.args;
+                const toolItem: TimelineToolCall = {
+                    id: `tool-${toolId}-${blockIndex++}`,
+                    type: "timeline_tool_call",
+                    toolName: toolName,
+                    args: typeof argsString === 'string' ? argsString : JSON.stringify(argsString),
+                    toolCallId: toolId,
+                    status: "running"
+                };
+                toolCallMap.set(toolId, toolItem);
+                items.push(toolItem);
             }
 
-            // B. Tool Results
-            if (role === "tool") {
-                const toolCallId = anyMsg.tool_call_id; // Vercel AI SDK uses tool_call_id
-                if (toolCallId && toolCallMap.has(toolCallId)) {
-                    const item = toolCallMap.get(toolCallId)!;
-                    item.result = content;
-                    item.status = "complete";
-                }
-            }
-
-            // C. Text Content (Final Answer detection)
-            // Only process text separation if there are NO tool calls (pure text response)
-            // If there ARE tool calls, any text is usually just context/thought which we handled in A2
-            if (role === "assistant" && !toolCalls.length) {
-                const textContent = stripThinkTags(content);
-
-                // If there is meaningful text content, it's likely the final answer
-                if (textContent.trim()) {
-                    currentTask = null; // Break the task grouping
-                    hasStartedTasks = true;
-
-                    groups.push({
-                        id: msg.id || `msg-toplevel-${Date.now()}`,
-                        type: "message",
-                        message: { ...msg, content: textContent }
-                    });
-                }
-                // Note: If it was just thinking, it was added to task in A2. 
-            }
-
-            // If user message, break task?
-            if (role === "user") {
-                currentTask = null;
-                hasStartedTasks = true;
-                groups.push({
-                    id: msg.id || `msg-user-${groups.length}`,
-                    type: "message",
-                    message: msg
-                });
-            }
-
-        } else {
-            // No active task, treat as top-level message
-            if (role === "assistant") {
-                // Double check if we missed any content handled by global thinking
-                // If it's pure text, render as message
+            // If no blocks were extracted but there's text content, add as text
+            if (blocks.length === 0) {
                 const textContent = stripThinkTags(content);
                 if (textContent.trim()) {
-                    groups.push({
-                        id: msg.id || `msg-toplevel-${groups.length}`,
-                        type: "message",
-                        message: msg
+                    items.push({
+                        id: `text-${msg.id}-${blockIndex++}`,
+                        type: "timeline_text",
+                        content: textContent,
+                        messageId: msg.id
                     });
                 }
-            } else {
-                groups.push({
-                    id: msg.id || `msg-toplevel-${groups.length}`,
-                    type: "message",
-                    message: msg
-                });
             }
         }
     }
 
-    return groups;
+    return items;
+}
+
+/**
+ * Legacy groupMessagesByTask - kept for backwards compatibility
+ * 
+ * Now just wraps flattenMessagesToTimeline.
+ * TaskGroup is no longer used - everything renders as timeline items.
+ */
+export function groupMessagesByTask(messages: Message[]): ChatItem[] {
+    return flattenMessagesToTimeline(messages);
+}
+
+/**
+ * Hierarchical Todo Grouping (Manus-style)
+ * 
+ * Groups timeline items under their corresponding todos.
+ * Uses write_todos tool calls as task boundaries:
+ * - Items before first write_todos → "top-level" (todoId = null)
+ * - Items after write_todos(id=X, status=in_progress) → todoId = X
+ * 
+ * @param messages - Raw messages from stream
+ * @param todos - Todo items from stream.values.todos
+ * @returns Object with topLevel items and grouped items per todo
+ */
+export interface TodoGroup {
+    todoId: string;
+    title: string;
+    status: "pending" | "in_progress" | "completed";
+    items: TimelineItem[];
+}
+
+export interface HierarchicalTimeline {
+    topLevel: TimelineItem[];  // Items before any todo (intro text, initial thinking)
+    todoGroups: TodoGroup[];   // Items grouped by todo
+}
+
+export function groupMessagesByTodo(
+    messages: Message[],
+    todos: Array<{ id: string; content: string; status: "pending" | "in_progress" | "completed" }>
+): HierarchicalTimeline {
+    const result: HierarchicalTimeline = {
+        topLevel: [],
+        todoGroups: []
+    };
+
+    // Create a map for quick todo lookup
+    const todoMap = new Map(todos.map(t => [t.id, t]));
+
+    // Create groups for each todo
+    const groupsById = new Map<string, TodoGroup>();
+    for (const todo of todos) {
+        const group: TodoGroup = {
+            todoId: todo.id,
+            title: todo.content,
+            status: todo.status,
+            items: []
+        };
+        groupsById.set(todo.id, group);
+        result.todoGroups.push(group);
+    }
+
+    // Track current active todo
+    let currentTodoId: string | null = null;
+    const toolCallMap = new Map<string, TimelineToolCall>();
+    let blockIndex = 0;
+
+    for (const msg of messages) {
+        const role = msg.type === "human" ? "user" : (msg.type === "ai" ? "assistant" : (msg.type === "tool" ? "tool" : "other"));
+
+        if (role === "user") {
+            // User messages go to current group or top-level
+            const item: MessageGroup = {
+                id: msg.id || `user-${blockIndex++}`,
+                type: "message",
+                message: msg
+            };
+            addItemToGroup(result, currentTodoId, groupsById, item);
+            continue;
+        }
+
+        if (role === "tool") {
+            // Tool result - update matching tool call
+            const anyMsg = msg as any;
+            const toolCallId = anyMsg.tool_call_id;
+            const toolContent = extractStringFromMessageContent(msg);
+
+            if (toolCallId && toolCallMap.has(toolCallId)) {
+                const toolItem = toolCallMap.get(toolCallId)!;
+                toolItem.result = toolContent;
+                toolItem.status = "complete";
+            }
+            continue;
+        }
+
+        if (role === "assistant") {
+            // Check for write_todos calls to update current todo
+            const anyMsg = msg as any;
+            const toolCalls = anyMsg.tool_calls || anyMsg.additional_kwargs?.tool_calls || [];
+
+            for (const tool of toolCalls) {
+                const toolName = tool.function?.name || tool.name;
+                if (toolName === "write_todos") {
+                    // Parse the todos being written
+                    const argsStr = tool.function?.arguments || tool.args;
+                    try {
+                        const args = typeof argsStr === 'string' ? JSON.parse(argsStr) : argsStr;
+                        const writtenTodos = args.todos || [];
+
+                        // Find in_progress todo to set as current
+                        for (const wt of writtenTodos) {
+                            if (wt.status === "in_progress") {
+                                currentTodoId = wt.id;
+                                break;
+                            }
+                        }
+                    } catch (e) {
+                        // Parse error, continue
+                    }
+                }
+            }
+
+            // Also check content[] for tool_use blocks (backend sends write_todos here)
+            if (Array.isArray(msg.content)) {
+                for (const block of msg.content as any[]) {
+                    if (block?.type === "tool_use" && block?.name === "write_todos") {
+                        const args = block.input;
+                        const writtenTodos = args?.todos || [];
+                        for (const wt of writtenTodos) {
+                            if (wt.status === "in_progress") {
+                                currentTodoId = wt.id;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Parse content blocks
+            const blocks = parseMessageContentBlocks(msg);
+            const content = extractStringFromMessageContent(msg);
+            const durationRegex = /<!-- think_duration: (\d+) -->/;
+            const match = content.match(durationRegex);
+            const injectedDuration = match ? parseInt(match[1], 10) : undefined;
+
+            for (const block of blocks) {
+                if (block.type === "thinking") {
+                    const duration = injectedDuration ?? estimateDuration(block.content);
+                    const item: TimelineThinking = {
+                        id: `thinking-${msg.id}-${blockIndex++}`,
+                        type: "timeline_thinking",
+                        content: block.content,
+                        duration: duration
+                    };
+                    addItemToGroup(result, currentTodoId, groupsById, item);
+                } else if (block.type === "text") {
+                    const textContent = block.content.trim();
+                    // Filter out system log text from write_todos
+                    if (textContent && !/^Updated todo list to \[/i.test(textContent)) {
+                        const item: TimelineText = {
+                            id: `text-${msg.id}-${blockIndex++}`,
+                            type: "timeline_text",
+                            content: block.content,
+                            messageId: msg.id
+                        };
+                        addItemToGroup(result, currentTodoId, groupsById, item);
+                    }
+                } else if (block.type === "tool_use") {
+                    if (block.name === "write_todos") continue;
+
+                    const toolItem: TimelineToolCall = {
+                        id: `tool-${block.id}-${blockIndex++}`,
+                        type: "timeline_tool_call",
+                        toolName: block.name,
+                        args: typeof block.input === 'string' ? block.input : JSON.stringify(block.input),
+                        toolCallId: block.id,
+                        status: "running"
+                    };
+                    toolCallMap.set(block.id, toolItem);
+                    addItemToGroup(result, currentTodoId, groupsById, toolItem);
+                }
+            }
+
+            // Process tool calls not in content array
+            for (const tool of toolCalls) {
+                const toolId = tool.id || tool.function?.id;
+                const toolName = tool.function?.name || tool.name;
+
+                if (toolCallMap.has(toolId)) continue;
+                if (toolName === "write_todos") continue;
+
+                const argsString = tool.function?.arguments || tool.args;
+                const toolItem: TimelineToolCall = {
+                    id: `tool-${toolId}-${blockIndex++}`,
+                    type: "timeline_tool_call",
+                    toolName: toolName,
+                    args: typeof argsString === 'string' ? argsString : JSON.stringify(argsString),
+                    toolCallId: toolId,
+                    status: "running"
+                };
+                toolCallMap.set(toolId, toolItem);
+                addItemToGroup(result, currentTodoId, groupsById, toolItem);
+            }
+
+            // Fallback for messages with no blocks
+            if (blocks.length === 0) {
+                const textContent = stripThinkTags(content);
+                if (textContent.trim()) {
+                    const item: TimelineText = {
+                        id: `text-${msg.id}-${blockIndex++}`,
+                        type: "timeline_text",
+                        content: textContent,
+                        messageId: msg.id
+                    };
+                    addItemToGroup(result, currentTodoId, groupsById, item);
+                }
+            }
+        }
+    }
+
+    return result;
+}
+
+// Helper to add item to correct group
+function addItemToGroup(
+    result: HierarchicalTimeline,
+    currentTodoId: string | null,
+    groupsById: Map<string, TodoGroup>,
+    item: TimelineItem
+): void {
+    if (currentTodoId && groupsById.has(currentTodoId)) {
+        groupsById.get(currentTodoId)!.items.push(item);
+    } else {
+        result.topLevel.push(item);
+    }
 }

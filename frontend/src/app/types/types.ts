@@ -65,4 +65,5 @@ export interface ToolApprovalInterruptData {
 export type ContentBlock =
   | { type: "thinking"; content: string }
   | { type: "redacted_thinking"; signature?: string }
-  | { type: "text"; content: string };
+  | { type: "text"; content: string }
+  | { type: "tool_use"; id: string; name: string; input: unknown };

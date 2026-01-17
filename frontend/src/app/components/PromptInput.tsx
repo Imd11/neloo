@@ -1,8 +1,15 @@
 import { useState, useEffect } from "react";
-import { Plus, Mic, ArrowUp, X } from "lucide-react";
+import { Plus, Mic, ArrowUp, X, Upload, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Feature } from "@/data/featureTemplates";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface PromptInputProps {
     placeholder?: string;
@@ -12,7 +19,9 @@ interface PromptInputProps {
     selectedFeature?: Feature | null;
     onClearFeature?: () => void;
     disabled?: boolean;
-    onPlusClick?: () => void;
+    onUploadClick?: () => void;
+    onLibraryClick?: () => void;
+    onGoogleDriveClick?: () => void;
 }
 
 export function PromptInput({
@@ -23,7 +32,9 @@ export function PromptInput({
     selectedFeature,
     onClearFeature,
     disabled,
-    onPlusClick
+    onUploadClick,
+    onLibraryClick,
+    onGoogleDriveClick
 }: PromptInputProps) {
     const [value, setValue] = useState(initialValue);
     const [isFocused, setIsFocused] = useState(false);
@@ -61,15 +72,49 @@ export function PromptInput({
             )}
         >
             <div className="flex items-center gap-2 px-4 py-3">
-                {/* Plus Button */}
-                <Button
-                    variant="icon"
-                    size="icon-sm"
-                    className="shrink-0 text-muted-foreground hover:text-foreground"
-                    onClick={onPlusClick}
-                >
-                    <Plus className="w-5 h-5" />
-                </Button>
+                {/* Plus Button with Dropdown Menu - only show if any handlers are provided */}
+                {(onGoogleDriveClick || onLibraryClick || onUploadClick) && (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="icon"
+                                size="icon-sm"
+                                className="shrink-0 text-muted-foreground hover:text-foreground"
+                            >
+                                <Plus className="w-5 h-5" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-56">
+                            {onGoogleDriveClick && (
+                                <DropdownMenuItem onClick={onGoogleDriveClick}>
+                                    <svg className="w-4 h-4 mr-2" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M6.6 66.85L3.75 61.5 28.2 20.25l29.1 0 24.55 41.2-29.2 0-24.5 0z" fill="#0066da" />
+                                        <path d="M57.3 20.25L32.8 61.5l2.9 5.35L58.2 26.35l29.1 0-27-46.1z" fill="#00ac47" />
+                                        <path d="M.15 61.5l27-46.1 29.15 0-27 46.1z" fill="#ffba00" />
+                                    </svg>
+                                    从 Google Drive 文件中添加
+                                </DropdownMenuItem>
+                            )}
+                            {onLibraryClick && (
+                                <DropdownMenuItem onClick={onLibraryClick}>
+                                    <FolderOpen className="w-4 h-4 mr-2" />
+                                    从库中选择
+                                </DropdownMenuItem>
+                            )}
+                            {(onGoogleDriveClick || onLibraryClick) && onUploadClick && (
+                                <DropdownMenuSeparator />
+                            )}
+                            {onUploadClick && (
+                                <DropdownMenuItem onClick={onUploadClick}>
+                                    <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                                    </svg>
+                                    从本地文件中添加
+                                </DropdownMenuItem>
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                )}
 
                 {/* Selected Feature Tag */}
                 {selectedFeature && (
@@ -131,3 +176,4 @@ export function PromptInput({
         </div>
     );
 }
+

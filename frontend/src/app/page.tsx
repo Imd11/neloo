@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, Suspense, useMemo } from "react";
+import React, { useState, useEffect, useCallback, Suspense, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { getConfig, StandaloneConfig } from "@/lib/config";
@@ -31,6 +31,9 @@ import { FeatureButtons } from "@/app/components/FeatureButtons";
 import { FeatureTemplateGrid } from "@/app/components/FeatureTemplateGrid";
 import { Feature, Template } from "@/data/featureTemplates";
 import { motion, AnimatePresence } from "framer-motion";
+import { useGoogleDrivePicker } from "@/app/hooks/useGoogleDrivePicker";
+import { useDataFileUpload } from "@/app/hooks/useDataFileUpload";
+import { toast } from "sonner";
 
 interface LandingViewProps {
   onPromptSubmit: (value: string, hiddenPrefix?: string) => void;
@@ -49,6 +52,42 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
 
   // Import fortune template prefix helper
   const { getFortuneTemplatePrefix } = require('@/data/fortuneTemplatePrefix');
+
+  // File upload state - use proper upload hook
+  const { session } = useAuth();
+  const [libraryDialogOpen, setLibraryDialogOpen] = useState(false);
+
+  // Use data file upload hook for proper Supabase upload
+  const fileUpload = useDataFileUpload({
+    apiUrl: process.env.NEXT_PUBLIC_API_URL || "",
+    accessToken: session?.access_token,
+    autoUpload: true,  // Upload immediately when files are selected
+    maxFiles: 5,
+  });
+
+  // Google Drive picker - add files through the upload hook
+  const handleGoogleDriveFile = useCallback((file: File) => {
+    fileUpload.addFiles([file]);
+    toast.success(`已添加文件: ${file.name}`);
+  }, [fileUpload]);
+  const googleDrivePicker = useGoogleDrivePicker(handleGoogleDriveFile);
+
+  // Handle local file selection - use upload hook
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      fileUpload.addFiles(files);
+    }
+    // Reset input
+    if (fileUpload.inputRef.current) {
+      fileUpload.inputRef.current.value = '';
+    }
+  }, [fileUpload]);
+
+  // Handle library file import
+  const handleLibraryImport = useCallback(() => {
+    setLibraryDialogOpen(true);
+  }, []);
 
   // Wrapper to add fortune prefix when applicable
   const handlePromptSubmit = (userInput: string) => {
@@ -126,6 +165,9 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
               onClearFeature={() => onSelectFeature(null)}
               onSubmit={handlePromptSubmit}
               disabled={false}
+              onUploadClick={() => fileUpload.triggerFileSelect()}
+              onLibraryClick={handleLibraryImport}
+              onGoogleDriveClick={() => googleDrivePicker.openPicker()}
             />
           )}
         </div>
@@ -142,6 +184,28 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
           onSelectTemplate={handleSelectTemplate}
         />
       </div>
+
+      {/* Hidden file input - using hook's ref and accept attribute */}
+      <input
+        ref={fileUpload.inputRef}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={handleFileSelect}
+        accept={fileUpload.acceptAttribute}
+      />
+
+      {/* Library Dialog */}
+      <LibraryDialog
+        open={libraryDialogOpen}
+        onOpenChange={setLibraryDialogOpen}
+        mode="select"
+        onFilesSelected={(files) => {
+          // Handle library file selection
+          console.log('Selected files from library:', files);
+          setLibraryDialogOpen(false);
+        }}
+      />
     </div>
   );
 }
@@ -160,7 +224,7 @@ function ChatWithFilePanel({
   onCloseFilePanel: () => void;
   threadId: string | null;
 }) {
-  const { messages, isLoading, webDevMode, sendMessage, setFortuneMode, enableWebDevMode, setActiveFeatureId } = useChatContext();
+  const { messages, isLoading, isThreadLoading, webDevMode, sendMessage, setFortuneMode, enableWebDevMode, setActiveFeatureId } = useChatContext();
   const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
 
   // Selected artifact from inline cards - this is what drives the right panel
@@ -268,7 +332,9 @@ function ChatWithFilePanel({
   }, [threadId]);
 
   // Determine view mode
-  const showLandingView = messages.length === 0;
+  // Only show landing if: no messages AND no threadId AND not loading thread
+  // This prevents flashing landing view when switching to a historical thread
+  const showLandingView = messages.length === 0 && !threadId && !isThreadLoading;
 
   // Determine right panel visibility
   const showArtifactPreview = webDevMode && selectedArtifact !== null;

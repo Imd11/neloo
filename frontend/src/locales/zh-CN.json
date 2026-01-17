@@ -54,7 +54,10 @@
     "help_center": "帮助中心",
     "faq": "常见问题",
     "contact_support": "联系支持",
-    "service_status": "服务状态"
+    "service_status": "服务状态",
+    "legal_info": "法律信息",
+    "privacy_policy": "隐私政策",
+    "terms_of_service": "服务条款"
   },
   "canvas": {
     "ai_edit_image": "AI 改图",

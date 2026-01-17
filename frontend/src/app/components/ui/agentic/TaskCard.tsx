@@ -51,37 +51,39 @@ export function TaskCard({
                 isLast ? "bottom-auto h-6" : "bottom-0"
             )} />
 
-            {/* Header - Styled like a Timeline Node */}
-            <div
-                className={cn(
-                    "relative flex items-center gap-3 py-1 cursor-pointer select-none transition-colors",
-                    // Hover effect only on text area
-                    "group/header"
-                )}
-                onClick={onToggleExpand}
-            >
-                {/* Icon Area */}
-                <div className="relative z-10 flex h-6 w-6 shrink-0 items-center justify-center bg-white dark:bg-zinc-950">
-                    <Icon className={cn("h-4 w-4", config.color)} />
-                </div>
+            {/* Header - Only render if task has a title (explicit tasks) */}
+            {title && (
+                <div
+                    className={cn(
+                        "relative flex items-center gap-3 py-1 cursor-pointer select-none transition-colors",
+                        // Hover effect only on text area
+                        "group/header"
+                    )}
+                    onClick={onToggleExpand}
+                >
+                    {/* Icon Area */}
+                    <div className="relative z-10 flex h-6 w-6 shrink-0 items-center justify-center bg-white dark:bg-zinc-950">
+                        <Icon className={cn("h-4 w-4", config.color)} />
+                    </div>
 
-                {/* Title Area */}
-                <div className="flex items-center gap-2 flex-1 min-w-0 p-1 rounded-md hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors">
-                    <span className={cn(
-                        "font-medium text-[14px] text-zinc-900 dark:text-zinc-100 flex-1 tracking-tight truncate",
-                        status === "completed" && "text-zinc-500 line-through decoration-zinc-300"
-                    )}>
-                        {title}
-                    </span>
+                    {/* Title Area */}
+                    <div className="flex items-center gap-2 flex-1 min-w-0 p-1 rounded-md hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors">
+                        <span className={cn(
+                            "font-medium text-[14px] text-zinc-900 dark:text-zinc-100 flex-1 tracking-tight truncate",
+                            status === "completed" && "text-zinc-500 line-through decoration-zinc-300"
+                        )}>
+                            {title}
+                        </span>
 
-                    <span className={cn(
-                        "text-zinc-300 dark:text-zinc-600 transition-colors group-hover/header:text-zinc-400",
-                        isExpanded && "text-zinc-400"
-                    )}>
-                        {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                    </span>
+                        <span className={cn(
+                            "text-zinc-300 dark:text-zinc-600 transition-colors group-hover/header:text-zinc-400",
+                            isExpanded && "text-zinc-400"
+                        )}>
+                            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                        </span>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Content Container */}
             <AnimatePresence>

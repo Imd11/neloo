@@ -6,6 +6,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
@@ -22,6 +23,7 @@ interface DataFileUploadProps {
   onTriggerSelect: () => void;
   onTriggerLibrary?: () => void;
   onRemoveFile: (fileId: string) => void;
+  onTriggerGoogleDrive?: () => void;
   disabled?: boolean;
 }
 
@@ -38,6 +40,7 @@ export function DataFileUpload({
   onTriggerSelect,
   onTriggerLibrary,
   onRemoveFile,
+  onTriggerGoogleDrive,
   disabled = false,
 }: DataFileUploadProps) {
   const isProcessing = isUploading || isImporting;
@@ -61,17 +64,30 @@ export function DataFileUpload({
             )}
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-48">
-          <DropdownMenuItem onClick={onTriggerSelect}>
-            <Upload className="h-4 w-4 mr-2" />
-            <span>上传文件</span>
-          </DropdownMenuItem>
+        <DropdownMenuContent align="start" className="w-56">
+          {onTriggerGoogleDrive && (
+            <DropdownMenuItem onClick={onTriggerGoogleDrive}>
+              <svg className="h-4 w-4 mr-2" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg">
+                <path d="M6.6 66.85L3.75 61.5 28.2 20.25l29.1 0 24.55 41.2-29.2 0-24.5 0z" fill="#0066da" />
+                <path d="M57.3 20.25L32.8 61.5l2.9 5.35L58.2 26.35l29.1 0-27-46.1z" fill="#00ac47" />
+                <path d="M.15 61.5l27-46.1 29.15 0-27 46.1z" fill="#ffba00" />
+              </svg>
+              <span>从 Google Drive 文件中添加</span>
+            </DropdownMenuItem>
+          )}
           {onTriggerLibrary && (
             <DropdownMenuItem onClick={onTriggerLibrary}>
               <FolderOpen className="h-4 w-4 mr-2" />
               <span>从库中选择</span>
             </DropdownMenuItem>
           )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={onTriggerSelect}>
+            <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+            </svg>
+            <span>从本地文件中添加</span>
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 

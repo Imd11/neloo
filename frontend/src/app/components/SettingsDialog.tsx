@@ -265,13 +265,40 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 <Switch defaultChecked />
               </div>
 
-              <div className="flex items-center justify-between py-3">
+              <div className="flex items-center justify-between py-3 border-b border-border">
                 <div>
                   <p className="text-sm text-foreground">{t("settings.manage_cookies")}</p>
                 </div>
                 <Button variant="outline" size="sm">
                   {t("settings.manage")}
                 </Button>
+              </div>
+            </div>
+
+            {/* Legal Info Section */}
+            <div className="pt-4">
+              <h4 className="text-sm font-medium text-muted-foreground mb-3">
+                {t("settings.legal_info")}
+              </h4>
+              <div className="space-y-1">
+                <a
+                  href="/privacy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between py-3 px-4 rounded-lg hover:bg-accent transition-colors"
+                >
+                  <span className="text-sm text-foreground">{t("settings.privacy_policy")}</span>
+                  <ExternalLink className="w-4 h-4 text-muted-foreground" />
+                </a>
+                <a
+                  href="/terms"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between py-3 px-4 rounded-lg hover:bg-accent transition-colors"
+                >
+                  <span className="text-sm text-foreground">{t("settings.terms_of_service")}</span>
+                  <ExternalLink className="w-4 h-4 text-muted-foreground" />
+                </a>
               </div>
             </div>
           </div>

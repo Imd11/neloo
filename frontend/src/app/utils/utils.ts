@@ -73,8 +73,17 @@ export function parseMessageContentBlocks(message: Message): ContentBlock[] {
           if (textContent?.trim()) {
             blocks.push({ type: "text", content: textContent });
           }
+        } else if (blockType === "tool_use") {
+          // Tool use block: { type: "tool_use", id: "...", name: "...", input: {...} }
+          // Include in blocks to preserve time ordering
+          blocks.push({
+            type: "tool_use",
+            id: block.id as string,
+            name: block.name as string,
+            input: block.input,
+          });
         }
-        // Skip tool_use, tool_result, image, etc. - handled elsewhere
+        // Skip tool_result, image, etc.
       }
     }
 

@@ -54,7 +54,10 @@
         "help_center": "Help Center",
         "faq": "FAQ",
         "contact_support": "Contact Support",
-        "service_status": "Service Status"
+        "service_status": "Service Status",
+        "legal_info": "Legal Information",
+        "privacy_policy": "Privacy Policy",
+        "terms_of_service": "Terms of Service"
     },
     "canvas": {
         "ai_edit_image": "AI Edit Image",

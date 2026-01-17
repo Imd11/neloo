@@ -304,14 +304,20 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     // Action buttons component
     // position="inline" (user messages): show on hover
     // position="bottom" (AI messages): always visible
+    // OPTIMIZATION: Always render buttons in DOM, control visibility with CSS
+    // This eliminates the jarring "sudden appear" effect when isLoading becomes false
     const MessageActions = ({ show, alwaysVisible = false }: { show: boolean; alwaysVisible?: boolean }) => {
-      if (!show || isLoading) return null;
+      if (!show) return null;
+
+      // Determine if buttons should be visible
+      // - Not loading AND (always visible OR hovered)
+      const shouldBeVisible = !isLoading && (alwaysVisible || isHovered);
 
       return (
         <TooltipProvider delayDuration={0}>
           <div className={cn(
-            "flex items-center gap-0.5 transition-opacity duration-200",
-            alwaysVisible ? "opacity-100" : (isHovered ? "opacity-100" : "opacity-0")
+            "flex items-center gap-0.5 transition-all duration-300 ease-out",
+            shouldBeVisible ? "opacity-100" : "opacity-0 pointer-events-none"
           )}>
             {/* Copy button - for both user and AI messages */}
             <Tooltip>
@@ -475,33 +481,33 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                 {/* User message action buttons - show on hover, positioned at right */}
                 {isUser && <MessageActions show={!!hasContent} />}
               </div>
-              {/* AI message action buttons - always visible, positioned at bottom */}
-              {!isUser && hasContent && (
-                <div className="mt-2 flex justify-start">
-                  <MessageActions show={true} alwaysVisible={true} />
-                </div>
-              )}
-              {/* Suggested follow-up questions - only for AI messages */}
-              {!isUser && suggestedQuestions && suggestedQuestions.length > 0 && onSuggestionClick && (
-                <div className="mt-4">
-                  <div className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <span>💡</span>
-                    <span>你可能想继续问：</span>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    {suggestedQuestions.map((question, index) => (
-                      <button
-                        key={index}
-                        onClick={() => onSuggestionClick(question)}
-                        className="group inline-flex w-fit items-center gap-1 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                      >
-                        <span>{question}</span>
-                        <span className="text-muted-foreground/50 group-hover:text-foreground">→</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+            </div>
+          )}
+          {/* AI message action buttons - always visible, moved outside hasContent */}
+          {!isUser && (hasContent || hasToolCalls) && (
+            <div className="mt-2 flex justify-start">
+              <MessageActions show={true} alwaysVisible={true} />
+            </div>
+          )}
+          {/* Suggested follow-up questions - moved outside hasContent block */}
+          {!isUser && suggestedQuestions && suggestedQuestions.length > 0 && onSuggestionClick && (
+            <div className="mt-4">
+              <div className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span>💡</span>
+                <span>你可能想继续问：</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                {suggestedQuestions.map((question, index) => (
+                  <button
+                    key={index}
+                    onClick={() => onSuggestionClick(question)}
+                    className="group inline-flex w-fit items-center gap-1 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    <span>{question}</span>
+                    <span className="text-muted-foreground/50 group-hover:text-foreground">→</span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           {hasToolCalls && !hideTools && (
