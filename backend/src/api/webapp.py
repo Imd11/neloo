@@ -16,6 +16,7 @@ Routes:
 """
 
 import os
+import json
 import uuid
 import tempfile
 import asyncio
@@ -67,6 +68,8 @@ from ..storage.supabase_db import (
     update_thread_title,
     USE_SUPABASE_DB,
     FileType,
+    create_thread_message,
+    get_thread_messages,
     # Upload session management
     create_upload_session,
     get_upload_session,
@@ -182,14 +185,867 @@ async def _set_runtime_context(request: Request, call_next):
     thread_id_ctx.reset(thread_token)
     return response
 
-# CORS configuration
+
+# CORS (webapp-only mode)
+def _parse_cors_allow_origins(value: str | None) -> list[str]:
+    if not value:
+        return ["*"]
+    parts = [p.strip() for p in value.split(",")]
+    return [p for p in parts if p]
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify exact origins
+    allow_origins=_parse_cors_allow_origins(os.environ.get("CORS_ALLOW_ORIGINS")),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# In-memory thread history (compat; not durable)
+_THREAD_HISTORY: dict[str, list[dict]] = {}
+
+
+def _append_history(thread_id: str, message: dict) -> None:
+    if "id" not in message:
+        message = {**message, "id": str(uuid.uuid4())}
+    _THREAD_HISTORY.setdefault(thread_id, []).append(message)
+
+
+def _get_history(thread_id: str) -> list[dict]:
+    return _THREAD_HISTORY.get(thread_id, [])
+
+
+
+
+# =============================================================================
+# Mock LangGraph Assistants API (for LangGraph SDK compatibility)
+# =============================================================================
+# The frontend uses @langchain/langgraph-sdk which calls /assistants/* endpoints.
+# These are normally only available in the official langgraph-api Docker image.
+# We provide mock implementations to satisfy the SDK without requiring a license.
+
+class AssistantInfo(BaseModel):
+    """LangGraph Assistant response model."""
+    assistant_id: str
+    graph_id: str
+    created_at: str
+    updated_at: str
+    config: dict = {}
+    metadata: dict = {}
+    version: int = 1
+    name: str = "Assistant"
+
+class AssistantSearchRequest(BaseModel):
+    """LangGraph Assistant search request model."""
+    graph_id: str | None = None
+    limit: int = 100
+    offset: int = 0
+    metadata: dict | None = None
+
+@app.post("/assistants/search", response_model=list[AssistantInfo])
+async def search_assistants(request: Request):
+    """
+    Mock LangGraph assistants search endpoint.
+    
+    Returns a system-created assistant matching the requested graph_id.
+    This satisfies the LangGraph SDK's client.assistants.search() call.
+    """
+    try:
+        body = await request.json()
+    except:
+        body = {}
+    
+    graph_id = body.get("graph_id") or body.get("graphId") or "data_analyst"
+    limit = body.get("limit", 100)
+    
+    now = datetime.utcnow().isoformat() + "Z"
+    
+    # Return a mock assistant that matches the requested graph
+    return [{
+        "assistant_id": graph_id,
+        "graph_id": graph_id,
+        "created_at": now,
+        "updated_at": now,
+        "config": {},
+        "metadata": {"created_by": "system"},
+        "version": 1,
+        "name": f"Assistant ({graph_id})",
+    }]
+
+@app.get("/assistants/{assistant_id}", response_model=AssistantInfo)
+async def get_assistant(assistant_id: str):
+    """
+    Mock LangGraph get assistant endpoint.
+    
+    Returns a mock assistant with the requested ID.
+    This satisfies the LangGraph SDK's client.assistants.get() call.
+    """
+    now = datetime.utcnow().isoformat() + "Z"
+    
+    return {
+        "assistant_id": assistant_id,
+        "graph_id": assistant_id,
+        "created_at": now,
+        "updated_at": now,
+        "config": {},
+        "metadata": {"created_by": "system"},
+        "version": 1,
+        "name": f"Assistant ({assistant_id})",
+    }
+
+
+# =============================================================================
+# LangGraph SDK Compatibility: /threads/* endpoints (webapp-only mode)
+# =============================================================================
+
+
+class ThreadCreateResponse(BaseModel):
+    thread_id: str
+    created_at: str
+    metadata: dict = {}
+
+
+@app.post("/threads", response_model=ThreadCreateResponse)
+async def create_thread_for_sdk(request: Request, user: dict = Depends(get_optional_user)):
+    """
+    Minimal LangGraph SDK compatible thread creation.
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    thread_id = body.get("thread_id") or body.get("threadId") or str(uuid.uuid4())
+    now = datetime.utcnow().isoformat() + "Z"
+
+    # Ensure a DB thread record exists if we have auth and Supabase DB is configured.
+    if user and USE_SUPABASE_DB:
+        try:
+            await create_thread(
+                user_id=auth_get_user_id(user),
+                langgraph_thread_id=thread_id,
+                title="New Task",
+                mode="default",
+            )
+        except Exception:
+            pass
+
+    return {"thread_id": thread_id, "created_at": now, "metadata": body.get("metadata") or {}}
+
+
+@app.get("/threads/{thread_id}", response_model=ThreadCreateResponse)
+async def get_thread_for_sdk(thread_id: str, user: dict = Depends(get_optional_user)):
+    """
+    Minimal thread fetch endpoint for SDK compatibility.
+    """
+    return {"thread_id": thread_id, "created_at": datetime.utcnow().isoformat() + "Z", "metadata": {}}
+
+
+@app.post("/threads/{thread_id}", response_model=ThreadCreateResponse)
+async def post_thread_for_sdk(thread_id: str, user: dict = Depends(get_optional_user)):
+    """
+    Some SDK codepaths may POST to /threads/{id}. Treat it as an idempotent fetch.
+    """
+    return {"thread_id": thread_id, "created_at": datetime.utcnow().isoformat() + "Z", "metadata": {}}
+
+
+@app.get("/threads/{thread_id}/history")
+async def get_thread_history_for_sdk(thread_id: str, user: dict = Depends(get_optional_user)):
+    """
+    History endpoint for SDK to rehydrate messages.
+    
+    Returns ThreadState[] format as expected by @langchain/langgraph-sdk.
+    The SDK's fetchHistory() calls client.threads.getHistory() which expects:
+    - values: { messages: [...] }
+    - checkpoint: { thread_id, checkpoint_ns, checkpoint_id }
+    - next: []
+    - metadata: {}
+    - tasks: []
+    
+    PRIMARY: Read from graph checkpointer (PostgreSQL) for complete state
+    FALLBACK: Read from thread_messages table if checkpointer fails
+    """
+    from ..agent.graph import _MODEL_GRAPHS, graph as default_graph
+    
+    messages = []
+    checkpoint_id = None
+    
+    # Try to read from checkpointer first (single source of truth)
+    try:
+        # Use default graph which should have PostgreSQL checkpointer
+        config = {"configurable": {"thread_id": thread_id}}
+        state = await default_graph.aget_state(config)
+        
+        if state and hasattr(state, 'values') and state.values:
+            state_messages = state.values.get("messages", [])
+            
+            # Serialize messages for SDK
+            for msg in state_messages:
+                serialized = serialize_message_chunk_for_sdk(msg)
+                if not serialized.get("id"):
+                    serialized["id"] = getattr(msg, 'id', None) or str(uuid.uuid4())
+                messages.append(serialized)
+            
+            # Get checkpoint info if available
+            if hasattr(state, 'config') and state.config:
+                configurable = state.config.get('configurable', {})
+                checkpoint_id = configurable.get('checkpoint_id')
+            
+            print(f"[HISTORY] Read {len(messages)} messages from checkpointer for thread {thread_id}")
+    except Exception as e:
+        print(f"[HISTORY] Checkpointer read failed: {e}, falling back to DB")
+        messages = []
+    
+    # Fallback to thread_messages table if checkpointer returned nothing
+    if not messages:
+        if user and USE_SUPABASE_DB:
+            user_id = auth_get_user_id(user)
+            rows = await get_thread_messages(user_id=user_id, langgraph_thread_id=thread_id, limit=500)
+            # Build messages array with SDK-compatible format
+            for r in rows:
+                if r.get("message_data"):
+                    msg = r["message_data"]
+                    if "id" not in msg or not msg["id"]:
+                        msg["id"] = r.get("id")
+                    messages.append(msg)
+                else:
+                    messages.append({
+                        "id": r.get("id"),
+                        "type": r.get("role"),
+                        "content": r.get("content")
+                    })
+            print(f"[HISTORY] Read {len(messages)} messages from DB for thread {thread_id}")
+        else:
+            messages = _get_history(thread_id)
+    
+    # Return ThreadState[] format expected by SDK
+    if not messages:
+        return []
+    
+    return [{
+        "values": {
+            "messages": messages
+        },
+        "next": [],
+        "checkpoint": {
+            "thread_id": thread_id,
+            "checkpoint_ns": "",
+            "checkpoint_id": checkpoint_id
+        },
+        "metadata": {},
+        "created_at": None,
+        "tasks": []
+    }]
+
+
+@app.post("/threads/{thread_id}/history")
+async def post_thread_history_for_sdk(thread_id: str, user: dict = Depends(get_optional_user)):
+    """
+    Backwards/alternate SDK compatibility: some clients POST to /history.
+    """
+    return await get_thread_history_for_sdk(thread_id=thread_id, user=user)
+
+
+def serialize_message_chunk_for_sdk(msg, content_block_index: int = 0) -> dict:
+    """
+    Serialize a LangChain message chunk to SDK-compatible format.
+    
+    The SDK's coerceMessageLikeToMessage() requires type='ai', not 'AIMessageChunk'.
+    This function converts the message to the correct format.
+    
+    IMPORTANT: content is output as an ARRAY of typed blocks to match official runtime:
+    [
+        {"type": "thinking", "thinking": "...", "index": 0},
+        {"type": "text", "text": "...", "index": 1},
+        {"type": "tool_use", "id": "...", "name": "...", "input": {...}, "index": 2}
+    ]
+    """
+    # Map LangChain class names to SDK-expected types
+    type_mapping = {
+        "AIMessageChunk": "ai",
+        "AIMessage": "ai",
+        "HumanMessage": "human",
+        "HumanMessageChunk": "human",
+        "ToolMessage": "tool",
+        "SystemMessage": "system",
+    }
+    
+    msg_type = type(msg).__name__
+    sdk_type = type_mapping.get(msg_type, getattr(msg, 'type', 'ai') if hasattr(msg, 'type') else 'ai')
+    # Handle case where msg.type is also 'AIMessageChunk' etc
+    if sdk_type in type_mapping:
+        sdk_type = type_mapping[sdk_type]
+    
+    # Build content as array of typed blocks
+    content_blocks = []
+    current_index = content_block_index
+    
+    # Check for thinking/reasoning content first
+    # DeepSeek may put reasoning in different locations:
+    reasoning_content = None
+    
+    # 1. Check additional_kwargs.reasoning_content (most common)
+    if hasattr(msg, 'additional_kwargs') and msg.additional_kwargs:
+        reasoning_content = msg.additional_kwargs.get('reasoning_content')
+    
+    # 2. Check direct attribute
+    if not reasoning_content and hasattr(msg, 'reasoning_content'):
+        reasoning_content = getattr(msg, 'reasoning_content', None)
+    
+    # 3. Check response_metadata
+    if not reasoning_content and hasattr(msg, 'response_metadata') and msg.response_metadata:
+        reasoning_content = msg.response_metadata.get('reasoning_content')
+    
+    if reasoning_content:
+        content_blocks.append({
+            "type": "thinking",
+            "thinking": reasoning_content,
+            "index": 0  # thinking is always index 0
+        })
+        current_index = 1  # next block starts at 1
+    
+    # Check for regular text content
+    raw_content = msg.content if hasattr(msg, 'content') else ""
+    if raw_content and isinstance(raw_content, str) and raw_content.strip():
+        content_blocks.append({
+            "type": "text",
+            "text": raw_content,
+            "index": current_index
+        })
+        current_index += 1
+    elif raw_content and isinstance(raw_content, list):
+        # Content might already be a list of blocks (some providers do this)
+        for block in raw_content:
+            if isinstance(block, dict):
+                if "type" not in block:
+                    block["type"] = "text"
+                if "index" not in block:
+                    block["index"] = current_index
+                    current_index += 1
+                content_blocks.append(block)
+            elif isinstance(block, str):
+                content_blocks.append({
+                    "type": "text",
+                    "text": block,
+                    "index": current_index
+                })
+                current_index += 1
+    
+    # Add tool_use blocks if present
+    if hasattr(msg, 'tool_calls') and msg.tool_calls:
+        for tc in msg.tool_calls:
+            tc_id = tc.get("id") if isinstance(tc, dict) else getattr(tc, "id", None)
+            tc_name = tc.get("name") if isinstance(tc, dict) else getattr(tc, "name", None)
+            tc_args = tc.get("args") if isinstance(tc, dict) else getattr(tc, "args", {})
+            
+            # Only include tool calls with valid id AND name
+            if tc_id and tc_name:
+                content_blocks.append({
+                    "type": "tool_use",
+                    "id": tc_id,
+                    "name": tc_name,
+                    "input": tc_args or {},
+                    "index": current_index
+                })
+                current_index += 1
+    
+    result = {
+        "type": sdk_type,
+        "id": getattr(msg, 'id', None),
+        "content": content_blocks,  # Array of typed blocks
+        "additional_kwargs": {},  # Keep for compatibility but empty (data moved to content blocks)
+        "response_metadata": {},
+    }
+    
+    # Add original additional_kwargs (excluding reasoning_content which moved to content block)
+    if hasattr(msg, 'additional_kwargs') and msg.additional_kwargs:
+        result["additional_kwargs"] = {k: v for k, v in msg.additional_kwargs.items() if k != 'reasoning_content'}
+    
+    # Add tool_call_id for ToolMessage
+    if hasattr(msg, 'tool_call_id') and msg.tool_call_id:
+        result["tool_call_id"] = msg.tool_call_id
+    
+    return result
+
+
+@app.post("/threads/{thread_id}/runs/stream")
+async def run_thread_stream_for_sdk(
+    thread_id: str,
+    request: Request,
+    user: dict = Depends(get_optional_user),
+):
+    """
+    True streaming endpoint for @langchain/langgraph-sdk/react useStream().
+    Streams Server-Sent Events (SSE) with token-by-token output.
+    
+    Uses stream_mode="messages" for LLM token-level streaming when available,
+    falls back to stream_mode="values" for non-streaming scenarios.
+    """
+    from ..agent.graph import _MODEL_GRAPHS, graph as default_graph
+    from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, ToolMessage
+
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+
+    assistant_id = (
+        payload.get("assistant_id")
+        or payload.get("assistantId")
+        or payload.get("graph_id")
+        or payload.get("graphId")
+    )
+    active_graph = _MODEL_GRAPHS.get(assistant_id) if assistant_id else None
+    if active_graph is None:
+        active_graph = default_graph
+
+    user_input = payload.get("input") or payload.get("message") or {}
+    if isinstance(user_input, str):
+        user_text = user_input
+    elif isinstance(user_input, dict):
+        messages = user_input.get("messages")
+        if isinstance(messages, list) and messages:
+            last = messages[-1]
+            if isinstance(last, dict):
+                user_text = last.get("content") or ""
+            else:
+                user_text = str(last)
+        else:
+            user_text = user_input.get("text") or ""
+    else:
+        user_text = ""
+
+    run_id = str(uuid.uuid4())
+    # Message IDs are now generated per-step in get_message_id_for_step()
+
+    async def event_generator():
+        yield f"event: metadata\ndata: {json.dumps({'run_id': run_id, 'thread_id': thread_id}, ensure_ascii=False)}\n\n"
+
+        if user_text:
+            _append_history(thread_id, {"type": "human", "content": user_text})
+            if user and USE_SUPABASE_DB:
+                await create_thread_message(
+                    user_id=auth_get_user_id(user),
+                    langgraph_thread_id=thread_id,
+                    role="human",
+                    content=user_text,
+                )
+
+        config = {"configurable": {"thread_id": thread_id}}
+        accumulated_content = ""  # For backwards compat (text only)
+        accumulated_thinking = ""  # Accumulate thinking/reasoning content
+        # Accumulate tool_call args across chunks (streaming sends args piece by piece)
+        accumulated_tool_calls = {}  # {tool_call_id: {"id", "name", "args"}}
+        
+        # TIME-ORDERED content blocks list for DB save
+        # Each item is {"type": "thinking"|"text"|"tool_use", "content/text/name": ...}
+        # This preserves the exact interleaved order: thinking → tool → thinking → tool
+        time_ordered_blocks = []  # List of content blocks in arrival order
+        current_thinking_block = None  # Track current thinking block being accumulated
+        current_text_block = None  # Track current text block being accumulated
+        seen_tool_ids = set()  # Track which tool_calls we've added to blocks
+        
+        # Generate unique message ID per (langgraph_step, langgraph_node) combination
+        # This allows different steps to coexist in the message history instead of overwriting
+        step_message_ids = {}  # {(step, node): message_id}
+        
+        def get_message_id_for_step(metadata: dict) -> str:
+            """Get or create a stable message ID for a given langgraph step."""
+            step = metadata.get("langgraph_step", 0)
+            node = metadata.get("langgraph_node", "unknown")
+            key = (step, node)
+            if key not in step_message_ids:
+                step_message_ids[key] = str(uuid.uuid4())
+            return step_message_ids[key]
+        
+        try:
+            # Try streaming with "messages" mode for token-level output
+            # This mode yields (AIMessageChunk, metadata) tuples for each LLM token
+            async for chunk in active_graph.astream(
+                {"messages": [HumanMessage(content=user_text)]},
+                config=config,
+                stream_mode="messages",
+            ):
+                # stream_mode="messages" yields tuples of (message_chunk, metadata)
+                if isinstance(chunk, tuple) and len(chunk) >= 2:
+                    message_chunk = chunk[0]
+                    metadata = chunk[1]  # Preserve metadata for SDK
+                    
+                    # Accumulate tool_calls args across chunks
+                    # LangChain may send args as: dict, JSON string fragment, or partial dict
+                    # Also check tool_call_chunks which is another format LangChain uses
+                    
+                    # DEBUG: Log tool_call structure for first occurrence
+                    if hasattr(message_chunk, 'tool_calls') and message_chunk.tool_calls and not hasattr(event_generator, '_tool_debug_logged'):
+                        event_generator._tool_debug_logged = True
+                        print(f"[DEBUG] tool_calls: {message_chunk.tool_calls}", flush=True)
+                        print(f"[DEBUG] tool_calls type: {type(message_chunk.tool_calls)}", flush=True)
+                        if message_chunk.tool_calls:
+                            first_tc = message_chunk.tool_calls[0]
+                            print(f"[DEBUG] first tool_call type: {type(first_tc)}, value: {first_tc}", flush=True)
+                    
+                    if hasattr(message_chunk, 'tool_call_chunks') and message_chunk.tool_call_chunks and not hasattr(event_generator, '_chunk_debug_logged'):
+                        event_generator._chunk_debug_logged = True
+                        print(f"[DEBUG] tool_call_chunks: {message_chunk.tool_call_chunks}", flush=True)
+                    
+                    # IMPORTANT: tool_call_chunks contains the actual args as string fragments
+                    # tool_calls.args is often empty {} while the real args come via tool_call_chunks
+                    if hasattr(message_chunk, 'tool_call_chunks') and message_chunk.tool_call_chunks:
+                        for tcc in message_chunk.tool_call_chunks:
+                            tcc_id = tcc.get("id") if isinstance(tcc, dict) else getattr(tcc, "id", None)
+                            tcc_name = tcc.get("name") if isinstance(tcc, dict) else getattr(tcc, "name", None)
+                            tcc_args = tcc.get("args") if isinstance(tcc, dict) else getattr(tcc, "args", None)
+                            
+                            if tcc_id:
+                                if tcc_id not in accumulated_tool_calls:
+                                    accumulated_tool_calls[tcc_id] = {
+                                        "id": tcc_id,
+                                        "name": tcc_name or "",
+                                        "args": {},
+                                        "_args_str": ""
+                                    }
+                                if tcc_name and not accumulated_tool_calls[tcc_id]["name"]:
+                                    accumulated_tool_calls[tcc_id]["name"] = tcc_name
+                                # Accumulate args string
+                                if tcc_args and isinstance(tcc_args, str):
+                                    accumulated_tool_calls[tcc_id]["_args_str"] += tcc_args
+                                    # Try to parse as complete JSON
+                                    try:
+                                        parsed = json.loads(accumulated_tool_calls[tcc_id]["_args_str"])
+                                        if isinstance(parsed, dict):
+                                            accumulated_tool_calls[tcc_id]["args"] = parsed
+                                    except json.JSONDecodeError:
+                                        pass  # Not complete yet
+                    
+                    # Also check tool_calls for dict-format args (fallback)
+                    if hasattr(message_chunk, 'tool_calls') and message_chunk.tool_calls:
+                        for tc in message_chunk.tool_calls:
+                            tc_id = tc.get("id") if isinstance(tc, dict) else getattr(tc, "id", None)
+                            tc_name = tc.get("name") if isinstance(tc, dict) else getattr(tc, "name", None)
+                            tc_args = tc.get("args") if isinstance(tc, dict) else getattr(tc, "args", None)
+                            
+                            if tc_id:
+                                if tc_id not in accumulated_tool_calls:
+                                    # Initialize with empty string for args accumulation
+                                    accumulated_tool_calls[tc_id] = {
+                                        "id": tc_id, 
+                                        "name": tc_name or "", 
+                                        "args": {},
+                                        "_args_str": ""  # For accumulating JSON string fragments
+                                    }
+                                # Merge name if we get it
+                                if tc_name and not accumulated_tool_calls[tc_id]["name"]:
+                                    accumulated_tool_calls[tc_id]["name"] = tc_name
+                                # Merge args - handle both dict and string formats
+                                # Only merge if args is non-empty and we don't have parsed args yet
+                                if tc_args and isinstance(tc_args, dict) and tc_args and not accumulated_tool_calls[tc_id]["args"]:
+                                    accumulated_tool_calls[tc_id]["args"].update(tc_args)
+                                elif tc_args and isinstance(tc_args, str):
+                                    # Accumulate JSON string fragment
+                                    accumulated_tool_calls[tc_id]["_args_str"] += tc_args
+                                    # Try to parse accumulated string as complete JSON
+                                    try:
+                                        parsed = json.loads(accumulated_tool_calls[tc_id]["_args_str"])
+                                        if isinstance(parsed, dict):
+                                            accumulated_tool_calls[tc_id]["args"] = parsed
+                                    except json.JSONDecodeError:
+                                        # Not complete yet, keep accumulating
+                                        pass
+                    
+                    # Serialize message to SDK-compatible format (content as array of typed blocks)
+                    serialized = serialize_message_chunk_for_sdk(message_chunk)
+                    # Use per-step message_id - each (langgraph_step, langgraph_node) gets unique ID
+                    # This prevents different steps from overwriting each other
+                    serialized["id"] = get_message_id_for_step(metadata)
+                    
+                    # DEBUG: Log first message chunk structure to identify reasoning location
+                    if not hasattr(event_generator, '_debug_logged'):
+                        event_generator._debug_logged = True
+                        chunk_attrs = {attr: str(getattr(message_chunk, attr, None))[:100] 
+                                      for attr in dir(message_chunk) 
+                                      if not attr.startswith('_') and not callable(getattr(message_chunk, attr, None))}
+                        print(f"[DEBUG] First message_chunk attributes: {list(chunk_attrs.keys())}", flush=True)
+                        if hasattr(message_chunk, 'additional_kwargs'):
+                            print(f"[DEBUG] additional_kwargs: {message_chunk.additional_kwargs}", flush=True)
+                        if hasattr(message_chunk, 'reasoning_content'):
+                            print(f"[DEBUG] reasoning_content attr: {getattr(message_chunk, 'reasoning_content', None)}", flush=True)
+                    
+                    # TIME-ORDERED ACCUMULATION for DB save
+                    # Accumulate thinking/reasoning content FIRST (if present)
+                    # DeepSeek may put reasoning in different locations:
+                    # 1. additional_kwargs.reasoning_content (most common)
+                    # 2. Direct message_chunk.reasoning_content attribute
+                    # 3. response_metadata.reasoning_content
+                    reasoning = None
+                    
+                    # Check additional_kwargs first
+                    if hasattr(message_chunk, 'additional_kwargs') and message_chunk.additional_kwargs:
+                        reasoning = message_chunk.additional_kwargs.get("reasoning_content", "")
+                    
+                    # Check direct attribute
+                    if not reasoning and hasattr(message_chunk, 'reasoning_content'):
+                        reasoning = getattr(message_chunk, 'reasoning_content', "") or ""
+                    
+                    # Check response_metadata
+                    if not reasoning and hasattr(message_chunk, 'response_metadata') and message_chunk.response_metadata:
+                        reasoning = message_chunk.response_metadata.get("reasoning_content", "")
+                    
+                    if reasoning:
+                        accumulated_thinking += reasoning
+                        # If no current thinking block, create one
+                        if current_thinking_block is None:
+                            current_thinking_block = {"type": "thinking", "thinking": ""}
+                            time_ordered_blocks.append(current_thinking_block)
+                            # When new thinking starts, close any open text block
+                            current_text_block = None
+                        current_thinking_block["thinking"] += reasoning
+                    
+                    # DELTA MODE: Accumulate text content
+                    if hasattr(message_chunk, 'content') and message_chunk.content:
+                        if isinstance(message_chunk.content, str) and message_chunk.content.strip():
+                            accumulated_content += message_chunk.content
+                            # If no current text block, create one
+                            if current_text_block is None:
+                                current_text_block = {"type": "text", "text": ""}
+                                time_ordered_blocks.append(current_text_block)
+                                # When new text starts, close any open thinking block
+                                current_thinking_block = None
+                            current_text_block["text"] += message_chunk.content
+                    
+                    # Send delta content (original token from LLM), not accumulated snapshot
+                    # serialized["content"] is already set by serialize_message_chunk_for_sdk
+                    
+                    # Replace tool_calls AND content tool_use blocks with accumulated args
+                    if hasattr(message_chunk, 'tool_calls') and message_chunk.tool_calls:
+                        complete_tool_calls = []
+                        for tc in message_chunk.tool_calls:
+                            tc_id = tc.get("id") if isinstance(tc, dict) else getattr(tc, "id", None)
+                            if tc_id and tc_id in accumulated_tool_calls:
+                                acc = accumulated_tool_calls[tc_id]
+                                if acc["name"]:  # Only include if we have a name
+                                    complete_tool_calls.append(acc)
+                                    # Add to time_ordered_blocks if not already added
+                                    if tc_id not in seen_tool_ids:
+                                        seen_tool_ids.add(tc_id)
+                                        # Close any open thinking/text blocks when tool starts
+                                        current_thinking_block = None
+                                        current_text_block = None
+                                        time_ordered_blocks.append({
+                                            "type": "tool_use",
+                                            "id": acc["id"],
+                                            "name": acc["name"],
+                                            "input": acc["args"]
+                                        })
+                        if complete_tool_calls:
+                            serialized["tool_calls"] = complete_tool_calls
+                            
+                            # Also update tool_use blocks in content array with accumulated args
+                            if "content" in serialized and isinstance(serialized["content"], list):
+                                for block in serialized["content"]:
+                                    if isinstance(block, dict) and block.get("type") == "tool_use":
+                                        tc_id = block.get("id")
+                                        if tc_id and tc_id in accumulated_tool_calls:
+                                            acc = accumulated_tool_calls[tc_id]
+                                            block["name"] = acc["name"]
+                                            block["input"] = acc["args"]
+                    
+                    # Send as 2-tuple: [serialized_message, metadata]
+                    yield f"event: messages\ndata: {json.dumps([serialized, metadata], ensure_ascii=False)}\n\n"
+                            
+                elif isinstance(chunk, tuple) and len(chunk) == 1:
+                    # Only message, no metadata - use fallback ID
+                    message_chunk = chunk[0]
+                    serialized = serialize_message_chunk_for_sdk(message_chunk)
+                    fallback_id = str(uuid.uuid4())  # No metadata available
+                    serialized["id"] = fallback_id
+                    yield f"event: messages\ndata: {json.dumps([serialized, {}], ensure_ascii=False)}\n\n"
+                    
+                    if hasattr(message_chunk, 'content') and message_chunk.content:
+                        if isinstance(message_chunk.content, str):
+                            accumulated_content += message_chunk.content
+                            
+                elif isinstance(chunk, (AIMessage, AIMessageChunk)):
+                    # Direct message chunk (some graphs may yield this way)
+                    serialized = serialize_message_chunk_for_sdk(chunk)
+                    fallback_id = str(uuid.uuid4())  # No metadata context
+                    serialized["id"] = fallback_id
+                    yield f"event: messages\ndata: {json.dumps([serialized, {}], ensure_ascii=False)}\n\n"
+                    
+                    if chunk.content and isinstance(chunk.content, str):
+                        accumulated_content += chunk.content
+            
+            # Try to get final state for todos/files (values event)
+            import sys  # Ensure flush works
+            try:
+                print(f"[STREAM] Fetching final state for thread {thread_id}...", flush=True)
+                final_state = await active_graph.aget_state(config)
+                print(f"[STREAM] Got final_state: {type(final_state)}, has values: {hasattr(final_state, 'values') if final_state else 'N/A'}", flush=True)
+                
+                if final_state and hasattr(final_state, 'values'):
+                    values = final_state.values
+                    print(f"[STREAM] State values keys: {list(values.keys()) if values else 'None'}", flush=True)
+                    values_data = {
+                        "todos": values.get("todos", []),
+                        "files": values.get("files", {}),
+                    }
+                    print(f"[STREAM] values_data: todos={len(values_data['todos'])}, files={bool(values_data['files'])}", flush=True)
+                    # Always send values event (frontend may need empty state)
+                    yield f"event: values\ndata: {json.dumps(values_data, ensure_ascii=False)}\n\n"
+                else:
+                    print(f"[STREAM] No values in final_state, sending empty values event", flush=True)
+                    yield f"event: values\ndata: {json.dumps({'todos': [], 'files': {}}, ensure_ascii=False)}\n\n"
+            except Exception as state_err:
+                # Don't fail the stream if state fetch fails
+                print(f"[STREAM] Could not fetch state for values: {state_err}", flush=True)
+            
+            print(f"[STREAM] Sending end event", flush=True)
+            # Send end event FIRST for faster button display
+            yield "event: end\ndata: {}\n\n"
+            
+            # Then save to history and DB (after end event, so UI is responsive)
+            # Build full message_data structure from TIME-ORDERED content blocks
+            if time_ordered_blocks or accumulated_content:
+                # Add index to each block for SDK compatibility
+                content_blocks = []
+                all_tool_calls = []
+                
+                for i, block in enumerate(time_ordered_blocks):
+                    block_with_index = {**block, "index": i}
+                    content_blocks.append(block_with_index)
+                    # Collect tool_calls separately
+                    if block.get("type") == "tool_use":
+                        all_tool_calls.append({
+                            "id": block.get("id", ""),
+                            "name": block.get("name", ""),
+                            "args": block.get("input", {})
+                        })
+                
+                # Fallback: if no blocks but we have accumulated_content
+                if not content_blocks and accumulated_content:
+                    content_blocks.append({
+                        "type": "text",
+                        "text": accumulated_content,
+                        "index": 0
+                    })
+                
+                # Build full message_data for DB
+                message_data = {
+                    "type": "ai",
+                    "content": content_blocks,
+                    "tool_calls": all_tool_calls,
+                    "additional_kwargs": {},
+                    "response_metadata": {}
+                }
+                
+                # For backwards compat, also save simple content string
+                simple_content = accumulated_content or (accumulated_thinking[:200] if accumulated_thinking else "")
+                
+                _append_history(thread_id, {"type": "ai", "content": simple_content})
+                if user and USE_SUPABASE_DB:
+                    await create_thread_message(
+                        user_id=auth_get_user_id(user),
+                        langgraph_thread_id=thread_id,
+                        role="ai",
+                        content=simple_content,
+                        message_data=message_data,
+                    )
+            
+            # NEW: Extract and save ToolMessages from graph state
+            # This ensures tool results are persisted for history reload
+            try:
+                if final_state and hasattr(final_state, 'values'):
+                    state_messages = final_state.values.get("messages", [])
+                    for msg in state_messages:
+                        if isinstance(msg, ToolMessage):
+                            tool_content = msg.content if isinstance(msg.content, str) else str(msg.content)
+                            tool_call_id = getattr(msg, 'tool_call_id', None)
+                            tool_msg_id = getattr(msg, 'id', None) or f"tool-{tool_call_id}-{uuid.uuid4()}"
+                            
+                            # Build message_data for tool message
+                            tool_message_data = {
+                                "type": "tool",
+                                "id": tool_msg_id,
+                                "content": tool_content,
+                                "tool_call_id": tool_call_id,
+                            }
+                            
+                            _append_history(thread_id, {"type": "tool", "content": tool_content, "tool_call_id": tool_call_id})
+                            if user and USE_SUPABASE_DB:
+                                await create_thread_message(
+                                    user_id=auth_get_user_id(user),
+                                    langgraph_thread_id=thread_id,
+                                    role="tool",
+                                    content=tool_content[:500],  # Truncate for simple content column
+                                    message_data=tool_message_data,
+                                )
+                            print(f"[STREAM] Saved ToolMessage: tool_call_id={tool_call_id}", flush=True)
+            except Exception as tool_save_err:
+                print(f"[STREAM] Error saving ToolMessages: {tool_save_err}", flush=True)
+            
+        except Exception as exc:
+            # If messages mode fails, fall back to values mode (non-streaming)
+            error_msg = str(exc)
+            if "messages" in error_msg.lower() or "stream_mode" in error_msg.lower():
+                # Fallback: use values mode with blocking collection
+                try:
+                    events = await asyncio.to_thread(
+                        lambda: list(
+                            active_graph.stream(
+                                {"messages": [HumanMessage(content=user_text)]},
+                                config=config,
+                                stream_mode="values",
+                            )
+                        )
+                    )
+                    final_ai: AIMessage | None = None
+                    for ev in events:
+                        msgs = ev.get("messages") if isinstance(ev, dict) else None
+                        if isinstance(msgs, list) and msgs:
+                            last = msgs[-1]
+                            if isinstance(last, AIMessage):
+                                final_ai = last
+                    if final_ai is not None:
+                        # Use serialize function for consistency
+                        serialized = serialize_message_chunk_for_sdk(final_ai)
+                        serialized["id"] = str(uuid.uuid4())  # Fallback mode: unique ID
+                        yield f"event: messages\ndata: {json.dumps([serialized, {}], ensure_ascii=False)}\n\n"
+                        # Send end event FIRST for faster button display
+                        yield "event: end\ndata: {}\n\n"
+                        # Then save to DB
+                        content = final_ai.content
+                        _append_history(thread_id, {"type": "ai", "content": content})
+                        if user and USE_SUPABASE_DB:
+                            await create_thread_message(
+                                user_id=auth_get_user_id(user),
+                                langgraph_thread_id=thread_id,
+                                role="ai",
+                                content=str(content),
+                            )
+                    else:
+                        yield "event: end\ndata: {}\n\n"
+                except Exception as fallback_exc:
+                    yield f"event: error\ndata: {json.dumps({'error': str(fallback_exc)}, ensure_ascii=False)}\n\n"
+                    yield "event: end\ndata: {}\n\n"
+            else:
+                yield f"event: error\ndata: {json.dumps({'error': error_msg}, ensure_ascii=False)}\n\n"
+                yield "event: end\ndata: {}\n\n"
+
+    # SSE-specific headers to prevent buffering by proxies (nginx, Railway, CDNs)
+    headers = {
+        "Cache-Control": "no-cache, no-store, must-revalidate, no-transform",
+        "Pragma": "no-cache",  # HTTP/1.0 compatibility
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",  # Disable nginx buffering
+        "Content-Encoding": "identity",  # Explicitly disable gzip/compression
+        "X-Content-Type-Options": "nosniff",  # Prevent content-type sniffing
+    }
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream; charset=utf-8",
+        headers=headers,
+    )
 
 
 # =============================================================================
