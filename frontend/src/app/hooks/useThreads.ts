@@ -10,7 +10,7 @@ export interface ThreadItem {
   title: string;
   description: string;
   assistantId?: string;
-  type?: "chat" | "image" | "video";  // 对话类型
+  type?: "chat" | "image";  // 对话类型
 }
 
 const DEFAULT_PAGE_SIZE = 20;

@@ -5,7 +5,6 @@ import {
   MessageSquarePlus,
   Search,
   Image,
-  Video,
   FolderOpen,
   PanelLeft,
   Pin,
@@ -55,7 +54,6 @@ const navItems = [
   { icon: MessageSquarePlus, label: "新建对话", path: "/", action: "new" },
   { icon: Search, label: "搜索", path: null, action: "search" },
   { icon: Image, label: "生图", path: "/image" },
-  { icon: Video, label: "生视频", path: "/video" },
   { icon: FolderOpen, label: "库", path: null, action: "library" },
 ];
 
@@ -447,8 +445,6 @@ export function AppSidebar({
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     {item.type === "image" ? (
                       <Image className="w-4 h-4 flex-shrink-0 text-sidebar-muted group-hover:text-sidebar-accent-foreground" />
-                    ) : item.type === "video" ? (
-                      <Video className="w-4 h-4 flex-shrink-0 text-sidebar-muted group-hover:text-sidebar-accent-foreground" />
                     ) : (
                       <MessageSquarePlus className="w-4 h-4 flex-shrink-0 text-sidebar-muted group-hover:text-sidebar-accent-foreground" />
                     )}

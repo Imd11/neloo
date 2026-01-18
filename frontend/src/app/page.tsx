@@ -126,8 +126,6 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
   const handleSelectTemplate = (template: Template) => {
     if (selectedFeature?.id === 'image') {
       router.push(`/image?template=${template.id}`);
-    } else if (selectedFeature?.id === 'video') {
-      router.push(`/video?template=${template.id}`);
     } else if (selectedFeature?.id === 'fortune') {
       // For fortune templates, save the template ID for prefix injection
       setSelectedFortuneTemplateId(template.id);

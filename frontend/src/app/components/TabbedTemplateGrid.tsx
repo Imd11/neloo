@@ -4,22 +4,20 @@ import {
     Template,
     TemplateCategory,
     imageTemplates,
-    videoTemplates,
     imageCategories,
-    videoCategories,
 } from "@/data/featureTemplates";
 import { cn } from "@/lib/utils";
 
 interface TabbedTemplateGridProps {
-    type?: "image" | "video";
+    type?: "image";
     onSelectTemplate?: (template: Template) => void;
 }
 
 export function TabbedTemplateGrid({ type = "image", onSelectTemplate }: TabbedTemplateGridProps) {
     const [activeCategory, setActiveCategory] = useState<TemplateCategory>("all");
 
-    const templates = type === "video" ? videoTemplates : imageTemplates;
-    const categories = type === "video" ? videoCategories : imageCategories;
+    const templates = imageTemplates;
+    const categories = imageCategories;
 
     const filteredTemplates = activeCategory === "all"
         ? templates
