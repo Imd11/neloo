@@ -2691,16 +2691,13 @@ async def get_thread_history(
         return []
     
     # Return in ThreadState[] format expected by LangGraph SDK
+    # Note: We intentionally omit 'checkpoint' field because we don't have
+    # a real LangGraph checkpoint. The SDK will use messages-based flow.
     return [{
         "values": {
             "messages": messages
         },
         "next": [],
-        "checkpoint": {
-            "thread_id": thread_id,
-            "checkpoint_ns": "",
-            "checkpoint_id": None
-        },
         "metadata": {},
         "created_at": None,
         "tasks": []

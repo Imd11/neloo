@@ -398,7 +398,13 @@ export function useChat({
       isRerunningSubagent?: boolean,
       optimisticMessages?: Message[]
     ) => {
-      if (checkpoint) {
+      // Only use checkpoint if it has a valid string checkpoint_id
+      // This prevents HTTP 422 when checkpoint_id is null (from Supabase history)
+      const hasValidCheckpoint = checkpoint &&
+        typeof checkpoint.checkpoint_id === 'string' &&
+        checkpoint.checkpoint_id.length > 0;
+
+      if (hasValidCheckpoint) {
         stream.submit(undefined, {
           ...(optimisticMessages
             ? { optimisticValues: { messages: optimisticMessages } }
