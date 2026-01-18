@@ -329,8 +329,8 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
   }, [isLoading, messages, regenerateLastResponse]);
 
   // Handle share - create share link and copy to clipboard
-  // messageIndex: if provided, creates a share for only that message pair (user question + AI response)
-  const handleShare = useCallback(async (messageIndex?: number) => {
+  // targetAiMessageId: if provided, shares up to that AI message
+  const handleShare = useCallback(async (targetAiMessageId?: string) => {
     if (!threadId || !config) {
       toast.error("无法分享", { description: "请先开始对话" });
       return;
@@ -350,7 +350,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
           method: "POST",
           headers,
           body: JSON.stringify({
-            message_index: messageIndex ?? null,
+            target_ai_message_id: targetAiMessageId ?? null,
           }),
         }
       );
@@ -369,9 +369,9 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
       await navigator.clipboard.writeText(shareUrl);
 
       toast.success("链接已复制到剪贴板", {
-        description: messageIndex !== undefined
-          ? "任何人都可以通过此链接查看这条消息"
-          : "任何人都可以通过此链接查看对话",
+        description: targetAiMessageId
+          ? "任何人都可以通过此链接查看这轮对话"
+          : "任何人都可以通过此链接查看完整对话",
       });
     } catch (error) {
       console.error("Failed to create share link:", error);
@@ -778,6 +778,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                                   const isLastMessage = msgId === messages[messages.length - 1].id;
                                   const isUserMessage = item.type === "human";
                                   const isLastAiMessage = !isUserMessage && isLastMessage;
+                                  const isAiMessage = !isUserMessage;
 
                                   return (
                                     <ChatMessage
@@ -800,11 +801,11 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                                       onArtifactSelect={onArtifactSelect}
                                       selectedArtifactId={selectedArtifact?.id}
                                       onEditMessage={isUserMessage ? (content) => {
-                                        // Find the message index in the original messages array
                                         const msgIndex = messages?.findIndex(m => m.id === msgId) ?? -1;
                                         if (msgIndex >= 0) handleStartEdit(msgIndex, content);
                                       } : undefined}
                                       onRegenerate={isLastAiMessage ? handleRegenerate : undefined}
+                                      onShare={isAiMessage ? () => handleShare(msgId) : undefined}
                                       hideTools={true}
                                     />
                                   );
@@ -876,6 +877,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                           const isLastMessage = msgId === messages[messages.length - 1].id;
                           const isUserMessage = group.message.type === "human";
                           const isLastAiMessage = !isUserMessage && isLastMessage;
+                          const isAiMessage = !isUserMessage;
 
                           return (
                             <ChatMessage
@@ -898,16 +900,11 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                               onArtifactSelect={onArtifactSelect}
                               selectedArtifactId={selectedArtifact?.id}
                               onEditMessage={isUserMessage ? (content) => {
-                                // Find the message index in the original messages array
                                 const msgIndex = messages?.findIndex(m => m.id === msgId) ?? -1;
                                 if (msgIndex >= 0) handleStartEdit(msgIndex, content);
                               } : undefined}
                               onRegenerate={isLastAiMessage ? handleRegenerate : undefined}
-                              onShare={!isUserMessage ? () => {
-                                // Find the message index for single message sharing
-                                const msgIndex = messages?.findIndex(m => m.id === msgId) ?? -1;
-                                if (msgIndex >= 0) handleShare(msgIndex);
-                              } : undefined}
+                              onShare={isAiMessage ? () => handleShare(msgId) : undefined}
                               suggestedQuestions={isLastAiMessage && !isLoading ? suggestedQuestions : undefined}
                               onSuggestionClick={isLastAiMessage ? handleSuggestionClick : undefined}
                             />

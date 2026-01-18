@@ -2519,7 +2519,7 @@ class ShareResponse(BaseModel):
 
 class ShareRequest(BaseModel):
     """Request model for share link creation."""
-    message_index: Optional[int] = None  # If provided, share only this message pair
+    target_ai_message_id: Optional[str] = None  # If provided, share up to this AI message
 
 
 class SharedConversationResponse(BaseModel):
@@ -2527,7 +2527,7 @@ class SharedConversationResponse(BaseModel):
     title: str
     messages: list
     shared_at: str
-    message_index: Optional[int] = None  # If set, only show this message pair
+    target_ai_message_id: Optional[str] = None  # If set, truncate display at this message
 
 
 @app.post("/api/threads/{langgraph_thread_id}/share", response_model=ShareResponse)
@@ -2538,11 +2538,11 @@ async def create_share_link(
     user: dict = Depends(get_current_user),
 ):
     """
-    Create a share link for a thread or a single message.
+    Create a share link for a thread or a specific AI message.
     Only the thread owner can create share links.
     
-    If message_index is provided in the body, only that message pair (user question + AI response) 
-    will be visible in the shared link.
+    If target_ai_message_id is provided, the shared view will only show messages
+    up to and including that AI message.
     """
     user_id = auth_get_user_id(user)
     
@@ -2556,15 +2556,15 @@ async def create_share_link(
     if thread_record.get("user_id") != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
     
-    # Get message_index from request body if provided
-    message_index = body.message_index if body else None
+    # Get target_ai_message_id from request body if provided
+    target_ai_message_id = body.target_ai_message_id if body else None
     
     # Create the share
     from ..storage.supabase_db import create_share
     share = await create_share(
         user_id=user_id, 
         thread_id=langgraph_thread_id,
-        message_index=message_index,
+        target_ai_message_id=target_ai_message_id,
     )
     
     if not share:
