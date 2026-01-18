@@ -279,6 +279,10 @@ export function useChat({
     return baseId;
   }, [activeAssistant?.graph_id, activeAssistant?.assistant_id, isWebDevModeActive, isFortuneModeActive]);
 
+  // Ref to hold the latest messages snapshot for saving before history rehydrate
+  const messagesSnapshotRef = useRef<Message[]>([]);
+  const pendingSavePromisesRef = useRef<Promise<void>[]>([]);
+
   const stream = useStream<StateType>({
     assistantId: effectiveAssistantId,
     client: client ?? undefined,
@@ -291,11 +295,37 @@ export function useChat({
         ? { Authorization: `Bearer ${session.access_token}` }
         : {}),
     },
-    // Revalidate thread list when stream finishes, errors, or creates new thread
-    onFinish: () => {
-      // Note: We need to save AI messages after stream finishes
-      // The messages are accessed via stream.messages in the sendMessage callback
-      // For now, just revalidate - AI message saving will be handled by tracking in sendMessage
+    // Save all unsaved messages and AWAIT completion BEFORE revalidating history
+    // This prevents race condition where history rehydrate overwrites unsaved messages
+    onFinish: async () => {
+      const currentThreadId = threadId;
+      const token = session?.access_token;
+      const currentConfig = config;
+
+      if (!currentThreadId || !token || !currentConfig) {
+        onHistoryRevalidate?.();
+        return;
+      }
+
+      // Use the latest snapshot of messages (captured in useEffect below)
+      const messagesToSave = messagesSnapshotRef.current;
+      const savePromises: Promise<void>[] = [];
+
+      for (const msg of messagesToSave) {
+        if (msg.id && !savedMessageIdsRef.current.has(msg.id)) {
+          // Save all message types (human, ai, tool)
+          savedMessageIdsRef.current.add(msg.id);
+          savePromises.push(saveMessageToDb(currentConfig, token, currentThreadId, msg));
+        }
+      }
+
+      // Wait for all saves to complete BEFORE revalidating
+      if (savePromises.length > 0) {
+        console.log(`[useChat] Saving ${savePromises.length} messages before rehydrate...`);
+        await Promise.all(savePromises);
+        console.log(`[useChat] All messages saved, now revalidating history`);
+      }
+
       onHistoryRevalidate?.();
     },
     onError: handleError,
@@ -332,16 +362,9 @@ export function useChat({
         }
       );
 
-      // Save user message to database after a short delay to ensure threadId exists
-      const saveUserMessage = async () => {
-        // Wait a bit for threadId to be created if it's a new thread
-        await new Promise(resolve => setTimeout(resolve, 500));
-        const currentThreadId = threadId;
-        if (currentThreadId && session?.access_token && config) {
-          await saveMessageToDb(config, session.access_token, currentThreadId, displayMessage);
-        }
-      };
-      saveUserMessage();
+      // Save user message to database immediately (will be handled in onFinish with proper awaiting)
+      // The message is already in messagesSnapshotRef and will be saved in onFinish
+      // This ensures no race condition with history rehydrate
       // Update thread list immediately when sending a message
       onHistoryRevalidate?.();
 
@@ -362,34 +385,15 @@ export function useChat({
 
   // Track saved message IDs to avoid duplicate saves
   const savedMessageIdsRef = useRef<Set<string>>(new Set());
-  const prevIsLoadingRef = useRef(false);
 
-  // Save AI messages when stream finishes (isLoading transitions from true to false)
+  // Keep messagesSnapshotRef updated with the latest messages during streaming
+  // This captures the "complete state" before history rehydrate overwrites it
   useEffect(() => {
-    const wasLoading = prevIsLoadingRef.current;
-    const isLoading = stream.isLoading;
-    prevIsLoadingRef.current = isLoading;
-
-    // Only save when stream just finished (was loading, now not loading)
-    if (wasLoading && !isLoading && threadId && session?.access_token && config) {
-      const messages = stream.messages ?? [];
-
-      // Find AI/tool messages that haven't been saved yet
-      const unsavedMessages = messages.filter((m: Message) => {
-        if (!m.id) return false;
-        if (savedMessageIdsRef.current.has(m.id)) return false;
-        return m.type === "ai" || m.type === "tool";
-      });
-
-      // Save each unsaved AI/tool message
-      for (const msg of unsavedMessages) {
-        if (msg.id) {
-          savedMessageIdsRef.current.add(msg.id);
-          saveMessageToDb(config, session.access_token, threadId, msg);
-        }
-      }
+    const currentMessages = stream.messages ?? [];
+    if (currentMessages.length > 0) {
+      messagesSnapshotRef.current = [...currentMessages];
     }
-  }, [stream.isLoading, stream.messages, threadId, session?.access_token, config]);
+  }, [stream.messages]);
 
   const runSingleStep = useCallback(
     (

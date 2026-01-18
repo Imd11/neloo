@@ -1328,10 +1328,10 @@ async def save_chat_message(
     message_data: dict,
 ) -> Optional[dict]:
     """
-    Save a chat message with idempotent upsert.
+    Save a chat message with idempotent behavior.
     
-    Uses UNIQUE(thread_id, message_id) constraint for idempotency.
-    On conflict, only updates message_data and updated_at (not role, seq, thread_id).
+    If (thread_id, message_id) already exists, returns existing record without modification.
+    This ensures seq is never wasted or changed on duplicate saves.
     
     Args:
         thread_id: The thread ID (langgraph_thread_id)
@@ -1340,7 +1340,7 @@ async def save_chat_message(
         message_data: Complete message object as dict (JSONB)
         
     Returns:
-        The saved message record, or None if failed
+        The saved/existing message record, or None if failed
     """
     if not USE_SUPABASE_DB:
         print(f"[SupabaseDB] Skipping save_chat_message (not configured)")
@@ -1351,10 +1351,22 @@ async def save_chat_message(
         if not supabase:
             return None
         
-        # Get next sequence number atomically
+        # First check if this message already exists (idempotent check)
+        existing = await supabase.table("chat_messages")\
+            .select("*")\
+            .eq("thread_id", thread_id)\
+            .eq("message_id", message_id)\
+            .execute()
+        
+        if existing.data and len(existing.data) > 0:
+            # Record already exists, return it without modification
+            record = existing.data[0]
+            print(f"[SupabaseDB] Message already exists: {thread_id[:8]}... #{record.get('seq')} ({role})")
+            return record
+        
+        # Record doesn't exist, get next seq and insert
         seq = await get_next_seq(thread_id)
         
-        # First try to insert (placeholder if new)
         record = {
             "thread_id": thread_id,
             "message_id": message_id,
@@ -1363,13 +1375,8 @@ async def save_chat_message(
             "seq": seq,
         }
         
-        # Use upsert with on_conflict to handle idempotency
-        # On conflict, only update message_data and updated_at
         result = await supabase.table("chat_messages")\
-            .upsert(
-                record,
-                on_conflict="thread_id,message_id"
-            )\
+            .insert(record)\
             .execute()
         
         if result.data and len(result.data) > 0:
