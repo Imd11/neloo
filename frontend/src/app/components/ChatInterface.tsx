@@ -141,6 +141,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
     isModeLocked,
     editMessageAndRerun,
     regenerateLastResponse,
+    forkAndRegenerate,
     fortuneMode,
     activeFeatureId,
   } = useChatContext();
@@ -327,6 +328,28 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
       description: "旧的 AI 回复已被替换",
     });
   }, [isLoading, messages, regenerateLastResponse]);
+
+  // Handle fork and regenerate - for non-last AI messages
+  // Creates a new thread branch and navigates to it
+  const handleForkRegenerate = useCallback(async (targetAiMessageId: string) => {
+    if (isLoading || !messages || messages.length === 0) return;
+
+    try {
+      toast.info("正在创建新分支...", {
+        description: "将从该位置重新生成",
+      });
+
+      await forkAndRegenerate(targetAiMessageId);
+
+      toast.success("已创建新分支", {
+        description: "请发送消息以触发 AI 重新生成",
+      });
+    } catch (error) {
+      toast.error("创建分支失败", {
+        description: error instanceof Error ? error.message : "请稍后重试",
+      });
+    }
+  }, [isLoading, messages, forkAndRegenerate]);
 
   // Handle share - create share link and copy to clipboard
   // targetAiMessageId: if provided, shares up to that AI message
@@ -804,7 +827,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                                         const msgIndex = messages?.findIndex(m => m.id === msgId) ?? -1;
                                         if (msgIndex >= 0) handleStartEdit(msgIndex, content);
                                       } : undefined}
-                                      onRegenerate={isLastAiMessage ? handleRegenerate : undefined}
+                                      onRegenerate={isAiMessage ? (isLastAiMessage ? handleRegenerate : () => handleForkRegenerate(msgId!)) : undefined}
                                       onShare={isAiMessage ? () => handleShare(msgId) : undefined}
                                       hideTools={true}
                                     />
@@ -903,7 +926,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                                 const msgIndex = messages?.findIndex(m => m.id === msgId) ?? -1;
                                 if (msgIndex >= 0) handleStartEdit(msgIndex, content);
                               } : undefined}
-                              onRegenerate={isLastAiMessage ? handleRegenerate : undefined}
+                              onRegenerate={isAiMessage ? (isLastAiMessage ? handleRegenerate : () => handleForkRegenerate(msgId!)) : undefined}
                               onShare={isAiMessage ? () => handleShare(msgId) : undefined}
                               suggestedQuestions={isLastAiMessage && !isLoading ? suggestedQuestions : undefined}
                               onSuggestionClick={isLastAiMessage ? handleSuggestionClick : undefined}
