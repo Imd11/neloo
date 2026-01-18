@@ -1268,3 +1268,159 @@ async def get_user_shares(user_id: str) -> list:
     except Exception as e:
         print(f"[SupabaseDB] Failed to get user shares: {e}")
         return []
+
+
+# =============================================================================
+# Chat Message Persistence (WeChat-style final history)
+# =============================================================================
+
+async def get_next_seq(thread_id: str) -> int:
+    """
+    Atomically get and increment the sequence number for a thread.
+    
+    Uses a database RPC function to ensure atomic increment even under concurrency.
+    Falls back to counting existing messages + 1 if RPC not available.
+    
+    Args:
+        thread_id: The thread ID (langgraph_thread_id)
+        
+    Returns:
+        The next sequence number for this thread
+    """
+    if not USE_SUPABASE_DB:
+        return 1
+    
+    try:
+        supabase = await get_supabase_client()
+        if not supabase:
+            return 1
+        
+        # Try to use the atomic RPC function
+        try:
+            result = await supabase.rpc("get_next_seq", {"p_thread_id": thread_id}).execute()
+            if result.data is not None:
+                return int(result.data)
+        except Exception as rpc_error:
+            # RPC function may not exist yet, fall back to counting
+            print(f"[SupabaseDB] get_next_seq RPC not available: {rpc_error}")
+        
+        # Fallback: count existing messages and add 1
+        count_result = await supabase.table("chat_messages")\
+            .select("seq", count="exact")\
+            .eq("thread_id", thread_id)\
+            .order("seq", desc=True)\
+            .limit(1)\
+            .execute()
+        
+        if count_result.data and len(count_result.data) > 0:
+            return count_result.data[0]["seq"] + 1
+        return 1
+        
+    except Exception as e:
+        print(f"[SupabaseDB] Error getting next seq: {e}")
+        return 1
+
+
+async def save_chat_message(
+    thread_id: str,
+    message_id: str,
+    role: str,
+    message_data: dict,
+) -> Optional[dict]:
+    """
+    Save a chat message with idempotent upsert.
+    
+    Uses UNIQUE(thread_id, message_id) constraint for idempotency.
+    On conflict, only updates message_data and updated_at (not role, seq, thread_id).
+    
+    Args:
+        thread_id: The thread ID (langgraph_thread_id)
+        message_id: Unique message identifier (for idempotency)
+        role: Message role ('user', 'assistant', 'system', 'tool')
+        message_data: Complete message object as dict (JSONB)
+        
+    Returns:
+        The saved message record, or None if failed
+    """
+    if not USE_SUPABASE_DB:
+        print(f"[SupabaseDB] Skipping save_chat_message (not configured)")
+        return None
+    
+    try:
+        supabase = await get_supabase_client()
+        if not supabase:
+            return None
+        
+        # Get next sequence number atomically
+        seq = await get_next_seq(thread_id)
+        
+        # First try to insert (placeholder if new)
+        record = {
+            "thread_id": thread_id,
+            "message_id": message_id,
+            "role": role,
+            "message_data": message_data,
+            "seq": seq,
+        }
+        
+        # Use upsert with on_conflict to handle idempotency
+        # On conflict, only update message_data and updated_at
+        result = await supabase.table("chat_messages")\
+            .upsert(
+                record,
+                on_conflict="thread_id,message_id"
+            )\
+            .execute()
+        
+        if result.data and len(result.data) > 0:
+            saved = result.data[0]
+            print(f"[SupabaseDB] Saved chat message: {thread_id[:8]}... #{saved.get('seq')} ({role})")
+            return saved
+        
+        return None
+        
+    except Exception as e:
+        print(f"[SupabaseDB] Error saving chat message: {e}")
+        return None
+
+
+async def get_chat_messages(
+    thread_id: str,
+    limit: int = 500,
+) -> list[dict]:
+    """
+    Get all chat messages for a thread, ordered by sequence number.
+    
+    Args:
+        thread_id: The thread ID (langgraph_thread_id)
+        limit: Maximum number of messages to return
+        
+    Returns:
+        List of message_data objects in order
+    """
+    if not USE_SUPABASE_DB:
+        return []
+    
+    try:
+        supabase = await get_supabase_client()
+        if not supabase:
+            return []
+        
+        result = await supabase.table("chat_messages")\
+            .select("message_data, seq, role")\
+            .eq("thread_id", thread_id)\
+            .order("seq")\
+            .limit(limit)\
+            .execute()
+        
+        if result.data:
+            messages = [row["message_data"] for row in result.data]
+            print(f"[SupabaseDB] Retrieved {len(messages)} messages for thread {thread_id[:8]}...")
+            return messages
+        
+        return []
+        
+    except Exception as e:
+        print(f"[SupabaseDB] Error getting chat messages: {e}")
+        return []
+

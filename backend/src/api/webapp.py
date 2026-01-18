@@ -74,6 +74,9 @@ from ..storage.supabase_db import (
     commit_upload_session,
     get_user_pending_uploads,
     cleanup_expired_uploads,
+    # Chat message persistence
+    save_chat_message,
+    get_chat_messages,
 )
 
 # =============================================================================
@@ -2657,3 +2660,115 @@ async def delete_share_link(
         raise HTTPException(status_code=500, detail="Failed to delete share link")
     
     return {"success": True, "message": "Share link deleted"}
+
+
+# =============================================================================
+# Chat History Endpoint (LangGraph SDK Compatibility)
+# =============================================================================
+
+@app.get("/threads/{thread_id}/history")
+async def get_thread_history(
+    thread_id: str,
+    user: dict = Depends(get_optional_user),
+):
+    """
+    Get chat history for a thread (LangGraph SDK compatible format).
+    
+    This endpoint returns messages stored in chat_messages table,
+    formatted as ThreadState[] for @langchain/langgraph-sdk compatibility.
+    
+    Args:
+        thread_id: The LangGraph thread ID
+        
+    Returns:
+        ThreadState[] format expected by SDK's fetchHistory()
+    """
+    # Get messages from database
+    messages = await get_chat_messages(thread_id)
+    
+    if not messages:
+        # Return empty history (not 404) for new threads
+        return []
+    
+    # Return in ThreadState[] format expected by LangGraph SDK
+    return [{
+        "values": {
+            "messages": messages
+        },
+        "next": [],
+        "checkpoint": {
+            "thread_id": thread_id,
+            "checkpoint_ns": "",
+            "checkpoint_id": None
+        },
+        "metadata": {},
+        "created_at": None,
+        "tasks": []
+    }]
+
+
+@app.post("/threads/{thread_id}/history")
+async def post_thread_history(
+    thread_id: str,
+    user: dict = Depends(get_optional_user),
+):
+    """
+    POST version of history endpoint for SDK compatibility.
+    Some SDK codepaths POST to /history.
+    """
+    return await get_thread_history(thread_id=thread_id, user=user)
+
+
+# =============================================================================
+# Save Message Endpoint (For Frontend to Save After Stream Completes)
+# =============================================================================
+
+class SaveMessageRequest(BaseModel):
+    """Request body for saving a chat message."""
+    message_id: str
+    role: str  # 'user' | 'assistant' | 'tool'
+    message_data: dict  # Complete message object
+
+
+@app.post("/api/threads/{thread_id}/messages")
+async def save_thread_message(
+    thread_id: str,
+    request: SaveMessageRequest,
+    user: dict = Depends(get_optional_user),
+):
+    """
+    Save a chat message to the database.
+    
+    This endpoint is called by the frontend after:
+    1. User sends a message (save user message)
+    2. AI stream completes (save assistant message with final content)
+    
+    Uses idempotent upsert - safe to call multiple times with same message_id.
+    
+    Args:
+        thread_id: The LangGraph thread ID
+        request: Message data including message_id, role, and message_data
+        
+    Returns:
+        Success status
+    """
+    if not USE_SUPABASE_DB:
+        raise HTTPException(status_code=503, detail="Database not configured")
+    
+    # Validate role
+    if request.role not in ('user', 'assistant', 'system', 'tool'):
+        raise HTTPException(status_code=400, detail=f"Invalid role: {request.role}")
+    
+    result = await save_chat_message(
+        thread_id=thread_id,
+        message_id=request.message_id,
+        role=request.role,
+        message_data=request.message_data,
+    )
+    
+    if result:
+        return {"success": True, "seq": result.get("seq")}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to save message")
+
+
