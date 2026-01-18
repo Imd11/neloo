@@ -17,6 +17,42 @@ import { useAuth } from "@/providers/AuthProvider";
 import { toast } from "sonner";
 import { extractStringFromMessageContent } from "@/app/utils/utils";
 
+// Helper to save a message to the database
+async function saveMessageToDb(
+  config: { deploymentUrl: string } | null,
+  accessToken: string | undefined,
+  threadId: string,
+  message: Message
+): Promise<void> {
+  if (!config?.deploymentUrl || !accessToken || !threadId) return;
+
+  try {
+    const response = await fetch(
+      `${config.deploymentUrl}/api/threads/${encodeURIComponent(threadId)}/messages`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          message_id: message.id,
+          role: message.type === "human" ? "user" : message.type === "ai" ? "assistant" : message.type,
+          message_data: message,
+        }),
+      }
+    );
+
+    if (response.ok) {
+      console.log(`[useChat] Saved message ${message.id?.slice(0, 8)}... to database`);
+    } else {
+      console.error("[useChat] Failed to save message:", await response.text());
+    }
+  } catch (error) {
+    console.error("[useChat] Error saving message:", error);
+  }
+}
+
 export type StateType = {
   messages: Message[];
   todos: TodoItem[];
@@ -256,7 +292,12 @@ export function useChat({
         : {}),
     },
     // Revalidate thread list when stream finishes, errors, or creates new thread
-    onFinish: onHistoryRevalidate,
+    onFinish: () => {
+      // Note: We need to save AI messages after stream finishes
+      // The messages are accessed via stream.messages in the sendMessage callback
+      // For now, just revalidate - AI message saving will be handled by tracking in sendMessage
+      onHistoryRevalidate?.();
+    },
     onError: handleError,
     onCreated: onHistoryRevalidate,
     experimental_thread: thread,
@@ -290,6 +331,17 @@ export function useChat({
           config: { ...(activeAssistant?.config ?? {}), recursion_limit: 1000 },
         }
       );
+
+      // Save user message to database after a short delay to ensure threadId exists
+      const saveUserMessage = async () => {
+        // Wait a bit for threadId to be created if it's a new thread
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const currentThreadId = threadId;
+        if (currentThreadId && session?.access_token && config) {
+          await saveMessageToDb(config, session.access_token, currentThreadId, displayMessage);
+        }
+      };
+      saveUserMessage();
       // Update thread list immediately when sending a message
       onHistoryRevalidate?.();
 
@@ -305,8 +357,39 @@ export function useChat({
         }
       }
     },
-    [stream, activeAssistant?.config, onHistoryRevalidate, threadId, generateTitleForThread]
+    [stream, activeAssistant?.config, onHistoryRevalidate, threadId, generateTitleForThread, session?.access_token, config]
   );
+
+  // Track saved message IDs to avoid duplicate saves
+  const savedMessageIdsRef = useRef<Set<string>>(new Set());
+  const prevIsLoadingRef = useRef(false);
+
+  // Save AI messages when stream finishes (isLoading transitions from true to false)
+  useEffect(() => {
+    const wasLoading = prevIsLoadingRef.current;
+    const isLoading = stream.isLoading;
+    prevIsLoadingRef.current = isLoading;
+
+    // Only save when stream just finished (was loading, now not loading)
+    if (wasLoading && !isLoading && threadId && session?.access_token && config) {
+      const messages = stream.messages ?? [];
+
+      // Find AI/tool messages that haven't been saved yet
+      const unsavedMessages = messages.filter((m: Message) => {
+        if (!m.id) return false;
+        if (savedMessageIdsRef.current.has(m.id)) return false;
+        return m.type === "ai" || m.type === "tool";
+      });
+
+      // Save each unsaved AI/tool message
+      for (const msg of unsavedMessages) {
+        if (msg.id) {
+          savedMessageIdsRef.current.add(msg.id);
+          saveMessageToDb(config, session.access_token, threadId, msg);
+        }
+      }
+    }
+  }, [stream.isLoading, stream.messages, threadId, session?.access_token, config]);
 
   const runSingleStep = useCallback(
     (
