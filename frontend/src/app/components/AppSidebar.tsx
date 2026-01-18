@@ -93,6 +93,11 @@ export function AppSidebar({
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
+  // Share dialog state
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareLoading, setShareLoading] = useState(false);
+
   // Load pinned IDs from local storage on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -197,12 +202,16 @@ export function AppSidebar({
     }
   };
 
-  // Handle share entire thread (no message_index = share all messages)
+  // Handle share entire thread - opens dialog with share link
   const handleShareThread = async (threadId: string) => {
     if (!config?.deploymentUrl || !session?.access_token) {
       toast.error("无法分享", { description: "请先登录" });
       return;
     }
+
+    setShareLoading(true);
+    setShareDialogOpen(true);
+    setShareUrl(null);
 
     try {
       const response = await fetch(
@@ -213,7 +222,7 @@ export function AppSidebar({
             "Content-Type": "application/json",
             Authorization: `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify({ message_index: null }),  // null = share entire conversation
+          body: JSON.stringify({ target_ai_message_id: null }),  // null = share entire conversation
         }
       );
 
@@ -223,17 +232,19 @@ export function AppSidebar({
       }
 
       const data = await response.json();
-      const shareUrl = `${window.location.origin}/share/${data.share_id}`;
+      const url = `${window.location.origin}/share/${data.share_id}`;
+      setShareUrl(url);
 
-      await navigator.clipboard.writeText(shareUrl);
-      toast.success("链接已复制到剪贴板", {
-        description: "任何人都可以通过此链接查看整个对话",
-      });
+      // Also copy to clipboard automatically
+      await navigator.clipboard.writeText(url);
     } catch (error) {
       console.error("Failed to share thread:", error);
+      setShareDialogOpen(false);
       toast.error("分享失败", {
         description: error instanceof Error ? error.message : "请稍后重试",
       });
+    } finally {
+      setShareLoading(false);
     }
   };
 
@@ -667,6 +678,47 @@ export function AppSidebar({
             <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               删除
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Share Dialog */}
+      <AlertDialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>分享对话</AlertDialogTitle>
+            <AlertDialogDescription>
+              任何人都可以通过此链接查看整个对话
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="my-4">
+            {shareLoading ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : shareUrl ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={shareUrl}
+                  readOnly
+                  className="flex-1 rounded-md border border-border bg-muted px-3 py-2 text-sm"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(shareUrl);
+                    toast.success("已复制到剪贴板");
+                  }}
+                >
+                  复制
+                </Button>
+              </div>
+            ) : null}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>关闭</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
