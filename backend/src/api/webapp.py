@@ -2663,6 +2663,112 @@ async def delete_share_link(
 
 
 # =============================================================================
+# Fork (Regenerate) Endpoint
+# =============================================================================
+
+class ForkRequest(BaseModel):
+    """Request model for forking a thread at a specific AI message."""
+    fork_target_ai_message_id: str  # The AI message user wants to regenerate
+
+
+class ForkResponse(BaseModel):
+    """Response model for fork operation."""
+    new_thread_id: str
+    fork_anchor_human_message_id: str
+    messages_copied: int
+
+
+@app.post("/api/threads/{langgraph_thread_id}/fork", response_model=ForkResponse)
+async def fork_thread(
+    langgraph_thread_id: str,
+    body: ForkRequest,
+    user: dict = Depends(get_current_user),
+):
+    """
+    Fork a thread at a specific AI message for regeneration.
+    
+    This is an atomic operation that:
+    1. Finds the anchor human message (the one before the target AI)
+    2. Creates a new thread with fork metadata
+    3. Copies all messages up to and including the anchor human
+    4. Returns the new thread ID so frontend can trigger regeneration
+    """
+    user_id = auth_get_user_id(user)
+    
+    if not USE_SUPABASE_DB:
+        raise HTTPException(status_code=503, detail="Database not configured")
+    
+    # Verify thread exists and user owns it
+    thread_record = await get_thread_by_langgraph_id(langgraph_thread_id)
+    if not thread_record:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    if thread_record.get("user_id") != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Get all messages for this thread
+    from ..storage.supabase_db import get_chat_messages
+    messages = await get_chat_messages(langgraph_thread_id)
+    
+    if not messages:
+        raise HTTPException(status_code=400, detail="Thread has no messages")
+    
+    # Find the target AI message and its anchor human
+    target_ai_seq = None
+    anchor_human_message_id = None
+    anchor_human_seq = None
+    
+    for msg in messages:
+        if msg.get("message_id") == body.fork_target_ai_message_id:
+            target_ai_seq = msg.get("seq")
+            break
+    
+    if target_ai_seq is None:
+        raise HTTPException(status_code=404, detail="Target AI message not found")
+    
+    # Find the anchor human: the last human message before target AI
+    for msg in reversed(messages):
+        if msg.get("seq", 0) < target_ai_seq and msg.get("role") == "user":
+            anchor_human_message_id = msg.get("message_id")
+            anchor_human_seq = msg.get("seq")
+            break
+    
+    if anchor_human_message_id is None:
+        raise HTTPException(status_code=400, detail="No human message found before target AI")
+    
+    # Create new thread with fork metadata
+    from ..storage.supabase_db import create_thread_with_fork
+    import uuid
+    
+    new_thread_id = str(uuid.uuid4())
+    new_thread = await create_thread_with_fork(
+        langgraph_thread_id=new_thread_id,
+        user_id=user_id,
+        title=thread_record.get("title", "Untitled"),
+        mode=thread_record.get("mode", "default"),
+        parent_thread_id=langgraph_thread_id,
+        fork_target_ai_message_id=body.fork_target_ai_message_id,
+        fork_anchor_human_message_id=anchor_human_message_id,
+    )
+    
+    if not new_thread:
+        raise HTTPException(status_code=500, detail="Failed to create forked thread")
+    
+    # Copy messages up to and including anchor human (seq <= anchor_human_seq)
+    from ..storage.supabase_db import copy_messages_to_thread
+    messages_copied = await copy_messages_to_thread(
+        source_thread_id=langgraph_thread_id,
+        target_thread_id=new_thread_id,
+        up_to_seq=anchor_human_seq,
+    )
+    
+    return ForkResponse(
+        new_thread_id=new_thread_id,
+        fork_anchor_human_message_id=anchor_human_message_id,
+        messages_copied=messages_copied,
+    )
+
+
+# =============================================================================
 # Chat History Endpoint (LangGraph SDK Compatibility)
 # =============================================================================
 

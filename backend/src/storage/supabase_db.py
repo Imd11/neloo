@@ -497,6 +497,124 @@ async def create_thread(
         return None
 
 
+async def create_thread_with_fork(
+    langgraph_thread_id: str,
+    user_id: str,
+    title: str = "Untitled",
+    mode: str = "default",
+    parent_thread_id: Optional[str] = None,
+    fork_target_ai_message_id: Optional[str] = None,
+    fork_anchor_human_message_id: Optional[str] = None,
+) -> Optional[dict]:
+    """
+    Create a new thread with fork metadata.
+    
+    Args:
+        langgraph_thread_id: The new thread's ID
+        user_id: Owner's user ID
+        title: Thread title (inherited from parent)
+        mode: Thread mode
+        parent_thread_id: The thread this was forked from
+        fork_target_ai_message_id: The AI message user clicked to regenerate
+        fork_anchor_human_message_id: The human message used as anchor
+        
+    Returns:
+        The created thread record, or None on failure
+    """
+    if not USE_SUPABASE_DB:
+        return None
+    
+    try:
+        supabase = await get_supabase_client()
+        if not supabase:
+            return None
+        
+        thread_id = str(uuid.uuid4())
+        
+        thread_data = {
+            "id": thread_id,
+            "user_id": user_id,
+            "title": f"{title} (regenerated)",
+            "langgraph_thread_id": langgraph_thread_id,
+            "mode": mode,
+            "parent_thread_id": parent_thread_id,
+            "fork_target_ai_message_id": fork_target_ai_message_id,
+            "fork_anchor_human_message_id": fork_anchor_human_message_id,
+        }
+        
+        result = await supabase.table("threads").insert(thread_data).execute()
+        
+        if result.data and len(result.data) > 0:
+            print(f"[SupabaseDB] Created forked thread: {langgraph_thread_id[:8]}... from {parent_thread_id[:8] if parent_thread_id else 'none'}...")
+            return result.data[0]
+        
+        return None
+        
+    except Exception as e:
+        print(f"[SupabaseDB] Error creating forked thread: {e}")
+        return None
+
+
+async def copy_messages_to_thread(
+    source_thread_id: str,
+    target_thread_id: str,
+    up_to_seq: int,
+) -> int:
+    """
+    Copy messages from one thread to another, up to a specific seq.
+    
+    Args:
+        source_thread_id: The thread to copy from
+        target_thread_id: The thread to copy to
+        up_to_seq: Copy messages with seq <= this value
+        
+    Returns:
+        Number of messages copied
+    """
+    if not USE_SUPABASE_DB:
+        return 0
+    
+    try:
+        supabase = await get_supabase_client()
+        if not supabase:
+            return 0
+        
+        # Get messages from source thread up to the anchor
+        result = await supabase.table("chat_messages")\
+            .select("*")\
+            .eq("thread_id", source_thread_id)\
+            .lte("seq", up_to_seq)\
+            .order("seq")\
+            .execute()
+        
+        if not result.data:
+            return 0
+        
+        # Copy each message to new thread with new seq
+        copied = 0
+        for i, msg in enumerate(result.data, start=1):
+            new_msg = {
+                "thread_id": target_thread_id,
+                "message_id": msg["message_id"],
+                "role": msg["role"],
+                "message_data": msg["message_data"],
+                "seq": i,  # Reset seq for new thread
+            }
+            
+            try:
+                await supabase.table("chat_messages").insert(new_msg).execute()
+                copied += 1
+            except Exception as e:
+                print(f"[SupabaseDB] Error copying message {i}: {e}")
+        
+        print(f"[SupabaseDB] Copied {copied} messages to thread {target_thread_id[:8]}...")
+        return copied
+        
+    except Exception as e:
+        print(f"[SupabaseDB] Error copying messages: {e}")
+        return 0
+
+
 async def get_user_threads(
     user_id: str,
     limit: int = 50,

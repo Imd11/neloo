@@ -553,6 +553,54 @@ export function useChat({
     onHistoryRevalidate?.();
   }, [stream, activeAssistant?.config, onHistoryRevalidate]);
 
+  // Fork thread at a specific AI message and regenerate
+  // This creates a new thread with history copied up to the anchor human message
+  const forkAndRegenerate = useCallback(async (targetAiMessageId: string) => {
+    if (!threadId || !config?.deploymentUrl || !session?.access_token) {
+      console.error("[useChat] Missing requirements for fork");
+      return;
+    }
+
+    try {
+      // Call Fork API
+      const response = await fetch(
+        `${config.deploymentUrl}/api/threads/${encodeURIComponent(threadId)}/fork`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            fork_target_ai_message_id: targetAiMessageId,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.detail || "Fork failed");
+      }
+
+      const data = await response.json();
+      console.log(`[useChat] Forked to new thread: ${data.new_thread_id}, copied ${data.messages_copied} messages`);
+
+      // Navigate to new thread - this will trigger history load
+      setThreadId(data.new_thread_id);
+
+      // After navigation, the new thread will load its history (copied messages)
+      // The frontend will show the copied conversation
+      // User can then submit a new message to trigger AI regeneration
+
+      onHistoryRevalidate?.();
+
+      return data;
+    } catch (error) {
+      console.error("[useChat] Fork failed:", error);
+      throw error;
+    }
+  }, [threadId, config, session?.access_token, setThreadId, onHistoryRevalidate]);
+
   return {
     stream,
     todos: stream.values.todos ?? [],
@@ -574,6 +622,7 @@ export function useChat({
     // Edit and regenerate with branching
     editMessageAndRerun,
     regenerateLastResponse,
+    forkAndRegenerate,
     // Web Dev mode
     webDevMode: isWebDevModeActive,
     enableWebDevMode,
@@ -581,10 +630,12 @@ export function useChat({
     // Fortune mode (五行算命)
     fortuneMode: isFortuneModeActive,
     setFortuneMode,
-    // Generic feature mode (slides, resume, prompt-optimize, deai)
+    // Generic feature mode
     activeFeatureId,
     setActiveFeatureId,
-    // History unavailable flag - true when LangGraph checkpoint was lost
+    // Thread metadata
+    threadId,
+    // History availability
     historyUnavailable,
   };
 }
