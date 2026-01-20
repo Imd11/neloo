@@ -39,7 +39,7 @@ from ..storage import save_image_base64, get_image_url
 
 from ..runtime_context import user_id_ctx as _user_id_ctx, thread_id_ctx as _thread_id_ctx
 from ..sandbox import get_executor, get_e2b_backend_factory
-from .composio_tools import get_composio_tools_for_user_sync
+from .integration_tools import INTEGRATION_TOOLS
 
 # API base URL for image serving (configurable via environment)
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:2024")
@@ -853,7 +853,8 @@ def search_web(
 
 
 # Custom tools for the data analyst agent
-CUSTOM_TOOLS = [execute_python, search_web, search_knowledge_tool, list_knowledge_categories, search_ui_design]
+# INTEGRATION_TOOLS provides runtime dispatcher for third-party apps (Composio)
+CUSTOM_TOOLS = [execute_python, search_web, search_knowledge_tool, list_knowledge_categories, search_ui_design] + INTEGRATION_TOOLS
 
 
 # =============================================================================
@@ -1294,11 +1295,7 @@ def build_graph(model_id: str | None = None, mode: str = "default"):
     Note: When SANDBOX_MODE=e2b, Agent's write_file operations go to E2B sandbox,
     ensuring a unified filesystem with execute_python. Files are automatically
     synced to Supabase Storage for persistence beyond sandbox timeout.
-    """
-    # DEBUG: Log when build_graph is called and current user_id context
-    current_user_id = _user_id_ctx.get()
-    print(f"[graph.py DEBUG] build_graph() called: model_id={model_id}, mode={mode}, user_id_ctx={current_user_id!r}")
-    
+    \"\"\"
     model = get_model(model_id)
 
     # Build system prompt based on mode
@@ -1316,25 +1313,9 @@ def build_graph(model_id: str | None = None, mode: str = "default"):
     executor = _get_sandbox_executor()
     backend_factory = get_e2b_backend_factory(executor)
 
-    # Build tool list with optional Composio tools
-    tools = list(CUSTOM_TOOLS)  # Copy to avoid modifying global
-    
-    # Dynamically inject Composio tools based on user's connected apps
-    user_id = _user_id_ctx.get()
-    # DEBUG: Always log user_id check result
-    print(f"[graph.py DEBUG] Composio injection check: user_id={user_id!r}, will_inject={bool(user_id and user_id != 'default')}")
-    
-    if user_id and user_id != "default":
-        try:
-            composio_tools = get_composio_tools_for_user_sync(user_id)
-            print(f"[graph.py DEBUG] Composio tools loaded: count={len(composio_tools)}")
-            if composio_tools:
-                tools.extend(composio_tools)
-                print(f"[graph.py] Injected {len(composio_tools)} Composio tools for user {user_id[:8]}...")
-        except Exception as e:
-            print(f"[graph.py] Failed to load Composio tools: {e}")
-    else:
-        print(f"[graph.py DEBUG] Composio injection SKIPPED: user_id is '{user_id}'")
+    # Use CUSTOM_TOOLS which now includes INTEGRATION_TOOLS
+    # (Runtime Dispatcher pattern - no dynamic injection needed)
+    tools = list(CUSTOM_TOOLS)
     
     return create_deep_agent(
         model=model,
