@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { Search, Grid, Package, Store } from "lucide-react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { Search, Grid, Package, Store, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,14 +13,96 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { AppCard } from "./AppCard";
 import { apps, categoryLabels, type AppCategory } from "./appsData";
 import { toast } from "sonner";
+import { useAuth } from "@/providers/AuthProvider";
+import { getConfig } from "@/lib/config";
+
+interface ConnectionInfo {
+    app_name: string;
+    status: string;
+    composio_connection_id?: string;
+    connected_at?: string;
+}
 
 export function ConnectedAppsTab() {
+    const { session } = useAuth();
+    const config = getConfig();
+    const apiUrl = config?.deploymentUrl || "";
+
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedCategory, setSelectedCategory] = useState<AppCategory | "all">("all");
-    // TODO: Replace with actual API call to get user's connected apps
-    const [connectedAppIds, setConnectedAppIds] = useState<Set<string>>(
-        new Set(["notion", "github", "slack"]) // Demo: some apps pre-connected
-    );
+    const [connectedAppIds, setConnectedAppIds] = useState<Set<string>>(new Set());
+    const [pendingAppIds, setPendingAppIds] = useState<Set<string>>(new Set());
+    const [isLoading, setIsLoading] = useState(true);
+    const [connectingApp, setConnectingApp] = useState<string | null>(null);
+
+    // Auth headers helper
+    const getAuthHeaders = (token: string) => ({
+        'Authorization': `Bearer ${token}`,
+    });
+
+    // Fetch connected apps on mount
+    const fetchConnections = useCallback(async () => {
+        if (!session?.access_token || !apiUrl) return;
+
+        try {
+            const response = await fetch(`${apiUrl}/api/integrations/connections`, {
+                headers: getAuthHeaders(session.access_token),
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const connections: ConnectionInfo[] = data.connections || [];
+
+                const connected = new Set(
+                    connections.filter(c => c.status === 'connected').map(c => c.app_name)
+                );
+                const pending = new Set(
+                    connections.filter(c => c.status === 'pending').map(c => c.app_name)
+                );
+
+                setConnectedAppIds(connected);
+                setPendingAppIds(pending);
+            }
+        } catch (error) {
+            console.error('[ConnectedApps] Failed to fetch connections:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [session?.access_token]);
+
+    useEffect(() => {
+        fetchConnections();
+    }, [fetchConnections]);
+
+    // Poll for pending connections
+    useEffect(() => {
+        if (pendingAppIds.size === 0 || !session?.access_token) return;
+
+        const interval = setInterval(async () => {
+            for (const appId of pendingAppIds) {
+                try {
+                    const response = await fetch(
+                        `${apiUrl}/api/integrations/status/${appId}`,
+                        { headers: getAuthHeaders(session.access_token) }
+                    );
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.connected) {
+                            // Refresh connections
+                            await fetchConnections();
+                            toast.success(`${apps.find(a => a.id === appId)?.name || appId} 连接成功！`);
+                            break;
+                        }
+                    }
+                } catch (error) {
+                    console.error(`[ConnectedApps] Failed to check status for ${appId}:`, error);
+                }
+            }
+        }, 3000);
+
+        return () => clearInterval(interval);
+    }, [pendingAppIds, session?.access_token, fetchConnections]);
 
     // Filter apps based on search and category
     const filteredApps = useMemo(() => {
@@ -36,12 +118,12 @@ export function ConnectedAppsTab() {
 
     // Separate connected and marketplace apps
     const connectedApps = useMemo(() => {
-        return filteredApps.filter((app) => connectedAppIds.has(app.id));
-    }, [filteredApps, connectedAppIds]);
+        return filteredApps.filter((app) => connectedAppIds.has(app.id) || pendingAppIds.has(app.id));
+    }, [filteredApps, connectedAppIds, pendingAppIds]);
 
     const marketplaceApps = useMemo(() => {
-        return filteredApps.filter((app) => !connectedAppIds.has(app.id));
-    }, [filteredApps, connectedAppIds]);
+        return filteredApps.filter((app) => !connectedAppIds.has(app.id) && !pendingAppIds.has(app.id));
+    }, [filteredApps, connectedAppIds, pendingAppIds]);
 
     // Group marketplace apps by category
     const groupedMarketplaceApps = useMemo(() => {
@@ -55,22 +137,77 @@ export function ConnectedAppsTab() {
         return groups;
     }, [marketplaceApps]);
 
-    // Handlers
-    // TODO: Replace with actual Composio OAuth flow
-    const handleConnect = (appId: string) => {
-        const app = apps.find((a) => a.id === appId);
-        setConnectedAppIds((prev) => new Set([...prev, appId]));
-        toast.success(`已连接 ${app?.name}`);
+    // Connect handler - calls real API
+    const handleConnect = async (appId: string) => {
+        if (!session?.access_token) {
+            toast.error("请先登录");
+            return;
+        }
+
+        setConnectingApp(appId);
+
+        try {
+            const response = await fetch(`${apiUrl}/api/integrations/connect`, {
+                method: 'POST',
+                headers: {
+                    ...getAuthHeaders(session.access_token),
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ app_name: appId }),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to connect');
+            }
+
+            const data = await response.json();
+
+            // Redirect to OAuth URL
+            if (data.redirect_url) {
+                window.location.href = data.redirect_url;
+            }
+        } catch (error) {
+            console.error('[ConnectedApps] Failed to connect:', error);
+            toast.error(`连接失败: ${error instanceof Error ? error.message : '未知错误'}`);
+        } finally {
+            setConnectingApp(null);
+        }
     };
 
-    const handleDisconnect = (appId: string) => {
+    // Disconnect handler - calls real API  
+    const handleDisconnect = async (appId: string) => {
+        if (!session?.access_token) return;
+
         const app = apps.find((a) => a.id === appId);
-        setConnectedAppIds((prev) => {
-            const next = new Set(prev);
-            next.delete(appId);
-            return next;
-        });
-        toast.success(`已断开 ${app?.name}`);
+
+        try {
+            const response = await fetch(`${apiUrl}/api/integrations/disconnect`, {
+                method: 'POST',
+                headers: {
+                    ...getAuthHeaders(session.access_token),
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ app_name: appId }),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to disconnect');
+            }
+
+            // Update local state
+            setConnectedAppIds((prev) => {
+                const next = new Set(prev);
+                next.delete(appId);
+                return next;
+            });
+
+            toast.success(`已断开 ${app?.name}`);
+        } catch (error) {
+            console.error('[ConnectedApps] Failed to disconnect:', error);
+            toast.error(`断开失败: ${error instanceof Error ? error.message : '未知错误'}`);
+        }
     };
 
     const handleManage = (appId: string) => {

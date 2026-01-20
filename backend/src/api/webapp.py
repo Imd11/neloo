@@ -2875,3 +2875,9 @@ async def save_thread_message(
         raise HTTPException(status_code=500, detail="Failed to save message")
 
 
+# =============================================================================
+# Composio Integration Routes
+# =============================================================================
+
+from .composio_routes import router as composio_router
+app.include_router(composio_router)
