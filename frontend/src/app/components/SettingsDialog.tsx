@@ -415,7 +415,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl p-0 gap-0 bg-card border-border overflow-hidden">
+      <DialogContent className="max-w-4xl p-0 gap-0 bg-card border-border overflow-hidden">
         <div className="flex h-[500px]">
           {/* Sidebar */}
           <div className="w-52 border-r border-border bg-sidebar p-4">
