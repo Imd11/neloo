@@ -14,6 +14,7 @@ import {
   Sun,
   Moon,
   Monitor,
+  Plug,
 } from "lucide-react";
 import {
   Dialog,
@@ -32,6 +33,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useLanguage, LOCALE_NAMES, type Locale, SUPPORTED_LOCALES } from "@/providers/LanguageProvider";
+import { ConnectedAppsTab } from "@/app/components/settings/ConnectedAppsTab";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -53,6 +55,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const settingsTabs = [
     { id: "general", label: t("settings.general"), icon: Settings },
     { id: "notifications", label: t("settings.notifications"), icon: Bell },
+    { id: "connected-apps", label: "连接应用", icon: Plug },
     { id: "personalization", label: t("settings.personalization"), icon: Palette },
     { id: "privacy", label: t("settings.privacy"), icon: Shield },
     { id: "data", label: t("settings.data"), icon: Database },
@@ -195,6 +198,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             </div>
           </div>
         );
+
+      case "connected-apps":
+        return <ConnectedAppsTab />;
 
       case "personalization":
         return (
