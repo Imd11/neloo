@@ -263,6 +263,11 @@ async def integrations_execute(
         app_tools = client.tools.get(user_id=user_id, toolkits=[app_name])
         available_actions = [t.name for t in app_tools] if app_tools else []
         
+        # DEBUG: Print full action list to diagnose missing actions
+        print(f"[integrations_execute] Composio returned {len(available_actions)} actions for {app_name}:")
+        for i, a in enumerate(available_actions):
+            print(f"  [{i+1}] {a}")
+        
         if action not in available_actions:
             return {
                 "status": "error",
