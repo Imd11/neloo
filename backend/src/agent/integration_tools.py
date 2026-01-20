@@ -250,6 +250,7 @@ async def integrations_execute(
     # Ensures the requested action belongs to the connected app
     # ==========================================================================
     app_tools = None
+    tool_instance = None
     available_actions = []
     
     try:
@@ -259,27 +260,50 @@ async def integrations_execute(
         if not client:
             return {"status": "error", "message": "Composio client 未配置"}
         
-        # Fetch all tools for this specific app (using toolkits)
-        app_tools = client.tools.get(user_id=user_id, toolkits=[app_name])
-        available_actions = [t.name for t in app_tools] if app_tools else []
+        # Method 1: Try direct tool fetch by action name (bypasses 20-action limit)
+        # This is the primary method - more reliable than toolkit listing
+        try:
+            direct_tools = client.tools.get(user_id=user_id, tools=[action])
+            if direct_tools and len(direct_tools) > 0:
+                tool_instance = direct_tools[0]
+                print(f"[integrations_execute] Direct fetch SUCCESS for {action}")
+        except Exception as e:
+            print(f"[integrations_execute] Direct fetch failed for {action}: {e}")
+            tool_instance = None
         
-        # DEBUG: Print full action list to diagnose missing actions
-        print(f"[integrations_execute] Composio returned {len(available_actions)} actions for {app_name}:")
-        for i, a in enumerate(available_actions):
-            print(f"  [{i+1}] {a}")
-        
-        if action not in available_actions:
-            return {
-                "status": "error",
-                "message": f"操作 {action} 不属于 {app_name}。可用操作 ({len(available_actions)} 个): {available_actions[:10]}{'...' if len(available_actions) > 10 else ''}",
-                "available_actions": available_actions,
-            }
+        # If direct fetch failed, check available actions for error message
+        if not tool_instance:
+            # Fetch toolkit to get available actions list (may be limited to ~20)
+            app_tools = client.tools.get(user_id=user_id, toolkits=[app_name])
+            available_actions = [t.name for t in app_tools] if app_tools else []
+            
+            # DEBUG: Print action list
+            print(f"[integrations_execute] Composio returned {len(available_actions)} actions for {app_name}:")
+            for i, a in enumerate(available_actions):
+                print(f"  [{i+1}] {a}")
+            
+            # Check if action might exist but not in limited list
+            if action not in available_actions:
+                return {
+                    "status": "error",
+                    "message": f"操作 {action} 不可用。可能原因: 1) 该操作不属于 {app_name}; 2) Composio 尚未支持此操作。已知可用操作 ({len(available_actions)} 个): {available_actions[:15]}...",
+                    "available_actions": available_actions,
+                }
+            else:
+                # Action is in list, find it
+                for t in app_tools:
+                    if t.name == action:
+                        tool_instance = t
+                        break
     except Exception as e:
         print(f"[integrations_execute] Action validation failed: {e}")
         return {
             "status": "error",
             "message": f"无法验证可用操作，请稍后重试: {e}",
         }
+    
+    if not tool_instance:
+        return {"status": "error", "message": f"无法获取工具 {action}"}
     
     # ==========================================================================
     # Step 4: Idempotency check
@@ -313,16 +337,7 @@ async def integrations_execute(
     result_url = None
     
     try:
-        # Find the specific tool by action name from app_tools (already fetched in Step 3)
-        tool_instance = None
-        for t in app_tools:
-            if t.name == action:
-                tool_instance = t
-                break
-        
-        if not tool_instance:
-            return {"status": "error", "message": f"无法找到工具 {action}"}
-        
+        # tool_instance already obtained in Step 3
         # Execute the tool
         result = await tool_instance.ainvoke(params)
         
