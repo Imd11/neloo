@@ -191,19 +191,11 @@ def get_composio_tools_for_user_sync(user_id: str) -> list:
     if not client:
         return []
     
-    # Collect allowed actions
-    actions = []
-    for app in connected_apps:
-        allowed = ALLOWED_ACTIONS.get(app, [])
-        actions.extend(allowed)
-    
-    if not actions:
-        return []
-    
-    # Get LangChain tools
+    # Load ALL tools from connected apps (no whitelist)
+    # User authorized the app = Agent has full access to that app's capabilities
     try:
-        tools = client.tools.get(user_id=user_id, tools=actions)
-        print(f"[Composio] Loaded {len(tools)} tools for user {user_id[:8]}...")
+        tools = client.tools.get(user_id=user_id, toolkits=connected_apps)
+        print(f"[Composio] Loaded {len(tools)} tools from apps {connected_apps} for user {user_id[:8]}...")
         return tools
     except Exception as e:
         print(f"[Composio] Failed to load tools: {e}")
@@ -225,18 +217,12 @@ async def get_composio_tools_for_user(user_id: str) -> list:
     if not client:
         return []
     
-    actions = []
-    for app in connected_apps:
-        allowed = ALLOWED_ACTIONS.get(app, [])
-        actions.extend(allowed)
-    
-    if not actions:
-        return []
-    
+    # Load ALL tools from connected apps (no whitelist)
     try:
-        tools = client.tools.get(user_id=user_id, tools=actions)
-        print(f"[Composio] Loaded {len(tools)} tools for user {user_id[:8]}...")
+        tools = client.tools.get(user_id=user_id, toolkits=connected_apps)
+        print(f"[Composio] Loaded {len(tools)} tools from apps {connected_apps} for user {user_id[:8]}...")
         return tools
     except Exception as e:
         print(f"[Composio] Failed to load tools: {e}")
         return []
+
