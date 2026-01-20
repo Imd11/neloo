@@ -1295,7 +1295,7 @@ def build_graph(model_id: str | None = None, mode: str = "default"):
     Note: When SANDBOX_MODE=e2b, Agent's write_file operations go to E2B sandbox,
     ensuring a unified filesystem with execute_python. Files are automatically
     synced to Supabase Storage for persistence beyond sandbox timeout.
-    \"\"\"
+    """
     model = get_model(model_id)
 
     # Build system prompt based on mode
