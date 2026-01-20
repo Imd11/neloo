@@ -52,6 +52,9 @@ dependencies = [
     "langchain-chroma>=0.1.0",
     "langchain-text-splitters>=0.3.0",
     "chromadb>=0.5.0",
+
+    # Third-party App Integration (Composio)
+    "composio>=0.10.8,<0.11",
 ]
 
 [project.optional-dependencies]
