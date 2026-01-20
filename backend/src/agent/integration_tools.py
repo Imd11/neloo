@@ -6,6 +6,11 @@ Uses Runtime Dispatcher pattern for security, idempotency, and auditability.
 
 This solves the "Graph Lifecycle Paradox" where Composio tools can't be injected
 at graph build time (user_id='default') by deferring execution to runtime.
+
+NO ACTION WHITELIST: Once a user connects an app, the agent has full access
+to all operations within Composio's capabilities for that app.
+Action ownership validation ensures the requested action belongs to the
+connected app (prevents cross-app action leakage).
 """
 
 import os
@@ -18,21 +23,6 @@ from langchain_core.runnables import RunnableConfig
 from ..runtime_context import user_id_ctx, thread_id_ctx
 from ..storage.supabase_db import get_supabase_client
 
-# =============================================================================
-# Configuration
-# =============================================================================
-
-# Action whitelist - only these actions are allowed per app
-ALLOWED_ACTIONS = {
-    "twitter": [
-        "TWITTER_CREATION_OF_A_POST",  # 发推
-        "TWITTER_DELETE_TWEET",         # 删除推文（用于撤销）
-    ],
-    # Future apps:
-    # "notion": ["NOTION_CREATE_PAGE", "NOTION_UPDATE_PAGE"],
-    # "slack": ["SLACK_SEND_MESSAGE"],
-    # "gmail": ["GMAIL_SEND_EMAIL"],
-}
 
 
 # =============================================================================
@@ -191,25 +181,13 @@ async def integrations_execute(
     This tool handles all third-party app integrations with security checks,
     idempotency protection, and audit logging.
     
+    NO ACTION WHITELIST: If user has connected the app, the agent can perform
+    ANY action available in Composio for that app.
+    
     Args:
         app_name: The app to use (e.g., 'twitter', 'notion')
         action: The action to perform (e.g., 'TWITTER_CREATION_OF_A_POST')
         params: Action-specific parameters
-    
-    Examples:
-        # Post a tweet
-        integrations_execute(
-            app_name="twitter",
-            action="TWITTER_CREATION_OF_A_POST",
-            params={"text": "Hello from AI!"}
-        )
-        
-        # Delete a tweet (for undo)
-        integrations_execute(
-            app_name="twitter", 
-            action="TWITTER_DELETE_TWEET",
-            params={"tweet_id": "1234567890"}
-        )
     
     Returns:
         A dict with status, result_id, result_url, and message.
@@ -268,13 +246,34 @@ async def integrations_execute(
         return {"status": "error", "message": f"连接验证失败: {e}"}
     
     # ==========================================================================
-    # Step 3: Action whitelist verification
+    # Step 3: Action ownership validation (dynamic - NO whitelist)
+    # Ensures the requested action belongs to the connected app
     # ==========================================================================
-    allowed_actions = ALLOWED_ACTIONS.get(app_name.lower(), [])
-    if action not in allowed_actions:
+    app_tools = None
+    available_actions = []
+    
+    try:
+        from .composio_tools import get_composio_client
+        
+        client = get_composio_client()
+        if not client:
+            return {"status": "error", "message": "Composio client 未配置"}
+        
+        # Fetch all tools for this specific app (using toolkits)
+        app_tools = client.tools.get(user_id=user_id, toolkits=[app_name])
+        available_actions = [t.name for t in app_tools] if app_tools else []
+        
+        if action not in available_actions:
+            return {
+                "status": "error",
+                "message": f"操作 {action} 不属于 {app_name}。可用操作 ({len(available_actions)} 个): {available_actions[:10]}{'...' if len(available_actions) > 10 else ''}",
+                "available_actions": available_actions,
+            }
+    except Exception as e:
+        print(f"[integrations_execute] Action validation failed: {e}")
         return {
             "status": "error",
-            "message": f"操作 {action} 不被允许。允许的操作: {allowed_actions}",
+            "message": f"无法验证可用操作，请稍后重试: {e}",
         }
     
     # ==========================================================================
@@ -303,26 +302,23 @@ async def integrations_execute(
         # Continue anyway - better to risk duplicate than fail
     
     # ==========================================================================
-    # Step 5: Execute via Composio SDK (verified API path)
+    # Step 5: Execute via Composio SDK (reuse app_tools from Step 3)
     # ==========================================================================
     result_id = None
     result_url = None
     
     try:
-        from .composio_tools import get_composio_client
+        # Find the specific tool by action name from app_tools (already fetched in Step 3)
+        tool_instance = None
+        for t in app_tools:
+            if t.name == action:
+                tool_instance = t
+                break
         
-        client = get_composio_client()
-        if not client:
-            return {"status": "error", "message": "Composio client 未配置"}
-        
-        # Use verified API: client.tools.get(user_id=..., tools=[action])
-        tools = client.tools.get(user_id=user_id, tools=[action])
-        
-        if not tools:
-            return {"status": "error", "message": f"无法获取工具 {action}"}
+        if not tool_instance:
+            return {"status": "error", "message": f"无法找到工具 {action}"}
         
         # Execute the tool
-        tool_instance = tools[0]
         result = await tool_instance.ainvoke(params)
         
         # Parse result (structure varies by action)
