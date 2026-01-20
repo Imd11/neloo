@@ -39,6 +39,7 @@ from ..storage import save_image_base64, get_image_url
 
 from ..runtime_context import user_id_ctx as _user_id_ctx, thread_id_ctx as _thread_id_ctx
 from ..sandbox import get_executor, get_e2b_backend_factory
+from .composio_tools import get_composio_tools_for_user_sync
 
 # API base URL for image serving (configurable via environment)
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:2024")
@@ -1311,9 +1312,23 @@ def build_graph(model_id: str | None = None, mode: str = "default"):
     executor = _get_sandbox_executor()
     backend_factory = get_e2b_backend_factory(executor)
 
+    # Build tool list with optional Composio tools
+    tools = list(CUSTOM_TOOLS)  # Copy to avoid modifying global
+    
+    # Dynamically inject Composio tools based on user's connected apps
+    user_id = _user_id_ctx.get()
+    if user_id and user_id != "default":
+        try:
+            composio_tools = get_composio_tools_for_user_sync(user_id)
+            if composio_tools:
+                tools.extend(composio_tools)
+                print(f"[graph.py] Injected {len(composio_tools)} Composio tools for user {user_id[:8]}...")
+        except Exception as e:
+            print(f"[graph.py] Failed to load Composio tools: {e}")
+    
     return create_deep_agent(
         model=model,
-        tools=CUSTOM_TOOLS,
+        tools=tools,
         system_prompt=system_prompt,
         subagents=DATA_ANALYST_SUBAGENTS,  # Enable specialized subagents
         interrupt_on=interrupt_on,          # Enable HITL if configured
