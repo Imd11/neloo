@@ -43,6 +43,18 @@ export function ConnectedAppsTab() {
         return filteredApps.filter((app) => !connectedAppIds.has(app.id));
     }, [filteredApps, connectedAppIds]);
 
+    // Group marketplace apps by category
+    const groupedMarketplaceApps = useMemo(() => {
+        const groups: Partial<Record<AppCategory, typeof apps>> = {};
+        marketplaceApps.forEach((app) => {
+            if (!groups[app.category]) {
+                groups[app.category] = [];
+            }
+            groups[app.category]!.push(app);
+        });
+        return groups;
+    }, [marketplaceApps]);
+
     // Handlers
     // TODO: Replace with actual Composio OAuth flow
     const handleConnect = (appId: string) => {
@@ -154,16 +166,27 @@ export function ConnectedAppsTab() {
                             </span>
                         </div>
                         {marketplaceApps.length > 0 ? (
-                            <div className="space-y-2">
-                                {marketplaceApps.map((app) => (
-                                    <AppCard
-                                        key={app.id}
-                                        app={app}
-                                        isConnected={false}
-                                        onConnect={handleConnect}
-                                        onDisconnect={handleDisconnect}
-                                        onManage={handleManage}
-                                    />
+                            <div className="space-y-6">
+                                {Object.entries(groupedMarketplaceApps).map(([category, categoryApps]) => (
+                                    <div key={category}>
+                                        <h5 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-primary/60" />
+                                            {categoryLabels[category as AppCategory]}
+                                            <span className="text-muted-foreground/60">({categoryApps!.length})</span>
+                                        </h5>
+                                        <div className="space-y-2">
+                                            {categoryApps!.map((app) => (
+                                                <AppCard
+                                                    key={app.id}
+                                                    app={app}
+                                                    isConnected={false}
+                                                    onConnect={handleConnect}
+                                                    onDisconnect={handleDisconnect}
+                                                    onManage={handleManage}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
                                 ))}
                             </div>
                         ) : (

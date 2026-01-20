@@ -213,4 +213,98 @@ export const apps: AppInfo[] = [
         category: "other",
         logo: "/app-logos/zapier.svg",
     },
+
+    // Additional Composio Apps - Productivity
+    {
+        id: "airtable",
+        name: "Airtable",
+        description: "电子表格与数据库结合的协作平台",
+        category: "productivity",
+        logo: "/app-logos/airtable.svg",
+    },
+    {
+        id: "clickup",
+        name: "ClickUp",
+        description: "一站式项目管理和生产力平台",
+        category: "productivity",
+        logo: "/app-logos/clickup.svg",
+    },
+    {
+        id: "google-docs",
+        name: "Google Docs",
+        description: "云端文档编辑和协作工具",
+        category: "productivity",
+        logo: "/app-logos/google-docs.svg",
+    },
+    {
+        id: "google-sheets",
+        name: "Google Sheets",
+        description: "云端电子表格和数据分析工具",
+        category: "productivity",
+        logo: "/app-logos/google-sheets.svg",
+    },
+
+    // Additional Composio Apps - Communication
+    {
+        id: "outlook",
+        name: "Outlook",
+        description: "微软邮件和日历服务",
+        category: "communication",
+        logo: "/app-logos/outlook.svg",
+    },
+    {
+        id: "google-meet",
+        name: "Google Meet",
+        description: "Google 视频会议服务",
+        category: "communication",
+        logo: "/app-logos/google-meet.svg",
+    },
+
+    // Additional Composio Apps - Development
+    {
+        id: "bitbucket",
+        name: "Bitbucket",
+        description: "Atlassian 代码托管和协作平台",
+        category: "development",
+        logo: "/app-logos/bitbucket.svg",
+    },
+    {
+        id: "supabase",
+        name: "Supabase",
+        description: "开源 Firebase 替代方案，后端即服务",
+        category: "development",
+        logo: "/app-logos/supabase.svg",
+    },
+
+    // Additional Composio Apps - CRM
+    {
+        id: "zendesk",
+        name: "Zendesk",
+        description: "客户服务和支持平台",
+        category: "crm",
+        logo: "/app-logos/zendesk.svg",
+    },
+
+    // Additional Composio Apps - Other
+    {
+        id: "figma",
+        name: "Figma",
+        description: "协作式界面设计工具",
+        category: "other",
+        logo: "/app-logos/figma.svg",
+    },
+    {
+        id: "mailchimp",
+        name: "Mailchimp",
+        description: "邮件营销和自动化平台",
+        category: "other",
+        logo: "/app-logos/mailchimp.svg",
+    },
+    {
+        id: "shopify",
+        name: "Shopify",
+        description: "电商平台和在线商店构建工具",
+        category: "other",
+        logo: "/app-logos/shopify.svg",
+    },
 ];
