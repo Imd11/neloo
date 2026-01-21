@@ -169,6 +169,64 @@ async def integrations_list_apps(
 
 
 @tool
+async def integrations_list_actions(
+    app_name: Annotated[str, "App name to list actions for, e.g. 'twitter'"],
+    config: RunnableConfig = None,  # type: ignore[assignment]
+) -> str:
+    """
+    List all available actions for a connected app.
+    
+    Use this to discover what actions can be executed on a specific app.
+    For example, to see all Twitter actions: integrations_list_actions(app_name="twitter")
+    
+    Returns:
+        A list of action names that can be used with integrations_execute.
+    """
+    # Resolve user_id
+    user_id = _resolve_user_id_from_config(config)
+    thread_id = _resolve_thread_id_from_config(config) or thread_id_ctx.get()
+    
+    if not user_id:
+        user_id = user_id_ctx.get()
+    
+    if not user_id or user_id in ("default", "anonymous"):
+        if thread_id and thread_id != "default":
+            user_id = await _resolve_user_id_for_thread(thread_id)
+    
+    if not user_id or user_id in ("default", "anonymous"):
+        return "Error: 无法获取用户身份"
+    
+    app_name = app_name.lower()
+    
+    try:
+        from .composio_tools import get_composio_client
+        
+        client = get_composio_client()
+        if not client:
+            return "Error: Composio client 未配置"
+        
+        # Fetch all tools for this app (may be limited to ~20 by Composio)
+        app_tools = client.tools.get(user_id=user_id, toolkits=[app_name])
+        
+        if not app_tools:
+            return f"No actions found for {app_name}. 请确认该应用已连接。"
+        
+        actions = [t.name for t in app_tools]
+        
+        # Log to Railway for debugging
+        print(f"[integrations_list_actions] {app_name} has {len(actions)} actions:")
+        for i, action in enumerate(actions):
+            print(f"  [{i+1}] {action}")
+        
+        # Return formatted list
+        action_list = "\n".join([f"- {a}" for a in actions])
+        return f"Available actions for {app_name} ({len(actions)} total):\n{action_list}"
+        
+    except Exception as e:
+        print(f"[integrations_list_actions] Error: {e}")
+        return f"Error: 无法获取 {app_name} 的可用操作 - {e}"
+
+@tool
 async def integrations_execute(
     app_name: Annotated[str, "App name, e.g. 'twitter'"],
     action: Annotated[str, "Action to execute, e.g. 'TWITTER_CREATION_OF_A_POST'"],
@@ -454,4 +512,5 @@ async def integrations_execute(
 # Export
 # =============================================================================
 
-INTEGRATION_TOOLS = [integrations_list_apps, integrations_execute]
+INTEGRATION_TOOLS = [integrations_list_apps, integrations_list_actions, integrations_execute]
+
