@@ -30,9 +30,10 @@ API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 # Add more as you create them in Composio Dashboard
 APP_AUTH_CONFIGS = {
     "twitter": "ac_Kw-txF63L-Wl",
-    # Add more apps here:
-    # "github": "ac_xxx",
-    # "gmail": "ac_yyy",
+    "github": "ac_ryn4wsiWnK97",
+    "gmail": "ac_Y5OCECK93b-I",
+    "reddit": "ac_r9doEFEpEoJ8",
+    "youtube": "ac_gTLIcRbLXSNR",
 }
 
 # Composio client singleton
