@@ -38,19 +38,29 @@ class MessagePersistenceMiddleware(AgentMiddleware):
         debug_info = {
             "loc": location,
             "thread": threading.current_thread().name,
+            "runtime_type": type(runtime).__name__ if runtime else "None",
             "has_config": config is not None,
-            "config_keys": list(config.keys()) if isinstance(config, dict) else "not_dict",
+            "config_type": type(config).__name__ if config else "None",
         }
         
-        if isinstance(config, dict):
-            configurable = config.get('configurable', {})
-            debug_info["configurable_keys"] = list(configurable.keys()) if isinstance(configurable, dict) else "not_dict"
-            debug_info["run_id"] = _safe_prefix(config.get('run_id'))
-            
-            if isinstance(configurable, dict):
-                debug_info["cfg_thread_id"] = _safe_prefix(configurable.get('thread_id'))
-                debug_info["cfg_run_id"] = _safe_prefix(configurable.get('run_id'))
-                debug_info["cfg_user_id"] = _safe_prefix(configurable.get('user_id'))
+        if config is not None:
+            if isinstance(config, dict):
+                debug_info["config_keys"] = list(config.keys())[:10]
+                configurable = config.get('configurable', {})
+                if isinstance(configurable, dict):
+                    debug_info["configurable_keys"] = list(configurable.keys())[:10]
+                    debug_info["cfg_thread_id"] = _safe_prefix(configurable.get('thread_id'))
+                    debug_info["cfg_run_id"] = _safe_prefix(configurable.get('run_id'))
+            else:
+                # config might be RunnableConfig object
+                try:
+                    if hasattr(config, 'get'):
+                        configurable = config.get('configurable', {})
+                        if configurable:
+                            debug_info["cfg_thread_id"] = _safe_prefix(configurable.get('thread_id'))
+                            debug_info["cfg_run_id"] = _safe_prefix(configurable.get('run_id'))
+                except Exception as e:
+                    debug_info["config_error"] = str(e)[:30]
         
         print(f"[PersistMiddleware:DEBUG] {json.dumps(debug_info)}")
     
