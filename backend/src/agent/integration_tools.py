@@ -335,28 +335,69 @@ async def integrations_execute(
     # ==========================================================================
     result_id = None
     result_url = None
+    raw_result = None  # Store full Composio response for debugging
     
     try:
         # tool_instance already obtained in Step 3
         # Execute the tool
         result = await tool_instance.ainvoke(params)
         
-        # Parse result (structure varies by action)
-        if isinstance(result, dict):
-            result_id = result.get("id") or result.get("tweet_id") or result.get("data", {}).get("id")
-            result_url = result.get("url") or result.get("link")
-            # Try to construct URL if not provided
-            if result_id and not result_url and app_name == "twitter":
-                result_url = f"https://twitter.com/i/status/{result_id}"
-        elif isinstance(result, str):
-            result_id = result
+        # Store raw result for audit logging (convert to serializable format)
+        if result is not None:
+            if isinstance(result, dict):
+                raw_result = result
+            elif isinstance(result, str):
+                raw_result = {"raw_string": result}
+            else:
+                raw_result = {"raw_value": str(result)}
         
-        print(f"[integrations_execute] Success: result_id={result_id}, result_url={result_url}")
+        # Parse result - extract IDs based on known Composio response structures
+        # Twitter-specific: Composio may return nested structures
+        if isinstance(result, dict):
+            # Try multiple known paths for tweet_id
+            result_id = (
+                result.get("id") or 
+                result.get("tweet_id") or 
+                result.get("data", {}).get("id") or
+                result.get("data", {}).get("tweet_id") or
+                result.get("result", {}).get("id") or
+                result.get("result", {}).get("data", {}).get("id")
+            )
+            
+            # Try to get URL from response
+            result_url = (
+                result.get("url") or 
+                result.get("link") or
+                result.get("data", {}).get("url")
+            )
+            
+            # Construct Twitter URL if we have tweet_id but no URL
+            if result_id and not result_url and app_name == "twitter":
+                result_url = f"https://x.com/i/status/{result_id}"
+                
+        elif isinstance(result, str):
+            # Check if string looks like an error message
+            error_keywords = ["error", "failed", "invalid", "unauthorized", "forbidden"]
+            if any(kw in result.lower() for kw in error_keywords):
+                # This is an error, not a result ID
+                print(f"[integrations_execute] Result string appears to be an error: {result[:100]}")
+                raw_result = {"error_string": result}
+            else:
+                # Treat as potential result ID
+                result_id = result
+        
+        # Determine status based on what we extracted
+        if result_id:
+            execution_status = "success"
+        else:
+            execution_status = "success_no_id"  # Executed but couldn't extract ID
+            
+        print(f"[integrations_execute] Success: result_id={result_id}, result_url={result_url}, status={execution_status}")
         
     except Exception as e:
         print(f"[integrations_execute] Composio execution failed: {e}")
         
-        # Log failure
+        # Log failure with raw error
         try:
             await supabase.table("integration_action_logs").insert({
                 "user_id": user_id,
@@ -367,9 +408,10 @@ async def integrations_execute(
                 "params_hash": hashlib.sha256(json.dumps(params, sort_keys=True).encode()).hexdigest()[:32],
                 "status": "failed",
                 "error_message": str(e),
+                "raw_result": {"exception": str(e), "exception_type": type(e).__name__},
             }).execute()
-        except Exception:
-            pass
+        except Exception as log_err:
+            print(f"[integrations_execute] Warning: Failed to log failure: {log_err}")
         
         return {
             "status": "error",
@@ -377,7 +419,7 @@ async def integrations_execute(
         }
     
     # ==========================================================================
-    # Step 6: Audit logging
+    # Step 6: Audit logging (with raw_result)
     # ==========================================================================
     try:
         await supabase.table("integration_action_logs").insert({
@@ -388,7 +430,9 @@ async def integrations_execute(
             "action": action,
             "params_hash": hashlib.sha256(json.dumps(params, sort_keys=True).encode()).hexdigest()[:32],
             "result_id": result_id,
-            "status": "success",
+            "result_url": result_url,
+            "raw_result": raw_result,
+            "status": execution_status,
         }).execute()
     except Exception as e:
         print(f"[integrations_execute] Warning: Failed to log action: {e}")
@@ -402,7 +446,7 @@ async def integrations_execute(
         "app_name": app_name,
         "result_id": result_id,
         "result_url": result_url,
-        "message": f"{app_name} 操作成功执行",
+        "message": f"{app_name} 操作成功执行" + (f" - 查看: {result_url}" if result_url else ""),
     }
 
 
