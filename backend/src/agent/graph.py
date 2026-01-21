@@ -40,7 +40,6 @@ from ..storage import save_image_base64, get_image_url
 from ..runtime_context import user_id_ctx as _user_id_ctx, thread_id_ctx as _thread_id_ctx
 from ..sandbox import get_executor, get_e2b_backend_factory
 from .integration_tools import INTEGRATION_TOOLS
-from .persistence_middleware import MessagePersistenceMiddleware
 
 # API base URL for image serving (configurable via environment)
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:2024")
@@ -1325,7 +1324,6 @@ def build_graph(model_id: str | None = None, mode: str = "default"):
         subagents=DATA_ANALYST_SUBAGENTS,  # Enable specialized subagents
         interrupt_on=interrupt_on,          # Enable HITL if configured
         backend=backend_factory,            # Route filesystem ops to E2B sandbox
-        middleware=[MessagePersistenceMiddleware()],  # Auto-persist AI messages
     )
 
 

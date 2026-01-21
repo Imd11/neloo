@@ -2780,8 +2780,8 @@ async def get_thread_history(
     """
     Get chat history for a thread (LangGraph SDK compatible format).
     
-    This endpoint returns messages stored in chat_messages table,
-    formatted as ThreadState[] for @langchain/langgraph-sdk compatibility.
+    This endpoint reads from LangGraph's internal checkpointer (via HTTP proxy),
+    which automatically persists messages during graph execution.
     
     Args:
         thread_id: The LangGraph thread ID
@@ -2789,25 +2789,77 @@ async def get_thread_history(
     Returns:
         ThreadState[] format expected by SDK's fetchHistory()
     """
-    # Get messages from database
-    messages = await get_chat_messages(thread_id)
+    import httpx
     
-    if not messages:
-        # Return empty history (not 404) for new threads
-        return []
-    
-    # Return in ThreadState[] format expected by LangGraph SDK
-    # Note: We intentionally omit 'checkpoint' field because we don't have
-    # a real LangGraph checkpoint. The SDK will use messages-based flow.
-    return [{
-        "values": {
-            "messages": messages
-        },
-        "next": [],
-        "metadata": {},
-        "created_at": None,
-        "tasks": []
-    }]
+    try:
+        # Call LangGraph API's internal /threads/{thread_id}/state endpoint
+        # This reads from the PostgresSaver checkpointer that already has the messages
+        async with httpx.AsyncClient() as client:
+            # LangGraph API runs on localhost:8000 (same process)
+            response = await client.get(
+                f"http://127.0.0.1:8000/threads/{thread_id}/state",
+                timeout=10.0,
+            )
+            
+            if response.status_code == 404:
+                # Thread not found - return empty history
+                return []
+            
+            if response.status_code != 200:
+                print(f"[history] LangGraph state API returned {response.status_code}")
+                return []
+            
+            state_data = response.json()
+            
+            # Extract messages from state
+            values = state_data.get("values", {})
+            messages = values.get("messages", [])
+            
+            if not messages:
+                return []
+            
+            # Format messages for frontend compatibility
+            formatted_messages = []
+            for i, msg in enumerate(messages):
+                # Handle both dict and LangChain message objects
+                if isinstance(msg, dict):
+                    formatted_msg = msg.copy()
+                else:
+                    # Convert LangChain message to dict
+                    formatted_msg = {
+                        "id": getattr(msg, 'id', None) or f"{thread_id}:{i}",
+                        "type": getattr(msg, 'type', 'unknown'),
+                        "content": getattr(msg, 'content', ''),
+                    }
+                    if hasattr(msg, 'additional_kwargs'):
+                        formatted_msg["additional_kwargs"] = msg.additional_kwargs
+                
+                formatted_messages.append(formatted_msg)
+            
+            # Return in ThreadState[] format expected by LangGraph SDK
+            return [{
+                "values": {
+                    "messages": formatted_messages
+                },
+                "next": [],
+                "metadata": state_data.get("metadata", {}),
+                "created_at": state_data.get("created_at"),
+                "tasks": []
+            }]
+            
+    except Exception as e:
+        print(f"[history] Error fetching from LangGraph state API: {e}")
+        # Fallback to chat_messages table
+        messages = await get_chat_messages(thread_id)
+        if not messages:
+            return []
+        return [{
+            "values": {"messages": messages},
+            "next": [],
+            "metadata": {},
+            "created_at": None,
+            "tasks": []
+        }]
 
 
 @app.post("/threads/{thread_id}/history")
