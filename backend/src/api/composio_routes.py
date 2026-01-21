@@ -6,9 +6,11 @@ Uses Composio Python SDK for OAuth flow management.
 """
 
 import os
+import secrets
 from datetime import datetime, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
 from .auth import get_current_user
@@ -22,6 +24,7 @@ router = APIRouter(prefix="/api/integrations", tags=["integrations"])
 
 COMPOSIO_API_KEY = os.getenv("COMPOSIO_API_KEY")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
 # Auth Config ID whitelist (app_name -> auth_config_id)
 # Add more as you create them in Composio Dashboard
@@ -133,6 +136,9 @@ async def connect_app(
     """
     Initiate OAuth connection for an app.
     Returns redirect URL for user to complete OAuth flow.
+    
+    Security: Generates a cryptographic state token for CSRF protection
+    and user binding. The state is validated in the callback endpoint.
     """
     user_id = user["sub"]
     app_name = request.app_name.lower()
@@ -142,27 +148,37 @@ async def connect_app(
     if not auth_config_id:
         raise HTTPException(400, f"Unsupported app: {app_name}")
     
+    # Generate cryptographic state for CSRF protection and user binding
+    oauth_state = secrets.token_urlsafe(32)
+    
     # Get Composio client
     composio = get_composio_client()
     
-    # Initiate connection
+    # Build callback URL pointing to our backend (not frontend)
+    # This ensures we can verify the connection before updating DB
+    callback_url = f"{API_BASE_URL}/api/integrations/callback?state={oauth_state}"
+    
+    # Initiate connection with Composio
     try:
         connection_request = composio.connected_accounts.initiate(
             user_id=user_id,
             auth_config_id=auth_config_id,
-            callback_url=f"{FRONTEND_URL}/settings?tab=apps&app={app_name}"
+            callback_url=callback_url
         )
     except Exception as e:
         raise HTTPException(500, f"Failed to initiate connection: {str(e)}")
     
     # Save to database with pending status
+    # Clear old connection_id and set new oauth_state for validation
     supabase = await get_supabase_client()
     if supabase:
         await supabase.table("user_integrations").upsert({
             "user_id": user_id,
             "app_name": app_name,
-            "composio_connection_id": connection_request.id,
+            "composio_connection_id": None,  # Clear old, will be set in callback
+            "oauth_state": oauth_state,      # For callback validation
             "status": "pending",
+            "connected_at": None,            # Clear old
             "updated_at": datetime.now(timezone.utc).isoformat()
         }, on_conflict="user_id,app_name").execute()
     
@@ -171,6 +187,108 @@ async def connect_app(
         "connection_id": connection_request.id
     }
 
+
+@router.get("/callback")
+async def oauth_callback(
+    connectedAccountId: str,
+    state: str,
+):
+    """
+    OAuth callback endpoint - called by Composio after user authorizes.
+    
+    Security:
+    1. Validates state token (CSRF protection + user binding)
+    2. Verifies Composio connection is ACTIVE
+    3. Updates DB with connected status
+    4. Redirects to frontend
+    
+    This is a public endpoint (no auth required) because the user
+    is redirected here from Composio's OAuth flow.
+    """
+    # 1. Validate state and find pending record
+    supabase = await get_supabase_client()
+    if not supabase:
+        return RedirectResponse(
+            f"{FRONTEND_URL}/?openSettings=1&tab=apps&error=db_error",
+            status_code=302
+        )
+    
+    # Find the pending record by state (unique match)
+    result = await supabase.table("user_integrations")\
+        .select("user_id, app_name")\
+        .eq("oauth_state", state)\
+        .eq("status", "pending")\
+        .execute()
+    
+    if not result.data or len(result.data) == 0:
+        print(f"[OAuth Callback] Invalid or expired state: {state[:16]}...")
+        return RedirectResponse(
+            f"{FRONTEND_URL}/?openSettings=1&tab=apps&error=invalid_state",
+            status_code=302
+        )
+    
+    record = result.data[0]
+    user_id = record["user_id"]
+    app_name = record["app_name"]  # Use DB value, not query param
+    
+    # 2. Verify Composio connection is ACTIVE
+    try:
+        composio = get_composio_client()
+        connection = composio.connected_accounts.get(connectedAccountId)
+        composio_status = connection.status.upper() if connection.status else "PENDING"
+        
+        if composio_status != "ACTIVE":
+            print(f"[OAuth Callback] Connection not active: {composio_status}")
+            return RedirectResponse(
+                f"{FRONTEND_URL}/?openSettings=1&tab=apps&app={app_name}&error=not_active",
+                status_code=302
+            )
+        
+        # Optional: Double-check the connection belongs to this user
+        # (if Composio exposes user_id/entity_id in the payload)
+        composio_user_id = getattr(connection, 'user_id', None) or getattr(connection, 'entity_id', None)
+        if composio_user_id and str(composio_user_id) != str(user_id):
+            print(f"[OAuth Callback] User mismatch: {composio_user_id} != {user_id}")
+            return RedirectResponse(
+                f"{FRONTEND_URL}/?openSettings=1&tab=apps&error=user_mismatch",
+                status_code=302
+            )
+            
+    except Exception as e:
+        print(f"[OAuth Callback] Failed to verify Composio connection: {e}")
+        return RedirectResponse(
+            f"{FRONTEND_URL}/?openSettings=1&tab=apps&app={app_name}&error=verification_failed",
+            status_code=302
+        )
+    
+    # 3. Update DB: connected status, clear oauth_state
+    try:
+        await supabase.table("user_integrations")\
+            .update({
+                "status": "connected",
+                "composio_connection_id": connectedAccountId,
+                "oauth_state": None,  # Clear used state
+                "connected_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            })\
+            .eq("user_id", user_id)\
+            .eq("app_name", app_name)\
+            .execute()
+        
+        print(f"[OAuth Callback] Successfully connected {app_name} for user {user_id[:8]}...")
+        
+    except Exception as e:
+        print(f"[OAuth Callback] Failed to update DB: {e}")
+        return RedirectResponse(
+            f"{FRONTEND_URL}/?openSettings=1&tab=apps&app={app_name}&error=db_update_failed",
+            status_code=302
+        )
+    
+    # 4. Redirect to frontend (existing route: /)
+    return RedirectResponse(
+        f"{FRONTEND_URL}/?openSettings=1&tab=apps&app={app_name}&status=success",
+        status_code=302
+    )
 
 @router.get("/status/{app_name}", response_model=StatusResponse)
 async def check_status(
