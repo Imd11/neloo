@@ -519,8 +519,9 @@ export function buildManusTimeline(
 
     // State tracking
     let activeTodoId: string | null = null;
+    let lastInProgressTodoId: string | null = null;  // Keep track for fallback after all completed
     let seenAnyTodo = false;
-    const allTodosCompleted = todos.length > 0 && todos.every(t => t.status === 'completed');
+    // Removed: allTodosCompleted check - this caused all content to go to epilogue
 
     const toolCallMap = new Map<string, TimelineToolCall>();
     let blockIndex = 0;
@@ -529,17 +530,16 @@ export function buildManusTimeline(
     function addItem(item: TimelineItem) {
         if (!seenAnyTodo) {
             result.prelude.push(item);
-        } else if (allTodosCompleted) {
-            result.epilogue.push(item);
         } else if (activeTodoId && nodesById.has(activeTodoId)) {
             nodesById.get(activeTodoId)!.children.push(item);
-        } else {
+        } else if (lastInProgressTodoId && nodesById.has(lastInProgressTodoId)) {
+            // After all completed, mount to the last todo that was in_progress
+            nodesById.get(lastInProgressTodoId)!.children.push(item);
+        } else if (result.visibleTodos.length > 0) {
             // Fallback: add to last visible todo's children
-            if (result.visibleTodos.length > 0) {
-                result.visibleTodos[result.visibleTodos.length - 1].children.push(item);
-            } else {
-                result.prelude.push(item);
-            }
+            result.visibleTodos[result.visibleTodos.length - 1].children.push(item);
+        } else {
+            result.prelude.push(item);
         }
     }
 
@@ -588,12 +588,14 @@ export function buildManusTimeline(
                         for (const wt of writtenTodos) {
                             if (wt.status === "in_progress") {
                                 activeTodoId = wt.id;
+                                lastInProgressTodoId = wt.id;  // Keep track for fallback
                                 break;
                             }
                         }
                     } catch (e) { /* ignore parse errors */ }
                 }
             }
+
 
             // Also check content[] for tool_use blocks
             if (Array.isArray(msg.content)) {
@@ -605,6 +607,7 @@ export function buildManusTimeline(
                         for (const wt of writtenTodos) {
                             if (wt.status === "in_progress") {
                                 activeTodoId = wt.id;
+                                lastInProgressTodoId = wt.id;  // Keep track for fallback
                                 break;
                             }
                         }

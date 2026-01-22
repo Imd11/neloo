@@ -2836,10 +2836,16 @@ async def get_thread_history(
                 
                 formatted_messages.append(formatted_msg)
             
+            # Extract todos: priority from state, fallback from messages
+            todos = values.get("todos", [])
+            if not todos:
+                todos = extract_todos_from_messages(formatted_messages)
+            
             # Return in ThreadState[] format expected by LangGraph SDK
             return [{
                 "values": {
-                    "messages": formatted_messages
+                    "messages": formatted_messages,
+                    "todos": todos
                 },
                 "next": [],
                 "metadata": state_data.get("metadata", {}),
@@ -2853,13 +2859,61 @@ async def get_thread_history(
         messages = await get_chat_messages(thread_id)
         if not messages:
             return []
+        
+        # Extract todos from fallback messages
+        todos = extract_todos_from_messages(messages)
+        
         return [{
-            "values": {"messages": messages},
+            "values": {
+                "messages": messages,
+                "todos": todos
+            },
             "next": [],
             "metadata": {},
             "created_at": None,
             "tasks": []
         }]
+
+
+def extract_todos_from_messages(messages: list) -> list:
+    """
+    Extract todos from the last write_todos tool call in messages.
+    
+    Supports both message structures:
+    - msg.tool_calls / msg.additional_kwargs.tool_calls
+    - content[] with tool_use blocks
+    """
+    todos = []
+    
+    # Iterate in reverse to find the last write_todos call
+    for msg in reversed(messages):
+        if not isinstance(msg, dict):
+            continue
+        
+        # Check tool_calls
+        tool_calls = msg.get("tool_calls") or msg.get("additional_kwargs", {}).get("tool_calls", [])
+        for tc in tool_calls:
+            name = tc.get("function", {}).get("name") or tc.get("name")
+            if name == "write_todos":
+                args_str = tc.get("function", {}).get("arguments") or tc.get("args")
+                try:
+                    args = json.loads(args_str) if isinstance(args_str, str) else args_str
+                    if args and "todos" in args:
+                        return args["todos"]
+                except (json.JSONDecodeError, TypeError):
+                    pass
+        
+        # Check content[] for tool_use blocks
+        content = msg.get("content", [])
+        if isinstance(content, list):
+            for block in content:
+                if isinstance(block, dict) and block.get("type") == "tool_use" and block.get("name") == "write_todos":
+                    args = block.get("input", {})
+                    if args and "todos" in args:
+                        return args["todos"]
+    
+    return todos
+
 
 
 @app.post("/threads/{thread_id}/history")

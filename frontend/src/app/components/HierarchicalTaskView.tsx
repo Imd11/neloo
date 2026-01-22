@@ -110,7 +110,8 @@ function ManusNodeCard({
     stream?: any;
     graphId?: string;
 }) {
-    const [expanded, setExpanded] = useState(node.status === 'running');
+    // Smart expand: expand if has children or is last node
+    const [expanded, setExpanded] = useState(node.children.length > 0 || isLast);
 
     return (
         <div className="relative">
