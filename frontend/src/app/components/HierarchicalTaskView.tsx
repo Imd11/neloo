@@ -1,18 +1,19 @@
 "use client";
 
 import React, { useState, useMemo, useCallback } from "react";
-import { ChevronUp, Copy, Check, RefreshCw, Share, Search, Code, FileText, Image } from "lucide-react";
+import { Copy, Check, RefreshCw, Share } from "lucide-react";
 import {
-    groupMessagesByTodo,
-    TodoGroup,
+    buildManusTimeline,
+    ManusTimeline,
+    ManusNode,
     TimelineItem,
-    HierarchicalTimeline
 } from "@/lib/messageGrouping";
 import { MarkdownContent } from "@/app/components/MarkdownContent";
 import { ThinkingBlock } from "@/app/components/ui/agentic/ThinkingBlock";
+import { ToolStep } from "@/app/components/ui/agentic/ToolStep";
 import { Message } from "@langchain/langgraph-sdk";
 import { cn } from "@/lib/utils";
-import type { TodoItem, ToolCall } from "@/app/types/types";
+import type { TodoItem } from "@/app/types/types";
 import { extractStringFromMessageContent } from "@/app/utils/utils";
 
 interface HierarchicalTaskViewProps {
@@ -29,36 +30,22 @@ interface HierarchicalTaskViewProps {
     onSuggestionClick?: (question: string) => void;
 }
 
-// Tool icon based on name
-const getToolIcon = (toolName: string) => {
-    if (toolName.includes("search") || toolName.includes("web")) {
-        return <Search size={14} className="shrink-0" />;
-    }
-    if (toolName.includes("python") || toolName.includes("execute") || toolName.includes("code")) {
-        return <Code size={14} className="shrink-0" />;
-    }
-    if (toolName.includes("file") || toolName.includes("write") || toolName.includes("read")) {
-        return <FileText size={14} className="shrink-0" />;
-    }
-    if (toolName.includes("image")) {
-        return <Image size={14} className="shrink-0" />;
-    }
-    return <Code size={14} className="shrink-0" />;
-};
-
-// Render a single timeline item (text, thinking, or tool call)
+/**
+ * Render a single timeline item (text, thinking, or tool call)
+ * Uses ToolStep component for tool calls to preserve existing rendering logic
+ */
 function TimelineItemRenderer({
     item,
     isLoading,
     stream,
     graphId,
-    isCompleted
+    indent = false,
 }: {
     item: TimelineItem;
     isLoading?: boolean;
     stream?: any;
     graphId?: string;
-    isCompleted?: boolean;
+    indent?: boolean;
 }) {
     switch (item.type) {
         case "timeline_thinking":
@@ -72,45 +59,28 @@ function TimelineItemRenderer({
 
         case "timeline_text":
             return (
-                <div className={cn(
-                    "text-sm leading-relaxed",
-                    isCompleted ? "text-muted-foreground" : "text-foreground"
-                )}>
+                <div className="text-sm leading-relaxed">
                     <MarkdownContent content={item.content} />
                 </div>
             );
 
         case "timeline_tool_call":
-            // Inline tool call - Manus style
-            const isRunning = item.status === "running";
-            const toolArgs = parseArgs(item.args);
-            const displayArg = getDisplayArg(item.toolName, toolArgs);
-
+            // Reuse ToolStep component for tool calls
             return (
-                <div className={cn(
-                    "flex items-center gap-2 text-sm",
-                    isCompleted ? "text-muted-foreground" : "text-foreground"
-                )}>
-                    {getToolIcon(item.toolName)}
-                    <span className="text-muted-foreground">
-                        {isRunning ? "正在" : ""}
-                        {getToolLabel(item.toolName)}
-                    </span>
-                    {displayArg && (
-                        <code className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono truncate max-w-[300px]">
-                            {displayArg}
-                        </code>
-                    )}
-                    {isRunning && (
-                        <span className="text-muted-foreground animate-pulse">...</span>
-                    )}
-                </div>
+                <ToolStep
+                    toolName={item.toolName}
+                    input={item.args}
+                    output={item.result}
+                    status={item.status === "complete" ? "complete" : "running"}
+                    isLast={true}
+                    className="!py-0"
+                />
             );
 
         case "message":
             // User message
             if (item.message.type === "human") {
-                const content = extractContent(item.message);
+                const content = extractStringFromMessageContent(item.message);
                 return (
                     <div className="rounded-xl rounded-br-none border border-border px-3 py-2 text-sm bg-[var(--color-user-message-bg)]">
                         <p className="whitespace-pre-wrap">{content}</p>
@@ -124,148 +94,90 @@ function TimelineItemRenderer({
     }
 }
 
-// Get human-readable tool label
-function getToolLabel(toolName: string): string {
-    if (toolName.includes("search") || toolName.includes("web")) return "搜索";
-    if (toolName.includes("python") || toolName.includes("execute")) return "执行代码";
-    if (toolName.includes("write") && toolName.includes("file")) return "创建文件";
-    if (toolName.includes("read")) return "读取文件";
-    return "执行";
-}
-
-// Extract display argument from tool args
-function getDisplayArg(toolName: string, args: Record<string, unknown>): string | null {
-    if (args.query) return String(args.query);
-    if (args.search_query) return String(args.search_query);
-    if (args.filename) return String(args.filename);
-    if (args.path) return String(args.path);
-    if (args.code) return "[Python 代码]";
-    return null;
-}
-
-// Parse args string to object
-function parseArgs(args: string): Record<string, unknown> {
-    try {
-        return JSON.parse(args);
-    } catch {
-        return { raw: args };
-    }
-}
-
-// Extract content from message
-function extractContent(message: Message): string {
-    const content = message.content;
-    if (typeof content === "string") return content;
-    if (Array.isArray(content)) {
-        return content
-            .filter((c): c is { type: "text"; text: string } =>
-                typeof c === "object" && c !== null && c.type === "text"
-            )
-            .map(c => c.text)
-            .join("\n");
-    }
-    return "";
-}
-
-// Task Group Card Component - Refined minimalist design
-function TaskGroupCard({
-    group,
-    index,
+/**
+ * Render a single Todo node with pure text character lines
+ */
+function ManusNodeCard({
+    node,
+    isLast,
     isLoading,
     stream,
     graphId,
-    isLast
 }: {
-    group: TodoGroup;
-    index: number;
+    node: ManusNode;
+    isLast: boolean;
     isLoading?: boolean;
     stream?: any;
     graphId?: string;
-    isLast?: boolean;
 }) {
-    const [expanded, setExpanded] = useState(group.status !== "completed");
-    const isCompleted = group.status === "completed";
-    const isInProgress = group.status === "in_progress";
+    const [expanded, setExpanded] = useState(node.status === 'running');
 
     return (
         <div className="relative">
-            {/* Vertical thread line - continuous */}
-            <div
-                className={cn(
-                    "absolute left-[5px] w-px bg-border",
-                    isLast ? "top-0 h-[11px]" : "top-0 bottom-0"
-                )}
-            />
+            {/* Main node line */}
+            <button
+                onClick={() => setExpanded(!expanded)}
+                className="flex items-start gap-2 w-full text-left py-0.5 group"
+            >
+                {/* Status indicator - pure text */}
+                <span className={cn(
+                    "w-4 shrink-0 text-sm font-normal",
+                    node.status === 'done' ? "text-muted-foreground" : "text-foreground"
+                )}>
+                    {node.status === 'done' ? '✓' : '○'}
+                </span>
 
-            {/* Node */}
-            <div className="absolute left-0 top-[3px]">
-                {isCompleted ? (
-                    // Completed: check mark
-                    <div className="w-3 h-3 flex items-center justify-center text-muted-foreground">
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                            <path
-                                d="M2 6L5 9L10 3"
-                                stroke="currentColor"
-                                strokeWidth="1.5"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            />
-                        </svg>
-                    </div>
-                ) : isInProgress ? (
-                    // In progress: filled dot with pulse
-                    <div className="w-3 h-3 flex items-center justify-center">
-                        <div className="w-2 h-2 rounded-full bg-foreground animate-pulse" />
-                    </div>
-                ) : (
-                    // Pending: empty circle
-                    <div className="w-3 h-3 rounded-full border border-border" />
-                )}
-            </div>
+                {/* Title */}
+                <span className={cn(
+                    "text-sm flex-1",
+                    node.status === 'done' ? "text-muted-foreground" : "text-foreground font-medium"
+                )}>
+                    {node.title}
+                </span>
+            </button>
 
-            {/* Content */}
-            <div className="pl-6">
-                {/* Task Header */}
-                <button
-                    onClick={() => setExpanded(!expanded)}
-                    className="flex items-center gap-1 w-full text-left py-0.5 group"
-                >
-                    <span className={cn(
-                        "text-sm flex-1",
-                        isCompleted ? "text-muted-foreground" : "text-foreground"
-                    )}>
-                        {group.title}
+            {/* Children with text character lines */}
+            {expanded && node.children.length > 0 && (
+                <div className="mt-1 mb-2">
+                    {node.children.map((child, idx) => (
+                        <div key={child.id || idx} className="flex items-start">
+                            {/* Vertical line character */}
+                            <span className="w-4 shrink-0 text-muted-foreground/50 text-sm select-none">
+                                │
+                            </span>
+                            {/* Child content with indent */}
+                            <div className="ml-1 flex-1 min-w-0">
+                                <TimelineItemRenderer
+                                    item={child}
+                                    isLoading={isLoading}
+                                    stream={stream}
+                                    graphId={graphId}
+                                    indent={true}
+                                />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Connector line to next node */}
+            {!isLast && (
+                <div className="flex items-start h-2">
+                    <span className="w-4 shrink-0 text-muted-foreground/50 text-sm select-none">
+                        │
                     </span>
-                    <ChevronUp
-                        size={14}
-                        className={cn(
-                            "text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity",
-                            !expanded && "rotate-180"
-                        )}
-                    />
-                </button>
-
-                {/* Task Content */}
-                {expanded && group.items.length > 0 && (
-                    <div className="mt-1 mb-3 space-y-1.5">
-                        {group.items.map((item, idx) => (
-                            <TimelineItemRenderer
-                                key={item.id || idx}
-                                item={item}
-                                isLoading={isLoading}
-                                stream={stream}
-                                graphId={graphId}
-                                isCompleted={isCompleted}
-                            />
-                        ))}
-                    </div>
-                )}
-            </div>
+                </div>
+            )}
         </div>
     );
 }
 
-// Main Hierarchical Task View Component
+/**
+ * Main Hierarchical Task View Component - Manus Style
+ * 
+ * Renders todo nodes as the main axis with children indented below.
+ * Uses pure text characters for connection lines (│, ✓, ○).
+ */
 export function HierarchicalTaskView({
     messages,
     todos,
@@ -279,8 +191,9 @@ export function HierarchicalTaskView({
 }: HierarchicalTaskViewProps) {
     const [copied, setCopied] = useState(false);
 
-    const hierarchicalData = useMemo(() => {
-        return groupMessagesByTodo(messages, todos);
+    // Build Manus-style timeline
+    const timeline = useMemo(() => {
+        return buildManusTimeline(messages, todos);
     }, [messages, todos]);
 
     // Get all AI message content for copying
@@ -303,13 +216,13 @@ export function HierarchicalTaskView({
     const showActions = !isLoading && messages.length > 0;
 
     return (
-        <div className="space-y-4">
-            {/* Top-level content (before any todos) */}
-            {hierarchicalData.topLevel.length > 0 && (
+        <div className="space-y-3">
+            {/* Prelude: Content before any todo (AI intro) */}
+            {timeline.prelude.length > 0 && (
                 <div className="space-y-2">
-                    {hierarchicalData.topLevel.map((item, idx) => (
+                    {timeline.prelude.map((item, idx) => (
                         <TimelineItemRenderer
-                            key={item.id || `top-${idx}`}
+                            key={item.id || `prelude-${idx}`}
                             item={item}
                             isLoading={isLoading}
                             stream={stream}
@@ -319,27 +232,36 @@ export function HierarchicalTaskView({
                 </div>
             )}
 
-            {/* Todo Groups - Progressive Disclosure with vertical thread */}
-            {hierarchicalData.todoGroups.length > 0 && (() => {
-                const visibleGroups = hierarchicalData.todoGroups.filter(
-                    group => group.status === "completed" || group.status === "in_progress"
-                );
-                return visibleGroups.length > 0 ? (
-                    <div className="space-y-0">
-                        {visibleGroups.map((group, index) => (
-                            <TaskGroupCard
-                                key={group.todoId}
-                                group={group}
-                                index={index + 1}
-                                isLoading={isLoading}
-                                stream={stream}
-                                graphId={graphId}
-                                isLast={index === visibleGroups.length - 1}
-                            />
-                        ))}
-                    </div>
-                ) : null;
-            })()}
+            {/* Todo Nodes - Main axis with pure text lines */}
+            {timeline.visibleTodos.length > 0 && (
+                <div className="space-y-0">
+                    {timeline.visibleTodos.map((node, idx) => (
+                        <ManusNodeCard
+                            key={node.id}
+                            node={node}
+                            isLast={idx === timeline.visibleTodos.length - 1}
+                            isLoading={isLoading}
+                            stream={stream}
+                            graphId={graphId}
+                        />
+                    ))}
+                </div>
+            )}
+
+            {/* Epilogue: Content after all todos completed */}
+            {timeline.epilogue.length > 0 && (
+                <div className="space-y-2 mt-3">
+                    {timeline.epilogue.map((item, idx) => (
+                        <TimelineItemRenderer
+                            key={item.id || `epilogue-${idx}`}
+                            item={item}
+                            isLoading={isLoading}
+                            stream={stream}
+                            graphId={graphId}
+                        />
+                    ))}
+                </div>
+            )}
 
             {/* Action Buttons */}
             {showActions && (
@@ -398,4 +320,3 @@ export function HierarchicalTaskView({
 }
 
 export default HierarchicalTaskView;
-
