@@ -164,7 +164,7 @@ class E2BSandboxExecutor(SandboxExecutor):
             # Create new sandbox for this user
             try:
                 from e2b_code_interpreter import Sandbox
-                sandbox = Sandbox.create(timeout=self.SANDBOX_TIMEOUT)
+                sandbox = Sandbox.create(template="data-analyst-sandbox", timeout=self.SANDBOX_TIMEOUT)
                 self._sandboxes[user_id] = SandboxInfo(
                     sandbox=sandbox,
                     last_used=now,
@@ -649,7 +649,7 @@ class AsyncE2BSandboxExecutor(SandboxExecutor):
             # Create new sandbox for this user
             try:
                 from e2b_code_interpreter import AsyncSandbox
-                sandbox = await AsyncSandbox.create(timeout=self.SANDBOX_TIMEOUT)
+                sandbox = await AsyncSandbox.create(template="data-analyst-sandbox", timeout=self.SANDBOX_TIMEOUT)
                 self._sandboxes[user_id] = SandboxInfo(
                     sandbox=sandbox,
                     last_used=now,

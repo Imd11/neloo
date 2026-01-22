@@ -1,0 +1,9 @@
+# E2B Template Configuration (v2 Build System)
+# Run `e2b template build` to create the custom template
+
+[template]
+name = "data-analyst-sandbox"
+
+# Use E2B's official code-interpreter as base
+[build]
+dockerfile = "e2b.Dockerfile"

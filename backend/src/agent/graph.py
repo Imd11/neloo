@@ -41,6 +41,15 @@ from ..runtime_context import user_id_ctx as _user_id_ctx, thread_id_ctx as _thr
 from ..sandbox import get_executor, get_e2b_backend_factory
 from .integration_tools import INTEGRATION_TOOLS
 
+# Document generation tools (each in separate file)
+from ..tools.excel_generator import EXCEL_TOOLS
+from ..tools.word_generator import WORD_TOOLS
+from ..tools.pdf_generator import PDF_TOOLS
+from ..tools.pptx_generator import PPTX_TOOLS
+
+# Skill Runtime - progressive disclosure for document skills
+from ..tools.skill_runtime import SKILL_RUNTIME_TOOLS
+
 # API base URL for image serving (configurable via environment)
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:2024")
 
@@ -101,6 +110,17 @@ GENERAL_ASSISTANT_PROMPT = """You are Meloo, a powerful AI assistant capable of 
 4. `search_knowledge` - Search the knowledge base (optional)
    - Contains methodology guides and best practices
    - Use for specialized domain knowledge
+
+5. **Document Generation Tools**
+   - `create_excel` - Generate Excel spreadsheets
+   - `create_word` - Generate Word documents
+   - `create_pptx` - Generate PowerPoint presentations
+   - `create_pdf` - Generate PDF documents
+   
+   **IMPORTANT**: Before calling any `create_*` tool, first construct a structured JSON spec describing:
+   - filename, title, sheets/slides/sections
+   - content structure (rows, columns, text, images)
+   Then pass the spec to the appropriate tool.
 
 ## CRITICAL: Sandbox Execution Rules
 
@@ -854,7 +874,17 @@ def search_web(
 
 # Custom tools for the data analyst agent
 # INTEGRATION_TOOLS provides runtime dispatcher for third-party apps (Composio)
-CUSTOM_TOOLS = [execute_python, search_web, search_knowledge_tool, list_knowledge_categories, search_ui_design] + INTEGRATION_TOOLS
+# Document tools: Excel, Word, PDF, PowerPoint (each in separate file)
+# SKILL_RUNTIME_TOOLS: Progressive disclosure for document skills
+CUSTOM_TOOLS = (
+    [execute_python, search_web, search_knowledge_tool, list_knowledge_categories, search_ui_design]
+    + INTEGRATION_TOOLS
+    + EXCEL_TOOLS
+    + WORD_TOOLS
+    + PDF_TOOLS
+    + PPTX_TOOLS
+    + SKILL_RUNTIME_TOOLS
+)
 
 
 # =============================================================================
@@ -985,6 +1015,11 @@ INTERRUPT_ON_CONFIG = {
     "execute_python": {
         "before": True,  # Interrupt before execution
         "description": "Python code execution in sandbox",
+    },
+    # Skill script execution - whitelisted but still requires approval
+    "run_skill_script": {
+        "before": True,
+        "description": "Skill script execution in sandbox",
     },
     # File operations that modify data
     "write_file": {

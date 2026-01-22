@@ -245,7 +245,7 @@ def get_e2b_backend_factory(executor: Any):
             backend=backend_factory,
         )
     """
-    from .executor import E2BSandboxExecutor
+    from .executor import E2BSandboxExecutor, AsyncE2BSandboxExecutor
     from ..runtime_context import user_id_ctx, thread_id_ctx
 
     def backend_factory(runtime):
@@ -274,8 +274,34 @@ def get_e2b_backend_factory(executor: Any):
         print(f"[E2BSandboxBackend] Creating backend for user: {user_id}, thread: {thread_id}")
 
         # Get or create sandbox for this user
+        # Support both sync (E2BSandboxExecutor) and async (AsyncE2BSandboxExecutor) executors
         if isinstance(executor, E2BSandboxExecutor):
             sandbox = executor._get_sandbox(user_id)
+            return E2BSandboxBackend(
+                sandbox=sandbox,
+                user_id=user_id,
+                thread_id=thread_id,
+                sync_to_storage=True,
+            )
+        elif isinstance(executor, AsyncE2BSandboxExecutor):
+            # For async executor, we need to get the sandbox
+            # The _get_sandbox method is async, so we need to handle it carefully
+            import asyncio
+            
+            async def get_async_sandbox():
+                return await executor._get_sandbox(user_id)
+            
+            # Check if we're in an async context
+            try:
+                loop = asyncio.get_running_loop()
+                # We're in an async context - use a thread to avoid nested event loop issues
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as pool:
+                    sandbox = pool.submit(asyncio.run, get_async_sandbox()).result()
+            except RuntimeError:
+                # No running loop, we can use asyncio.run directly
+                sandbox = asyncio.run(get_async_sandbox())
+            
             return E2BSandboxBackend(
                 sandbox=sandbox,
                 user_id=user_id,
