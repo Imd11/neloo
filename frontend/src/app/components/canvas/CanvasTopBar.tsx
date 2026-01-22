@@ -1,4 +1,5 @@
-import { MousePointer2, Hand, Minus, Plus, Bell, User } from "lucide-react";
+import { useEffect, useState } from "react";
+import { MousePointer2, Hand, Bell, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CanvasTool } from "@/types/canvas";
@@ -13,110 +14,97 @@ interface CanvasTopBarProps {
     activeTool: CanvasTool;
     onToolChange: (tool: CanvasTool) => void;
     scale: number;
-    onZoomIn: () => void;
-    onZoomOut: () => void;
+    onScaleChange: (scale: number) => void;
 }
 
 export function CanvasTopBar({
     activeTool,
     onToolChange,
     scale,
-    onZoomIn,
-    onZoomOut,
+    onScaleChange,
 }: CanvasTopBarProps) {
-    return (
-        <div className="h-14 flex items-center justify-between px-4 bg-canvas-topbar border-b border-canvas-border">
-            {/* Left - Tool Selection + Zoom Controls */}
-            <div className="flex items-center gap-3">
-                {/* Tool Selection */}
-                <div className="flex items-center gap-0.5 bg-canvas-toolbar rounded-lg p-1">
-                    <TooltipProvider delayDuration={300}>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className={cn(
-                                        "w-8 h-8 text-canvas-muted hover:text-canvas-foreground hover:bg-canvas-hover",
-                                        activeTool === 'select' && "bg-canvas-active text-canvas-foreground"
-                                    )}
-                                    onClick={() => onToolChange('select')}
-                                >
-                                    <MousePointer2 className="w-4 h-4" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom">
-                                <p>选择工具 (V)</p>
-                            </TooltipContent>
-                        </Tooltip>
+    const [pendingScale, setPendingScale] = useState<string | null>(null);
 
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className={cn(
-                                        "w-8 h-8 text-canvas-muted hover:text-canvas-foreground hover:bg-canvas-hover",
-                                        activeTool === 'hand' && "bg-canvas-active text-canvas-foreground"
-                                    )}
-                                    onClick={() => onToolChange('hand')}
-                                >
-                                    <Hand className="w-4 h-4" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom">
-                                <p>抓手工具 (H)</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
+    useEffect(() => {
+        if (pendingScale === null) return;
+        // If scale changes from elsewhere while typing, keep user's input.
+    }, [pendingScale]);
+
+    const clampPercent = (value: number) => Math.min(300, Math.max(25, value));
+    const setPercent = (percent: number) => onScaleChange(clampPercent(percent) / 100);
+
+    return (
+        <div className="h-14 border-b border-border bg-background/50 backdrop-blur flex items-center justify-between px-6 z-10">
+            <div className="flex items-center gap-4">
+                <div className="flex items-center bg-muted/50 rounded-lg p-1 border border-border/40">
+                    <button
+                        onClick={() => onToolChange("select")}
+                        className={cn(
+                            "p-2 rounded-md transition-all",
+                            activeTool === "select"
+                                ? "bg-primary/15 text-primary"
+                                : "text-muted-foreground hover:text-foreground"
+                        )}
+                        aria-label="Select"
+                    >
+                        <MousePointer2 className="w-4 h-4" />
+                    </button>
+                    <button
+                        onClick={() => onToolChange("hand")}
+                        className={cn(
+                            "p-2 rounded-md transition-all",
+                            activeTool === "hand"
+                                ? "bg-primary/15 text-primary"
+                                : "text-muted-foreground hover:text-foreground"
+                        )}
+                        aria-label="Hand"
+                    >
+                        <Hand className="w-4 h-4" />
+                    </button>
                 </div>
 
-                {/* Divider */}
-                <div className="w-px h-5 bg-canvas-border" />
+                <div className="h-4 w-px bg-border" />
 
-                {/* Zoom Controls */}
-                <div className="flex items-center gap-1 bg-canvas-toolbar rounded-lg px-2 py-1">
-                    <TooltipProvider delayDuration={300}>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="w-6 h-6 text-canvas-muted hover:text-canvas-foreground hover:bg-canvas-hover"
-                                    onClick={onZoomOut}
-                                >
-                                    <Minus className="w-3.5 h-3.5" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom">
-                                <p>缩小</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-
-                    <span className="px-2 text-sm text-canvas-foreground min-w-[3rem] text-center font-medium">
-                        {Math.round(scale * 100)}
-                    </span>
-
-                    <span className="text-sm text-canvas-muted">%</span>
-
-                    <TooltipProvider delayDuration={300}>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="w-6 h-6 text-canvas-muted hover:text-canvas-foreground hover:bg-canvas-hover"
-                                    onClick={onZoomIn}
-                                >
-                                    <Plus className="w-3.5 h-3.5" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="bottom">
-                                <p>放大</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1 bg-muted/50 border border-border/40 rounded-md">
+                        <button
+                            aria-label="Zoom out"
+                            className="px-2 h-8 text-sm text-foreground/80 hover:text-foreground hover:bg-foreground/5 transition-colors"
+                            onClick={() => setPercent(Math.round(scale * 100) - 5)}
+                        >
+                            −
+                        </button>
+                        <input
+                            aria-label="Canvas zoom"
+                            className="w-14 bg-transparent border-0 h-8 text-xs px-2 text-foreground focus:outline-none focus:border-none text-center"
+                            value={pendingScale ?? Math.round(scale * 100).toString()}
+                            onChange={(e) => setPendingScale(e.target.value)}
+                            onBlur={() => {
+                                if (pendingScale === null) return;
+                                const next = Number(pendingScale);
+                                if (Number.isFinite(next) && next > 0) {
+                                    setPercent(next);
+                                }
+                                setPendingScale(null);
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                    (e.currentTarget as HTMLInputElement).blur();
+                                } else if (e.key === "Escape") {
+                                    setPendingScale(null);
+                                    (e.currentTarget as HTMLInputElement).blur();
+                                }
+                            }}
+                        />
+                        <span className="text-xs text-muted-foreground pr-1">%</span>
+                        <button
+                            aria-label="Zoom in"
+                            className="px-2 h-8 text-sm text-foreground/80 hover:text-foreground hover:bg-foreground/5 transition-colors"
+                            onClick={() => setPercent(Math.round(scale * 100) + 5)}
+                        >
+                            +
+                        </button>
+                    </div>
                 </div>
             </div>
 

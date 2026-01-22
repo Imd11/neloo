@@ -84,7 +84,9 @@ function ImagePageContent() {
         id: string;
         src: string;
         startRect: DOMRect;
+        generationParams?: CanvasImage["generationParams"];
     } | null>(null);
+    const generationParamsByUrlRef = useRef<Map<string, CanvasImage["generationParams"]>>(new Map());
 
     // Thread/conversation state for history
     const [threadId, setThreadId] = useState<string | null>(null);
@@ -228,6 +230,12 @@ function ImagePageContent() {
                 throw new Error("未收到生成的图片");
             }
 
+            generationParamsByUrlRef.current.set(generatedImageUrl, {
+                prompt: value,
+                resolution,
+                ...(ratio !== "auto" ? { size: ratio } : {}),
+            });
+
             // Preload image then trigger auto fly animation
             const img = new Image();
             img.onload = () => {
@@ -262,7 +270,8 @@ function ImagePageContent() {
         setFlyingImage({
             id: `canvas-${Date.now()}`,
             src: imageUrl,
-            startRect: rect
+            startRect: rect,
+            generationParams: generationParamsByUrlRef.current.get(imageUrl),
         });
     }, []);
 

@@ -487,6 +487,8 @@ export function buildManusTimeline(
     messages: Message[],
     todos: Array<{ id: string; content: string; status: "pending" | "in_progress" | "completed" }>
 ): ManusTimeline {
+    console.log('[buildManusTimeline] Input:', { messageCount: messages.length, todosCount: todos.length, todos });
+
     const result: ManusTimeline = {
         prelude: [],
         visibleTodos: [],
@@ -587,8 +589,10 @@ export function buildManusTimeline(
                         const writtenTodos = args.todos || [];
 
                         for (const wt of writtenTodos) {
+                            console.log('[buildManusTimeline] Processing todo:', wt);
                             if (wt.status === "in_progress" && !renderedTodoIds.has(wt.id)) {
                                 // New todo node - render it
+                                console.log('[buildManusTimeline] Creating new node for:', wt.id, wt.content);
                                 seenAnyTodo = true;
                                 const node: ManusNode = {
                                     id: wt.id,
@@ -602,11 +606,14 @@ export function buildManusTimeline(
                                 currentTodoId = wt.id;
                             } else if (wt.status === "completed" && nodesById.has(wt.id)) {
                                 // Update existing node status ○→✓
+                                console.log('[buildManusTimeline] Updating node status to done:', wt.id);
                                 nodesById.get(wt.id)!.status = 'done';
                             }
                             // pending: don't render
                         }
-                    } catch (e) { /* ignore parse errors */ }
+                    } catch (e) {
+                        console.log('[buildManusTimeline] Parse error:', e);
+                    }
                 }
             }
 
