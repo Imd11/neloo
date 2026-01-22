@@ -474,13 +474,14 @@ export interface ManusNode {
 }
 
 /**
- * Build Manus-style timeline from messages and todos.
+ * Build Manus-style timeline from messages.
  * 
- * Key rules:
- * 1. Only reveal done + running todos (pending hidden)
- * 2. activeTodoId only changes on write_todos snapshot
- * 3. Prelude = items before seenAnyTodo, Epilogue = items after allTodosCompleted
- * 4. Items assigned to activeTodoId, not by time guessing
+ * Position-based logic:
+ * 1. write_todos with in_progress = signal to render new todo node
+ * 2. Content after write_todos gets indented under that todo
+ * 3. write_todos with completed only updates existing node status (○→✓)
+ * 4. pending todos are not rendered
+ * 5. epilogue = final text content (no tool_use in same message)
  */
 export function buildManusTimeline(
     messages: Message[],
@@ -493,48 +494,45 @@ export function buildManusTimeline(
         epilogue: []
     };
 
-    // Create nodes for each todo
+    // Track rendered todos by id
+    const renderedTodoIds = new Set<string>();
     const nodesById = new Map<string, ManusNode>();
-    const orderedTodos: string[] = [];
 
-    for (const todo of todos) {
-        const node: ManusNode = {
-            id: todo.id,
-            title: todo.content,
-            status: todo.status === 'completed' ? 'done' :
-                todo.status === 'in_progress' ? 'running' :
-                    'done', // pending won't be visible anyway
-            children: []
-        };
-        nodesById.set(todo.id, node);
-        orderedTodos.push(todo.id);
-
-        // Split into visible vs hidden
-        if (todo.status === 'completed' || todo.status === 'in_progress') {
-            result.visibleTodos.push(node);
-        } else {
-            result.hiddenPlan.push(node);
-        }
-    }
-
-    // State tracking
-    let activeTodoId: string | null = null;
-    let lastInProgressTodoId: string | null = null;  // Keep track for fallback after all completed
+    // Current active todo (for content mounting)
+    let currentTodoId: string | null = null;
     let seenAnyTodo = false;
-    // Removed: allTodosCompleted check - this caused all content to go to epilogue
 
     const toolCallMap = new Map<string, TimelineToolCall>();
     let blockIndex = 0;
 
+    // Find the last AI message index for epilogue detection
+    let lastAiMessageIndex = -1;
+    for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i].type === 'ai') {
+            lastAiMessageIndex = i;
+            break;
+        }
+    }
+
+    // Helper to check if a message is epilogue (last AI message with only text, no tool_use)
+    function isEpilogueMessage(msg: Message, msgIndex: number): boolean {
+        if (msgIndex !== lastAiMessageIndex) return false;
+        if (!Array.isArray(msg.content)) return false;
+
+        const hasToolUse = (msg.content as any[]).some(b => b?.type === 'tool_use');
+        const hasText = (msg.content as any[]).some(b => b?.type === 'text');
+
+        return hasText && !hasToolUse;
+    }
+
     // Helper to add item to correct location
-    function addItem(item: TimelineItem) {
-        if (!seenAnyTodo) {
+    function addItem(item: TimelineItem, isEpilogue: boolean = false) {
+        if (isEpilogue) {
+            result.epilogue.push(item);
+        } else if (!seenAnyTodo) {
             result.prelude.push(item);
-        } else if (activeTodoId && nodesById.has(activeTodoId)) {
-            nodesById.get(activeTodoId)!.children.push(item);
-        } else if (lastInProgressTodoId && nodesById.has(lastInProgressTodoId)) {
-            // After all completed, mount to the last todo that was in_progress
-            nodesById.get(lastInProgressTodoId)!.children.push(item);
+        } else if (currentTodoId && nodesById.has(currentTodoId)) {
+            nodesById.get(currentTodoId)!.children.push(item);
         } else if (result.visibleTodos.length > 0) {
             // Fallback: add to last visible todo's children
             result.visibleTodos[result.visibleTodos.length - 1].children.push(item);
@@ -543,11 +541,14 @@ export function buildManusTimeline(
         }
     }
 
-    // Process messages
-    for (const msg of messages) {
+    // Process messages in order
+    for (let msgIndex = 0; msgIndex < messages.length; msgIndex++) {
+        const msg = messages[msgIndex];
         const role = msg.type === "human" ? "user" :
             (msg.type === "ai" ? "assistant" :
                 (msg.type === "tool" ? "tool" : "other"));
+
+        const isEpilogue = role === "assistant" && isEpilogueMessage(msg, msgIndex);
 
         if (role === "user") {
             const item: MessageGroup = {
@@ -576,46 +577,70 @@ export function buildManusTimeline(
             const anyMsg = msg as any;
             const toolCalls = anyMsg.tool_calls || anyMsg.additional_kwargs?.tool_calls || [];
 
-            // Check for write_todos calls to update activeTodoId (anchor rule)
+            // Process write_todos FIRST to update current todo before adding content
             for (const tool of toolCalls) {
                 const toolName = tool.function?.name || tool.name;
                 if (toolName === "write_todos") {
-                    seenAnyTodo = true;
                     const argsStr = tool.function?.arguments || tool.args;
                     try {
                         const args = typeof argsStr === 'string' ? JSON.parse(argsStr) : argsStr;
                         const writtenTodos = args.todos || [];
+
                         for (const wt of writtenTodos) {
-                            if (wt.status === "in_progress") {
-                                activeTodoId = wt.id;
-                                lastInProgressTodoId = wt.id;  // Keep track for fallback
-                                break;
+                            if (wt.status === "in_progress" && !renderedTodoIds.has(wt.id)) {
+                                // New todo node - render it
+                                seenAnyTodo = true;
+                                const node: ManusNode = {
+                                    id: wt.id,
+                                    title: wt.content,
+                                    status: 'running',
+                                    children: []
+                                };
+                                renderedTodoIds.add(wt.id);
+                                nodesById.set(wt.id, node);
+                                result.visibleTodos.push(node);
+                                currentTodoId = wt.id;
+                            } else if (wt.status === "completed" && nodesById.has(wt.id)) {
+                                // Update existing node status ○→✓
+                                nodesById.get(wt.id)!.status = 'done';
                             }
+                            // pending: don't render
                         }
                     } catch (e) { /* ignore parse errors */ }
                 }
             }
 
-
-            // Also check content[] for tool_use blocks
+            // Also check content[] for tool_use blocks (write_todos)
             if (Array.isArray(msg.content)) {
                 for (const block of msg.content as any[]) {
                     if (block?.type === "tool_use" && block?.name === "write_todos") {
-                        seenAnyTodo = true;
                         const args = block.input;
                         const writtenTodos = args?.todos || [];
+
                         for (const wt of writtenTodos) {
-                            if (wt.status === "in_progress") {
-                                activeTodoId = wt.id;
-                                lastInProgressTodoId = wt.id;  // Keep track for fallback
-                                break;
+                            if (wt.status === "in_progress" && !renderedTodoIds.has(wt.id)) {
+                                // New todo node - render it
+                                seenAnyTodo = true;
+                                const node: ManusNode = {
+                                    id: wt.id,
+                                    title: wt.content,
+                                    status: 'running',
+                                    children: []
+                                };
+                                renderedTodoIds.add(wt.id);
+                                nodesById.set(wt.id, node);
+                                result.visibleTodos.push(node);
+                                currentTodoId = wt.id;
+                            } else if (wt.status === "completed" && nodesById.has(wt.id)) {
+                                // Update existing node status ○→✓
+                                nodesById.get(wt.id)!.status = 'done';
                             }
                         }
                     }
                 }
             }
 
-            // Parse content blocks
+            // Parse content blocks and add to timeline
             const blocks = parseMessageContentBlocks(msg);
             const content = extractStringFromMessageContent(msg);
             const durationRegex = /<!-- think_duration: (\d+) -->/;
@@ -631,7 +656,7 @@ export function buildManusTimeline(
                         content: block.content,
                         duration: duration
                     };
-                    addItem(item);
+                    addItem(item, isEpilogue);
                 } else if (block.type === "text") {
                     const textContent = block.content.trim();
                     if (textContent && !/^Updated todo list to \[/i.test(textContent)) {
@@ -641,7 +666,7 @@ export function buildManusTimeline(
                             content: block.content,
                             messageId: msg.id
                         };
-                        addItem(item);
+                        addItem(item, isEpilogue);
                     }
                 } else if (block.type === "tool_use") {
                     if (block.name === "write_todos") continue;
@@ -655,7 +680,7 @@ export function buildManusTimeline(
                         status: "running"
                     };
                     toolCallMap.set(block.id, toolItem);
-                    addItem(toolItem);
+                    addItem(toolItem, isEpilogue);
                 }
             }
 
@@ -677,7 +702,7 @@ export function buildManusTimeline(
                     status: "running"
                 };
                 toolCallMap.set(toolId, toolItem);
-                addItem(toolItem);
+                addItem(toolItem, isEpilogue);
             }
 
             // Fallback for messages with no blocks
@@ -690,11 +715,19 @@ export function buildManusTimeline(
                         content: textContent,
                         messageId: msg.id
                     };
-                    addItem(item);
+                    addItem(item, isEpilogue);
                 }
             }
         }
     }
 
+    // Update final status from todos array (for history reload)
+    for (const todo of todos) {
+        if (nodesById.has(todo.id)) {
+            nodesById.get(todo.id)!.status = todo.status === 'completed' ? 'done' : 'running';
+        }
+    }
+
     return result;
 }
+
