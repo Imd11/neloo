@@ -223,8 +223,30 @@ export function useChat({
   }, [threadId]);
 
   // Handle errors, especially 404 when thread history doesn't exist in LangGraph
-  const handleError = (error: unknown) => {
+  const handleError = async (error: unknown) => {
     const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // Save any unsent messages even on error (important for message persistence)
+    const currentThreadId = threadId;
+    const token = session?.access_token;
+    const currentConfig = config;
+
+    if (currentThreadId && token && currentConfig) {
+      const messagesToSave = messagesSnapshotRef.current;
+      const savePromises: Promise<void>[] = [];
+
+      for (const msg of messagesToSave) {
+        if (msg.id && !savedMessageIdsRef.current.has(msg.id)) {
+          savedMessageIdsRef.current.add(msg.id);
+          savePromises.push(saveMessageToDb(currentConfig, token, currentThreadId, msg));
+        }
+      }
+
+      if (savePromises.length > 0) {
+        console.log(`[useChat] Saving ${savePromises.length} messages on error...`);
+        await Promise.all(savePromises);
+      }
+    }
 
     // Check if it's a 404 error (thread history not found in LangGraph checkpoint store)
     // This happens when LangGraph Server restarts and loses in-memory checkpoints
