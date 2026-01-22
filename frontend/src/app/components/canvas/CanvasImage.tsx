@@ -381,8 +381,8 @@ export const CanvasImage = forwardRef<CanvasImageRef, CanvasImageProps>(({
                 onOpenChange={setIsMenuOpen}
                 trigger={
                     <div className={`relative group rounded-[32px] overflow-hidden transition-all duration-300 ${isSelected || isEditing || isMenuOpen
-                        ? "ring-2 ring-primary shadow-2xl shadow-primary/20"
-                        : "border border-border shadow-2xl shadow-black/50"
+                        ? "ring-2 ring-blue-500 shadow-2xl shadow-blue-500/20"
+                        : "border border-white/5 shadow-2xl shadow-black/50"
                         }`}>
                         {url ? (
                             <img
@@ -393,12 +393,12 @@ export const CanvasImage = forwardRef<CanvasImageRef, CanvasImageProps>(({
                                 crossOrigin="anonymous"
                             />
                         ) : status === "failed" ? (
-                            <div className="relative w-full h-[600px] overflow-hidden bg-gradient-to-br from-red-950/40 via-background to-red-900/30 text-xs text-foreground flex items-center justify-center border-2 border-red-900/50">
+                            <div className="relative w-full h-[600px] overflow-hidden bg-gradient-to-br from-red-950/40 via-zinc-900/80 to-red-900/30 text-xs text-zinc-200 flex items-center justify-center border-2 border-red-900/50">
                                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(220,38,38,0.1),transparent_70%)]" />
                                 <div className="relative flex flex-col items-center gap-4 px-6 text-center">
                                     <div className="relative">
                                         <div className="absolute inset-0 bg-red-500 blur-xl opacity-30 rounded-full" />
-                                        <div className="bg-background p-4 rounded-full border-2 border-red-500/50 relative">
+                                        <div className="bg-zinc-900/95 p-4 rounded-full border-2 border-red-500/50 relative">
                                             <AlertCircle className="w-10 h-10 text-red-400" />
                                         </div>
                                     </div>
@@ -406,7 +406,7 @@ export const CanvasImage = forwardRef<CanvasImageRef, CanvasImageProps>(({
                                         <div className="text-lg font-semibold text-red-400">
                                             {t("canvas.generation_failed")}
                                         </div>
-                                        <div className="text-sm text-muted-foreground max-w-xs">
+                                        <div className="text-sm text-zinc-400 max-w-xs">
                                             {error || t("canvas.generation_failed_desc")}
                                         </div>
                                     </div>
@@ -425,7 +425,7 @@ export const CanvasImage = forwardRef<CanvasImageRef, CanvasImageProps>(({
                                 </div>
                             </div>
                         ) : (
-                            <div className="relative w-full h-[600px] overflow-hidden bg-background text-xs text-foreground flex items-center justify-center">
+                            <div className="relative w-full h-[600px] overflow-hidden bg-zinc-900/80 text-xs text-zinc-200 flex items-center justify-center">
                                 <div className="absolute inset-0 bg-gradient-to-br from-sky-500/10 via-cyan-400/5 to-purple-500/10 animate-pulse" />
                                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(14,165,233,0.08),transparent_35%),radial-gradient(circle_at_80%_30%,rgba(168,85,247,0.08),transparent_30%)]" />
 
@@ -439,11 +439,11 @@ export const CanvasImage = forwardRef<CanvasImageRef, CanvasImageProps>(({
                                         <div className="absolute -inset-2 rounded-full bg-cyan-500/10 blur-xl animate-pulse" />
                                     </div>
 
-                                    <div className="px-4 py-1.5 rounded-full bg-black/50 border border-border text-foreground font-medium tracking-wide backdrop-blur-sm">
+                                    <div className="px-4 py-1.5 rounded-full bg-black/50 border border-white/10 text-white font-medium tracking-wide backdrop-blur-sm">
                                         {loadingType === "generate" ? t("canvas.loading_generate_title") : t("canvas.loading_edit_title")}
                                     </div>
 
-                                    <span className="text-sm text-muted-foreground">
+                                    <span className="text-sm text-zinc-400">
                                         {loadingType === "generate" ? t("canvas.loading_generate_desc") : t("canvas.loading_edit_desc")}
                                     </span>
                                 </div>
@@ -497,17 +497,45 @@ export const CanvasImage = forwardRef<CanvasImageRef, CanvasImageProps>(({
                             </ContextMenuItem>
                         )}
 
-                        <div className="h-px bg-border my-1" />
+                        <div className="h-px bg-white/10 my-1" />
                         <ContextMenuItem onClick={async () => {
-                            setDownloadStatus({ visible: true, status: "downloading" });
-
-                            try {
+                            const fallbackDownload = () => {
                                 const link = document.createElement('a');
                                 link.href = url;
                                 link.download = `image_${id}.png`;
                                 document.body.appendChild(link);
                                 link.click();
                                 document.body.removeChild(link);
+                            };
+
+                            const width = deviceWidth || imageRef.current?.naturalWidth;
+                            const height = deviceHeight || imageRef.current?.naturalHeight;
+
+                            if (!width || !height) {
+                                fallbackDownload();
+                                return;
+                            }
+
+                            setDownloadStatus({ visible: true, status: "downloading" });
+
+                            try {
+                                const response = await fetch('/api/resize-download', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ imageUrl: url, width, height })
+                                });
+
+                                if (!response.ok) throw new Error('Download failed');
+
+                                const blob = await response.blob();
+                                const downloadUrl = window.URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = downloadUrl;
+                                a.download = `image_${width}x${height}.png`;
+                                document.body.appendChild(a);
+                                a.click();
+                                window.URL.revokeObjectURL(downloadUrl);
+                                document.body.removeChild(a);
 
                                 setDownloadStatus({ visible: true, status: "success" });
                             } catch (error) {

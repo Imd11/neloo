@@ -1,14 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { MousePointer2, Hand, Bell, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CanvasTool } from "@/types/canvas";
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 interface CanvasTopBarProps {
     activeTool: CanvasTool;
@@ -25,25 +19,20 @@ export function CanvasTopBar({
 }: CanvasTopBarProps) {
     const [pendingScale, setPendingScale] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (pendingScale === null) return;
-        // If scale changes from elsewhere while typing, keep user's input.
-    }, [pendingScale]);
-
     const clampPercent = (value: number) => Math.min(300, Math.max(25, value));
     const setPercent = (percent: number) => onScaleChange(clampPercent(percent) / 100);
 
     return (
-        <div className="h-14 border-b border-border bg-background/50 backdrop-blur flex items-center justify-between px-6 z-10">
+        <div className="h-14 border-b border-white/10 bg-[#09090b]/50 backdrop-blur flex items-center justify-between px-6 z-10">
             <div className="flex items-center gap-4">
-                <div className="flex items-center bg-muted/50 rounded-lg p-1 border border-border/40">
+                <div className="flex items-center bg-zinc-900/50 rounded-lg p-1 border border-white/5">
                     <button
                         onClick={() => onToolChange("select")}
                         className={cn(
                             "p-2 rounded-md transition-all",
                             activeTool === "select"
-                                ? "bg-primary/15 text-primary"
-                                : "text-muted-foreground hover:text-foreground"
+                                ? "bg-blue-500/20 text-blue-400"
+                                : "text-zinc-400 hover:text-white"
                         )}
                         aria-label="Select"
                     >
@@ -54,8 +43,8 @@ export function CanvasTopBar({
                         className={cn(
                             "p-2 rounded-md transition-all",
                             activeTool === "hand"
-                                ? "bg-primary/15 text-primary"
-                                : "text-muted-foreground hover:text-foreground"
+                                ? "bg-blue-500/20 text-blue-400"
+                                : "text-zinc-400 hover:text-white"
                         )}
                         aria-label="Hand"
                     >
@@ -63,20 +52,20 @@ export function CanvasTopBar({
                     </button>
                 </div>
 
-                <div className="h-4 w-px bg-border" />
+                <div className="h-4 w-px bg-white/10" />
 
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1 bg-muted/50 border border-border/40 rounded-md">
+                <div className="flex items-center gap-2 text-sm text-zinc-400">
+                    <div className="flex items-center gap-1 bg-zinc-900/60 border border-white/10 rounded-md">
                         <button
                             aria-label="Zoom out"
-                            className="px-2 h-8 text-sm text-foreground/80 hover:text-foreground hover:bg-foreground/5 transition-colors"
+                            className="px-2 h-8 text-sm text-zinc-300 hover:text-white hover:bg-white/5 transition-colors"
                             onClick={() => setPercent(Math.round(scale * 100) - 5)}
                         >
                             −
                         </button>
                         <input
                             aria-label="Canvas zoom"
-                            className="w-14 bg-transparent border-0 h-8 text-xs px-2 text-foreground focus:outline-none focus:border-none text-center"
+                            className="w-14 bg-transparent border-0 h-8 text-xs px-2 text-zinc-200 focus:outline-none focus:border-none text-center"
                             value={pendingScale ?? Math.round(scale * 100).toString()}
                             onChange={(e) => setPendingScale(e.target.value)}
                             onBlur={() => {
@@ -96,10 +85,10 @@ export function CanvasTopBar({
                                 }
                             }}
                         />
-                        <span className="text-xs text-muted-foreground pr-1">%</span>
+                        <span className="text-xs text-zinc-500 pr-1">%</span>
                         <button
                             aria-label="Zoom in"
-                            className="px-2 h-8 text-sm text-foreground/80 hover:text-foreground hover:bg-foreground/5 transition-colors"
+                            className="px-2 h-8 text-sm text-zinc-300 hover:text-white hover:bg-white/5 transition-colors"
                             onClick={() => setPercent(Math.round(scale * 100) + 5)}
                         >
                             +

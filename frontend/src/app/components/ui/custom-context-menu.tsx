@@ -79,7 +79,7 @@ export function ContextMenu({ trigger, children, disabled, fixedPosition = false
             {visible && typeof document !== 'undefined' && createPortal(
                 <div
                     ref={menuRef}
-                    className="fixed z-50 min-w-[160px] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in zoom-in-95 duration-100"
+                    className="fixed z-50 min-w-[160px] overflow-hidden rounded-md border border-white/10 bg-zinc-900 p-1 text-zinc-100 shadow-md animate-in fade-in zoom-in-95 duration-100"
                     style={{ top: position.y, left: position.x }}
                 >
                     {children}
@@ -105,7 +105,7 @@ export function ContextMenuItem({
                 e.stopPropagation();
                 onClick?.();
             }}
-            className={`relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 ${className ?? ""}`}
+            className={`relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-zinc-800 hover:text-white data-[disabled]:pointer-events-none data-[disabled]:opacity-50 ${className ?? ""}`}
         >
             {children}
         </div>

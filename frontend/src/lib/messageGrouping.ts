@@ -258,9 +258,6 @@ export function groupMessagesByTodo(
         todoGroups: []
     };
 
-    // Create a map for quick todo lookup
-    const todoMap = new Map(todos.map(t => [t.id, t]));
-
     // Create groups for each todo
     const groupsById = new Map<string, TodoGroup>();
     for (const todo of todos) {
@@ -328,7 +325,7 @@ export function groupMessagesByTodo(
                                 break;
                             }
                         }
-                    } catch (e) {
+                    } catch {
                         // Parse error, continue
                     }
                 }
@@ -487,8 +484,6 @@ export function buildManusTimeline(
     messages: Message[],
     todos: Array<{ id: string; content: string; status: "pending" | "in_progress" | "completed" }>
 ): ManusTimeline {
-    console.log('[buildManusTimeline] Input:', { messageCount: messages.length, todosCount: todos.length, todos });
-
     const result: ManusTimeline = {
         prelude: [],
         visibleTodos: [],
@@ -589,30 +584,30 @@ export function buildManusTimeline(
                         const writtenTodos = args.todos || [];
 
                         for (const wt of writtenTodos) {
-                            console.log('[buildManusTimeline] Processing todo:', wt);
-                            if (wt.status === "in_progress" && !renderedTodoIds.has(wt.id)) {
+                            // Use content as id since write_todos doesn't include id field
+                            const todoId = wt.id || wt.content;
+
+                            if (wt.status === "in_progress" && !renderedTodoIds.has(todoId)) {
                                 // New todo node - render it
-                                console.log('[buildManusTimeline] Creating new node for:', wt.id, wt.content);
                                 seenAnyTodo = true;
                                 const node: ManusNode = {
-                                    id: wt.id,
+                                    id: todoId,
                                     title: wt.content,
                                     status: 'running',
                                     children: []
                                 };
-                                renderedTodoIds.add(wt.id);
-                                nodesById.set(wt.id, node);
+                                renderedTodoIds.add(todoId);
+                                nodesById.set(todoId, node);
                                 result.visibleTodos.push(node);
-                                currentTodoId = wt.id;
-                            } else if (wt.status === "completed" && nodesById.has(wt.id)) {
+                                currentTodoId = todoId;
+                            } else if (wt.status === "completed" && nodesById.has(todoId)) {
                                 // Update existing node status ○→✓
-                                console.log('[buildManusTimeline] Updating node status to done:', wt.id);
-                                nodesById.get(wt.id)!.status = 'done';
+                                nodesById.get(todoId)!.status = 'done';
                             }
                             // pending: don't render
                         }
-                    } catch (e) {
-                        console.log('[buildManusTimeline] Parse error:', e);
+                    } catch {
+                        // ignore parse errors
                     }
                 }
             }
@@ -625,22 +620,23 @@ export function buildManusTimeline(
                         const writtenTodos = args?.todos || [];
 
                         for (const wt of writtenTodos) {
-                            if (wt.status === "in_progress" && !renderedTodoIds.has(wt.id)) {
+                            const todoId = wt.id || wt.content;
+                            if (wt.status === "in_progress" && todoId && !renderedTodoIds.has(todoId)) {
                                 // New todo node - render it
                                 seenAnyTodo = true;
                                 const node: ManusNode = {
-                                    id: wt.id,
+                                    id: todoId,
                                     title: wt.content,
                                     status: 'running',
                                     children: []
                                 };
-                                renderedTodoIds.add(wt.id);
-                                nodesById.set(wt.id, node);
+                                renderedTodoIds.add(todoId);
+                                nodesById.set(todoId, node);
                                 result.visibleTodos.push(node);
-                                currentTodoId = wt.id;
-                            } else if (wt.status === "completed" && nodesById.has(wt.id)) {
+                                currentTodoId = todoId;
+                            } else if (wt.status === "completed" && todoId && nodesById.has(todoId)) {
                                 // Update existing node status ○→✓
-                                nodesById.get(wt.id)!.status = 'done';
+                                nodesById.get(todoId)!.status = 'done';
                             }
                         }
                     }
@@ -738,3 +734,260 @@ export function buildManusTimeline(
     return result;
 }
 
+// =============================================================================
+// Event-Anchor Timeline (Preferred)
+// =============================================================================
+
+export type EventTimelineEvent =
+    | {
+        id: string;
+        type: "todo_node";
+        todoKey: string;
+        title: string;
+        status: "running" | "done";
+    }
+    | {
+        id: string;
+        type: "content";
+        indent: boolean;
+        item: TimelineItem;
+    };
+
+export interface EventTimeline {
+    events: EventTimelineEvent[];
+}
+
+function getToolCallsFromMessage(msg: Message): any[] {
+    const anyMsg = msg as any;
+    return anyMsg.tool_calls || anyMsg.additional_kwargs?.tool_calls || [];
+}
+
+function parseWriteTodosArgs(tool: any): any | null {
+    const toolName = tool.function?.name || tool.name;
+    if (toolName !== "write_todos") return null;
+    const argsStr = tool.function?.arguments || tool.args;
+    try {
+        return typeof argsStr === "string" ? JSON.parse(argsStr) : argsStr;
+    } catch {
+        return null;
+    }
+}
+
+export function buildEventTimeline(messages: Message[]): EventTimeline {
+    const events: EventTimelineEvent[] = [];
+    const toolCallMap = new Map<string, TimelineToolCall>();
+    const todoNodesByKey = new Map<string, Extract<EventTimelineEvent, { type: "todo_node" }>>();
+
+    let currentTodoKey: string | null = null;
+    let inFinal = false;
+    let blockIndex = 0;
+
+    const normalizeTodoKey = (todo: { id?: string; content?: string }) =>
+        (todo.id || todo.content || "").trim();
+
+    const pushContent = (item: TimelineItem, forceTopLevel = false) => {
+        const indent = !forceTopLevel && !inFinal && currentTodoKey !== null;
+        events.push({
+            id: `evt-${item.id || blockIndex++}`,
+            type: "content",
+            indent,
+            item,
+        });
+    };
+
+    const ensureTodoNode = (todoKey: string, title: string) => {
+        if (!todoKey) return null;
+        const existing = todoNodesByKey.get(todoKey);
+        if (existing) return existing;
+        const node: Extract<EventTimelineEvent, { type: "todo_node" }> = {
+            id: `todo-${todoKey}`,
+            type: "todo_node",
+            todoKey,
+            title,
+            status: "running",
+        };
+        todoNodesByKey.set(todoKey, node);
+        events.push(node);
+        return node;
+    };
+
+    const applyWriteTodosSnapshot = (todosRaw: any) => {
+        const todosList: Array<{ id?: string; content?: string; status?: string }> =
+            Array.isArray(todosRaw) ? todosRaw : [];
+
+        // Update completed statuses
+        for (const t of todosList) {
+            if (t.status !== "completed") continue;
+            const key = normalizeTodoKey(t);
+            if (!key) continue;
+            const node = ensureTodoNode(key, t.content || key);
+            if (node) node.status = "done";
+        }
+
+        // Anchor to the unique in_progress todo, if any
+        const inProgress = todosList.find((t) => t.status === "in_progress");
+        if (inProgress) {
+            const key = normalizeTodoKey(inProgress);
+            if (!key) return;
+            inFinal = false;
+            const node = ensureTodoNode(key, inProgress.content || key);
+            if (node) node.status = "running";
+            currentTodoKey = key;
+            return;
+        }
+
+        // No in_progress => stop indenting (final answer mode)
+        currentTodoKey = null;
+        inFinal = true;
+    };
+
+    for (const msg of messages) {
+        const role =
+            msg.type === "human"
+                ? "user"
+                : msg.type === "ai"
+                    ? "assistant"
+                    : msg.type === "tool"
+                        ? "tool"
+                        : "other";
+
+        if (role === "user") {
+            const item: MessageGroup = {
+                id: msg.id || `user-${blockIndex++}`,
+                type: "message",
+                message: msg,
+            };
+            // User messages always top-level
+            pushContent(item, true);
+            continue;
+        }
+
+        if (role === "tool") {
+            const anyMsg = msg as any;
+            const toolName = anyMsg.name;
+            // Ignore write_todos tool-result spam
+            if (toolName === "write_todos") continue;
+
+            const toolCallId = anyMsg.tool_call_id;
+            const toolContent = extractStringFromMessageContent(msg);
+
+            if (toolCallId && toolCallMap.has(toolCallId)) {
+                const toolItem = toolCallMap.get(toolCallId)!;
+                toolItem.result = toolContent;
+                toolItem.status = "complete";
+            } else {
+                // Standalone tool result (history edge case)
+                const toolItem: TimelineToolCall = {
+                    id: `tool-result-${msg.id || toolCallId || blockIndex++}`,
+                    type: "timeline_tool_call",
+                    toolName: toolName || "Tool Result",
+                    args: "",
+                    toolCallId: toolCallId || `unknown-${blockIndex++}`,
+                    status: "complete",
+                    result: toolContent,
+                };
+                pushContent(toolItem);
+            }
+            continue;
+        }
+
+        if (role === "assistant") {
+            // 1) Process textual blocks first so prelude shows correctly
+            const blocks = parseMessageContentBlocks(msg);
+            const content = extractStringFromMessageContent(msg);
+            const durationRegex = /<!-- think_duration: (\d+) -->/;
+            const match = content.match(durationRegex);
+            const injectedDuration = match ? parseInt(match[1], 10) : undefined;
+
+            for (const block of blocks) {
+                if (block.type === "thinking") {
+                    const duration = injectedDuration ?? estimateDuration(block.content);
+                    const item: TimelineThinking = {
+                        id: `thinking-${msg.id}-${blockIndex++}`,
+                        type: "timeline_thinking",
+                        content: block.content,
+                        duration,
+                    };
+                    pushContent(item);
+                } else if (block.type === "text") {
+                    const textContent = block.content.trim();
+                    if (textContent && !/^Updated todo list to \[/i.test(textContent)) {
+                        const item: TimelineText = {
+                            id: `text-${msg.id}-${blockIndex++}`,
+                            type: "timeline_text",
+                            content: block.content,
+                            messageId: msg.id,
+                        };
+                        pushContent(item);
+                    }
+                } else if (block.type === "tool_use") {
+                    if (block.name === "write_todos") {
+                        const args = block.input as any;
+                        applyWriteTodosSnapshot(args?.todos);
+                        continue;
+                    }
+
+                    const toolItem: TimelineToolCall = {
+                        id: `tool-${block.id}-${blockIndex++}`,
+                        type: "timeline_tool_call",
+                        toolName: block.name,
+                        args:
+                            typeof block.input === "string"
+                                ? block.input
+                                : JSON.stringify(block.input),
+                        toolCallId: block.id,
+                        status: "running",
+                    };
+                    toolCallMap.set(block.id, toolItem);
+                    pushContent(toolItem);
+                }
+            }
+
+            // 2) If no blocks extracted, fallback to plain text (still before tool_calls)
+            if (blocks.length === 0) {
+                const textContent = stripThinkTags(content);
+                if (textContent.trim()) {
+                    const item: TimelineText = {
+                        id: `text-${msg.id}-${blockIndex++}`,
+                        type: "timeline_text",
+                        content: textContent,
+                        messageId: msg.id,
+                    };
+                    pushContent(item);
+                }
+            }
+
+            // 3) Process tool_calls (DeepSeek puts write_todos here)
+            const toolCalls = getToolCallsFromMessage(msg);
+            for (const tool of toolCalls) {
+                const toolId = tool.id || tool.function?.id;
+                const toolName = tool.function?.name || tool.name;
+
+                if (toolName === "write_todos") {
+                    const args = parseWriteTodosArgs(tool);
+                    applyWriteTodosSnapshot(args?.todos);
+                    continue;
+                }
+
+                if (toolCallMap.has(toolId)) continue;
+
+                const argsString = tool.function?.arguments || tool.args;
+                const toolItem: TimelineToolCall = {
+                    id: `tool-${toolId}-${blockIndex++}`,
+                    type: "timeline_tool_call",
+                    toolName,
+                    args:
+                        typeof argsString === "string"
+                            ? argsString
+                            : JSON.stringify(argsString),
+                    toolCallId: toolId,
+                    status: "running",
+                };
+                toolCallMap.set(toolId, toolItem);
+                pushContent(toolItem);
+            }
+        }
+    }
+
+    return { events };
+}

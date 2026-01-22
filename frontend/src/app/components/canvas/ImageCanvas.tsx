@@ -1,14 +1,18 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, type Dispatch, type SetStateAction } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { CanvasImage, CanvasTool } from "@/types/canvas";
 import { CanvasTopBar } from "./CanvasTopBar";
 import { CanvasImage as CanvasImageCard, type CanvasImageRef } from "./CanvasImage";
 import { useLanguageSafe } from "@/providers/LanguageProvider";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
+import { Brush, Eraser, Square, X, Check, Loader2 } from "lucide-react";
 
 interface ImageCanvasProps {
     images: CanvasImage[];
-    onImagesChange: React.Dispatch<React.SetStateAction<CanvasImage[]>>;
+    onImagesChange: Dispatch<SetStateAction<CanvasImage[]>>;
     flyingImage?: {
         id: string;
         src: string;
@@ -257,7 +261,7 @@ export function ImageCanvas({
     };
 
     return (
-        <div className="relative w-full h-full flex flex-col bg-canvas-bg">
+        <div className="relative w-full h-full flex flex-col bg-[#0B0C10] overflow-hidden">
             {/* Top Bar */}
             <CanvasTopBar
                 activeTool={tool}
@@ -334,31 +338,67 @@ export function ImageCanvas({
                                 { x: childCenterX, y: img.y - EDGE_OFFSET }
                             ];
 
+                            // Find shortest connection (optimal edge pairing)
                             let minDist = Infinity;
+                            let bestConnection: { start: { x: number; y: number }; end: { x: number; y: number }; distance: number } | null = null;
                             let bestEdgeIndices = { parent: 0, child: 0 };
 
                             for (let pIdx = 0; pIdx < parentEdges.length; pIdx++) {
                                 for (let cIdx = 0; cIdx < childEdges.length; cIdx++) {
-                                    const dx = parentEdges[pIdx].x - childEdges[cIdx].x;
-                                    const dy = parentEdges[pIdx].y - childEdges[cIdx].y;
-                                    const dist = Math.sqrt(dx * dx + dy * dy);
+                                    const pEdge = parentEdges[pIdx];
+                                    const cEdge = childEdges[cIdx];
+                                    const dist = Math.sqrt(
+                                        (pEdge.x - cEdge.x) ** 2 +
+                                        (pEdge.y - cEdge.y) ** 2
+                                    );
                                     if (dist < minDist) {
                                         minDist = dist;
+                                        bestConnection = { start: pEdge, end: cEdge, distance: dist };
                                         bestEdgeIndices = { parent: pIdx, child: cIdx };
                                     }
                                 }
                             }
 
-                            const start = parentEdges[bestEdgeIndices.parent];
-                            const end = childEdges[bestEdgeIndices.child];
-                            const endpoint1 = parentEdgesNoOffset[bestEdgeIndices.parent];
-                            const endpoint2 = childEdgesNoOffset[bestEdgeIndices.child];
+                            const x1 = bestConnection!.start.x;
+                            const y1 = bestConnection!.start.y;
+                            const x2 = bestConnection!.end.x;
+                            const y2 = bestConnection!.end.y;
 
-                            const controlOffset = Math.min(200, minDist * 0.4);
-                            const c1 = { x: start.x + (start.x < end.x ? controlOffset : -controlOffset), y: start.y };
-                            const c2 = { x: end.x + (start.x < end.x ? -controlOffset : controlOffset), y: end.y };
+                            // Endpoints use edge coordinates (on image border)
+                            const endpointX1 = parentEdgesNoOffset[bestEdgeIndices.parent].x;
+                            const endpointY1 = parentEdgesNoOffset[bestEdgeIndices.parent].y;
+                            const endpointX2 = childEdgesNoOffset[bestEdgeIndices.child].x;
+                            const endpointY2 = childEdgesNoOffset[bestEdgeIndices.child].y;
 
-                            const path = `M ${start.x} ${start.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${end.x} ${end.y}`;
+                            // Calculate curve parameters
+                            const dx = x2 - x1;
+                            const dy = y2 - y1;
+                            const distance = bestConnection!.distance;
+                            const tension = Math.min(distance * 0.2, 60);
+
+                            // Control points at 1/3 and 2/3 positions
+                            let c1x = x1 + dx * 0.33;
+                            let c1y = y1 + dy * 0.33;
+                            let c2x = x1 + dx * 0.67;
+                            let c2y = y1 + dy * 0.67;
+
+                            // Create symmetric S-curve with opposite offsets
+                            const absDx = Math.abs(dx);
+                            const absDy = Math.abs(dy);
+
+                            if (absDx > absDy) {
+                                // Horizontal connection: curve in vertical direction
+                                const curveDir = dy >= 0 ? 1 : -1;
+                                c1y += curveDir * tension;   // Offset one way
+                                c2y -= curveDir * tension;   // Offset opposite way (symmetric S-curve!)
+                            } else {
+                                // Vertical connection: curve in horizontal direction
+                                const curveDir = dx >= 0 ? 1 : -1;
+                                c1x += curveDir * tension;
+                                c2x -= curveDir * tension;   // Opposite offset
+                            }
+
+                            const path = `M ${x1} ${y1} C ${c1x} ${c1y} ${c2x} ${c2y} ${x2} ${y2}`;
 
                             return (
                                 <g key={`line-${img.id}`}>
@@ -380,8 +420,8 @@ export function ImageCanvas({
                                         strokeLinejoin="round"
                                         opacity="0.9"
                                     />
-                                    <circle cx={endpoint1.x} cy={endpoint1.y} r={6} fill="white" opacity="0.9" />
-                                    <circle cx={endpoint2.x} cy={endpoint2.y} r={6} fill="white" opacity="0.9" />
+                                    <circle cx={endpointX1} cy={endpointY1} r={6} fill="white" opacity="0.9" />
+                                    <circle cx={endpointX2} cy={endpointY2} r={6} fill="white" opacity="0.9" />
                                 </g>
                             );
                         })}
@@ -404,7 +444,7 @@ export function ImageCanvas({
                             isEditing={editingImageId === img.id}
                             tool={tool === "hand" ? "hand" : "select"}
                             onUpdate={(id, pos) => {
-                                onImagesChange(images.map(item => item.id === id ? { ...item, ...pos } : item));
+                                onImagesChange(prev => prev.map(item => item.id === id ? { ...item, ...pos } : item));
                             }}
                             onEditStart={handleEditStart}
                             onRegenerate={handleRegenerate}
@@ -455,43 +495,37 @@ export function ImageCanvas({
 
             {/* Edit Toolbar (Floating) */}
             {editingImageId && (
-                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-background/90 backdrop-blur border border-border rounded-full px-6 py-3 shadow-2xl flex items-center gap-6 z-50 animate-in slide-in-from-bottom-4 fade-in">
-                    <div className="flex items-center gap-2 border-r border-border pr-6">
-                        <button
-                            className={cn(
-                                "rounded-full w-10 h-10 inline-flex items-center justify-center",
-                                editTool === "brush" ? "bg-primary text-primary-foreground" : "hover:bg-muted text-muted-foreground hover:text-foreground"
-                            )}
+                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-[#09090b]/90 backdrop-blur border border-white/10 rounded-full px-6 py-3 shadow-2xl flex items-center gap-6 z-50 animate-in slide-in-from-bottom-4 fade-in">
+                    <div className="flex items-center gap-2 border-r border-white/10 pr-6">
+                        <Button
+                            size="icon"
+                            variant={editTool === "brush" ? "default" : "ghost"}
+                            className="rounded-full w-10 h-10"
                             onClick={() => setEditTool("brush")}
                             title={t("canvas.brush_tool")}
-                            type="button"
                         >
-                            B
-                        </button>
+                            <Brush className="w-4 h-4" />
+                        </Button>
                         {editMode === "text" && (
-                            <button
-                                className={cn(
-                                    "rounded-full w-10 h-10 inline-flex items-center justify-center",
-                                    editTool === "rect" ? "bg-primary text-primary-foreground" : "hover:bg-muted text-muted-foreground hover:text-foreground"
-                                )}
+                            <Button
+                                size="icon"
+                                variant={editTool === "rect" ? "default" : "ghost"}
+                                className="rounded-full w-10 h-10"
                                 onClick={() => setEditTool("rect")}
                                 title={t("canvas.rect_tool")}
-                                type="button"
                             >
-                                □
-                            </button>
+                                <Square className="w-4 h-4" />
+                            </Button>
                         )}
-                        <button
-                            className={cn(
-                                "rounded-full w-10 h-10 inline-flex items-center justify-center",
-                                editTool === "eraser" ? "bg-primary text-primary-foreground" : "hover:bg-muted text-muted-foreground hover:text-foreground"
-                            )}
+                        <Button
+                            size="icon"
+                            variant={editTool === "eraser" ? "default" : "ghost"}
+                            className="rounded-full w-10 h-10"
                             onClick={() => setEditTool("eraser")}
                             title={t("canvas.eraser_tool")}
-                            type="button"
                         >
-                            E
-                        </button>
+                            <Eraser className="w-4 h-4" />
+                        </Button>
 
                         {editTool !== "rect" && (
                             <div className="relative flex items-center">
@@ -500,7 +534,7 @@ export function ImageCanvas({
                                         className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 pointer-events-none z-50"
                                         style={{ bottom: "100%", marginBottom: "8px" }}
                                     >
-                                        <div className="bg-background/95 border border-border rounded-lg p-3 shadow-xl backdrop-blur-sm">
+                                        <div className="bg-zinc-900/95 border border-white/20 rounded-lg p-3 shadow-xl backdrop-blur-sm">
                                             <div
                                                 className="rounded-full bg-red-500/50 border-2 border-red-400"
                                                 style={{
@@ -510,30 +544,28 @@ export function ImageCanvas({
                                                 }}
                                             />
                                         </div>
-                                        <span className="text-[10px] text-muted-foreground font-medium">{editBrushSize}px</span>
+                                        <span className="text-[10px] text-zinc-400 font-medium">{editBrushSize}px</span>
                                     </div>
                                 )}
                                 <div className="w-24 px-2">
-                                    <input
-                                        type="range"
-                                        min={5}
-                                        max={250}
-                                        step={1}
-                                        value={editBrushSize}
-                                        onChange={(e) => setEditBrushSize(Number(e.target.value))}
+                                    <Slider
+                                        value={[editBrushSize]}
+                                        onValueChange={([v]) => setEditBrushSize(v)}
                                         onPointerDown={() => setIsSliderDragging(true)}
                                         onPointerUp={() => setIsSliderDragging(false)}
                                         onPointerLeave={() => setIsSliderDragging(false)}
-                                        className="w-full"
+                                        min={5}
+                                        max={250}
+                                        step={1}
                                     />
                                 </div>
                             </div>
                         )}
                     </div>
 
-                    <div className="flex items-center gap-2 border-r border-border pr-6">
-                        <input
-                            className="w-64 bg-transparent border-none focus-visible:ring-0 h-10 text-sm outline-none"
+                    <div className="flex items-center gap-2 border-r border-white/10 pr-6">
+                        <Input
+                            className="w-64 !bg-transparent border-none focus-visible:ring-0 h-10 text-white"
                             placeholder={editMode === "inpainting" ? t("canvas.edit_placeholder") : t("canvas.edit_text_placeholder")}
                             value={editPrompt}
                             onChange={(e) => setEditPrompt(e.target.value)}
@@ -544,28 +576,26 @@ export function ImageCanvas({
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <button
-                            className="rounded-full w-10 h-10 hover:bg-red-500/20 hover:text-red-500 text-muted-foreground"
+                        <Button
+                            size="icon"
+                            variant="ghost"
+                            className="rounded-full w-10 h-10 hover:bg-red-500/20 hover:text-red-500"
                             onClick={handleEditCancel}
-                            type="button"
                         >
-                            ✕
-                        </button>
-                        <button
-                            className={cn(
-                                "rounded-full w-10 h-10 bg-primary hover:bg-primary/90 text-primary-foreground inline-flex items-center justify-center",
-                                isEditProcessing && "opacity-70 cursor-not-allowed"
-                            )}
+                            <X className="w-5 h-5" />
+                        </Button>
+                        <Button
+                            size="icon"
+                            className="rounded-full w-10 h-10 bg-blue-500 hover:bg-blue-600 text-white"
                             onClick={handleEditConfirm}
                             disabled={isEditProcessing}
-                            type="button"
                         >
                             {isEditProcessing ? (
-                                <span className="text-sm">…</span>
+                                <Loader2 className="w-4 h-4 animate-spin" />
                             ) : (
-                                <span className="text-sm">✓</span>
+                                <Check className="w-5 h-5" />
                             )}
-                        </button>
+                        </Button>
                     </div>
                 </div>
             )}

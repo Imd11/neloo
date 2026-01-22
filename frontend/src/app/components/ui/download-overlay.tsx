@@ -51,11 +51,11 @@ export function DownloadOverlay({ isVisible, status, onComplete }: DownloadOverl
                             <>
                                 <div className="relative">
                                     <div className="absolute inset-0 bg-cyan-500/30 blur-2xl rounded-full animate-pulse" />
-                                    <div className="relative bg-card border border-border rounded-2xl p-6">
-                                        <Loader2 className="w-12 h-12 text-primary animate-spin" />
+                                    <div className="relative bg-zinc-900/80 border border-white/10 rounded-2xl p-6">
+                                        <Loader2 className="w-12 h-12 text-cyan-400 animate-spin" />
                                     </div>
                                 </div>
-                                <p className="text-foreground font-medium text-lg">
+                                <p className="text-white font-medium text-lg">
                                     {t("canvas.downloading")}
                                 </p>
                             </>
@@ -70,11 +70,11 @@ export function DownloadOverlay({ isVisible, status, onComplete }: DownloadOverl
                                     className="relative"
                                 >
                                     <div className="absolute inset-0 bg-emerald-500/30 blur-2xl rounded-full" />
-                                    <div className="relative bg-card border border-border rounded-2xl p-6">
+                                    <div className="relative bg-zinc-900/80 border border-white/10 rounded-2xl p-6">
                                         <Check className="w-12 h-12 text-emerald-400" />
                                     </div>
                                 </motion.div>
-                                <p className="text-foreground font-medium text-lg">
+                                <p className="text-white font-medium text-lg">
                                     {t("canvas.download_complete")}
                                 </p>
                             </>
@@ -84,11 +84,11 @@ export function DownloadOverlay({ isVisible, status, onComplete }: DownloadOverl
                             <>
                                 <div className="relative">
                                     <div className="absolute inset-0 bg-red-500/30 blur-2xl rounded-full" />
-                                    <div className="relative bg-card border border-border rounded-2xl p-6">
+                                    <div className="relative bg-zinc-900/80 border border-white/10 rounded-2xl p-6">
                                         <Download className="w-12 h-12 text-red-400" />
                                     </div>
                                 </div>
-                                <p className="text-foreground font-medium text-lg">
+                                <p className="text-white font-medium text-lg">
                                     {t("canvas.download_failed")}
                                 </p>
                             </>
