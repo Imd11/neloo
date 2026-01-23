@@ -1463,9 +1463,13 @@ def get_executor() -> SandboxExecutor:
     Get the sandbox executor based on SANDBOX_MODE environment variable
 
     SANDBOX_MODE options:
-      - "e2b"      : Async E2B cloud sandbox (default, recommended for production)
-                     Uses asyncio.Lock for true parallel SubAgent execution
-      - "e2b-sync" : Sync E2B cloud sandbox (legacy, uses threading.Lock)
+      - "e2b"      : Sync E2B cloud sandbox (default).
+                     NOTE: We intentionally default to the sync executor to avoid
+                     event-loop lifecycle issues when running in predominantly
+                     synchronous tool call stacks.
+      - "e2b-sync" : Alias for "e2b" (sync E2B executor).
+      - "e2b-async": Async E2B cloud sandbox (experimental).
+                     Uses asyncio.Lock for true parallel SubAgent execution.
       - "local"    : Local subprocess (development only, no isolation)
       - "docker"   : Docker container (self-hosted, secure)
 
@@ -1483,12 +1487,15 @@ def get_executor() -> SandboxExecutor:
         _executor = LocalSubprocessExecutor()
     elif mode == "docker":
         _executor = DockerExecutor()
-    elif mode == "e2b-sync":
-        # Legacy sync executor with threading.Lock
+    elif mode in ("e2b", "e2b-sync"):
+        # Sync executor with threading.Lock (stable default)
         _executor = E2BSandboxExecutor()
-    else:  # Default to async e2b
-        # Async executor with asyncio.Lock for parallel SubAgent execution
+    elif mode == "e2b-async":
+        # Async executor with asyncio.Lock for parallel SubAgent execution (experimental)
         _executor = AsyncE2BSandboxExecutor()
+    else:
+        # Backwards-compatible fallback: treat unknown as sync E2B to avoid async event loop issues.
+        _executor = E2BSandboxExecutor()
 
     return _executor
 
@@ -1528,6 +1535,49 @@ def execute_python(
         else:
             print(f"Error: {result['error']}")
     """
+    # Normalize/validate context. When user_id context is missing (""), E2B sandbox
+    # selection and storage sync can silently create extra sandboxes and/or mix
+    # files across users. Prefer resolving via thread_id; otherwise fail fast.
+    user_id = (user_id or "").strip()
+    if thread_id == "default":
+        thread_id = None
+
+    if user_id in ("", "default", "anonymous") and thread_id:
+        try:
+            from ..storage.supabase_db import USE_SUPABASE_DB, get_thread_by_langgraph_id
+
+            if USE_SUPABASE_DB:
+                import asyncio
+
+                async def _get_user_id() -> Optional[str]:
+                    record = await get_thread_by_langgraph_id(thread_id)
+                    if record and isinstance(record.get("user_id"), str):
+                        return record["user_id"]
+                    return None
+
+                try:
+                    asyncio.get_running_loop()
+                except RuntimeError:
+                    resolved = asyncio.run(_get_user_id())
+                    if resolved:
+                        user_id = resolved
+        except Exception:
+            # Best-effort only; fall through to validation.
+            pass
+
+    if user_id in ("", "default", "anonymous"):
+        return {
+            "success": False,
+            "stdout": "",
+            "stderr": "",
+            "results": [],
+            "error": (
+                "Missing authenticated user context (user_id).\n"
+                "Please refresh the page and sign in again."
+            ),
+            "generated_files": [],
+        }
+
     executor = get_executor()
 
     # Sync files if provided (for explicit file sync before execution)

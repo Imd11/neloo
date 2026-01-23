@@ -255,17 +255,21 @@ def get_e2b_backend_factory(executor: Any):
         Gets user_id and thread_id from ContextVar (set by middleware) and retrieves the appropriate sandbox.
         """
         # Get user_id from ContextVar (most reliable, set by FastAPI middleware)
-        user_id = user_id_ctx.get()
+        user_id = (user_id_ctx.get() or "").strip()
         thread_id = thread_id_ctx.get()
 
         # Fallback: try to get from runtime config if ContextVar not set
-        if user_id == "default" and hasattr(runtime, 'config'):
+        if user_id in ("", "default") and hasattr(runtime, 'config'):
             config = getattr(runtime, 'config', {}) or {}
             if isinstance(config, dict):
                 configurable = config.get('configurable', {})
-                user_id = configurable.get('user_id', user_id)
+                user_id = (configurable.get('user_id', user_id) or "").strip()
                 if thread_id == "default":
                     thread_id = configurable.get('thread_id', thread_id)
+
+        if user_id == "":
+            # Normalize empty string to "default" to avoid creating a separate sandbox key.
+            user_id = "default"
 
         # Normalize thread_id (treat "default" as None for DB)
         if thread_id == "default":
@@ -284,30 +288,15 @@ def get_e2b_backend_factory(executor: Any):
                 sync_to_storage=True,
             )
         elif isinstance(executor, AsyncE2BSandboxExecutor):
-            # For async executor, we need to get the sandbox
-            # The _get_sandbox method is async, so we need to handle it carefully
-            import asyncio
-            
-            async def get_async_sandbox():
-                return await executor._get_sandbox(user_id)
-            
-            # Check if we're in an async context
-            try:
-                loop = asyncio.get_running_loop()
-                # We're in an async context - use a thread to avoid nested event loop issues
-                import concurrent.futures
-                with concurrent.futures.ThreadPoolExecutor() as pool:
-                    sandbox = pool.submit(asyncio.run, get_async_sandbox()).result()
-            except RuntimeError:
-                # No running loop, we can use asyncio.run directly
-                sandbox = asyncio.run(get_async_sandbox())
-            
-            return E2BSandboxBackend(
-                sandbox=sandbox,
-                user_id=user_id,
-                thread_id=thread_id,
-                sync_to_storage=True,
-            )
+            # Async sandbox backends require an async-native integration to avoid
+            # event-loop lifecycle issues. For now we explicitly fall back to the
+            # StateBackend when an async executor is selected.
+            #
+            # Use SANDBOX_MODE=e2b or SANDBOX_MODE=e2b-sync for stable, unified filesystem behavior.
+            from deepagents.backends import StateBackend
+            print("[E2BSandboxBackend] Async executor selected; falling back to StateBackend. "
+                  "Set SANDBOX_MODE=e2b (sync) for stable E2B-backed file ops.")
+            return StateBackend(runtime)
         else:
             # For non-E2B executors (local, docker), fall back to StateBackend
             from deepagents.backends import StateBackend
