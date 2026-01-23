@@ -51,6 +51,7 @@ export function RotatingHeadline({ className }: RotatingHeadlineProps) {
                 "fade-in",
                 className
             )}
+            style={{ fontFamily: "'Lora', 'Noto Serif SC', Georgia, serif" }}
         >
             {headline}
         </h1>
