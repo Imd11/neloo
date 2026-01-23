@@ -5,6 +5,8 @@
   ],
   "graphs": {
     "data_analyst": "src.agent.graph:graph",
+    "data_analyst-web-dev": "src.agent.graph:graph_data_analyst_webdev",
+    "data_analyst-fortune": "src.agent.graph:graph_data_analyst_fortune",
     "deepseek-chat": "src.agent.graph:graph_deepseek_chat",
     "deepseek-reasoner": "src.agent.graph:graph_deepseek_reasoner",
     "qwen-plus": "src.agent.graph:graph_qwen_plus",

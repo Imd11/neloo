@@ -1411,6 +1411,11 @@ _MODEL_GRAPHS = _build_model_graphs()
 # Uses the default model based on priority
 graph = _MODEL_GRAPHS.get(get_default_model_id()) or build_graph()
 
+# Data Analyst mode variants (for when baseId is "data_analyst")
+# These use the default model but with different modes
+graph_data_analyst_webdev = build_graph(mode="web-dev")
+graph_data_analyst_fortune = build_graph(mode="fortune")
+
 # Export individual graphs for LangGraph Server multi-assistant setup
 # Default mode graphs
 graph_deepseek_chat = _MODEL_GRAPHS.get("deepseek-chat")
