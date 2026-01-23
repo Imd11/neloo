@@ -230,7 +230,7 @@ export function ToolStep({
                                                 href={result.url}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="flex flex-col gap-1 p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.02)] hover:shadow-[0_2px_4px_rgba(0,0,0,0.04)]"
+                                                className="flex flex-col gap-1 p-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.02)] hover:shadow-[0_2px_4px_rgba(0,0,0,0.04)]"
                                             >
                                                 <div className="flex items-center gap-2">
                                                     <img
@@ -242,9 +242,6 @@ export function ToolStep({
                                                 </div>
                                                 <div className="font-medium text-sm text-zinc-800 dark:text-zinc-200 line-clamp-1 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                                                     {result.title}
-                                                </div>
-                                                <div className="text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2 leading-relaxed">
-                                                    {result.content}
                                                 </div>
                                             </a>
                                         ))}
