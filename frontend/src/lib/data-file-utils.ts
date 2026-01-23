@@ -13,6 +13,20 @@ export const ALLOWED_EXTENSIONS = [
   ".dta",
   ".sav",
   ".parquet",
+  // Office documents
+  ".doc",
+  ".docx",
+  ".pdf",
+  ".ppt",
+  ".pptx",
+  ".txt",
+  ".rtf",
+  // Compressed files
+  ".zip",
+  ".tar",
+  ".gz",
+  ".rar",
+  ".7z",
   // Image files (for multimodal)
   ".png",
   ".jpg",
@@ -32,6 +46,24 @@ export const ALLOWED_MIME_TYPES: Record<string, string[]> = {
   ".dta": ["application/octet-stream", "application/x-stata-dta"],
   ".sav": ["application/octet-stream", "application/x-spss-sav"],
   ".parquet": ["application/octet-stream", "application/x-parquet"],
+  // Office documents
+  ".doc": ["application/msword"],
+  ".docx": [
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ],
+  ".pdf": ["application/pdf"],
+  ".ppt": ["application/vnd.ms-powerpoint"],
+  ".pptx": [
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  ],
+  ".txt": ["text/plain"],
+  ".rtf": ["application/rtf", "text/rtf"],
+  // Compressed files
+  ".zip": ["application/zip", "application/x-zip-compressed"],
+  ".tar": ["application/x-tar"],
+  ".gz": ["application/gzip", "application/x-gzip"],
+  ".rar": ["application/vnd.rar", "application/x-rar-compressed"],
+  ".7z": ["application/x-7z-compressed"],
   // Image files
   ".png": ["image/png"],
   ".jpg": ["image/jpeg"],
@@ -52,6 +84,20 @@ export const FILE_TYPE_LABELS: Record<string, string> = {
   ".dta": "Stata",
   ".sav": "SPSS",
   ".parquet": "Parquet",
+  // Office documents
+  ".doc": "Word",
+  ".docx": "Word",
+  ".pdf": "PDF",
+  ".ppt": "PowerPoint",
+  ".pptx": "PowerPoint",
+  ".txt": "Text",
+  ".rtf": "RTF",
+  // Compressed files
+  ".zip": "ZIP",
+  ".tar": "TAR",
+  ".gz": "GZIP",
+  ".rar": "RAR",
+  ".7z": "7-Zip",
   // Image files
   ".png": "PNG",
   ".jpg": "JPEG",
