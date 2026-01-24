@@ -342,12 +342,6 @@ function ImagePageContent() {
 
                                 {/* Prompt Input */}
                                 <div className="w-full max-w-3xl mx-auto flex flex-col items-center gap-4">
-                                    <ImageConfigBar
-                                        ratio={ratio}
-                                        onRatioChange={setRatio}
-                                        resolution={resolution}
-                                        onResolutionChange={setResolution}
-                                    />
                                     <PromptInput
                                         placeholder="描述你要生成的图..."
                                         onSubmit={handleSubmit}
@@ -355,6 +349,12 @@ function ImagePageContent() {
                                         onClearFeature={() => {
                                             router.push("/");
                                         }}
+                                    />
+                                    <ImageConfigBar
+                                        ratio={ratio}
+                                        onRatioChange={setRatio}
+                                        resolution={resolution}
+                                        onResolutionChange={setResolution}
                                     />
                                 </div>
                             </div>

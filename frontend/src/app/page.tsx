@@ -340,19 +340,11 @@ function ChatWithFilePanel({
   // This prevents flashing landing view when switching to a historical thread
   const showLandingView = messages.length === 0 && !threadId && !isThreadLoading;
 
-  // Keep selected feature in sync with route-provided default when we're still on landing.
-  useEffect(() => {
-    if (!showLandingView) return;
-    if (!initialFeatureId) {
-      setSelectedFeature(null);
-      return;
-    }
-    setSelectedFeature(features.find((f) => f.id === initialFeatureId) ?? null);
-  }, [initialFeatureId, showLandingView]);
-
   const handleSelectFeature = useCallback((feature: Feature | null) => {
+    // Optimistic UI: show the tag immediately, then navigate.
+    setSelectedFeature(feature);
+
     if (!feature) {
-      setSelectedFeature(null);
       setFortuneMode(false);
       setActiveFeatureId(null);
       router.push("/");
@@ -366,6 +358,16 @@ function ChatWithFilePanel({
 
     router.push(`/${feature.id}`);
   }, [router, setActiveFeatureId, setFortuneMode]);
+
+  // Keep selected feature in sync with route-provided default when we're still on landing.
+  useEffect(() => {
+    if (!showLandingView) return;
+    if (!initialFeatureId) {
+      setSelectedFeature(null);
+      return;
+    }
+    setSelectedFeature(features.find((f) => f.id === initialFeatureId) ?? null);
+  }, [initialFeatureId, showLandingView]);
 
   // Determine right panel visibility
   const showArtifactPreview = webDevMode && selectedArtifact !== null;

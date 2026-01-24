@@ -127,8 +127,9 @@ export const ChatPromptInput = forwardRef<ChatPromptInputRef, ChatPromptInputPro
                 {/* Web Dev Mode Tag (legacy) */}
                 {webDevMode && (
                     <div className={cn(
-                        "group relative flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium shrink-0 mt-1 overflow-hidden transition-all duration-150 hover:shadow-xs",
-                        "before:content-[''] before:absolute before:inset-0 before:rounded-full before:bg-current/10 before:opacity-0 before:transition-opacity before:duration-150 before:pointer-events-none before:z-0",
+                        "group relative flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium shrink-0 mt-1 cursor-default overflow-hidden transition-all duration-150",
+                        "hover:shadow-xs hover:ring-1 hover:ring-current/25",
+                        "before:content-[''] before:absolute before:inset-0 before:rounded-full before:bg-foreground/10 before:opacity-0 before:transition-opacity before:duration-150 before:pointer-events-none before:z-0",
                         "hover:before:opacity-100",
                         "bg-blue-500/15 text-blue-600 dark:text-blue-400"
                     )}>
@@ -137,7 +138,7 @@ export const ChatPromptInput = forwardRef<ChatPromptInputRef, ChatPromptInputPro
                             <button
                                 type="button"
                                 onClick={onClearFeature}
-                                className="relative z-10 flex items-center justify-center w-4 h-4 rounded-full transition-all duration-150 hover:bg-current/35 hover:scale-125 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                className="relative z-10 flex items-center justify-center w-4 h-4 rounded-full cursor-pointer transition-all duration-150 hover:bg-current/45 hover:scale-125 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 aria-label="清除已选功能"
                             >
                                 <X className="w-2.5 h-2.5" />
@@ -149,8 +150,9 @@ export const ChatPromptInput = forwardRef<ChatPromptInputRef, ChatPromptInputPro
                 {/* Selected Feature Tag (AnyAI style) */}
                 {selectedFeature && !webDevMode && (
                     <div className={cn(
-                        "group relative flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium shrink-0 mt-1 overflow-hidden transition-all duration-150 hover:shadow-xs",
-                        "before:content-[''] before:absolute before:inset-0 before:rounded-full before:bg-current/10 before:opacity-0 before:transition-opacity before:duration-150 before:pointer-events-none before:z-0",
+                        "group relative flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium shrink-0 mt-1 cursor-default overflow-hidden transition-all duration-150",
+                        "hover:shadow-xs hover:ring-1 hover:ring-current/25",
+                        "before:content-[''] before:absolute before:inset-0 before:rounded-full before:bg-foreground/10 before:opacity-0 before:transition-opacity before:duration-150 before:pointer-events-none before:z-0",
                         "hover:before:opacity-100",
                         selectedFeature.id === "web-dev" && "bg-blue-500/15 text-blue-600 dark:text-blue-400",
                         selectedFeature.id === "slides" && "bg-orange-500/15 text-orange-600 dark:text-orange-400",
@@ -162,7 +164,8 @@ export const ChatPromptInput = forwardRef<ChatPromptInputRef, ChatPromptInputPro
                         <span className="relative z-10">{selectedFeature.title}</span>
                         <button
                             onClick={onClearFeature}
-                            className="relative z-10 flex items-center justify-center w-4 h-4 rounded-full transition-all duration-150 hover:bg-current/35 hover:scale-125 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            type="button"
+                            className="relative z-10 flex items-center justify-center w-4 h-4 rounded-full cursor-pointer transition-all duration-150 hover:bg-current/45 hover:scale-125 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                             aria-label="清除已选功能"
                         >
                             <X className="w-2.5 h-2.5" />
