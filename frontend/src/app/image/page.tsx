@@ -35,6 +35,7 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { getConfig } from "@/lib/config";
 import { useThreads } from "@/app/hooks/useThreads";
+import { features } from "@/data/featureTemplates";
 
 // Import logos for image models
 import nanoBananaLogo from "@/assets/logos/nano-banana.png";
@@ -67,12 +68,14 @@ const imageModels: ModelInfo[] = [
 ];
 
 function ImagePageContent() {
+    const router = useRouter();
     const { setCollapsed, setHideTopBar } = useSidebar();
     const { session } = useAuth();
     const config = getConfig();
     const threads = useThreads({ limit: 20 });
 
     const [isEditMode, setIsEditMode] = useState(false);
+    const imageFeature = features.find((f) => f.id === "image") ?? null;
     const [messages, setMessages] = useState<ImageMessage[]>([]);
     const [canvasImages, setCanvasImages] = useState<CanvasImage[]>([]);
     const [isGenerating, setIsGenerating] = useState(false);
@@ -348,6 +351,10 @@ function ImagePageContent() {
                                     <PromptInput
                                         placeholder="描述你要生成的图..."
                                         onSubmit={handleSubmit}
+                                        selectedFeature={imageFeature}
+                                        onClearFeature={() => {
+                                            router.push("/");
+                                        }}
                                     />
                                 </div>
                             </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/AuthProvider";
 
@@ -25,7 +25,7 @@ interface RotatingHeadlineProps {
 }
 
 export function RotatingHeadline({ className }: RotatingHeadlineProps) {
-    const { user } = useAuth();
+  const { user } = useAuth();
 
     // Extract username: prefer display_name from user_metadata, then email prefix
     const userName = useMemo(() => {
@@ -38,11 +38,48 @@ export function RotatingHeadline({ className }: RotatingHeadlineProps) {
         return "朋友";
     }, [user?.user_metadata?.display_name, user?.email]);
 
-    // Get one random headline on mount (stable across re-renders)
-    const headline = useMemo(() => {
-        const randomIndex = Math.floor(Math.random() * headlines.length);
-        return headlines[randomIndex].replace("{name}", userName);
-    }, [userName]);
+  const storageKey = useMemo(() => {
+    const id = user?.id ?? userName;
+    return `meloo:headlineIndex:${id}`;
+  }, [user?.id, userName]);
+
+  const [headlineIndex, setHeadlineIndex] = useState<number>(() => {
+    if (typeof window === "undefined") return 0;
+    try {
+      const stored = window.sessionStorage.getItem(storageKey);
+      const parsed = stored ? Number(stored) : NaN;
+      if (!Number.isNaN(parsed) && parsed >= 0 && parsed < headlines.length) {
+        return parsed;
+      }
+    } catch {
+      // ignore
+    }
+    return Math.floor(Math.random() * headlines.length);
+  });
+
+  // Keep the headline stable across route navigations (same session/tab).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const stored = window.sessionStorage.getItem(storageKey);
+      const parsed = stored ? Number(stored) : NaN;
+      if (!Number.isNaN(parsed) && parsed >= 0 && parsed < headlines.length) {
+        setHeadlineIndex(parsed);
+        return;
+      }
+      const next = Math.floor(Math.random() * headlines.length);
+      window.sessionStorage.setItem(storageKey, String(next));
+      setHeadlineIndex(next);
+    } catch {
+      // ignore
+    }
+  }, [storageKey]);
+
+  const headline = useMemo(() => {
+    const safeIndex =
+      headlineIndex >= 0 && headlineIndex < headlines.length ? headlineIndex : 0;
+    return headlines[safeIndex].replace("{name}", userName);
+  }, [headlineIndex, userName]);
 
     return (
         <h1
