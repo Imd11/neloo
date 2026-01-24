@@ -3,6 +3,7 @@ import { features, Feature } from "@/data/featureTemplates";
 
 // 使用emoji作为图标，更生动有趣
 const featureEmojis: Record<string, string> = {
+    "image": "🖼️",
     "web-dev": "🌐",
     "slides": "📊",
     "resume": "📄",

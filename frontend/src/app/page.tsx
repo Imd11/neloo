@@ -29,7 +29,7 @@ import { PromptInput } from "@/app/components/PromptInput";
 import { TemplatePromptInput } from "@/app/components/TemplatePromptInput";
 import { FeatureButtons } from "@/app/components/FeatureButtons";
 import { FeatureTemplateGrid } from "@/app/components/FeatureTemplateGrid";
-import { Feature, Template } from "@/data/featureTemplates";
+import { Feature, Template, features } from "@/data/featureTemplates";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGoogleDrivePicker } from "@/app/hooks/useGoogleDrivePicker";
 import { useDataFileUpload } from "@/app/hooks/useDataFileUpload";
@@ -215,15 +215,21 @@ function ChatWithFilePanel({
   onOpenFilePanel,
   onCloseFilePanel,
   threadId,
+  initialFeatureId,
 }: {
   assistant: Assistant | null;
   showFilePanel: boolean;
   onOpenFilePanel: () => void;
   onCloseFilePanel: () => void;
   threadId: string | null;
+  initialFeatureId?: string;
 }) {
+  const router = useRouter();
   const { messages, isLoading, isThreadLoading, webDevMode, sendMessage, setFortuneMode, enableWebDevMode, setActiveFeatureId } = useChatContext();
-  const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
+  const [selectedFeature, setSelectedFeature] = useState<Feature | null>(() => {
+    if (!initialFeatureId) return null;
+    return features.find((f) => f.id === initialFeatureId) ?? null;
+  });
 
   // Selected artifact from inline cards - this is what drives the right panel
   const [selectedArtifact, setSelectedArtifact] = useState<Artifact | null>(null);
@@ -334,6 +340,33 @@ function ChatWithFilePanel({
   // This prevents flashing landing view when switching to a historical thread
   const showLandingView = messages.length === 0 && !threadId && !isThreadLoading;
 
+  // Keep selected feature in sync with route-provided default when we're still on landing.
+  useEffect(() => {
+    if (!showLandingView) return;
+    if (!initialFeatureId) {
+      setSelectedFeature(null);
+      return;
+    }
+    setSelectedFeature(features.find((f) => f.id === initialFeatureId) ?? null);
+  }, [initialFeatureId, showLandingView]);
+
+  const handleSelectFeature = useCallback((feature: Feature | null) => {
+    if (!feature) {
+      setSelectedFeature(null);
+      setFortuneMode(false);
+      setActiveFeatureId(null);
+      router.push("/");
+      return;
+    }
+
+    if (feature.id === "image") {
+      router.push("/image");
+      return;
+    }
+
+    router.push(`/${feature.id}`);
+  }, [router, setActiveFeatureId, setFortuneMode]);
+
   // Determine right panel visibility
   const showArtifactPreview = webDevMode && selectedArtifact !== null;
   const showFilePanelActual = showFilePanel && !showArtifactPreview;
@@ -345,7 +378,7 @@ function ChatWithFilePanel({
         <LandingView
           onPromptSubmit={sendMessage}
           selectedFeature={selectedFeature}
-          onSelectFeature={setSelectedFeature}
+          onSelectFeature={handleSelectFeature}
           setFortuneMode={setFortuneMode}
           enableWebDevMode={enableWebDevMode}
           setActiveFeatureId={setActiveFeatureId}
@@ -423,7 +456,7 @@ function LoginComponent() {
   );
 }
 
-function HomePageInner() {
+function HomePageInner({ initialFeatureId }: { initialFeatureId?: string }) {
   const client = useClient();
   const router = useRouter();
   const { user, session, loading: authLoading } = useAuth();
@@ -653,6 +686,7 @@ function HomePageInner() {
               onOpenFilePanel={() => setFilePanel("1")}
               onCloseFilePanel={() => setFilePanel(null)}
               threadId={threadId}
+              initialFeatureId={initialFeatureId}
             />
           </ChatProvider>
         </div>
@@ -661,7 +695,7 @@ function HomePageInner() {
   );
 }
 
-export default function HomePage() {
+export function HomePageWithInitialFeature({ initialFeatureId }: { initialFeatureId?: string }) {
   return (
     <Suspense
       fallback={
@@ -670,8 +704,11 @@ export default function HomePage() {
         </div>
       }
     >
-      <HomePageInner />
+      <HomePageInner initialFeatureId={initialFeatureId} />
     </Suspense>
   );
 }
 
+export default function HomePage() {
+  return <HomePageWithInitialFeature />;
+}

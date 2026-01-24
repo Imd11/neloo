@@ -53,7 +53,6 @@ import { format } from "date-fns";
 const navItems = [
   { icon: MessageSquarePlus, label: "新建对话", path: "/", action: "new" },
   { icon: Search, label: "搜索", path: null, action: "search" },
-  { icon: Image, label: "生图", path: "/image" },
   { icon: FolderOpen, label: "库", path: null, action: "library" },
 ];
 
