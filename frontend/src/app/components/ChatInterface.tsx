@@ -62,6 +62,7 @@ import { LibraryDialog } from "@/app/components/LibraryDialog";
 import { useGoogleDrivePicker } from "@/app/hooks/useGoogleDrivePicker";
 // WebDevToggle removed - web-dev mode is now set via homepage feature selection
 import type { Artifact } from "@/lib/artifactParser";
+import { TypingIndicator } from "@/app/components/ui/TypingIndicator";
 
 // Maximum visible characters before showing warning
 const MAX_VISIBLE_CHARS = 100000;
@@ -196,6 +197,15 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
   const hasPendingOrUploading = fileUpload.isUploading || pendingCount > 0 || uploadingCount > 0;
 
   const submitDisabled = isLoading || !assistant || hasPendingOrUploading || (!input.trim() && !hasUploadFiles);
+
+  // Match anyai-main: show "3 dots" while waiting for the first non-human message
+  // after a user submit (i.e. before the assistant/tool message is created).
+  const showTypingIndicator = useMemo(() => {
+    if (!isLoading) return false;
+    if (!messages || messages.length === 0) return false;
+    const last = messages[messages.length - 1];
+    return last?.type === "human";
+  }, [isLoading, messages]);
 
   const handleSubmit = useCallback(
     async (e?: FormEvent) => {
@@ -686,9 +696,9 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                   suggestedQuestions={!isLoading ? suggestedQuestions : undefined}
                   onSuggestionClick={handleSuggestionClick}
                 />
-              ) : (
-                /* Legacy Grouped Rendering Logic (no todos) */
-                (() => {
+            ) : (
+              /* Legacy Grouped Rendering Logic (no todos) */
+              (() => {
                   // Deduplicate messages by ID - keep only the last occurrence of each ID
                   // This handles streaming where SDK may have multiple entries for same message ID
                   // with progressively growing content (we want the latest/most complete version)
@@ -939,6 +949,16 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                   );
                 })()
               )
+            )}
+
+            {showTypingIndicator && (
+              <div className="flex w-full max-w-full overflow-x-hidden">
+                <div className="min-w-0 max-w-full w-full">
+                  <div className="mt-4">
+                    <TypingIndicator />
+                  </div>
+                </div>
+              </div>
             )}
           </div >
         </div >
