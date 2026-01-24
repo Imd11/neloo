@@ -37,7 +37,7 @@ import { TaskCard } from "@/app/components/ui/agentic/TaskCard";
 import { ToolStep } from "@/app/components/ui/agentic/ToolStep";
 import { ThinkingBlock } from "@/app/components/ui/agentic/ThinkingBlock";
 import { MarkdownContent } from "@/app/components/MarkdownContent";
-import { groupMessagesByTask } from "@/lib/messageGrouping";
+import { buildEventTimeline, groupMessagesByTask } from "@/lib/messageGrouping";
 import { HierarchicalTaskView } from "@/app/components/HierarchicalTaskView";
 import type {
   TodoItem,
@@ -198,8 +198,44 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
 
   const submitDisabled = isLoading || !assistant || hasPendingOrUploading || (!input.trim() && !hasUploadFiles);
 
-  // Typing indicator is now decided based on "visible output" in the rendered timeline,
-  // not based on raw messages (since timeline flattening may drop empty AI placeholders).
+  // anyai-style typing dots: show only when the UI has not rendered any AI-visible output yet.
+  // This must work in both rendering modes:
+  // - HierarchicalTaskView (todos.length > 0)
+  // - Legacy timeline rendering (todos.length === 0)
+  const showTypingIndicator = useMemo(() => {
+    if (!isLoading) return false;
+    if (!messages || messages.length === 0) return false;
+
+    if (todos.length > 0) {
+      const timeline = buildEventTimeline(messages);
+      const hasAnyAiVisibleOutput = timeline.events.some((evt) => {
+        if (evt.type === "todo_node") return true;
+        if (evt.type !== "content") return false;
+        const item = evt.item;
+        if (item.type === "message") return item.message.type !== "human";
+        return true;
+      });
+      return !hasAnyAiVisibleOutput;
+    }
+
+    const deduplicatedMessages = messages.reduce((acc, msg) => {
+      const existingIndex = acc.findIndex((m) => m.id === msg.id);
+      if (existingIndex >= 0) {
+        acc[existingIndex] = msg;
+      } else {
+        acc.push(msg);
+      }
+      return acc;
+    }, [] as typeof messages);
+
+    const groupedItems = groupMessagesByTask(deduplicatedMessages);
+    const hasAnyAiVisibleOutput = groupedItems.some((item) => {
+      if (item.type === "message") return item.message.type !== "human";
+      return true;
+    });
+
+    return !hasAnyAiVisibleOutput;
+  }, [isLoading, messages, todos.length]);
 
   const handleSubmit = useCallback(
     async (e?: FormEvent) => {
@@ -678,21 +714,22 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                 <p className="text-muted-foreground">Loading...</p>
               </div>
             ) : (
-              /* Manus-style Hierarchical Task View when todos exist */
-              todos.length > 0 ? (
-                <HierarchicalTaskView
-                  messages={messages}
-                  todos={todos}
-                  isLoading={isLoading}
-                  stream={stream}
-                  graphId={assistant?.graph_id}
-                  onRegenerate={handleRegenerate}
-                  suggestedQuestions={!isLoading ? suggestedQuestions : undefined}
-                  onSuggestionClick={handleSuggestionClick}
-                />
-            ) : (
-              /* Legacy Grouped Rendering Logic (no todos) */
-              (() => {
+              <>
+                {/* Manus-style Hierarchical Task View when todos exist */}
+                {todos.length > 0 ? (
+                  <HierarchicalTaskView
+                    messages={messages}
+                    todos={todos}
+                    isLoading={isLoading}
+                    stream={stream}
+                    graphId={assistant?.graph_id}
+                    onRegenerate={handleRegenerate}
+                    suggestedQuestions={!isLoading ? suggestedQuestions : undefined}
+                    onSuggestionClick={handleSuggestionClick}
+                  />
+                ) : (
+                  /* Legacy Grouped Rendering Logic (no todos) */
+                  (() => {
                   // Deduplicate messages by ID - keep only the last occurrence of each ID
                   // This handles streaming where SDK may have multiple entries for same message ID
                   // with progressively growing content (we want the latest/most complete version)
@@ -708,17 +745,6 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                   }, [] as typeof messages);
 
                   const groupedItems = groupMessagesByTask(deduplicatedMessages);
-                  const hasAnyAiVisibleOutput = groupedItems.some((item) => {
-                    if (item.type === "message") {
-                      return item.message.type !== "human";
-                    }
-                    // Any timeline/non-message item implies something visible was produced.
-                    return true;
-                  });
-                  const showTypingIndicator =
-                    isLoading === true &&
-                    todos.length === 0 &&
-                    !hasAnyAiVisibleOutput;
 
                   return (
                     <div className="flex flex-col gap-0 relative">
@@ -950,18 +976,19 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                         }
                         return null;
                       })}
-
-                      {showTypingIndicator && (
-                        <div className="flex w-full justify-start">
-                          <div className="max-w-[85%] md:max-w-[75%]">
-                            <TypingIndicator />
-                          </div>
-                        </div>
-                      )}
                     </div>
                   );
                 })()
-              )
+                )}
+
+                {showTypingIndicator && (
+                  <div className="mt-4 flex w-full justify-start">
+                    <div className="max-w-[85%] md:max-w-[75%]">
+                      <TypingIndicator />
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div >
         </div >
