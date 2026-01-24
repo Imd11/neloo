@@ -36,6 +36,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { TypingIndicator } from "@/app/components/ui/TypingIndicator";
 
 interface ChatMessageProps {
   message: Message;
@@ -205,6 +206,14 @@ export const ChatMessage = React.memo<ChatMessageProps>(
 
     const hasContent = messageContent && messageContent.trim() !== "";
     const hasToolCalls = toolCalls.length > 0;
+    const showTypingIndicator =
+      !isUser &&
+      isLastMessage === true &&
+      isLoading === true &&
+      !hasContent &&
+      !hasToolCalls &&
+      !hasThinkingBlocks &&
+      !hasArtifacts;
     // Track SubAgent start times for elapsed time calculation
     const subAgentTimestampsRef = React.useRef<Record<string, { startedAt: number; completedAt?: number }>>({});
 
@@ -449,6 +458,12 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                 }
                 return null;
               })}
+            </div>
+          )}
+
+          {showTypingIndicator && (
+            <div className="mt-4 max-w-[85%] md:max-w-[75%]">
+              <TypingIndicator />
             </div>
           )}
 

@@ -198,14 +198,15 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
 
   const submitDisabled = isLoading || !assistant || hasPendingOrUploading || (!input.trim() && !hasUploadFiles);
 
-  // Match anyai-main: show "3 dots" while waiting for the first non-human message
-  // after a user submit (i.e. before the assistant/tool message is created).
-  const showTypingIndicator = useMemo(() => {
+  // anyai-style typing dots: only when we have absolutely no visible AI output yet.
+  // We keep this as a narrow fallback for the brief window before LangGraph emits any non-human message,
+  // since the primary typing indicator is rendered inside ChatMessage once an empty AI/tool message exists.
+  const showTypingIndicatorFallback = useMemo(() => {
     if (!isLoading) return false;
+    if (todos.length > 0) return false;
     if (!messages || messages.length === 0) return false;
-    const last = messages[messages.length - 1];
-    return last?.type === "human";
-  }, [isLoading, messages]);
+    return messages.every((m) => m.type === "human");
+  }, [isLoading, messages, todos.length]);
 
   const handleSubmit = useCallback(
     async (e?: FormEvent) => {
@@ -951,10 +952,10 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
               )
             )}
 
-            {showTypingIndicator && (
+            {showTypingIndicatorFallback && (
               <div className="flex w-full max-w-full overflow-x-hidden">
                 <div className="min-w-0 max-w-full w-full">
-                  <div className="mt-4">
+                  <div className="mt-4 max-w-[85%] md:max-w-[75%]">
                     <TypingIndicator />
                   </div>
                 </div>
