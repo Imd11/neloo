@@ -198,15 +198,8 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
 
   const submitDisabled = isLoading || !assistant || hasPendingOrUploading || (!input.trim() && !hasUploadFiles);
 
-  // anyai-style typing dots: only when we have absolutely no visible AI output yet.
-  // We keep this as a narrow fallback for the brief window before LangGraph emits any non-human message,
-  // since the primary typing indicator is rendered inside ChatMessage once an empty AI/tool message exists.
-  const showTypingIndicatorFallback = useMemo(() => {
-    if (!isLoading) return false;
-    if (todos.length > 0) return false;
-    if (!messages || messages.length === 0) return false;
-    return messages.every((m) => m.type === "human");
-  }, [isLoading, messages, todos.length]);
+  // Typing indicator is now decided based on "visible output" in the rendered timeline,
+  // not based on raw messages (since timeline flattening may drop empty AI placeholders).
 
   const handleSubmit = useCallback(
     async (e?: FormEvent) => {
@@ -715,6 +708,17 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                   }, [] as typeof messages);
 
                   const groupedItems = groupMessagesByTask(deduplicatedMessages);
+                  const hasAnyAiVisibleOutput = groupedItems.some((item) => {
+                    if (item.type === "message") {
+                      return item.message.type !== "human";
+                    }
+                    // Any timeline/non-message item implies something visible was produced.
+                    return true;
+                  });
+                  const showTypingIndicator =
+                    isLoading === true &&
+                    todos.length === 0 &&
+                    !hasAnyAiVisibleOutput;
 
                   return (
                     <div className="flex flex-col gap-0 relative">
@@ -946,20 +950,18 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                         }
                         return null;
                       })}
+
+                      {showTypingIndicator && (
+                        <div className="flex w-full justify-start">
+                          <div className="max-w-[85%] md:max-w-[75%]">
+                            <TypingIndicator />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })()
               )
-            )}
-
-            {showTypingIndicatorFallback && (
-              <div className="flex w-full max-w-full overflow-x-hidden">
-                <div className="min-w-0 max-w-full w-full">
-                  <div className="mt-4 max-w-[85%] md:max-w-[75%]">
-                    <TypingIndicator />
-                  </div>
-                </div>
-              </div>
             )}
           </div >
         </div >
