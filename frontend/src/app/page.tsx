@@ -29,7 +29,8 @@ import { PromptInput } from "@/app/components/PromptInput";
 import { TemplatePromptInput } from "@/app/components/TemplatePromptInput";
 import { FeatureButtons } from "@/app/components/FeatureButtons";
 import { FeatureTemplateGrid } from "@/app/components/FeatureTemplateGrid";
-import { Feature, Template, features } from "@/data/featureTemplates";
+import { Feature, Template } from "@/data/featureTemplates";
+import { ImageExperience } from "@/app/components/image/ImageExperience";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGoogleDrivePicker } from "@/app/hooks/useGoogleDrivePicker";
 import { useDataFileUpload } from "@/app/hooks/useDataFileUpload";
@@ -125,7 +126,8 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
   // Handle template selection
   const handleSelectTemplate = (template: Template) => {
     if (selectedFeature?.id === 'image') {
-      router.push(`/image?template=${template.id}`);
+      // In image mode, templates are handled by the image experience UI.
+      return;
     } else if (selectedFeature?.id === 'fortune') {
       // For fortune templates, save the template ID for prefix injection
       setSelectedFortuneTemplateId(template.id);
@@ -215,21 +217,18 @@ function ChatWithFilePanel({
   onOpenFilePanel,
   onCloseFilePanel,
   threadId,
-  initialFeatureId,
+  onModeChange,
 }: {
   assistant: Assistant | null;
   showFilePanel: boolean;
   onOpenFilePanel: () => void;
   onCloseFilePanel: () => void;
   threadId: string | null;
-  initialFeatureId?: string;
+  onModeChange?: (mode: "chat" | "image") => void;
 }) {
   const router = useRouter();
   const { messages, isLoading, isThreadLoading, webDevMode, sendMessage, setFortuneMode, enableWebDevMode, setActiveFeatureId } = useChatContext();
-  const [selectedFeature, setSelectedFeature] = useState<Feature | null>(() => {
-    if (!initialFeatureId) return null;
-    return features.find((f) => f.id === initialFeatureId) ?? null;
-  });
+  const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
 
   // Selected artifact from inline cards - this is what drives the right panel
   const [selectedArtifact, setSelectedArtifact] = useState<Artifact | null>(null);
@@ -347,32 +346,47 @@ function ChatWithFilePanel({
     if (!feature) {
       setFortuneMode(false);
       setActiveFeatureId(null);
-      router.push("/");
+      onModeChange?.("chat");
       return;
     }
 
     if (feature.id === "image") {
-      router.push("/image");
+      // Image mode is handled inline on the home page (no route change).
+      setActiveFeatureId("image");
+      onModeChange?.("image");
       return;
     }
 
-    router.push(`/${feature.id}`);
+    setActiveFeatureId(feature.id);
+    onModeChange?.("chat");
   }, [router, setActiveFeatureId, setFortuneMode]);
 
-  // Keep selected feature in sync with route-provided default when we're still on landing.
+  // Ensure active feature is cleared when returning to landing.
   useEffect(() => {
     if (!showLandingView) return;
-    if (!initialFeatureId) {
-      setSelectedFeature(null);
-      return;
+    if (!selectedFeature) {
+      setActiveFeatureId(null);
     }
-    setSelectedFeature(features.find((f) => f.id === initialFeatureId) ?? null);
-  }, [initialFeatureId, showLandingView]);
+  }, [showLandingView, selectedFeature, setActiveFeatureId]);
 
   // Determine right panel visibility
   const showArtifactPreview = webDevMode && selectedArtifact !== null;
   const showFilePanelActual = showFilePanel && !showArtifactPreview;
   const showRightPanel = showArtifactPreview || showFilePanelActual;
+
+  if (showLandingView && selectedFeature?.id === "image") {
+    return (
+      <div className="flex-1 overflow-y-auto">
+        <ImageExperience
+          onExit={() => {
+            setSelectedFeature(null);
+            setActiveFeatureId(null);
+            onModeChange?.("chat");
+          }}
+        />
+      </div>
+    );
+  }
 
   if (showLandingView) {
     return (
@@ -458,7 +472,7 @@ function LoginComponent() {
   );
 }
 
-function HomePageInner({ initialFeatureId }: { initialFeatureId?: string }) {
+function HomePageInner() {
   const client = useClient();
   const router = useRouter();
   const { user, session, loading: authLoading } = useAuth();
@@ -475,6 +489,7 @@ function HomePageInner({ initialFeatureId }: { initialFeatureId?: string }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
+  const [uiMode, setUiMode] = useState<"chat" | "image">("chat");
 
   // Load config
   useEffect(() => {
@@ -675,6 +690,7 @@ function HomePageInner({ initialFeatureId }: { initialFeatureId?: string }) {
         topBarProps={{
           currentModelId: selectedModel || undefined,
           onModelSelect: (id: string) => setSelectedModel(id),
+          mode: uiMode,
         }}
       >
         <div className="flex h-full flex-col">
@@ -688,7 +704,7 @@ function HomePageInner({ initialFeatureId }: { initialFeatureId?: string }) {
               onOpenFilePanel={() => setFilePanel("1")}
               onCloseFilePanel={() => setFilePanel(null)}
               threadId={threadId}
-              initialFeatureId={initialFeatureId}
+              onModeChange={setUiMode}
             />
           </ChatProvider>
         </div>
@@ -697,7 +713,7 @@ function HomePageInner({ initialFeatureId }: { initialFeatureId?: string }) {
   );
 }
 
-export function HomePageWithInitialFeature({ initialFeatureId }: { initialFeatureId?: string }) {
+export default function HomePage() {
   return (
     <Suspense
       fallback={
@@ -706,11 +722,7 @@ export function HomePageWithInitialFeature({ initialFeatureId }: { initialFeatur
         </div>
       }
     >
-      <HomePageInner initialFeatureId={initialFeatureId} />
+      <HomePageInner />
     </Suspense>
   );
-}
-
-export default function HomePage() {
-  return <HomePageWithInitialFeature />;
 }

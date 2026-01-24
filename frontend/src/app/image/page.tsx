@@ -67,7 +67,7 @@ const imageModels: ModelInfo[] = [
     { name: "通义万相", logo: qwenLogo, available: false },
 ];
 
-function ImagePageContent() {
+export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
     const router = useRouter();
     const { setCollapsed, setHideTopBar } = useSidebar();
     const { session } = useAuth();
@@ -347,6 +347,10 @@ function ImagePageContent() {
                                         onSubmit={handleSubmit}
                                         selectedFeature={imageFeature}
                                         onClearFeature={() => {
+                                            if (onExit) {
+                                                onExit();
+                                                return;
+                                            }
                                             router.push("/");
                                         }}
                                     />
@@ -569,6 +573,9 @@ export default function ImagePage() {
                     onSearch: handleSearch,
                     onLibrary: handleLibrary,
                     onThreadSelect: handleThreadSelect,
+                }}
+                topBarProps={{
+                    mode: "image",
                 }}
             >
                 <Suspense fallback={

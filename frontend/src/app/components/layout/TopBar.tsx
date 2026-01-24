@@ -77,14 +77,16 @@ interface TopBarProps {
     hideUserActions?: boolean;
     currentModelId?: string;
     onModelSelect?: (modelId: string) => void;
+    /** Override which model set to show (route-independent). */
+    mode?: "chat" | "image";
 }
 
-export function TopBar({ hideUserActions = false, currentModelId, onModelSelect }: TopBarProps) {
+export function TopBar({ hideUserActions = false, currentModelId, onModelSelect, mode }: TopBarProps) {
     const { toggle, collapsed, isMobile } = useSidebar();
     const [searchQuery, setSearchQuery] = useState("");
     const pathname = usePathname();
 
-    const isImagePage = pathname === "/image";
+    const isImagePage = mode ? mode === "image" : pathname === "/image";
 
     // Select model list based on current page
     const models = isImagePage ? IMAGE_MODELS : CHAT_MODELS;
