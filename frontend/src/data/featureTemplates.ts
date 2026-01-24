@@ -234,14 +234,6 @@ export const videoTemplates: Template[] = [
 
 export const features: Feature[] = [
     {
-        id: "image",
-        title: "AI 生图",
-        icon: "Image",
-        placeholder: "描述你要生成的图...",
-        templates: imageTemplates,
-        description: "AI 生成图片并进入画布编辑",
-    },
-    {
         id: "web-dev",
         title: "网页开发",
         icon: "Globe",
@@ -284,6 +276,14 @@ export const features: Feature[] = [
                 gradient: "bg-gradient-to-br from-cyan-900 via-blue-800 to-indigo-900",
             },
         ],
+    },
+    {
+        id: "image",
+        title: "AI 生图",
+        icon: "Image",
+        placeholder: "描述你要生成的图...",
+        templates: imageTemplates,
+        description: "AI 生成图片并进入画布编辑",
     },
     {
         id: "slides",

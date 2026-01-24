@@ -1282,6 +1282,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                 {/* Feature Mode Tags - shown when a feature is active (locked after sending) */}
                 {activeFeatureId && (() => {
                   const featureConfig: Record<string, { label: string; color: string }> = {
+                    'image': { label: 'AI 生图', color: 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-400' },
                     'web-dev': { label: '网页开发', color: 'bg-blue-500/15 text-blue-600 dark:text-blue-400' },
                     'fortune': { label: '五行算命', color: 'bg-orange-500/15 text-orange-600 dark:text-orange-400' },
                     'slides': { label: '制作幻灯片', color: 'bg-purple-500/15 text-purple-600 dark:text-purple-400' },

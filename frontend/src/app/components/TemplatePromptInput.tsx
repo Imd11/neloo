@@ -170,6 +170,7 @@ export function TemplatePromptInput({
                         "hover:shadow-xs hover:ring-1 hover:ring-current/25",
                         "before:content-[''] before:absolute before:inset-0 before:rounded-full before:bg-foreground/10 before:opacity-0 before:transition-opacity before:duration-150 before:pointer-events-none before:z-0",
                         "hover:before:opacity-100",
+                        selectedFeature.id === "image" && "bg-cyan-500/15 text-cyan-700 dark:text-cyan-400",
                         selectedFeature.id === "web-dev" && "bg-blue-500/15 text-blue-600 dark:text-blue-400",
                         selectedFeature.id === "slides" && "bg-orange-500/15 text-orange-600 dark:text-orange-400",
                         selectedFeature.id === "resume" && "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
