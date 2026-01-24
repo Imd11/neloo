@@ -1,4 +1,4 @@
-import { ChevronDown, Check, Sparkles } from "lucide-react";
+import { ChevronDown, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
     DropdownMenu,
@@ -21,9 +21,9 @@ export type ImageRatio = "auto" | "1x1" | "16x9" | "9x16" | "4x3" | "3x4";
 
 // Resolution options matching backend MODEL_MAP
 const resolutions = [
-    { label: "1K", value: "1k", desc: "标准质量" },
-    { label: "2K", value: "2k", desc: "高清质量" },
-    { label: "4K", value: "4k", desc: "超高清质量" },
+    { label: "1K", value: "1k" },
+    { label: "2K", value: "2k" },
+    { label: "4K", value: "4k" },
 ];
 export type Resolution = "1k" | "2k" | "4k";
 
@@ -88,7 +88,6 @@ export function ImageConfigBar({
                         size="sm"
                         className="gap-2 bg-input-bg border-border hover:bg-hover-bg"
                     >
-                        <Sparkles className="w-4 h-4 text-primary" />
                         清晰度: {selectedResolution.label}
                         <ChevronDown className="w-4 h-4" />
                     </Button>
@@ -107,10 +106,7 @@ export function ImageConfigBar({
                                 selectedResolution.value === res.value && "bg-accent"
                             )}
                         >
-                            <div className="flex flex-col">
-                                <span>{res.label}</span>
-                                <span className="text-xs text-muted-foreground">{res.desc}</span>
-                            </div>
+                            {res.label}
                             {selectedResolution.value === res.value && (
                                 <Check className="w-4 h-4" />
                             )}
