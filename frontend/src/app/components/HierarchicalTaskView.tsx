@@ -105,20 +105,16 @@ function TodoNodeRow({
             {/* Status indicator */}
             <div className="w-4 h-4 shrink-0 flex items-center justify-center">
                 {status === "done" ? (
-                    <CheckCircle2 className="w-4 h-4 text-muted-foreground fill-muted-foreground/20" />
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="12" r="10" className="fill-muted-foreground/20 stroke-muted-foreground" strokeWidth="2" />
+                        <path d="M7.5 12.5L10.5 15.5L16.5 9" className="stroke-muted-foreground" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
                 ) : (
                     <div className="gradient-spinner" />
                 )}
             </div>
             {/* Title */}
-            <span
-                className={cn(
-                    "text-sm flex-1",
-                    status === "done"
-                        ? "text-muted-foreground"
-                        : "text-foreground font-medium"
-                )}
-            >
+            <span className="text-sm flex-1 text-foreground font-semibold">
                 {title}
             </span>
         </div>
@@ -189,9 +185,9 @@ export function HierarchicalTaskView({
                                 key={contentKey}
                                 className="flex items-stretch"
                             >
-                                {/* Vertical connecting line - CSS solid line */}
+                                {/* Vertical connecting line - CSS solid line with negative margin to connect to circles */}
                                 <div className="w-4 shrink-0 flex justify-center">
-                                    <div className="w-px bg-border h-full" />
+                                    <div className="w-px bg-border h-[calc(100%+12px)] -my-1.5" />
                                 </div>
                                 <div className="ml-1 flex-1 min-w-0 py-0.5">
                                     <TimelineItemRenderer

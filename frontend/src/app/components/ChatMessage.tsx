@@ -484,7 +484,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                   )}
                   style={
                     isUser
-                      ? { backgroundColor: "var(--color-user-message-bg)" }
+                      ? { backgroundColor: "hsl(var(--input-bg))" }
                       : undefined
                   }
                 >

@@ -80,7 +80,7 @@ export const UserMessageBubble = React.memo<UserMessageBubbleProps>(
                             <div className="flex items-end gap-2 flex-row-reverse">
                                 <div
                                     className="mt-2 overflow-hidden break-words text-sm font-normal leading-[150%] rounded-xl rounded-br-none border border-border px-3 py-2 text-foreground"
-                                    style={{ backgroundColor: "var(--color-user-message-bg)" }}
+                                    style={{ backgroundColor: "hsl(var(--input-bg))" }}
                                 >
                                     <p className="m-0 whitespace-pre-wrap break-words text-sm leading-relaxed">
                                         {content}
