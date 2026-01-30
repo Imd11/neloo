@@ -27,6 +27,7 @@ import {
 import { stripArtifacts, parseArtifacts, getStreamingArtifact } from "@/lib/artifactParser";
 import type { Artifact } from "@/lib/artifactParser";
 import { MessageAttachments } from "@/app/components/MessageAttachments";
+import { UserMessageBubble } from "@/app/components/UserMessageBubble";
 import { ArtifactCard } from "@/app/components/ArtifactCard";
 import { Copy, Check, Pencil, RefreshCw, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";

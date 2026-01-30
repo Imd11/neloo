@@ -10,6 +10,7 @@ import {
 import { MarkdownContent } from "@/app/components/MarkdownContent";
 import { ThinkingBlock } from "@/app/components/ui/agentic/ThinkingBlock";
 import { ToolStep } from "@/app/components/ui/agentic/ToolStep";
+import { UserMessageBubble } from "@/app/components/UserMessageBubble";
 import { Message } from "@langchain/langgraph-sdk";
 import { cn } from "@/lib/utils";
 import type { TodoItem } from "@/app/types/types";
@@ -77,14 +78,10 @@ function TimelineItemRenderer({
             );
 
         case "message":
-            // User message
+            // User message - use shared UserMessageBubble component
             if (item.message.type === "human") {
                 const content = extractStringFromMessageContent(item.message);
-                return (
-                    <div className="rounded-xl rounded-br-none border border-border px-3 py-2 text-sm bg-[var(--color-user-message-bg)]">
-                        <p className="whitespace-pre-wrap">{content}</p>
-                    </div>
-                );
+                return <UserMessageBubble content={content} />;
             }
             return null;
 
