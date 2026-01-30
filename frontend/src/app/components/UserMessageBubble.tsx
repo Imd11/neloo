@@ -8,6 +8,8 @@ import type { ParsedAttachment } from "@/lib/uploadedFilesAnnotation";
 interface UserMessageBubbleProps {
     /** The text content to display */
     content: string;
+    /** Optional message id for scroll anchoring */
+    messageId?: string;
     /** Optional file attachments to display above the bubble */
     attachments?: ParsedAttachment[];
     /** Optional action buttons (copy, edit, etc.) to display beside the bubble */
@@ -38,6 +40,7 @@ interface UserMessageBubbleProps {
 export const UserMessageBubble = React.memo<UserMessageBubbleProps>(
     ({
         content,
+        messageId,
         attachments,
         actions,
         isHovered,
@@ -59,6 +62,7 @@ export const UserMessageBubble = React.memo<UserMessageBubbleProps>(
                     "flex-row-reverse", // Right-align user messages
                     className
                 )}
+                data-message-id={messageId}
                 onMouseEnter={onMouseEnter}
                 onMouseLeave={onMouseLeave}
             >

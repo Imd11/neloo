@@ -67,6 +67,8 @@ interface ChatMessageProps {
   suggestedQuestions?: string[];
   /** Callback when user clicks a suggested question */
   onSuggestionClick?: (question: string) => void;
+  /** Whether to show action buttons (copy/edit/regenerate/share) */
+  showActions?: boolean;
   /** Whether to hide thinking blocks (managed by parent) */
   hideThinking?: boolean;
   /** Whether to hide tool calls (managed by parent) */
@@ -93,6 +95,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     onShare,
     suggestedQuestions,
     onSuggestionClick,
+    showActions = true,
     hideThinking = false,
     hideTools = false,
   }) => {
@@ -411,6 +414,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
           "flex w-full max-w-full overflow-x-hidden group",
           isUser && "flex-row-reverse"
         )}
+        data-message-id={message.id}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
@@ -495,12 +499,12 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                   ) : null}
                 </div>
                 {/* User message action buttons - show on hover, positioned at right */}
-                {isUser && <MessageActions show={!!hasContent} />}
+                {isUser && showActions && <MessageActions show={!!hasContent} />}
               </div>
             </div>
           )}
           {/* AI message action buttons - always visible, moved outside hasContent */}
-          {!isUser && (hasContent || hasToolCalls) && (
+          {!isUser && showActions && (hasContent || hasToolCalls) && (
             <div className="mt-2 flex justify-start">
               <MessageActions show={true} alwaysVisible={true} />
             </div>

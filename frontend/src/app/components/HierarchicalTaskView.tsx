@@ -81,7 +81,7 @@ function TimelineItemRenderer({
             // User message - use shared UserMessageBubble component
             if (item.message.type === "human") {
                 const content = extractStringFromMessageContent(item.message);
-                return <UserMessageBubble content={content} />;
+                return <UserMessageBubble content={content} messageId={item.message.id} />;
             }
             return null;
 

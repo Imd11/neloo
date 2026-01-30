@@ -26,9 +26,11 @@ import {
 import {
   Square,
   ArrowUp,
+  ArrowDown,
   CheckCircle,
   Clock,
   Circle,
+  Copy,
   FileIcon,
   AlertCircle,
   FolderOpen,
@@ -36,6 +38,9 @@ import {
   X,
   Upload,
   Loader2,
+  RefreshCw,
+  Share2,
+  Check,
   Mic,
 } from "lucide-react";
 import { ChatMessage } from "@/app/components/ChatMessage";
@@ -123,10 +128,19 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
   // Suggested follow-up questions state
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [footerCopied, setFooterCopied] = useState(false);
+  const [autoFollowEnabled, setAutoFollowEnabled] = useState(true);
 
 
   const [input, setInput] = useState("");
   const { scrollRef, contentRef } = useStickToBottom();
+  const bottomSentinelRef = useRef<HTMLDivElement | null>(null);
+  const didMountRef = useRef(false);
+  const lastAnchoredUserMessageIdRef = useRef<string | null>(null);
+  const prevIsThreadLoadingForScrollRef = useRef(false);
+  const touchStartYRef = useRef<number | null>(null);
+  const isProgrammaticScrollRef = useRef(false);
+  const lastScrollTopRef = useRef(0);
 
 
 
@@ -375,6 +389,72 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
     });
   }, [isLoading, messages, regenerateLastResponse]);
 
+  const handleCopyLastAiResponse = useCallback(async () => {
+    try {
+      if (!messages || messages.length === 0) return;
+
+      // Find last AI message (tool messages may come after)
+      let lastAiMessage: Message | null = null;
+      for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i].type === "ai") {
+          lastAiMessage = messages[i];
+          break;
+        }
+      }
+      if (!lastAiMessage) return;
+
+      const content = extractStringFromMessageContent(lastAiMessage);
+      if (!content.trim()) return;
+
+      await navigator.clipboard.writeText(content);
+      setFooterCopied(true);
+      setTimeout(() => setFooterCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  }, [messages]);
+
+  const scrollMessageToTop = useCallback((messageId: string) => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    const safeId =
+      typeof (globalThis as any).CSS?.escape === "function"
+        ? (globalThis as any).CSS.escape(messageId)
+        : messageId;
+    const target = container.querySelector(
+      `[data-message-id="${safeId}"]`
+    ) as HTMLElement | null;
+    if (!target) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const topPadding = 12;
+    const delta = targetRect.top - containerRect.top;
+    isProgrammaticScrollRef.current = true;
+    container.scrollTop += delta - topPadding;
+    requestAnimationFrame(() => {
+      isProgrammaticScrollRef.current = false;
+      lastScrollTopRef.current = container.scrollTop;
+    });
+  }, [scrollRef]);
+
+  const scrollToBottom = useCallback(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+    isProgrammaticScrollRef.current = true;
+    container.scrollTop = container.scrollHeight;
+    requestAnimationFrame(() => {
+      isProgrammaticScrollRef.current = false;
+      lastScrollTopRef.current = container.scrollTop;
+    });
+  }, [scrollRef]);
+
+  const resumeAutoFollow = useCallback(() => {
+    setAutoFollowEnabled(true);
+    scrollToBottom();
+  }, [scrollToBottom]);
+
   // Handle fork and regenerate - for non-last AI messages
   // Creates a new thread branch and navigates to it
   const handleForkRegenerate = useCallback(async (targetAiMessageId: string) => {
@@ -516,6 +596,117 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
       setSuggestedQuestions([]);
     }
   }, [input]);
+
+  // Reposition: when a new user message appears, scroll it to the top of viewport (with padding).
+  // Do not reposition when loading history or when user has manually scrolled up (autoFollow disabled).
+  useEffect(() => {
+    const historyLoaded =
+      prevIsThreadLoadingForScrollRef.current && !isThreadLoading;
+    prevIsThreadLoadingForScrollRef.current = isThreadLoading;
+
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
+    if (historyLoaded) return;
+    if (!messages || messages.length === 0) return;
+
+    // Find the latest human message in the thread.
+    let latestHuman: Message | null = null;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].type === "human") {
+        latestHuman = messages[i];
+        break;
+      }
+    }
+    if (!latestHuman?.id) return;
+    if (latestHuman.id === lastAnchoredUserMessageIdRef.current) return;
+
+    // New turn: re-enable follow by default.
+    setAutoFollowEnabled(true);
+    lastAnchoredUserMessageIdRef.current = latestHuman.id;
+
+    // Wait for the message bubble to be in the DOM.
+    requestAnimationFrame(() => {
+      scrollMessageToTop(latestHuman!.id!);
+    });
+  }, [
+    messages,
+    isThreadLoading,
+    scrollMessageToTop,
+  ]);
+
+  // During streaming: keep new content visible if autoFollow is enabled.
+  // If the user scrolls up, autoFollow is disabled and we stop auto-scrolling.
+  useEffect(() => {
+    if (!isLoading) return;
+    if (!autoFollowEnabled) return;
+
+    const container = scrollRef.current;
+    const sentinel = bottomSentinelRef.current;
+    if (!container || !sentinel) return;
+
+    const raf = requestAnimationFrame(() => {
+      const containerRect = container.getBoundingClientRect();
+      const sentinelRect = sentinel.getBoundingClientRect();
+      const bottomPadding = 24;
+      const overflow =
+        sentinelRect.bottom - (containerRect.bottom - bottomPadding);
+      if (overflow > 0) {
+        isProgrammaticScrollRef.current = true;
+        container.scrollTop += overflow;
+        requestAnimationFrame(() => {
+          isProgrammaticScrollRef.current = false;
+          lastScrollTopRef.current = container.scrollTop;
+        });
+      }
+    });
+
+    return () => cancelAnimationFrame(raf);
+  }, [isLoading, autoFollowEnabled, messages, todos.length, scrollRef]);
+
+  const handleChatWheel = useCallback(
+    (e: React.WheelEvent) => {
+      if (!isLoading) return;
+      // User scrolls up => stop auto follow immediately.
+      if (e.deltaY < 0) {
+        setAutoFollowEnabled(false);
+      }
+    },
+    [isLoading]
+  );
+
+  const handleChatScroll = useCallback(() => {
+    if (!isLoading) return;
+    if (isProgrammaticScrollRef.current) return;
+    const container = scrollRef.current;
+    if (!container) return;
+
+    const current = container.scrollTop;
+    const prev = lastScrollTopRef.current;
+    lastScrollTopRef.current = current;
+
+    // User scrolled up => stop auto follow.
+    if (current < prev) {
+      setAutoFollowEnabled(false);
+    }
+  }, [isLoading, scrollRef]);
+
+  const handleChatTouchStart = useCallback((e: React.TouchEvent) => {
+    if (!isLoading) return;
+    touchStartYRef.current = e.touches[0]?.clientY ?? null;
+  }, [isLoading]);
+
+  const handleChatTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isLoading) return;
+    const startY = touchStartYRef.current;
+    const currentY = e.touches[0]?.clientY ?? null;
+    if (startY === null || currentY === null) return;
+    // Finger moving down usually means scrolling up.
+    if (currentY - startY > 6) {
+      setAutoFollowEnabled(false);
+    }
+  }, [isLoading]);
 
   // Handle clicking a suggested question
   const handleSuggestionClick = useCallback((question: string) => {
@@ -690,8 +881,12 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
       />
       <div className="flex flex-1 flex-col overflow-hidden">
         <div
-          className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain"
+          className="relative flex-1 overflow-y-auto overflow-x-hidden overscroll-contain"
           ref={scrollRef}
+          onScroll={handleChatScroll}
+          onWheel={handleChatWheel}
+          onTouchStart={handleChatTouchStart}
+          onTouchMove={handleChatTouchMove}
         >
           <div
             className="mx-auto w-full max-w-[1024px] px-6 pb-6 pt-4"
@@ -909,39 +1104,12 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                               />
                             );
                           } else if (group.type === "timeline_text") {
-                            // Check if this is the last AI content group (for showing buttons/suggestions)
-                            const isLastAiContent = isLastGroup || groupedItems.slice(groupIdx + 1).every(
-                              g => g.type !== "timeline_text" && g.type !== "message"
-                            );
-
-                            // For intermediate text blocks: use lightweight MarkdownContent (no action buttons)
-                            // For the last text block: use full ChatMessage (with copy/regenerate/share buttons)
-                            if (!isLastAiContent) {
-                              return (
-                                <div key={group.id} className="text-sm leading-relaxed text-primary">
-                                  <MarkdownContent content={group.content} />
-                                </div>
-                              );
-                            }
-
-                            // Last AI content block: use ChatMessage with action buttons
-                            const syntheticMessage = {
-                              id: group.id,
-                              type: "ai" as const,
-                              content: group.content,
-                            };
-
+                            // Render Timeline Text (flat mode) as lightweight markdown.
+                            // Action buttons are rendered once in the legacy footer after generation ends.
                             return (
-                              <ChatMessage
-                                key={group.id}
-                                message={syntheticMessage as any}
-                                toolCalls={[]}
-                                isLoading={false}
-                                onRegenerate={handleRegenerate}
-                                onShare={() => handleShare()}
-                                suggestedQuestions={!isLoading ? suggestedQuestions : undefined}
-                                onSuggestionClick={handleSuggestionClick}
-                              />
+                              <div key={group.id} className="text-sm leading-relaxed text-primary">
+                                <MarkdownContent content={group.content} />
+                              </div>
                             );
                           } else if (group.type === "message") {
                             // Render Top Level Message
@@ -991,6 +1159,84 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                           }
                           return null;
                         })}
+
+                        {/* Legacy footer actions (only after generation ends) */}
+                        {!isLoading && messages.some((m) => m.type === "ai") && (
+                          <div className="mt-2">
+                            <TooltipProvider delayDuration={0}>
+                              <div className="flex items-center gap-0.5">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={handleCopyLastAiResponse}
+                                      className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                    >
+                                      {footerCopied ? (
+                                        <Check className="h-3.5 w-3.5 text-green-500" />
+                                      ) : (
+                                        <Copy className="h-3.5 w-3.5" />
+                                      )}
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top">
+                                    {footerCopied ? "已复制" : "复制"}
+                                  </TooltipContent>
+                                </Tooltip>
+
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={handleRegenerate}
+                                      className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                    >
+                                      <RefreshCw className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top">重新生成</TooltipContent>
+                                </Tooltip>
+
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleShare()}
+                                      className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                    >
+                                      <Share2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top">分享对话</TooltipContent>
+                                </Tooltip>
+                              </div>
+                            </TooltipProvider>
+
+                            {suggestedQuestions.length > 0 && (
+                              <div className="mt-4">
+                                <div className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                                  <span>💡</span>
+                                  <span>你可能想继续问：</span>
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                  {suggestedQuestions.map((question, index) => (
+                                    <button
+                                      key={index}
+                                      onClick={() => handleSuggestionClick(question)}
+                                      className="group inline-flex w-fit items-center gap-1 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                    >
+                                      <span>{question}</span>
+                                      <span className="text-muted-foreground/50 group-hover:text-foreground">→</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })()
@@ -1003,9 +1249,25 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                     </div>
                   </div>
                 )}
+
+                <div ref={bottomSentinelRef} className="h-px w-full" />
               </>
             )}
           </div >
+
+          {isLoading && !autoFollowEnabled && (
+            <div className="pointer-events-none absolute bottom-4 right-4">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={resumeAutoFollow}
+                className="pointer-events-auto h-9 gap-2 rounded-full shadow-sm"
+              >
+                <ArrowDown className="h-4 w-4" />
+                回到底部
+              </Button>
+            </div>
+          )}
         </div >
 
         <div className="flex-shrink-0 bg-background">
@@ -1266,11 +1528,8 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                       </TooltipContent>
                       <DropdownMenuContent align="start" className="w-56">
                         <DropdownMenuItem onClick={() => googleDrivePicker.openPicker()} disabled={googleDrivePicker.isLoading}>
-                          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M12 2L2 19.5h20L12 2z" />
-                            <path d="M12 2l10 17.5" />
-                            <path d="M2 19.5h20" />
-                            <path d="M7 12l5 7.5 5-7.5" />
+                          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12.01 1.485c-2.082 0-3.754.02-3.743.047.01.02 1.708 3.001 3.774 6.62l3.76 6.574h3.76c2.081 0 3.753-.02 3.742-.047-.005-.02-1.708-3.001-3.775-6.62l-3.76-6.574zm-4.76 1.73a789.828 789.861 0 0 0-3.63 6.319L0 15.868l1.89 3.298 1.885 3.297 3.62-6.335 3.618-6.33-1.88-3.287C8.1 4.704 7.255 3.22 7.25 3.214zm2.259 12.653-.203.348c-.114.198-.96 1.672-1.88 3.287a423.93 423.948 0 0 1-1.698 2.97c-.01.026 3.24.042 7.222.042h7.244l1.796-3.157c.992-1.734 1.85-3.23 1.906-3.323l.104-.167h-7.249z" />
                           </svg>
                           <span>从 Google Drive 添加</span>
                         </DropdownMenuItem>
