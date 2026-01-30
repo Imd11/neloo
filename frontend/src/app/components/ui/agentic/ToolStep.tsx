@@ -167,9 +167,9 @@ export function ToolStep({
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
                 className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[13px]
-                           bg-zinc-200/70 dark:bg-zinc-800/50
-                           border border-zinc-200/80 dark:border-zinc-700/40
-                           hover:bg-zinc-300/60 dark:hover:bg-zinc-700/50
+                           bg-zinc-200/70 dark:bg-zinc-900/50
+                           border border-zinc-200/80 dark:border-zinc-800/50
+                           hover:bg-zinc-300/60 dark:hover:bg-zinc-800/50
                            transition-colors group/capsule"
             >
                 {/* Icon - Always gray */}
