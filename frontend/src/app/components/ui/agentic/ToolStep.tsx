@@ -167,9 +167,9 @@ export function ToolStep({
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[13px]
-                           bg-zinc-100/60 dark:bg-zinc-800/40
-                           border border-zinc-200/50 dark:border-zinc-700/50
-                           hover:bg-zinc-200/70 dark:hover:bg-zinc-700/50
+                           bg-zinc-200/70 dark:bg-zinc-700/60
+                           border border-zinc-200/80 dark:border-zinc-600/50
+                           hover:bg-zinc-300/60 dark:hover:bg-zinc-600/60
                            transition-colors group/capsule"
             >
                 {/* Icon - Always gray */}
@@ -183,7 +183,7 @@ export function ToolStep({
                 <span className="font-medium text-zinc-700 dark:text-zinc-300 truncate max-w-[400px] flex items-center gap-1.5">
                     {toolName === "search_web" ? (
                         <>
-                            <span className="text-zinc-400 font-normal">正在搜索</span>
+                            <span className="text-zinc-500 dark:text-zinc-300 font-normal">正在搜索</span>
                             <span className="text-zinc-800 dark:text-zinc-200">{displayInput}</span>
                         </>
                     ) : (
