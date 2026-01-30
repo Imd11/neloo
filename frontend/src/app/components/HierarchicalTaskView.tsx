@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useCallback } from "react";
-import { Copy, Check, RefreshCw, Share } from "lucide-react";
+import { Copy, Check, RefreshCw, Share, CheckCircle2 } from "lucide-react";
 import {
     buildEventTimeline,
     EventTimelineEvent,
@@ -91,7 +91,7 @@ function TimelineItemRenderer({
 }
 
 /**
- * Render a todo anchor row (○ / ✓ + title)
+ * Render a todo anchor row with spinner/check icons
  */
 function TodoNodeRow({
     title,
@@ -101,17 +101,16 @@ function TodoNodeRow({
     status: "running" | "done";
 }) {
     return (
-        <div className="flex items-start gap-2 w-full py-0.5">
-            <span
-                className={cn(
-                    "w-4 shrink-0 text-sm font-normal",
-                    status === "done"
-                        ? "text-muted-foreground"
-                        : "text-foreground"
+        <div className="flex items-center gap-2 w-full py-1">
+            {/* Status indicator */}
+            <div className="w-4 h-4 shrink-0 flex items-center justify-center">
+                {status === "done" ? (
+                    <CheckCircle2 className="w-4 h-4 text-muted-foreground fill-muted-foreground/20" />
+                ) : (
+                    <div className="gradient-spinner" />
                 )}
-            >
-                {status === "done" ? "✓" : "○"}
-            </span>
+            </div>
+            {/* Title */}
             <span
                 className={cn(
                     "text-sm flex-1",
@@ -188,12 +187,13 @@ export function HierarchicalTaskView({
                         return (
                             <div
                                 key={contentKey}
-                                className="flex items-start"
+                                className="flex items-stretch"
                             >
-                                <span className="w-4 shrink-0 text-muted-foreground/50 text-sm select-none">
-                                    │
-                                </span>
-                                <div className="ml-1 flex-1 min-w-0">
+                                {/* Vertical connecting line - CSS solid line */}
+                                <div className="w-4 shrink-0 flex justify-center">
+                                    <div className="w-px bg-border h-full" />
+                                </div>
+                                <div className="ml-1 flex-1 min-w-0 py-0.5">
                                     <TimelineItemRenderer
                                         item={evt.item}
                                         isLoading={isLoading}

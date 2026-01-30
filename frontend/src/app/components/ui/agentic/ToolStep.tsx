@@ -25,39 +25,32 @@ export interface ToolStepProps {
     className?: string;
 }
 
-// Tool Definition Mapping
-// Tool Definition Mapping - Minimalist Redesign
-// Removed colorful backgrounds, switched to subtle text accents or monochrome
-const TOOL_CONFIG: Record<string, { icon: any; color: string; label: string }> = {
+// Tool Definition Mapping - Capsule Design with Monochrome Icons
+// Icons are always gray, hover effect is on the capsule container
+const TOOL_CONFIG: Record<string, { icon: any; label: string }> = {
     search_web: {
         icon: Search,
-        color: "text-zinc-500 group-hover:text-blue-500 transition-colors",
         label: "Web Search"
     },
     execute_python: {
         icon: Terminal,
-        color: "text-zinc-500 group-hover:text-emerald-500 transition-colors",
         label: "Execute Python"
     },
     read_file: {
         icon: FileText,
-        color: "text-zinc-400 group-hover:text-zinc-600 transition-colors",
         label: "Read File"
     },
     write_file: {
         icon: FolderOpen,
-        color: "text-zinc-400 group-hover:text-zinc-600 transition-colors",
         label: "Write File"
     },
     task: {
         icon: Bot,
-        color: "text-zinc-500 group-hover:text-violet-500 transition-colors",
         label: "Sub-Agent Task"
     },
     // Default fallback
     default: {
         icon: Workflow,
-        color: "text-zinc-400 group-hover:text-zinc-600",
         label: "Tool Execution"
     }
 };
@@ -169,47 +162,46 @@ export function ToolStep({
     const searchResults = (toolName === 'search_web' && output) ? parseSearchResults(output) : null;
 
     return (
-        <div className={cn("relative flex gap-3 font-sans group py-1", className)}>
-            {/* Thread Line - Ultra subtle */}
-            <div className={cn(
-                "absolute left-[11px] top-0 w-[1px] bg-zinc-100 dark:bg-zinc-800",
-                isLast ? "h-6" : "bottom-0"
-            )} />
-
-            {/* Icon Area - Minimalist, no background rings */}
-            <div className="relative z-10 flex h-6 w-6 shrink-0 items-center justify-center bg-white dark:bg-zinc-950">
+        <div className={cn("font-sans py-0.5", className)}>
+            {/* Capsule Container */}
+            <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[13px]
+                           bg-zinc-100/60 dark:bg-zinc-800/40
+                           border border-zinc-200/50 dark:border-zinc-700/50
+                           hover:bg-zinc-200/70 dark:hover:bg-zinc-700/50
+                           transition-colors group/capsule"
+            >
+                {/* Icon - Always gray */}
                 {status === "running" ? (
-                    <Loader2 className={cn("h-3.5 w-3.5 animate-spin text-zinc-400")} />
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-zinc-500" />
                 ) : (
-                    <Icon className={cn("h-3.5 w-3.5 transition-colors", config.color)} />
+                    <Icon className="h-3.5 w-3.5 text-zinc-500" />
                 )}
-            </div>
 
-            {/* Content */}
-            <div className="flex-1 min-w-0">
-                <button
-                    onClick={() => setIsExpanded(!isExpanded)}
-                    className="flex items-center gap-3 text-[13px] w-full text-left rounded-md px-2 -ml-2 py-1 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors group/btn"
-                >
-                    <span className="font-medium text-zinc-700 dark:text-zinc-300 truncate max-w-[600px] flex items-center gap-2">
-                        {toolName === "search_web" ? (
-                            <>
-                                <span className="text-zinc-400 font-normal">正在搜索</span>
-                                <span className="text-zinc-800 dark:text-zinc-200">{displayInput}</span>
-                            </>
-                        ) : (
-                            displayInput
-                        )}
+                {/* Text Content */}
+                <span className="font-medium text-zinc-700 dark:text-zinc-300 truncate max-w-[400px] flex items-center gap-1.5">
+                    {toolName === "search_web" ? (
+                        <>
+                            <span className="text-zinc-400 font-normal">正在搜索</span>
+                            <span className="text-zinc-800 dark:text-zinc-200">{displayInput}</span>
+                        </>
+                    ) : (
+                        displayInput
+                    )}
+                </span>
+
+                {/* Status Indicator & Chevron */}
+                <div className="flex items-center gap-1.5 ml-1">
+                    {status === "error" && <XCircle size={14} className="text-red-500" />}
+                    <span className="text-zinc-400 dark:text-zinc-500">
+                        {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                     </span>
+                </div>
+            </button>
 
-                    {/* Status Indicator & Chevron */}
-                    <div className="ml-auto flex items-center gap-2 opacity-0 group-hover/btn:opacity-100 transition-opacity">
-                        {status === "error" && <XCircle size={14} className="text-red-500" />}
-                        <span className="text-zinc-300 dark:text-zinc-600">
-                            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                        </span>
-                    </div>
-                </button>
+            {/* Expanded Content */}
+            <div className="ml-1">
 
                 {/* Details (Expanded) */}
                 <AnimatePresence>

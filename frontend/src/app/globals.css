@@ -54,7 +54,7 @@
     --sidebar-muted: 0 0% 55%;
 
     /* Custom tokens */
-    --input-bg: 0 0% 94%;
+    --input-bg: 0 0% 98%;
     --hover-bg: 0 0% 92%;
     --active-bg: 0 0% 88%;
     --glow: 210 40% 50%;
@@ -115,7 +115,7 @@
     --sidebar-muted: 0 0% 45%;
 
     /* Custom tokens */
-    --input-bg: 0 0% 14%;
+    --input-bg: 240 4% 19%;
     --hover-bg: 0 0% 20%;
     --active-bg: 0 0% 22%;
     --glow: 210 40% 60%;
@@ -222,4 +222,29 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* Gradient tail spinner animation for in-progress tasks */
+@keyframes spinner-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.gradient-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg,
+      transparent 0deg,
+      transparent 90deg,
+      hsl(var(--foreground)) 270deg,
+      hsl(var(--foreground)) 360deg);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px));
+  animation: spinner-rotate 1s linear infinite;
 }

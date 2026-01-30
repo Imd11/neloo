@@ -18,6 +18,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Square,
   ArrowUp,
   CheckCircle,
@@ -730,255 +736,264 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                 ) : (
                   /* Legacy Grouped Rendering Logic (no todos) */
                   (() => {
-                  // Deduplicate messages by ID - keep only the last occurrence of each ID
-                  // This handles streaming where SDK may have multiple entries for same message ID
-                  // with progressively growing content (we want the latest/most complete version)
-                  const deduplicatedMessages = messages.reduce((acc, msg) => {
-                    const existingIndex = acc.findIndex(m => m.id === msg.id);
-                    if (existingIndex >= 0) {
-                      // Replace with newer version (later in stream = more content)
-                      acc[existingIndex] = msg;
-                    } else {
-                      acc.push(msg);
-                    }
-                    return acc;
-                  }, [] as typeof messages);
+                    // Deduplicate messages by ID - keep only the last occurrence of each ID
+                    // This handles streaming where SDK may have multiple entries for same message ID
+                    // with progressively growing content (we want the latest/most complete version)
+                    const deduplicatedMessages = messages.reduce((acc, msg) => {
+                      const existingIndex = acc.findIndex(m => m.id === msg.id);
+                      if (existingIndex >= 0) {
+                        // Replace with newer version (later in stream = more content)
+                        acc[existingIndex] = msg;
+                      } else {
+                        acc.push(msg);
+                      }
+                      return acc;
+                    }, [] as typeof messages);
 
-                  const groupedItems = groupMessagesByTask(deduplicatedMessages);
+                    const groupedItems = groupMessagesByTask(deduplicatedMessages);
 
-                  return (
-                    <div className="flex flex-col gap-0 relative">
-                      {/* Continuous Thread Line container if needed, but we'll do per-item lines */}
+                    return (
+                      <div className="flex flex-col gap-0 relative">
+                        {/* Continuous Thread Line container if needed, but we'll do per-item lines */}
 
-                      {groupedItems.map((group, groupIdx) => {
-                        const isLastGroup = groupIdx === groupedItems.length - 1;
+                        {groupedItems.map((group, groupIdx) => {
+                          const isLastGroup = groupIdx === groupedItems.length - 1;
 
-                        if (group.type === "global_thinking") {
-                          return (
-                            <div key={group.id} className="flex flex-col">
-                              {group.items.map((item, idx) => {
-                                // Determine if active streaming
-                                // Global thoughts stream at the very beginning
-                                // Only true if item.isStreaming is explicitly true (not just !== false)
-                                const isStreaming = isLoading && isLastGroup && (idx === group.items.length - 1) && item.isStreaming === true;
-                                // Pass isLast=false always if there are subsequent groups (Tasks), effectively connecting deeply
-                                // Actually ThinkingBlock handles its own line logic, we might need a prop to Force the line to continue
-                                // But ThinkingBlock line is usually "bottom-0" if not last. 
-                                return (
-                                  <ThinkingBlock
-                                    key={`global-think-${idx}`}
-                                    content={item.content}
-                                    startTime={item.startTime}
-                                    isStreaming={isStreaming}
-                                    duration={item.duration}
-                                    defaultExpanded={false} // User request: default collapsed
-                                    className={cn(
-                                      // Visual tweak to align with tasks
-                                      "mb-2"
-                                    )}
-                                    hasDoctype={true} // Special prop to indicate it's global context? or just styling
-                                  />
-                                );
-                              })}
-                            </div>
-                          )
-                        }
-
-                        if (group.type === "task") {
-                          return (
-                            <TaskCard
-                              key={group.id}
-                              title={group.title}
-                              status={group.status}
-                              isLast={isLastGroup} // Pass isLast to control thread line
-                            >
-                              {group.items.map((item, idx) => {
-                                // Render ToolStep
-                                if ("toolName" in item) {
-                                  return (
-                                    <ToolStep
-                                      key={item.toolCallId}
-                                      toolName={item.toolName}
-                                      input={typeof item.args === 'string' ? item.args : JSON.stringify(item.args)}
-                                      output={item.result}
-                                      status={item.status}
-                                      isLast={idx === group.items.length - 1}
-                                    />
-                                  );
-                                }
-
-                                // Render ThinkingContent inside Task
-                                if ("content" in item && "isStreaming" in item) {
-                                  // Only mark as actively streaming if:
-                                  // 1. Overall chat is loading
-                                  // 2. This task is in progress
-                                  // 3. This is the last item in the group
-                                  // 4. This item's isStreaming is explicitly true (not just defined)
-                                  const thinkingItem = item as { isStreaming: boolean };
-                                  const isActive = isLoading && (group.status === "in_progress") && (idx === group.items.length - 1) && thinkingItem.isStreaming === true;
-
+                          if (group.type === "global_thinking") {
+                            return (
+                              <div key={group.id} className="flex flex-col">
+                                {group.items.map((item, idx) => {
+                                  // Determine if active streaming
+                                  // Global thoughts stream at the very beginning
+                                  // Only true if item.isStreaming is explicitly true (not just !== false)
+                                  const isStreaming = isLoading && isLastGroup && (idx === group.items.length - 1) && item.isStreaming === true;
+                                  // Pass isLast=false always if there are subsequent groups (Tasks), effectively connecting deeply
+                                  // Actually ThinkingBlock handles its own line logic, we might need a prop to Force the line to continue
+                                  // But ThinkingBlock line is usually "bottom-0" if not last. 
                                   return (
                                     <ThinkingBlock
-                                      key={`thinking-${idx}`}
+                                      key={`global-think-${idx}`}
                                       content={item.content}
                                       startTime={item.startTime}
-                                      isStreaming={isActive}
+                                      isStreaming={isStreaming}
                                       duration={item.duration}
                                       defaultExpanded={false} // User request: default collapsed
-                                    />
-                                  )
-                                }
-
-                                // Render Message (Thinking/Text) inside Task
-                                if ("content" in item && "id" in item) { // Message interface
-                                  const msgId = item.id;
-                                  const processedData = processedMessages.find(pm => pm.message.id === msgId);
-
-                                  if (!processedData) return null;
-
-                                  const messageUi = ui?.filter(
-                                    (u: any) => u.metadata?.message_id === msgId
-                                  );
-                                  const isLastMessage = msgId === messages[messages.length - 1].id;
-                                  const isUserMessage = item.type === "human";
-                                  const isLastAiMessage = !isUserMessage && isLastMessage;
-                                  const isAiMessage = !isUserMessage;
-
-                                  return (
-                                    <ChatMessage
-                                      key={msgId}
-                                      message={processedData.message}
-                                      toolCalls={processedData.toolCalls}
-                                      isLoading={isLoading}
-                                      actionRequestsMap={
-                                        isLastMessage ? actionRequestsMap : undefined
-                                      }
-                                      reviewConfigsMap={
-                                        isLastMessage ? reviewConfigsMap : undefined
-                                      }
-                                      ui={messageUi}
-                                      stream={stream}
-                                      onResumeInterrupt={resumeInterrupt}
-                                      graphId={assistant?.graph_id}
-                                      webDevMode={webDevMode}
-                                      isLastMessage={isLastMessage}
-                                      onArtifactSelect={onArtifactSelect}
-                                      selectedArtifactId={selectedArtifact?.id}
-                                      onEditMessage={isUserMessage ? (content) => {
-                                        const msgIndex = messages?.findIndex(m => m.id === msgId) ?? -1;
-                                        if (msgIndex >= 0) handleStartEdit(msgIndex, content);
-                                      } : undefined}
-                                      onRegenerate={isAiMessage ? (isLastAiMessage ? handleRegenerate : () => handleForkRegenerate(msgId!)) : undefined}
-                                      onShare={isAiMessage ? () => handleShare(msgId) : undefined}
-                                      hideTools={true}
+                                      className={cn(
+                                        // Visual tweak to align with tasks
+                                        "mb-2"
+                                      )}
+                                      hasDoctype={true} // Special prop to indicate it's global context? or just styling
                                     />
                                   );
+                                })}
+                              </div>
+                            )
+                          }
+
+                          if (group.type === "task") {
+                            return (
+                              <TaskCard
+                                key={group.id}
+                                title={group.title}
+                                status={group.status}
+                                isLast={isLastGroup} // Pass isLast to control thread line
+                              >
+                                {group.items.map((item, idx) => {
+                                  // Render ToolStep
+                                  if ("toolName" in item) {
+                                    return (
+                                      <ToolStep
+                                        key={item.toolCallId}
+                                        toolName={item.toolName}
+                                        input={typeof item.args === 'string' ? item.args : JSON.stringify(item.args)}
+                                        output={item.result}
+                                        status={item.status}
+                                        isLast={idx === group.items.length - 1}
+                                      />
+                                    );
+                                  }
+
+                                  // Render ThinkingContent inside Task
+                                  if ("content" in item && "isStreaming" in item) {
+                                    // Only mark as actively streaming if:
+                                    // 1. Overall chat is loading
+                                    // 2. This task is in progress
+                                    // 3. This is the last item in the group
+                                    // 4. This item's isStreaming is explicitly true (not just defined)
+                                    const thinkingItem = item as { isStreaming: boolean };
+                                    const isActive = isLoading && (group.status === "in_progress") && (idx === group.items.length - 1) && thinkingItem.isStreaming === true;
+
+                                    return (
+                                      <ThinkingBlock
+                                        key={`thinking-${idx}`}
+                                        content={item.content}
+                                        startTime={item.startTime}
+                                        isStreaming={isActive}
+                                        duration={item.duration}
+                                        defaultExpanded={false} // User request: default collapsed
+                                      />
+                                    )
+                                  }
+
+                                  // Render Message (Thinking/Text) inside Task
+                                  if ("content" in item && "id" in item) { // Message interface
+                                    const msgId = item.id;
+                                    const processedData = processedMessages.find(pm => pm.message.id === msgId);
+
+                                    if (!processedData) return null;
+
+                                    const messageUi = ui?.filter(
+                                      (u: any) => u.metadata?.message_id === msgId
+                                    );
+                                    const isLastMessage = msgId === messages[messages.length - 1].id;
+                                    const isUserMessage = item.type === "human";
+                                    const isLastAiMessage = !isUserMessage && isLastMessage;
+                                    const isAiMessage = !isUserMessage;
+
+                                    return (
+                                      <ChatMessage
+                                        key={msgId}
+                                        message={processedData.message}
+                                        toolCalls={processedData.toolCalls}
+                                        isLoading={isLoading}
+                                        actionRequestsMap={
+                                          isLastMessage ? actionRequestsMap : undefined
+                                        }
+                                        reviewConfigsMap={
+                                          isLastMessage ? reviewConfigsMap : undefined
+                                        }
+                                        ui={messageUi}
+                                        stream={stream}
+                                        onResumeInterrupt={resumeInterrupt}
+                                        graphId={assistant?.graph_id}
+                                        webDevMode={webDevMode}
+                                        isLastMessage={isLastMessage}
+                                        onArtifactSelect={onArtifactSelect}
+                                        selectedArtifactId={selectedArtifact?.id}
+                                        onEditMessage={isUserMessage ? (content) => {
+                                          const msgIndex = messages?.findIndex(m => m.id === msgId) ?? -1;
+                                          if (msgIndex >= 0) handleStartEdit(msgIndex, content);
+                                        } : undefined}
+                                        onRegenerate={isAiMessage ? (isLastAiMessage ? handleRegenerate : () => handleForkRegenerate(msgId!)) : undefined}
+                                        onShare={isAiMessage ? () => handleShare(msgId) : undefined}
+                                        hideTools={true}
+                                      />
+                                    );
+                                  }
+                                  return null;
+                                })}
+                              </TaskCard>
+                            );
+                          } else if (group.type === "timeline_thinking") {
+                            // Render Timeline Thinking (flat mode)
+                            return (
+                              <ThinkingBlock
+                                key={group.id}
+                                content={group.content}
+                                startTime={Date.now()}
+                                isStreaming={isLoading && isLastGroup}
+                                duration={group.duration}
+                                defaultExpanded={false}
+                              />
+                            );
+                          } else if (group.type === "timeline_tool_call") {
+                            // Render Timeline Tool Call (flat mode)
+                            return (
+                              <ToolStep
+                                key={group.id}
+                                toolName={group.toolName}
+                                input={group.args}
+                                output={group.result}
+                                status={group.status}
+                                isLast={isLastGroup}
+                              />
+                            );
+                          } else if (group.type === "timeline_text") {
+                            // Check if this is the last AI content group (for showing buttons/suggestions)
+                            const isLastAiContent = isLastGroup || groupedItems.slice(groupIdx + 1).every(
+                              g => g.type !== "timeline_text" && g.type !== "message"
+                            );
+
+                            // For intermediate text blocks: use lightweight MarkdownContent (no action buttons)
+                            // For the last text block: use full ChatMessage (with copy/regenerate/share buttons)
+                            if (!isLastAiContent) {
+                              return (
+                                <div key={group.id} className="text-sm leading-relaxed text-primary">
+                                  <MarkdownContent content={group.content} />
+                                </div>
+                              );
+                            }
+
+                            // Last AI content block: use ChatMessage with action buttons
+                            const syntheticMessage = {
+                              id: group.id,
+                              type: "ai" as const,
+                              content: group.content,
+                            };
+
+                            return (
+                              <ChatMessage
+                                key={group.id}
+                                message={syntheticMessage as any}
+                                toolCalls={[]}
+                                isLoading={false}
+                                onRegenerate={handleRegenerate}
+                                onShare={() => handleShare()}
+                                suggestedQuestions={!isLoading ? suggestedQuestions : undefined}
+                                onSuggestionClick={handleSuggestionClick}
+                              />
+                            );
+                          } else if (group.type === "message") {
+                            // Render Top Level Message
+                            const msgId = group.message.id;
+                            const processedData = processedMessages.find(pm => pm.message.id === msgId);
+
+                            if (!processedData) return null;
+
+                            const messageUi = ui?.filter(
+                              (u: any) => u.metadata?.message_id === msgId
+                            );
+                            const isLastMessage = msgId === messages[messages.length - 1].id;
+                            const isUserMessage = group.message.type === "human";
+                            const isLastAiMessage = !isUserMessage && isLastMessage;
+                            const isAiMessage = !isUserMessage;
+
+                            return (
+                              <ChatMessage
+                                key={msgId}
+                                message={processedData.message}
+                                toolCalls={processedData.toolCalls}
+                                isLoading={isLoading}
+                                actionRequestsMap={
+                                  isLastMessage ? actionRequestsMap : undefined
                                 }
-                                return null;
-                              })}
-                            </TaskCard>
-                          );
-                        } else if (group.type === "timeline_thinking") {
-                          // Render Timeline Thinking (flat mode)
-                          return (
-                            <ThinkingBlock
-                              key={group.id}
-                              content={group.content}
-                              startTime={Date.now()}
-                              isStreaming={isLoading && isLastGroup}
-                              duration={group.duration}
-                              defaultExpanded={false}
-                            />
-                          );
-                        } else if (group.type === "timeline_tool_call") {
-                          // Render Timeline Tool Call (flat mode)
-                          return (
-                            <ToolStep
-                              key={group.id}
-                              toolName={group.toolName}
-                              input={group.args}
-                              output={group.result}
-                              status={group.status}
-                              isLast={isLastGroup}
-                            />
-                          );
-                        } else if (group.type === "timeline_text") {
-                          // Render Timeline Text using ChatMessage for unified rendering
-                          // Check if this is the last AI content group (for showing buttons/suggestions)
-                          const isLastAiContent = isLastGroup || groupedItems.slice(groupIdx + 1).every(
-                            g => g.type !== "timeline_text" && g.type !== "message"
-                          );
-
-                          // Create a synthetic message object for ChatMessage
-                          const syntheticMessage = {
-                            id: group.id,
-                            type: "ai" as const,
-                            content: group.content,
-                          };
-
-                          return (
-                            <ChatMessage
-                              key={group.id}
-                              message={syntheticMessage as any}
-                              toolCalls={[]}
-                              isLoading={false}
-                              onRegenerate={isLastAiContent ? handleRegenerate : undefined}
-                              onShare={isLastAiContent ? () => handleShare() : undefined}
-                              suggestedQuestions={isLastAiContent && !isLoading ? suggestedQuestions : undefined}
-                              onSuggestionClick={isLastAiContent ? handleSuggestionClick : undefined}
-                            />
-                          );
-                        } else if (group.type === "message") {
-                          // Render Top Level Message
-                          const msgId = group.message.id;
-                          const processedData = processedMessages.find(pm => pm.message.id === msgId);
-
-                          if (!processedData) return null;
-
-                          const messageUi = ui?.filter(
-                            (u: any) => u.metadata?.message_id === msgId
-                          );
-                          const isLastMessage = msgId === messages[messages.length - 1].id;
-                          const isUserMessage = group.message.type === "human";
-                          const isLastAiMessage = !isUserMessage && isLastMessage;
-                          const isAiMessage = !isUserMessage;
-
-                          return (
-                            <ChatMessage
-                              key={msgId}
-                              message={processedData.message}
-                              toolCalls={processedData.toolCalls}
-                              isLoading={isLoading}
-                              actionRequestsMap={
-                                isLastMessage ? actionRequestsMap : undefined
-                              }
-                              reviewConfigsMap={
-                                isLastMessage ? reviewConfigsMap : undefined
-                              }
-                              ui={messageUi}
-                              stream={stream}
-                              onResumeInterrupt={resumeInterrupt}
-                              graphId={assistant?.graph_id}
-                              webDevMode={webDevMode}
-                              isLastMessage={isLastMessage}
-                              onArtifactSelect={onArtifactSelect}
-                              selectedArtifactId={selectedArtifact?.id}
-                              onEditMessage={isUserMessage ? (content) => {
-                                const msgIndex = messages?.findIndex(m => m.id === msgId) ?? -1;
-                                if (msgIndex >= 0) handleStartEdit(msgIndex, content);
-                              } : undefined}
-                              onRegenerate={isAiMessage ? (isLastAiMessage ? handleRegenerate : () => handleForkRegenerate(msgId!)) : undefined}
-                              onShare={isAiMessage ? () => handleShare(msgId) : undefined}
-                              suggestedQuestions={isLastAiMessage && !isLoading ? suggestedQuestions : undefined}
-                              onSuggestionClick={isLastAiMessage ? handleSuggestionClick : undefined}
-                            />
-                          );
-                        }
-                        return null;
-                      })}
-                    </div>
-                  );
-                })()
+                                reviewConfigsMap={
+                                  isLastMessage ? reviewConfigsMap : undefined
+                                }
+                                ui={messageUi}
+                                stream={stream}
+                                onResumeInterrupt={resumeInterrupt}
+                                graphId={assistant?.graph_id}
+                                webDevMode={webDevMode}
+                                isLastMessage={isLastMessage}
+                                onArtifactSelect={onArtifactSelect}
+                                selectedArtifactId={selectedArtifact?.id}
+                                onEditMessage={isUserMessage ? (content) => {
+                                  const msgIndex = messages?.findIndex(m => m.id === msgId) ?? -1;
+                                  if (msgIndex >= 0) handleStartEdit(msgIndex, content);
+                                } : undefined}
+                                onRegenerate={isAiMessage ? (isLastAiMessage ? handleRegenerate : () => handleForkRegenerate(msgId!)) : undefined}
+                                onShare={isAiMessage ? () => handleShare(msgId) : undefined}
+                                suggestedQuestions={isLastAiMessage && !isLoading ? suggestedQuestions : undefined}
+                                onSuggestionClick={isLastAiMessage ? handleSuggestionClick : undefined}
+                              />
+                            );
+                          }
+                          return null;
+                        })}
+                      </div>
+                    );
+                  })()
                 )}
 
                 {showTypingIndicator && (
@@ -1225,45 +1240,55 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
 
               {/* Single-line input layout like AnyAI: + | [tag] | input | mic | send */}
               <div className="flex items-center gap-2 px-4 py-3">
-                {/* Plus Button with Dropdown */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="icon"
-                      size="icon-sm"
-                      className="shrink-0 text-muted-foreground hover:text-foreground"
-                      disabled={isLoading}
-                    >
-                      {fileUpload.isUploading || fileUpload.isImporting ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                      ) : (
-                        <Plus className="h-5 w-5" />
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-56">
-                    <DropdownMenuItem onClick={() => googleDrivePicker.openPicker()} disabled={googleDrivePicker.isLoading}>
-                      <svg className="h-4 w-4 mr-2" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M6.6 66.85L3.75 61.5 28.2 20.25l29.1 0 24.55 41.2-29.2 0-24.5 0z" fill="#0066da" />
-                        <path d="M57.3 20.25L32.8 61.5l2.9 5.35L58.2 26.35l29.1 0-27-46.1z" fill="#00ac47" />
-                        <path d="M.15 61.5l27-46.1 29.15 0-27 46.1z" fill="#ffba00" />
-                      </svg>
-                      <span>从 Google Drive 文件中添加</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setLibraryDialogOpen(true)}>
-                      <FolderOpen className="h-4 w-4 mr-2" />
-                      <span>从库中选择</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => fileUpload.inputRef.current?.click()}>
-                      <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-                      </svg>
-                      <span>从本地文件中添加</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {/* Plus Button with Dropdown and Tooltip */}
+                <TooltipProvider delayDuration={300}>
+                  <Tooltip>
+                    <DropdownMenu>
+                      <TooltipTrigger asChild>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="icon"
+                            size="icon-sm"
+                            className="shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-full"
+                            disabled={isLoading}
+                          >
+                            {fileUpload.isUploading || fileUpload.isImporting ? (
+                              <Loader2 className="h-5 w-5 animate-spin" />
+                            ) : (
+                              <Plus className="h-5 w-5" />
+                            )}
+                          </Button>
+                        </DropdownMenuTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        添加文件
+                      </TooltipContent>
+                      <DropdownMenuContent align="start" className="w-56">
+                        <DropdownMenuItem onClick={() => googleDrivePicker.openPicker()} disabled={googleDrivePicker.isLoading}>
+                          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 2L2 19.5h20L12 2z" />
+                            <path d="M12 2l10 17.5" />
+                            <path d="M2 19.5h20" />
+                            <path d="M7 12l5 7.5 5-7.5" />
+                          </svg>
+                          <span>从 Google Drive 添加</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setLibraryDialogOpen(true)}>
+                          <FolderOpen className="h-4 w-4" />
+                          <span>从库中选择</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => fileUpload.inputRef.current?.click()}>
+                          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                          </svg>
+                          <span>从本地文件添加</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </Tooltip>
+                </TooltipProvider>
 
                 {/* FilePanel button - show when there's a thread OR local files */}
                 {(showFilePanelButton || fileUpload.files.length > 0) && onOpenFilePanel && (
