@@ -15,13 +15,27 @@ translate_router = APIRouter(prefix="/api", tags=["translate"])
 class TranslateRequest(BaseModel):
     text: str
     target_language: str = "English"
+    style: str = "general"
 
 
 class TranslateResponse(BaseModel):
     translation: str
 
 
-TRANSLATE_SYSTEM_PROMPT = """You are a professional translation assistant. Detect the source language automatically. Translate the user's text into {target_language}. Preserve tone, meaning, punctuation, emoji, and inline formatting. Return only the translated text without commentary, labels, or quotes."""
+# Style-specific translation instructions
+STYLE_PROMPTS = {
+    "general": "使用自然、通顺的表达方式",
+    "business_email": "使用专业、礼貌的商务用语，注意邮件格式",
+    "academic": "使用严谨、学术规范的表达，保留专业术语",
+    "technical": "使用准确、简洁的技术语言，保持术语一致性",
+    "social_media": "使用轻松、亲切的口语化表达",
+}
+
+TRANSLATE_SYSTEM_PROMPT = """You are a professional translation assistant. Detect the source language automatically. Translate the user's text into {target_language}.
+
+Translation style requirement: {style_requirement}
+
+Preserve tone, meaning, punctuation, emoji, and inline formatting. Return only the translated text without commentary, labels, or quotes."""
 
 
 @translate_router.post("/translate", response_model=TranslateResponse)
@@ -36,8 +50,14 @@ async def translate(request: TranslateRequest, user: dict = Depends(get_current_
     if not api_key:
         raise HTTPException(status_code=500, detail="Translation service not configured")
     
-    # Build the system prompt with target language
-    system_prompt = TRANSLATE_SYSTEM_PROMPT.format(target_language=request.target_language)
+    # Get style requirement
+    style_requirement = STYLE_PROMPTS.get(request.style, STYLE_PROMPTS["general"])
+    
+    # Build the system prompt with target language and style
+    system_prompt = TRANSLATE_SYSTEM_PROMPT.format(
+        target_language=request.target_language,
+        style_requirement=style_requirement
+    )
     
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:

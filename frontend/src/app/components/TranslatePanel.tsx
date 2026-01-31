@@ -14,6 +14,7 @@ import { ArrowLeftRight, ArrowLeft, Copy, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { getConfig } from "@/lib/config";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
 
 // Supported languages
 const LANGUAGES = [
@@ -35,12 +36,23 @@ const LANGUAGES = [
     { code: "Vietnamese", label: "Tiếng Việt" },
 ];
 
+// Translation styles
+const STYLES = [
+    { code: "general", label: "通用", description: "自然通顺的表达" },
+    { code: "business_email", label: "商务邮件", description: "专业礼貌的用语" },
+    { code: "academic", label: "学术论文", description: "严谨规范的表达" },
+    { code: "technical", label: "技术文档", description: "准确简洁的语言" },
+    { code: "social_media", label: "社交媒体", description: "轻松亲切的口语" },
+];
+
 // Rotating headlines for translation mode
 const HEADLINES = [
-    "翻译，让沟通无界",
-    "跨越语言的桥梁",
-    "准确传达每一个词",
+    "让AI成为你的语言伙伴",
     "让世界听懂你的声音",
+    "跨越语言的桥梁",
+    "译出你心中所想",
+    "智能翻译，让沟通无界",
+    "语言的尽头，是理解的开始",
 ];
 
 interface TranslatePanelProps {
@@ -52,6 +64,7 @@ export function TranslatePanel({ onBack }: TranslatePanelProps) {
     const [translatedText, setTranslatedText] = useState("");
     const [sourceLang, setSourceLang] = useState("auto");
     const [targetLang, setTargetLang] = useState("English");
+    const [selectedStyle, setSelectedStyle] = useState("general");
     const [loading, setLoading] = useState(false);
     const [copied, setCopied] = useState(false);
     const [headline] = useState(() => HEADLINES[Math.floor(Math.random() * HEADLINES.length)]);
@@ -94,6 +107,7 @@ export function TranslatePanel({ onBack }: TranslatePanelProps) {
                 body: JSON.stringify({
                     text: sourceText,
                     target_language: targetLang,
+                    style: selectedStyle,
                 }),
             });
 
@@ -109,7 +123,7 @@ export function TranslatePanel({ onBack }: TranslatePanelProps) {
         } finally {
             setLoading(false);
         }
-    }, [sourceText, targetLang]);
+    }, [sourceText, targetLang, selectedStyle]);
 
     const handleCopy = useCallback(async () => {
         if (!translatedText) return;
@@ -129,7 +143,7 @@ export function TranslatePanel({ onBack }: TranslatePanelProps) {
             {/* Back Button - Top Left */}
             <button
                 onClick={onBack}
-                className="absolute top-4 left-4 p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                className="absolute top-2 left-2 p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 aria-label="返回"
             >
                 <ArrowLeft className="w-5 h-5" />
@@ -216,11 +230,31 @@ export function TranslatePanel({ onBack }: TranslatePanelProps) {
                 </div>
             </div>
 
+            {/* Style Cards */}
+            <div className="flex flex-wrap justify-center gap-3 w-full mb-6">
+                {STYLES.map((style) => (
+                    <button
+                        key={style.code}
+                        onClick={() => setSelectedStyle(style.code)}
+                        className={cn(
+                            "flex flex-col items-center px-4 py-3 rounded-xl border transition-all",
+                            "hover:bg-muted/50",
+                            selectedStyle === style.code
+                                ? "bg-muted border-foreground/30"
+                                : "bg-background border-border"
+                        )}
+                    >
+                        <span className="font-medium text-sm text-foreground">{style.label}</span>
+                        <span className="text-xs text-muted-foreground mt-0.5">{style.description}</span>
+                    </button>
+                ))}
+            </div>
+
             {/* Translate Button */}
             <Button
                 onClick={handleTranslate}
                 disabled={loading || !sourceText.trim()}
-                className="px-8 py-2 bg-foreground text-background hover:bg-foreground/90 dark:bg-foreground dark:text-background dark:hover:bg-foreground/90"
+                className="px-10 py-3 text-base bg-foreground text-background hover:bg-foreground/90 dark:bg-foreground dark:text-background dark:hover:bg-foreground/90"
             >
                 {loading ? (
                     <>
@@ -234,3 +268,4 @@ export function TranslatePanel({ onBack }: TranslatePanelProps) {
         </div>
     );
 }
+
