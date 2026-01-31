@@ -143,7 +143,7 @@ export function TranslatePanel({ onBack }: TranslatePanelProps) {
             {/* Back Button - Top Left */}
             <button
                 onClick={onBack}
-                className="absolute top-2 left-2 p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                className="absolute top-0 left-0 p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 aria-label="返回"
             >
                 <ArrowLeft className="w-5 h-5" />
