@@ -14,6 +14,7 @@ import {
   MoreHorizontal,
   Settings,
   Share2,
+  Bot,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -41,9 +42,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/providers/AuthProvider";
+import { useAgentContext } from "@/providers/AgentProvider";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { SettingsDialog } from "./SettingsDialog";
 import { UserProfileDialog } from "./UserProfileDialog";
+import { AgentDialog } from "./AgentDialog";
 import { useThreads } from "@/app/hooks/useThreads";
 import { getConfig } from "@/lib/config";
 import { toast } from "sonner";
@@ -63,6 +66,7 @@ export interface AppSidebarProps {
   onThreadSelect?: (id: string) => void;
   onMutateReady?: (mutate: () => void) => void;
   onInterruptCountChange?: (count: number) => void;
+  onUseAgent?: (agentId: string, agentName: string, systemPrompt: string) => void;
 }
 
 export function AppSidebar({
@@ -72,16 +76,19 @@ export function AppSidebar({
   onThreadSelect,
   onMutateReady,
   onInterruptCountChange,
+  onUseAgent,
 }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { collapsed, toggle } = useSidebar();
   const { user, session } = useAuth();
+  const { setActiveAgent } = useAgentContext();
   const config = getConfig();
 
   const [logoHovered, setLogoHovered] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [agentOpen, setAgentOpen] = useState(false);
 
   // Real threads data
   const threads = useThreads({ limit: 20 });
@@ -521,6 +528,49 @@ export function AppSidebar({
 
         {/* Bottom Section */}
         <div className="py-2 space-y-0.5">
+          {/* Agent */}
+          <div onClick={() => setAgentOpen(true)} className="block cursor-pointer">
+            <div className="group relative flex items-center h-10 transition-colors text-sidebar-foreground">
+              {!collapsed && (
+                <div
+                  aria-hidden
+                  className={cn(
+                    "pointer-events-none absolute inset-y-0 left-1 right-1 rounded-lg transition-colors duration-150",
+                    "bg-transparent group-hover:bg-sidebar-accent/50"
+                  )}
+                />
+              )}
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    className={cn(
+                      iconColWidth,
+                      "relative z-10 flex-shrink-0 flex items-center justify-center h-10 rounded-lg transition-colors",
+                      collapsed && "hover:bg-sidebar-accent/50"
+                    )}
+                  >
+                    <Bot className="w-[18px] h-[18px]" />
+                  </div>
+                </TooltipTrigger>
+                {collapsed && (
+                  <TooltipContent side="right">
+                    <p>智能体</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+
+              <span
+                className={cn(
+                  "relative z-10 text-sm whitespace-nowrap transition-opacity duration-200",
+                  collapsed ? "opacity-0" : "opacity-100"
+                )}
+              >
+                智能体
+              </span>
+            </div>
+          </div>
+
           {/* Settings */}
           <div onClick={() => setSettingsOpen(true)} className="block cursor-pointer">
             <div className="group relative flex items-center h-10 transition-colors text-sidebar-foreground">
@@ -656,6 +706,21 @@ export function AppSidebar({
         </div>
 
       </aside>
+
+      {/* Agent Dialog */}
+      <AgentDialog
+        open={agentOpen}
+        onOpenChange={setAgentOpen}
+        onUseAgent={(agentId, agentName, systemPrompt) => {
+          // Set active agent in shared context for message injection
+          setActiveAgent({
+            id: agentId,
+            name: agentName,
+            systemPrompt: systemPrompt,
+          });
+          setAgentOpen(false);
+        }}
+      />
 
       {/* Settings Dialog */}
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />

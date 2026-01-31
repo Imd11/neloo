@@ -6,6 +6,7 @@ import React, {
   useCallback,
   useMemo,
   useEffect,
+  useLayoutEffect,
   FormEvent,
   Fragment,
 } from "react";
@@ -130,6 +131,8 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [footerCopied, setFooterCopied] = useState(false);
   const [autoFollowEnabled, setAutoFollowEnabled] = useState(true);
+  const [anchorSpacerHeight, setAnchorSpacerHeight] = useState(0);
+  const [pendingAnchorMessageId, setPendingAnchorMessageId] = useState<string | null>(null);
 
 
   const [input, setInput] = useState("");
@@ -443,12 +446,14 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
     const container = scrollRef.current;
     if (!container) return;
     isProgrammaticScrollRef.current = true;
-    container.scrollTop = container.scrollHeight;
+    const bottom =
+      container.scrollHeight - container.clientHeight - anchorSpacerHeight;
+    container.scrollTop = bottom > 0 ? bottom : 0;
     requestAnimationFrame(() => {
       isProgrammaticScrollRef.current = false;
       lastScrollTopRef.current = container.scrollTop;
     });
-  }, [scrollRef]);
+  }, [scrollRef, anchorSpacerHeight]);
 
   const resumeAutoFollow = useCallback(() => {
     setAutoFollowEnabled(true);
@@ -570,6 +575,26 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
     const streamCompleted = prevIsLoadingRef.current && !isLoading;
     const historyLoaded = prevIsThreadLoadingRef.current && !isThreadLoading;
 
+    if (streamCompleted && anchorSpacerHeight > 0) {
+      const container = scrollRef.current;
+      if (container) {
+        // Keep the spacer only if it's still needed to prevent scrollTop from being clamped.
+        // This avoids the "page drops down" effect when the AI output is short and the
+        // conversation would otherwise become non-scrollable.
+        const maxScrollTopWithoutSpacer = Math.max(
+          0,
+          (container.scrollHeight - anchorSpacerHeight) - container.clientHeight
+        );
+        const requiredSpacer = Math.max(
+          0,
+          Math.ceil(container.scrollTop - maxScrollTopWithoutSpacer)
+        );
+        if (requiredSpacer !== anchorSpacerHeight) {
+          setAnchorSpacerHeight(requiredSpacer);
+        }
+      }
+    }
+
     if ((streamCompleted || historyLoaded) && messages && messages.length > 0) {
       // Find the last AI message (not just the last message, which could be a tool result)
       let lastAiMessage: Message | null = null;
@@ -621,19 +646,64 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
     }
     if (!latestHuman?.id) return;
     if (latestHuman.id === lastAnchoredUserMessageIdRef.current) return;
+    if (latestHuman.id === pendingAnchorMessageId) return;
 
     // New turn: re-enable follow by default.
     setAutoFollowEnabled(true);
-    lastAnchoredUserMessageIdRef.current = latestHuman.id;
-
-    // Wait for the message bubble to be in the DOM.
-    requestAnimationFrame(() => {
-      scrollMessageToTop(latestHuman!.id!);
-    });
+    setPendingAnchorMessageId(latestHuman.id);
   }, [
     messages,
     isThreadLoading,
+    pendingAnchorMessageId,
+  ]);
+
+  // Ensure we have enough scroll range to place the latest user message at the top.
+  // When the conversation is shorter than the viewport, browsers clamp scrollTop to 0,
+  // so we add a minimal spacer at the bottom to make the container scrollable.
+  useLayoutEffect(() => {
+    if (!pendingAnchorMessageId) return;
+
+    const container = scrollRef.current;
+    if (!container) return;
+
+    const safeId =
+      typeof (globalThis as any).CSS?.escape === "function"
+        ? (globalThis as any).CSS.escape(pendingAnchorMessageId)
+        : pendingAnchorMessageId;
+    const target = container.querySelector(
+      `[data-message-id="${safeId}"]`
+    ) as HTMLElement | null;
+    if (!target) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const topPadding = 12;
+
+    // Desired scrollTop to make target top aligned to container top + padding.
+    const desiredScrollTop =
+      container.scrollTop + (targetRect.top - containerRect.top - topPadding);
+
+    const maxScrollTop = container.scrollHeight - container.clientHeight;
+    const maxScrollTopWithoutSpacer = Math.max(0, maxScrollTop - anchorSpacerHeight);
+
+    const requiredSpacer = Math.max(
+      0,
+      Math.ceil(desiredScrollTop - maxScrollTopWithoutSpacer)
+    );
+
+    if (requiredSpacer !== anchorSpacerHeight) {
+      setAnchorSpacerHeight(requiredSpacer);
+      return;
+    }
+
+    scrollMessageToTop(pendingAnchorMessageId);
+    lastAnchoredUserMessageIdRef.current = pendingAnchorMessageId;
+    setPendingAnchorMessageId(null);
+  }, [
+    pendingAnchorMessageId,
+    anchorSpacerHeight,
     scrollMessageToTop,
+    scrollRef,
   ]);
 
   // During streaming: keep new content visible if autoFollow is enabled.
@@ -1251,6 +1321,13 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                 )}
 
                 <div ref={bottomSentinelRef} className="h-px w-full" />
+                {anchorSpacerHeight > 0 && (
+                  <div
+                    aria-hidden="true"
+                    className="w-full"
+                    style={{ height: anchorSpacerHeight }}
+                  />
+                )}
               </>
             )}
           </div >

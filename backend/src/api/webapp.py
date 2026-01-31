@@ -2987,3 +2987,10 @@ async def save_thread_message(
 
 from .composio_routes import router as composio_router
 app.include_router(composio_router)
+
+# =============================================================================
+# Agent Management Routes
+# =============================================================================
+
+from .agent_routes import router as agent_router
+app.include_router(agent_router)

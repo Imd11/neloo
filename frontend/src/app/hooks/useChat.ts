@@ -14,6 +14,7 @@ import { useClient } from "@/providers/ClientProvider";
 import { useQueryState } from "nuqs";
 import { getConfig } from "@/lib/config";
 import { useAuth } from "@/providers/AuthProvider";
+import { useAgentContext } from "@/providers/AgentProvider";
 import { toast } from "sonner";
 import { extractStringFromMessageContent } from "@/app/utils/utils";
 
@@ -85,6 +86,9 @@ export function useChat({
   const [webDevMode, setWebDevMode] = useState(false);
   const [fortuneMode, setFortuneMode] = useState(false);
   const [threadMode, setThreadMode] = useState<string>("default");
+
+  // Active agent from shared context (for sidebar -> chat integration)
+  const { activeAgent, setActiveAgent, clearAgent } = useAgentContext();
 
   // Generic active feature tracking (for slides, resume, prompt-optimize, deai, etc.)
   const [activeFeatureId, setActiveFeatureId] = useState<string | null>(null);
@@ -362,9 +366,18 @@ export function useChat({
   const sendMessage = useCallback(
     (content: string, hiddenPrefix?: string) => {
       // For display: only show user content
-      // For backend: prepend hiddenPrefix if provided
+      // For backend: prepend hiddenPrefix if provided, or activeAgent's systemPrompt
       const displayContent = content;
-      const backendContent = hiddenPrefix ? hiddenPrefix + content : content;
+
+      // Build the backend content with agent context if active
+      let backendContent = content;
+      if (activeAgent?.systemPrompt) {
+        // Prepend agent context as hidden system instruction
+        const agentContext = `[System: You are now acting as the agent "${activeAgent.name}". Follow these instructions:\n${activeAgent.systemPrompt}\n---\nUser message:]\n`;
+        backendContent = agentContext + content;
+      } else if (hiddenPrefix) {
+        backendContent = hiddenPrefix + content;
+      }
 
       // Create message with display content for UI
       const displayMessage: Message = { id: uuidv4(), type: "human", content: displayContent };
@@ -402,7 +415,7 @@ export function useChat({
         }
       }
     },
-    [stream, activeAssistant?.config, onHistoryRevalidate, threadId, generateTitleForThread, session?.access_token, config]
+    [stream, activeAssistant?.config, onHistoryRevalidate, threadId, generateTitleForThread, session?.access_token, config, activeAgent]
   );
 
   // Track saved message IDs to avoid duplicate saves
@@ -659,5 +672,8 @@ export function useChat({
     threadId,
     // History availability
     historyUnavailable,
+    // Active agent for context injection
+    activeAgent,
+    setActiveAgent,
   };
 }

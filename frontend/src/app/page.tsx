@@ -8,6 +8,7 @@ import { Assistant, Message } from "@langchain/langgraph-sdk";
 import { ClientProvider, useClient } from "@/providers/ClientProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { ChatProvider, useChatContext } from "@/providers/ChatProvider";
+import { AgentProvider, useAgentContext } from "@/providers/AgentProvider";
 import { ChatInterface } from "@/app/components/ChatInterface";
 import { FilePanel } from "@/app/components/FilePanel";
 import { MainLayout } from "./components/layout/MainLayout";
@@ -678,37 +679,39 @@ function HomePageInner() {
         onOpenChange={setLibraryOpen}
       />
 
-      <MainLayout
-        sidebarProps={{
-          onNewThread: handleNewThread,
-          onSearch: handleSearch,
-          onLibrary: handleLibrary,
-          onThreadSelect: (id: string) => { handleThreadSelect(id); },
-          onMutateReady: (fn: () => void) => setMutateThreads(() => fn),
-          onInterruptCountChange: undefined
-        }}
-        topBarProps={{
-          currentModelId: selectedModel || undefined,
-          onModelSelect: (id: string) => setSelectedModel(id),
-          mode: uiMode,
-        }}
-      >
-        <div className="flex h-full flex-col">
-          <ChatProvider
-            activeAssistant={assistant}
-            onHistoryRevalidate={() => mutateThreads?.()}
-          >
-            <ChatWithFilePanel
-              assistant={assistant}
-              showFilePanel={!!filePanel}
-              onOpenFilePanel={() => setFilePanel("1")}
-              onCloseFilePanel={() => setFilePanel(null)}
-              threadId={threadId}
-              onModeChange={setUiMode}
-            />
-          </ChatProvider>
-        </div>
-      </MainLayout>
+      <AgentProvider>
+        <MainLayout
+          sidebarProps={{
+            onNewThread: handleNewThread,
+            onSearch: handleSearch,
+            onLibrary: handleLibrary,
+            onThreadSelect: (id: string) => { handleThreadSelect(id); },
+            onMutateReady: (fn: () => void) => setMutateThreads(() => fn),
+            onInterruptCountChange: undefined
+          }}
+          topBarProps={{
+            currentModelId: selectedModel || undefined,
+            onModelSelect: (id: string) => setSelectedModel(id),
+            mode: uiMode,
+          }}
+        >
+          <div className="flex h-full flex-col">
+            <ChatProvider
+              activeAssistant={assistant}
+              onHistoryRevalidate={() => mutateThreads?.()}
+            >
+              <ChatWithFilePanel
+                assistant={assistant}
+                showFilePanel={!!filePanel}
+                onOpenFilePanel={() => setFilePanel("1")}
+                onCloseFilePanel={() => setFilePanel(null)}
+                threadId={threadId}
+                onModeChange={setUiMode}
+              />
+            </ChatProvider>
+          </div>
+        </MainLayout>
+      </AgentProvider>
     </>
   );
 }
