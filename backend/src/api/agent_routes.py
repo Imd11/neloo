@@ -394,11 +394,20 @@ async def generate_prompt(
     user: dict = Depends(get_current_user),
 ) -> GeneratePromptResponse:
     """
-    Generate a system prompt from description using the complete template.
-    Part 1: Main body (7 sections)
-    Part 2: Tools description
+    Generate a system prompt using LLM (DeepSeek).
+    
+    - System Prompt = 元提示词模板 (instructions for LLM on how to generate)
+    - User Prompt = 用户的需求 (agent name, description, tools)
+    - LLM generates the final agent system prompt
     """
-    # Tool descriptions mapping
+    import httpx
+    
+    # Get DeepSeek API key
+    api_key = os.environ.get("DEEPSEEK_API_KEY", "")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="DeepSeek API not configured")
+    
+    # Tool descriptions for context
     tool_descriptions = {
         "search_web": "搜索网络获取最新信息",
         "code_sandbox": "执行 Python 代码，进行数据分析和可视化",
@@ -407,82 +416,97 @@ async def generate_prompt(
         "browser": "浏览网页和提取信息",
     }
     
-    # Build tools section
-    if data.tools:
-        tools_list = "\n".join([
-            f"    * **{tool}**: {tool_descriptions.get(tool, '可用工具')}"
-            for tool in data.tools
-        ])
-    else:
-        tools_list = "    * 无特殊工具权限"
+    tools_info = "\n".join([
+        f"- {tool}: {tool_descriptions.get(tool, '可用工具')}"
+        for tool in data.tools
+    ]) if data.tools else "无特殊工具"
     
-    # Complete system prompt template following user's specification
-    system_prompt = f"""# {data.name} 指令模板
+    # Meta-prompt template as System Prompt
+    meta_prompt_template = """你是一个专业的 AI 提示词工程师。你的任务是根据用户提供的智能体需求，生成一个完整、专业的系统提示词（System Prompt）。
+
+请严格按照以下模板结构生成系统提示词：
+
+# [智能体名称] 指令模板
 
 ## 1. 职责 (Role/Responsibility)
-* 你是一个专业的 AI 助手，核心身份是：**{data.name}**
-* 主要任务：{data.description}
-* 你的职责是扮演这个角色，专注于帮助用户完成相关任务。
+* 清晰、简洁地定义这个智能体的核心身份和主要任务。
+* 示例："你的职责是 [扮演的角色]，专注于帮助用户 [核心任务]。"
 
 ## 2. 目标 (Goal)
-* 准确理解并分析用户的相关输入。
-* 生成或提供高质量的核心产出物（如：计划、报告、建议列表、代码片段等）。
-* 以清晰、结构化的方式呈现结果。
-* 与用户合作，根据反馈进行调整和细化。
-* 让用户感到被支持，高效完成任务。
+* (使用列表) 列出这个智能体需要达成的具体、可衡量的关键成果。
+* 这些目标应直接支持"职责"的实现。
 
 ## 3. 整体方向 (Overall Direction)
-* **语气与个性:** 专业严谨、耐心细致、简洁高效
-* **语言风格:** 使用通俗易懂的语言，必要时使用专业术语并解释
-* **交互原则:** 主动提出澄清问题，在关键决策时寻求确认，鼓励用户思考
-* **上下文记忆:** 记住之前的对话内容，保持连贯性
-* **范围限制:** 专注于 {data.name} 相关任务，对于超出范围的请求礼貌说明
-* **处理特殊情况:** 对于简单问候，简要介绍自己的职责；对于能力问题，诚实说明
+* (使用列表) 设定贯穿始终的行为准则和风格：
+    * **语气与个性:** 定义应有的沟通风格
+    * **语言风格:** 使用通俗易懂的语言或专业术语
+    * **交互原则:** 主动提出澄清问题，寻求确认
+    * **上下文记忆:** 强调需要记住之前的对话内容
+    * **范围限制:** 明确哪些话题不应讨论
+    * **处理特殊情况:** 如何响应简单问候或能力问题
 
 ## 4. 分步指引 (Step-by-Step Guidance)
-
-### 步骤 1: 理解需求/启动
-* 仔细分析用户的初始请求
-* 如果信息不足，提出具体问题以明确目标、背景和特定要求
-* 确保完全理解用户的意图后再行动
-
-### 步骤 2: 规划与确认
-* 对于复杂任务，先概述解决方案或计划
-* 询问用户是否同意或需要调整
-* 获得确认后再执行
-
-### 步骤 3: 核心任务执行
-* 根据确认的需求，生成具体内容
-* 提供多个选项时清晰标注和编号
-* 使用合适的工具辅助完成任务
-
-### 步骤 4: 呈现与解释
-* 以易于阅读的格式呈现结果（列表、表格、代码块等）
-* 简要解释关键点、设计思路或编辑理由
-* 确保输出清晰易懂
-
-### 步骤 5: 反馈与迭代
-* 询问用户是否满意
-* 了解是否需要添加细节或进行修改
-* 根据反馈更新内容
-
-### 步骤 6: 深入或下一步
-* 如果用户选择了某个选项，进一步提供详细信息
-* 主动提供相关的后续建议
-
-### 步骤 7: 总结与结束
-* 在完成任务后，询问是否需要要点总结
-* 提醒用户可以随时回来寻求帮助
+* 详细描述智能体完成核心任务的标准工作流程：
+    * **步骤 1: 理解需求/启动** - 如何分析用户请求，主动提问澄清
+    * **步骤 2: 规划与确认** - 概述解决方案，寻求用户确认
+    * **步骤 3: 核心任务执行** - 如何生成主要输出内容
+    * **步骤 4: 呈现与解释** - 如何展示结果和解释思路
+    * **步骤 5: 反馈与迭代** - 征求反馈并调整
+    * **步骤 6: 深入或下一步** - 选择后的深入操作
+    * **步骤 7: 总结与结束** - 总结和结束交互
 
 ## 5. 可用工具
-{tools_list}
+* 列出智能体可以使用的工具及其用途
 
 ## 6. 注意事项
-* 如果遇到不确定的情况，优先询问用户
-* 保持回复简洁但完整
-* 遇到错误时及时说明并提供替代方案
-* 始终以用户的目标为导向
-"""
-    
-    return GeneratePromptResponse(system_prompt=system_prompt)
+* 列出关键的注意事项和限制
+
+---
+
+请根据用户提供的智能体信息，生成一个完整、个性化、高质量的系统提示词。直接输出生成的系统提示词，不需要额外解释。"""
+
+    # User's requirements as User Prompt
+    user_prompt = f"""请为我生成一个智能体的系统提示词：
+
+**智能体名称**: {data.name}
+
+**智能体描述**: {data.description}
+
+**可用工具**:
+{tools_info}
+
+请根据以上信息，生成完整的系统提示词。"""
+
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(
+                "https://api.deepseek.com/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "deepseek-chat",
+                    "messages": [
+                        {"role": "system", "content": meta_prompt_template},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    "temperature": 0.7,
+                    "max_tokens": 4096,
+                },
+            )
+            
+            if response.status_code != 200:
+                raise HTTPException(status_code=502, detail="Failed to generate prompt")
+            
+            result = response.json()
+            generated_prompt = result["choices"][0]["message"]["content"].strip()
+            
+            return GeneratePromptResponse(system_prompt=generated_prompt)
+            
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Request timed out")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
+
 
