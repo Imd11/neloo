@@ -531,50 +531,8 @@ export function AppSidebar({
 
         {/* Bottom Section */}
         <div className="py-2 space-y-0.5">
-          {/* Agent */}
-          <div onClick={() => setAgentOpen(true)} className="block cursor-pointer">
-            <div className="group relative flex items-center h-10 transition-colors text-sidebar-foreground">
-              {!collapsed && (
-                <div
-                  aria-hidden
-                  className={cn(
-                    "pointer-events-none absolute inset-y-0 left-1 right-1 rounded-lg transition-colors duration-150",
-                    "bg-transparent group-hover:bg-sidebar-accent/50"
-                  )}
-                />
-              )}
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div
-                    className={cn(
-                      iconColWidth,
-                      "relative z-10 flex-shrink-0 flex items-center justify-center h-10 rounded-lg transition-colors",
-                      collapsed && "hover:bg-sidebar-accent/50"
-                    )}
-                  >
-                    <Bot className="w-[18px] h-[18px]" />
-                  </div>
-                </TooltipTrigger>
-                {collapsed && (
-                  <TooltipContent side="right">
-                    <p>智能体</p>
-                  </TooltipContent>
-                )}
-              </Tooltip>
-
-              <span
-                className={cn(
-                  "relative z-10 text-sm whitespace-nowrap transition-opacity duration-200",
-                  collapsed ? "opacity-0" : "opacity-100"
-                )}
-              >
-                智能体
-              </span>
-            </div>
-          </div>
-
           {/* Settings */}
+
           <div onClick={() => setSettingsOpen(true)} className="block cursor-pointer">
             <div className="group relative flex items-center h-10 transition-colors text-sidebar-foreground">
               {!collapsed && (
