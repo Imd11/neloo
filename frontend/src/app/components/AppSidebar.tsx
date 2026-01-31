@@ -56,6 +56,7 @@ import { format } from "date-fns";
 const navItems = [
   { icon: MessageSquarePlus, label: "新建对话", path: "/", action: "new" },
   { icon: Search, label: "搜索", path: null, action: "search" },
+  { icon: Bot, label: "智能体", path: null, action: "agent" },
   { icon: FolderOpen, label: "库", path: null, action: "library" },
 ];
 
@@ -263,6 +264,8 @@ export function AppSidebar({
       if (pathname !== "/") router.push("/");
     } else if (item.action === "search") {
       onSearch?.();
+    } else if (item.action === "agent") {
+      setAgentOpen(true);
     } else if (item.action === "library") {
       onLibrary?.();
     }
