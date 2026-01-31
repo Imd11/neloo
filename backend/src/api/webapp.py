@@ -2994,3 +2994,10 @@ app.include_router(composio_router)
 
 from .agent_routes import router as agent_router
 app.include_router(agent_router)
+
+# =============================================================================
+# Scheduled Trigger Routes
+# =============================================================================
+
+from .trigger_routes import trigger_router
+app.include_router(trigger_router)
