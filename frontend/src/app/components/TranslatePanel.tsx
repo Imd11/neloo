@@ -10,7 +10,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeftRight, Copy, Check, Loader2 } from "lucide-react";
+import { ArrowLeftRight, ArrowLeft, Copy, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { getConfig } from "@/lib/config";
 import { getSupabaseClient } from "@/lib/supabase/client";
@@ -125,7 +125,16 @@ export function TranslatePanel({ onBack }: TranslatePanelProps) {
     }, [translatedText]);
 
     return (
-        <div className="flex flex-col items-center justify-center h-full px-4 py-8 max-w-5xl mx-auto">
+        <div className="relative flex flex-col items-center justify-center h-full px-4 py-8 max-w-5xl mx-auto">
+            {/* Back Button - Top Left */}
+            <button
+                onClick={onBack}
+                className="absolute top-4 left-4 p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                aria-label="返回"
+            >
+                <ArrowLeft className="w-5 h-5" />
+            </button>
+
             {/* Headline */}
             <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-8 text-center">
                 {headline}
@@ -207,30 +216,21 @@ export function TranslatePanel({ onBack }: TranslatePanelProps) {
                 </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex flex-col items-center gap-3">
-                <Button
-                    onClick={handleTranslate}
-                    disabled={loading || !sourceText.trim()}
-                    className="px-8 py-2"
-                >
-                    {loading ? (
-                        <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            翻译中...
-                        </>
-                    ) : (
-                        "翻译"
-                    )}
-                </Button>
-
-                <button
-                    onClick={onBack}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                    返回
-                </button>
-            </div>
+            {/* Translate Button */}
+            <Button
+                onClick={handleTranslate}
+                disabled={loading || !sourceText.trim()}
+                className="px-8 py-2 bg-foreground text-background hover:bg-foreground/90 dark:bg-foreground dark:text-background dark:hover:bg-foreground/90"
+            >
+                {loading ? (
+                    <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        翻译中...
+                    </>
+                ) : (
+                    "翻译"
+                )}
+            </Button>
         </div>
     );
 }
