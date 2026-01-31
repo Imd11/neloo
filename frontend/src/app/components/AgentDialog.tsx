@@ -21,6 +21,7 @@ import {
     Image as ImageIcon,
     FileText,
     X,
+    HelpCircle,
 } from "lucide-react";
 import {
     Dialog,
@@ -46,6 +47,11 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface AgentDialogProps {
     open: boolean;
@@ -112,6 +118,7 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
             timezone: "Asia/Shanghai",
             defaultPrompt: "",
             notification: "in_app",
+            model: "deepseek-chat",
         },
     });
     const [isGenerating, setIsGenerating] = useState(false);
@@ -196,6 +203,7 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
                 timezone: "Asia/Shanghai",
                 defaultPrompt: "",
                 notification: "in_app",
+                model: "deepseek-chat",
             },
         });
         setActiveTab("create");
@@ -248,6 +256,7 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
                 timezone: "Asia/Shanghai",
                 defaultPrompt: "",
                 notification: "in_app",
+                model: "deepseek-chat",
             },
         });
         setEditTab("info");
@@ -376,162 +385,160 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
     );
 
     const renderCreateContent = () => (
-        <div className="space-y-4">
-            {/* Edit Tabs */}
-            <div className="flex gap-4 border-b border-border pb-2">
-                {[
-                    { id: "info" as const, label: "基本信息" },
-                    { id: "prompt" as const, label: "系统提示词" },
-                    { id: "schedule" as const, label: "定时执行" },
-                ].map((tab) => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setEditTab(tab.id)}
-                        className={cn(
-                            "text-sm pb-2 border-b-2 transition-colors",
-                            editTab === tab.id
-                                ? "border-primary text-foreground"
-                                : "border-transparent text-muted-foreground hover:text-foreground"
-                        )}
-                    >
-                        {tab.label}
-                    </button>
-                ))}
-            </div>
+        <div className="space-y-6">
+            {/* Title */}
+            <h2 className="text-lg font-semibold text-foreground">
+                {editingAgent ? "编辑智能体" : "新建智能体"}
+            </h2>
 
-            {/* Tab Content */}
-            <div className="max-h-[380px] overflow-y-auto pr-2">
-                {editTab === "info" && (
-                    <div className="space-y-4">
-                        {/* Icon Picker */}
-                        <div>
-                            <label className="text-sm text-foreground mb-2 block">图标</label>
-                            <div className="flex gap-2 flex-wrap">
-                                {EMOJI_OPTIONS.map((emoji) => (
-                                    <button
-                                        key={emoji}
-                                        onClick={() => setFormData(prev => ({ ...prev, icon: emoji }))}
-                                        className={cn(
-                                            "w-10 h-10 rounded-lg text-xl flex items-center justify-center transition-all",
-                                            formData.icon === emoji
-                                                ? "bg-primary/20 ring-2 ring-primary"
-                                                : "bg-accent hover:bg-accent/80"
-                                        )}
-                                    >
-                                        {emoji}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Name */}
-                        <div>
-                            <label className="text-sm text-foreground mb-2 block">名称</label>
-                            <Input
-                                placeholder="智能体名称"
-                                value={formData.name}
-                                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                            />
-                        </div>
-
-                        {/* Description */}
-                        <div>
-                            <label className="text-sm text-foreground mb-2 block">功能描述</label>
-                            <Textarea
-                                placeholder="用自然语言描述这个智能体的功能..."
-                                value={formData.description}
-                                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                                rows={3}
-                            />
-                            <Button
-                                className="mt-2 w-full"
-                                onClick={handleGeneratePrompt}
-                                disabled={!formData.description.trim() || isGenerating}
-                            >
-                                {isGenerating ? (
-                                    <>生成中...</>
-                                ) : (
-                                    <><Sparkles className="w-4 h-4 mr-2" /> 生成系统提示词</>
+            {/* Scrollable content */}
+            <div className="max-h-[450px] overflow-y-auto pr-2 space-y-6">
+                {/* Icon Picker */}
+                <div>
+                    <label className="text-sm text-foreground mb-2 block">图标</label>
+                    <div className="flex gap-2 flex-wrap">
+                        {EMOJI_OPTIONS.map((emoji) => (
+                            <button
+                                key={emoji}
+                                onClick={() => setFormData(prev => ({ ...prev, icon: emoji }))}
+                                className={cn(
+                                    "w-10 h-10 rounded-lg text-xl flex items-center justify-center transition-all",
+                                    formData.icon === emoji
+                                        ? "bg-primary/20 ring-2 ring-primary"
+                                        : "bg-accent hover:bg-accent/80"
                                 )}
+                            >
+                                {emoji}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Name */}
+                <div>
+                    <label className="text-sm text-foreground mb-2 block">名称</label>
+                    <Input
+                        placeholder="智能体名称"
+                        value={formData.name}
+                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                    />
+                </div>
+
+                {/* Description */}
+                <div>
+                    <label className="text-sm text-foreground mb-2 block">功能描述</label>
+                    <Textarea
+                        placeholder="用自然语言描述这个智能体的功能..."
+                        value={formData.description}
+                        onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                        rows={3}
+                    />
+                </div>
+
+                {/* Generate Prompt Button */}
+                <Button
+                    className="w-full"
+                    onClick={handleGeneratePrompt}
+                    disabled={!formData.description.trim() || isGenerating}
+                >
+                    {isGenerating ? (
+                        <>生成中...</>
+                    ) : (
+                        <><Sparkles className="w-4 h-4 mr-2" /> 生成系统提示词</>
+                    )}
+                </Button>
+
+                {/* System Prompt (shown after generation or for editing) */}
+                {(formData.systemPrompt || editingAgent) && (
+                    <div>
+                        <div className="flex items-center justify-between mb-2">
+                            <label className="text-sm text-foreground">系统提示词</label>
+                            <Button variant="ghost" size="sm" onClick={handleGeneratePrompt} disabled={isGenerating}>
+                                🔄 重新生成
                             </Button>
                         </div>
+                        <p className="text-xs text-muted-foreground mb-2">
+                            由 AI 根据你的描述自动生成，你可以手动调整
+                        </p>
+                        <Textarea
+                            value={formData.systemPrompt}
+                            onChange={(e) => setFormData(prev => ({ ...prev, systemPrompt: e.target.value }))}
+                            rows={8}
+                            className="font-mono text-sm"
+                            placeholder="点击「生成系统提示词」按钮来生成..."
+                        />
+                    </div>
+                )}
 
-                        {/* Tool Permissions */}
-                        <div>
-                            <label className="text-sm text-foreground mb-2 block">工具权限</label>
-                            <div className="space-y-2">
-                                <p className="text-xs text-muted-foreground">基础工具</p>
-                                {TOOLS.base.map((tool) => (
-                                    <div key={tool.id} className="flex items-center justify-between p-2 rounded-lg bg-accent/50">
-                                        <div className="flex items-center gap-2">
-                                            <tool.icon className="w-4 h-4 text-muted-foreground" />
-                                            <span className="text-sm">{tool.name}</span>
-                                        </div>
-                                        <Switch
-                                            checked={formData.tools.includes(tool.id)}
-                                            onCheckedChange={() => handleToolToggle(tool.id)}
-                                        />
-                                    </div>
-                                ))}
-                                <p className="text-xs text-muted-foreground mt-3">可选工具</p>
-                                {TOOLS.optional.map((tool) => (
-                                    <div key={tool.id} className="flex items-center justify-between p-2 rounded-lg bg-accent/50">
-                                        <div className="flex items-center gap-2">
-                                            <tool.icon className="w-4 h-4 text-muted-foreground" />
-                                            <span className="text-sm">{tool.name}</span>
-                                            {tool.recommended && (
-                                                <span className="text-xs text-yellow-500">⭐推荐</span>
-                                            )}
-                                        </div>
-                                        <Switch
-                                            checked={formData.tools.includes(tool.id)}
-                                            onCheckedChange={() => handleToolToggle(tool.id)}
-                                        />
-                                    </div>
-                                ))}
+                {/* Tool Permissions */}
+                <div>
+                    <label className="text-sm text-foreground mb-2 block">工具权限</label>
+                    <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground">基础工具</p>
+                        {TOOLS.base.map((tool) => (
+                            <div key={tool.id} className="flex items-center justify-between p-2 rounded-lg bg-accent/50">
+                                <div className="flex items-center gap-2">
+                                    <tool.icon className="w-4 h-4 text-muted-foreground" />
+                                    <span className="text-sm">{tool.name}</span>
+                                </div>
+                                <Switch
+                                    checked={formData.tools.includes(tool.id)}
+                                    onCheckedChange={() => handleToolToggle(tool.id)}
+                                />
                             </div>
-                        </div>
+                        ))}
+                        <p className="text-xs text-muted-foreground mt-3">可选工具</p>
+                        {TOOLS.optional.map((tool) => (
+                            <div key={tool.id} className="flex items-center justify-between p-2 rounded-lg bg-accent/50">
+                                <div className="flex items-center gap-2">
+                                    <tool.icon className="w-4 h-4 text-muted-foreground" />
+                                    <span className="text-sm">{tool.name}</span>
+                                    {tool.recommended && (
+                                        <span className="text-xs text-yellow-500">⭐推荐</span>
+                                    )}
+                                </div>
+                                <Switch
+                                    checked={formData.tools.includes(tool.id)}
+                                    onCheckedChange={() => handleToolToggle(tool.id)}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                </div>
 
-                        {/* Publish Settings */}
-                        <div className="flex items-center justify-between p-3 rounded-lg bg-accent/50">
+                {/* Visibility Section */}
+                <div>
+                    <label className="text-sm text-foreground mb-2 block">可见性</label>
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-accent/50">
+                        <div className="flex items-center gap-2">
                             <span className="text-sm">公开到智能体商店</span>
-                            <Switch
-                                checked={formData.isPublic}
-                                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isPublic: checked }))}
-                            />
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button className="text-muted-foreground hover:text-foreground">
+                                        <HelpCircle className="w-4 h-4" />
+                                    </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-[280px]">
+                                    <p className="text-sm">
+                                        公开后，其他用户可以使用你的智能体。
+                                        每次被使用，你将获得积分奖励。
+                                    </p>
+                                </TooltipContent>
+                            </Tooltip>
                         </div>
+                        <Switch
+                            checked={formData.isPublic}
+                            onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isPublic: checked }))}
+                        />
                     </div>
-                )}
+                </div>
 
-                {editTab === "prompt" && (
-                    <div className="space-y-4">
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <label className="text-sm text-foreground">系统提示词</label>
-                            </div>
-                            <p className="text-xs text-muted-foreground mb-2">
-                                由 AI 根据你的描述自动生成，你可以手动调整
-                            </p>
-                            <Textarea
-                                value={formData.systemPrompt}
-                                onChange={(e) => setFormData(prev => ({ ...prev, systemPrompt: e.target.value }))}
-                                rows={15}
-                                className="font-mono text-sm bg-zinc-900"
-                                placeholder="点击「生成系统提示词」按钮来生成..."
-                            />
-                            <div className="flex gap-2 mt-2">
-                                <Button variant="outline" size="sm" onClick={handleGeneratePrompt} disabled={isGenerating}>
-                                    🔄 重新生成
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {editTab === "schedule" && (
-                    <div className="space-y-4">
+                {/* Scheduled Execution Section */}
+                <div>
+                    <label className="text-sm text-foreground mb-2 block">定时执行（可选）</label>
+                    <div className="space-y-3">
                         <div className="flex items-center justify-between p-3 rounded-lg bg-accent/50">
-                            <span className="text-sm">启用定时执行</span>
+                            <span className="text-sm">启用定时任务</span>
                             <Switch
                                 checked={formData.schedule.enabled}
                                 onCheckedChange={(checked) => setFormData(prev => ({
@@ -542,7 +549,31 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
                         </div>
 
                         {formData.schedule.enabled && (
-                            <>
+                            <div className="space-y-4 p-3 rounded-lg border border-border">
+                                {/* Model Selection - Required when schedule enabled */}
+                                <div>
+                                    <label className="text-sm text-foreground mb-2 block">
+                                        执行模型 <span className="text-destructive">*</span>
+                                    </label>
+                                    <Select
+                                        value={formData.schedule.model || "deepseek-chat"}
+                                        onValueChange={(v) => setFormData(prev => ({
+                                            ...prev,
+                                            schedule: { ...prev.schedule, model: v }
+                                        }))}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="选择模型" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="deepseek-chat">DeepSeek V3</SelectItem>
+                                            <SelectItem value="deepseek-reasoner">DeepSeek R1</SelectItem>
+                                            <SelectItem value="gpt-4o">GPT-4o</SelectItem>
+                                            <SelectItem value="claude-3-5-sonnet">Claude 3.5 Sonnet</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="text-sm text-foreground mb-2 block">执行频率</label>
@@ -577,26 +608,6 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
                                 </div>
 
                                 <div>
-                                    <label className="text-sm text-foreground mb-2 block">时区</label>
-                                    <Select
-                                        value={formData.schedule.timezone}
-                                        onValueChange={(v) => setFormData(prev => ({
-                                            ...prev,
-                                            schedule: { ...prev.schedule, timezone: v }
-                                        }))}
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="Asia/Shanghai">Asia/Shanghai (GMT+8)</SelectItem>
-                                            <SelectItem value="America/New_York">America/New_York (EST)</SelectItem>
-                                            <SelectItem value="Europe/London">Europe/London (GMT)</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div>
                                     <label className="text-sm text-foreground mb-2 block">固定输入</label>
                                     <Textarea
                                         placeholder="每次定时执行时发送的默认消息..."
@@ -612,41 +623,47 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
                                 <div>
                                     <label className="text-sm text-foreground mb-2 block">通知方式</label>
                                     <div className="flex gap-4">
-                                        {["email", "in_app", "none"].map((method) => (
-                                            <label key={method} className="flex items-center gap-2 cursor-pointer">
+                                        {[
+                                            { value: "in_app", label: "应用内" },
+                                            { value: "email", label: "邮件" },
+                                            { value: "none", label: "不通知" },
+                                        ].map((method) => (
+                                            <label key={method.value} className="flex items-center gap-2 cursor-pointer">
                                                 <input
                                                     type="radio"
                                                     name="notification"
-                                                    value={method}
-                                                    checked={formData.schedule.notification === method}
+                                                    value={method.value}
+                                                    checked={formData.schedule.notification === method.value}
                                                     onChange={(e) => setFormData(prev => ({
                                                         ...prev,
                                                         schedule: { ...prev.schedule, notification: e.target.value }
                                                     }))}
                                                     className="w-4 h-4"
                                                 />
-                                                <span className="text-sm">
-                                                    {method === "email" ? "邮件" : method === "in_app" ? "应用内" : "不通知"}
-                                                </span>
+                                                <span className="text-sm">{method.label}</span>
                                             </label>
                                         ))}
                                     </div>
                                 </div>
-                            </>
+                            </div>
                         )}
                     </div>
-                )}
+                </div>
             </div>
 
             {/* Footer */}
             <div className="flex justify-end gap-2 pt-4 border-t border-border">
                 <Button variant="outline" onClick={resetForm}>取消</Button>
-                <Button onClick={handleSaveAgent} disabled={!formData.name || !formData.description}>
+                <Button
+                    onClick={handleSaveAgent}
+                    disabled={!formData.name || !formData.description || (formData.schedule.enabled && !formData.schedule.model)}
+                >
                     保存
                 </Button>
             </div>
         </div>
     );
+
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
