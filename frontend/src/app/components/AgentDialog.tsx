@@ -649,20 +649,21 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
                         )}
                     </div>
                 </div>
-            </div>
 
-            {/* Footer */}
-            <div className="flex justify-end gap-2 pt-4 border-t border-border">
-                <Button variant="outline" onClick={resetForm}>取消</Button>
-                <Button
-                    onClick={handleSaveAgent}
-                    disabled={!formData.name || !formData.description || (formData.schedule.enabled && !formData.schedule.model)}
-                >
-                    保存
-                </Button>
+                {/* Footer - inside scrollable area */}
+                <div className="flex justify-end gap-2 pt-4 mt-2 border-t border-border">
+                    <Button variant="outline" onClick={resetForm}>取消</Button>
+                    <Button
+                        onClick={handleSaveAgent}
+                        disabled={!formData.name || !formData.description || (formData.schedule.enabled && !formData.schedule.model)}
+                    >
+                        保存
+                    </Button>
+                </div>
             </div>
         </div>
     );
+
 
 
     return (
