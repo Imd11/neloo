@@ -3001,3 +3001,10 @@ app.include_router(agent_router)
 
 from .trigger_routes import trigger_router
 app.include_router(trigger_router)
+
+# =============================================================================
+# Translation Routes
+# =============================================================================
+
+from .translate_routes import translate_router
+app.include_router(translate_router)

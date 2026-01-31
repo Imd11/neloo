@@ -517,4 +517,12 @@ export const features: Feature[] = [
             },
         ],
     },
+    {
+        id: "translate",
+        title: "AI翻译",
+        icon: "Languages",
+        placeholder: "输入要翻译的文本...",
+        templates: [],
+        description: "专业AI翻译，支持多种语言",
+    },
 ];

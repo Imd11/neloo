@@ -32,6 +32,7 @@ import { FeatureButtons } from "@/app/components/FeatureButtons";
 import { FeatureTemplateGrid } from "@/app/components/FeatureTemplateGrid";
 import { Feature, Template } from "@/data/featureTemplates";
 import { ImageExperience } from "@/app/components/image/ImageExperience";
+import { TranslatePanel } from "@/app/components/TranslatePanel";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGoogleDrivePicker } from "@/app/hooks/useGoogleDrivePicker";
 import { useDataFileUpload } from "@/app/hooks/useDataFileUpload";
@@ -383,6 +384,19 @@ function ChatWithFilePanel({
             setSelectedFeature(null);
             setActiveFeatureId(null);
             onModeChange?.("chat");
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (showLandingView && selectedFeature?.id === "translate") {
+    return (
+      <div className="flex-1 overflow-y-auto">
+        <TranslatePanel
+          onBack={() => {
+            setSelectedFeature(null);
+            setActiveFeatureId(null);
           }}
         />
       </div>

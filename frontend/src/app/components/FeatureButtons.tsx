@@ -10,6 +10,7 @@ const featureEmojis: Record<string, string> = {
     "prompt-optimize": "✨",
     "fortune": "🔮",
     "deai": "✏️",
+    "translate": "🌍",
 };
 
 interface FeatureButtonsProps {
