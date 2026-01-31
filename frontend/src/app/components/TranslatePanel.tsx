@@ -257,7 +257,7 @@ export function TranslatePanel({ onBack }: TranslatePanelProps) {
             <Button
                 onClick={handleTranslate}
                 disabled={loading || !sourceText.trim()}
-                className="px-10 py-3 text-base bg-foreground text-background hover:bg-foreground/90 dark:bg-foreground dark:text-background dark:hover:bg-foreground/90"
+                className="px-12 py-4 text-lg bg-foreground text-background hover:bg-foreground/90 dark:bg-foreground dark:text-background dark:hover:bg-foreground/90"
             >
                 {loading ? (
                     <>
