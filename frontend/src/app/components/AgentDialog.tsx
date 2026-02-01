@@ -349,7 +349,7 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
                 </div>
 
                 {/* Agent Cards Grid */}
-                <div className="grid grid-cols-2 gap-4 max-h-[420px] overflow-y-auto pr-2">
+                <div className="grid grid-cols-2 gap-4 max-h-[320px] overflow-y-auto pr-2">
                     {storeAgentsLoading ? (
                         <div className="col-span-2 text-center py-8 text-muted-foreground">
                             加载中...
@@ -433,7 +433,7 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
             </div>
 
             {/* Agent List */}
-            <div className="space-y-3 max-h-[420px] overflow-y-auto pr-2">
+            <div className="space-y-3 max-h-[320px] overflow-y-auto pr-2">
                 {myAgents.map((agent) => (
                     <div
                         key={agent.id}
@@ -494,7 +494,7 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
             </h2>
 
             {/* Scrollable content */}
-            <div className="max-h-[450px] overflow-y-auto pr-2 space-y-6">
+            <div className="max-h-[350px] overflow-y-auto pr-2 space-y-6">
                 {/* Icon Picker */}
 
                 <div>
@@ -960,8 +960,8 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl p-0 gap-0 bg-card border-border overflow-hidden">
-                <div className="flex h-[580px]">
+            <DialogContent className="max-w-5xl p-0 gap-0 bg-card border-border overflow-hidden">
+                <div className="flex h-[480px]">
                     {/* Sidebar */}
                     <div className="w-40 border-r border-border bg-sidebar p-4">
                         <DialogHeader className="mb-4">
