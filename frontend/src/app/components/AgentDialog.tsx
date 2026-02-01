@@ -35,6 +35,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { CHAT_MODELS } from "@/lib/models";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -617,10 +618,11 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
                                             <SelectValue placeholder="选择模型" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="deepseek-chat">DeepSeek V3</SelectItem>
-                                            <SelectItem value="deepseek-reasoner">DeepSeek R1</SelectItem>
-                                            <SelectItem value="gpt-4o">GPT-4o</SelectItem>
-                                            <SelectItem value="claude-3-5-sonnet">Claude 3.5 Sonnet</SelectItem>
+                                            {CHAT_MODELS.map((model) => (
+                                                <SelectItem key={model.id} value={model.id}>
+                                                    {model.name}
+                                                </SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
