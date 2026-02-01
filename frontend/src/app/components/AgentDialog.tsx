@@ -960,7 +960,7 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-5xl p-0 gap-0 bg-card border-border overflow-hidden">
+            <DialogContent className="max-w-4xl p-0 gap-0 bg-card border-border overflow-hidden">
                 <div className="flex h-[480px]">
                     {/* Sidebar */}
                     <div className="w-40 border-r border-border bg-sidebar p-4">
@@ -988,7 +988,7 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
                     </div>
 
                     {/* Content */}
-                    <div className="flex-1 p-6 overflow-hidden">
+                    <div className="flex-1 p-6 pr-10 overflow-hidden">
                         {activeTab === "store" && renderStoreContent()}
                         {activeTab === "my" && renderMyAgentsContent()}
                         {activeTab === "create" && renderCreateContent()}
