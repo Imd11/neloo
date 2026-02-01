@@ -80,6 +80,8 @@ class AgentResponse(BaseModel):
     tools: List[str]
     is_public: bool
     usage_count: int
+    favorite_count: int = 0  # Number of times added to collections
+    creator_name: Optional[str] = None  # Display name of creator
     created_at: str
     updated_at: str
 
@@ -106,7 +108,7 @@ class GeneratePromptResponse(BaseModel):
 # Helper Functions
 # =============================================================================
 
-def row_to_agent(row: dict) -> AgentResponse:
+def row_to_agent(row: dict, creator_name: Optional[str] = None) -> AgentResponse:
     """Convert database row to AgentResponse."""
     return AgentResponse(
         id=str(row["id"]),
@@ -118,6 +120,8 @@ def row_to_agent(row: dict) -> AgentResponse:
         tools=row.get("tools", []),
         is_public=row.get("is_public", False),
         usage_count=row.get("usage_count", 0),
+        favorite_count=row.get("favorite_count", 0),
+        creator_name=creator_name,
         created_at=row["created_at"],
         updated_at=row["updated_at"],
     )
@@ -163,12 +167,15 @@ async def list_store_agents(
     offset: int = Query(default=0, ge=0),
 ) -> AgentListResponse:
     """
-    List public agents in the store.
+    List public agents in the store with creator names.
     """
     supabase = get_supabase()
     
-    # Build query
-    query = supabase.table("agents").select("*", count="exact").eq("is_public", True)
+    # Build query - join with user_profiles to get creator display name
+    query = supabase.table("agents").select(
+        "*, user_profiles!agents_user_id_fkey(display_name)", 
+        count="exact"
+    ).eq("is_public", True)
     
     # Apply search filter if provided
     if search:
@@ -183,7 +190,16 @@ async def list_store_agents(
     # Apply pagination
     result = query.range(offset, offset + limit - 1).execute()
     
-    agents = [row_to_agent(row) for row in result.data]
+    # Convert rows to AgentResponse with creator names
+    agents = []
+    for row in result.data:
+        # Extract creator name from joined user_profiles
+        user_profile = row.pop("user_profiles", None)
+        creator_name = None
+        if user_profile and isinstance(user_profile, dict):
+            creator_name = user_profile.get("display_name")
+        agents.append(row_to_agent(row, creator_name=creator_name))
+    
     total = result.count or len(agents)
     
     return AgentListResponse(agents=agents, total=total)
