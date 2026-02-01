@@ -115,8 +115,13 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
         isPublic: false,
         schedule: {
             enabled: false,
-            frequency: "daily",
+            frequency: "daily" as "once" | "daily" | "weekly" | "monthly" | "interval",
             time: "09:00",
+            date: "", // For "once" mode - specific date
+            weekday: "1", // For "weekly" mode - 1=Monday, 7=Sunday
+            monthDay: "1", // For "monthly" mode - day of month
+            intervalValue: 30, // For "interval" mode - number
+            intervalUnit: "minutes" as "minutes" | "hours", // For "interval" mode
             timezone: "Asia/Shanghai",
             defaultPrompt: "",
             notification: "in_app",
@@ -200,8 +205,13 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
             isPublic: agent.is_public || false,
             schedule: {
                 enabled: false,
-                frequency: "daily",
+                frequency: "daily" as const,
                 time: "09:00",
+                date: "",
+                weekday: "1",
+                monthDay: "1",
+                intervalValue: 30,
+                intervalUnit: "minutes" as const,
                 timezone: "Asia/Shanghai",
                 defaultPrompt: "",
                 notification: "in_app",
@@ -253,8 +263,13 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
             isPublic: false,
             schedule: {
                 enabled: false,
-                frequency: "daily",
+                frequency: "daily" as const,
                 time: "09:00",
+                date: "",
+                weekday: "1",
+                monthDay: "1",
+                intervalValue: 30,
+                intervalUnit: "minutes" as const,
                 timezone: "Asia/Shanghai",
                 defaultPrompt: "",
                 notification: "in_app",
@@ -627,36 +642,206 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
                                     </Select>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="text-sm text-foreground mb-2 block">执行频率</label>
+                                {/* Frequency Selection - Horizontal Layout */}
+                                <div>
+                                    <label className="text-sm text-foreground mb-2 block">执行频率</label>
+                                    <div className="flex items-center gap-3 flex-wrap">
+                                        {/* Frequency Type Selector */}
                                         <Select
                                             value={formData.schedule.frequency}
-                                            onValueChange={(v) => setFormData(prev => ({
+                                            onValueChange={(v: "once" | "daily" | "weekly" | "monthly" | "interval") => setFormData(prev => ({
                                                 ...prev,
                                                 schedule: { ...prev.schedule, frequency: v }
                                             }))}
                                         >
-                                            <SelectTrigger>
+                                            <SelectTrigger className="w-[120px]">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
+                                                <SelectItem value="once">只执行一次</SelectItem>
                                                 <SelectItem value="daily">每天</SelectItem>
                                                 <SelectItem value="weekly">每周</SelectItem>
                                                 <SelectItem value="monthly">每月</SelectItem>
+                                                <SelectItem value="interval">每隔</SelectItem>
                                             </SelectContent>
                                         </Select>
-                                    </div>
-                                    <div>
-                                        <label className="text-sm text-foreground mb-2 block">执行时间</label>
-                                        <Input
-                                            type="time"
-                                            value={formData.schedule.time}
-                                            onChange={(e) => setFormData(prev => ({
-                                                ...prev,
-                                                schedule: { ...prev.schedule, time: e.target.value }
-                                            }))}
-                                        />
+
+                                        {/* Once Mode: Date + Time */}
+                                        {formData.schedule.frequency === "once" && (
+                                            <>
+                                                <Input
+                                                    type="date"
+                                                    value={formData.schedule.date}
+                                                    onChange={(e) => setFormData(prev => ({
+                                                        ...prev,
+                                                        schedule: { ...prev.schedule, date: e.target.value }
+                                                    }))}
+                                                    className="w-[150px]"
+                                                />
+                                                <Select
+                                                    value={formData.schedule.time}
+                                                    onValueChange={(v) => setFormData(prev => ({
+                                                        ...prev,
+                                                        schedule: { ...prev.schedule, time: v }
+                                                    }))}
+                                                >
+                                                    <SelectTrigger className="w-[100px]">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {Array.from({ length: 24 }, (_, h) =>
+                                                            ["00", "30"].map(m => {
+                                                                const time = `${h.toString().padStart(2, '0')}:${m}`;
+                                                                return <SelectItem key={time} value={time}>{time}</SelectItem>;
+                                                            })
+                                                        ).flat()}
+                                                    </SelectContent>
+                                                </Select>
+                                            </>
+                                        )}
+
+                                        {/* Daily Mode: Just Time */}
+                                        {formData.schedule.frequency === "daily" && (
+                                            <Select
+                                                value={formData.schedule.time}
+                                                onValueChange={(v) => setFormData(prev => ({
+                                                    ...prev,
+                                                    schedule: { ...prev.schedule, time: v }
+                                                }))}
+                                            >
+                                                <SelectTrigger className="w-[100px]">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {Array.from({ length: 24 }, (_, h) =>
+                                                        ["00", "30"].map(m => {
+                                                            const time = `${h.toString().padStart(2, '0')}:${m}`;
+                                                            return <SelectItem key={time} value={time}>{time}</SelectItem>;
+                                                        })
+                                                    ).flat()}
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+
+                                        {/* Weekly Mode: Weekday + Time */}
+                                        {formData.schedule.frequency === "weekly" && (
+                                            <>
+                                                <Select
+                                                    value={formData.schedule.weekday}
+                                                    onValueChange={(v) => setFormData(prev => ({
+                                                        ...prev,
+                                                        schedule: { ...prev.schedule, weekday: v }
+                                                    }))}
+                                                >
+                                                    <SelectTrigger className="w-[100px]">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="1">星期一</SelectItem>
+                                                        <SelectItem value="2">星期二</SelectItem>
+                                                        <SelectItem value="3">星期三</SelectItem>
+                                                        <SelectItem value="4">星期四</SelectItem>
+                                                        <SelectItem value="5">星期五</SelectItem>
+                                                        <SelectItem value="6">星期六</SelectItem>
+                                                        <SelectItem value="7">星期日</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                <Select
+                                                    value={formData.schedule.time}
+                                                    onValueChange={(v) => setFormData(prev => ({
+                                                        ...prev,
+                                                        schedule: { ...prev.schedule, time: v }
+                                                    }))}
+                                                >
+                                                    <SelectTrigger className="w-[100px]">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {Array.from({ length: 24 }, (_, h) =>
+                                                            ["00", "30"].map(m => {
+                                                                const time = `${h.toString().padStart(2, '0')}:${m}`;
+                                                                return <SelectItem key={time} value={time}>{time}</SelectItem>;
+                                                            })
+                                                        ).flat()}
+                                                    </SelectContent>
+                                                </Select>
+                                            </>
+                                        )}
+
+                                        {/* Monthly Mode: Day + Time */}
+                                        {formData.schedule.frequency === "monthly" && (
+                                            <>
+                                                <Select
+                                                    value={formData.schedule.monthDay}
+                                                    onValueChange={(v) => setFormData(prev => ({
+                                                        ...prev,
+                                                        schedule: { ...prev.schedule, monthDay: v }
+                                                    }))}
+                                                >
+                                                    <SelectTrigger className="w-[80px]">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {Array.from({ length: 31 }, (_, i) => (
+                                                            <SelectItem key={i + 1} value={String(i + 1)}>
+                                                                {i + 1}号
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                                <Select
+                                                    value={formData.schedule.time}
+                                                    onValueChange={(v) => setFormData(prev => ({
+                                                        ...prev,
+                                                        schedule: { ...prev.schedule, time: v }
+                                                    }))}
+                                                >
+                                                    <SelectTrigger className="w-[100px]">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {Array.from({ length: 24 }, (_, h) =>
+                                                            ["00", "30"].map(m => {
+                                                                const time = `${h.toString().padStart(2, '0')}:${m}`;
+                                                                return <SelectItem key={time} value={time}>{time}</SelectItem>;
+                                                            })
+                                                        ).flat()}
+                                                    </SelectContent>
+                                                </Select>
+                                            </>
+                                        )}
+
+                                        {/* Interval Mode: Number + Unit */}
+                                        {formData.schedule.frequency === "interval" && (
+                                            <>
+                                                <Input
+                                                    type="number"
+                                                    min={1}
+                                                    max={999}
+                                                    value={formData.schedule.intervalValue}
+                                                    onChange={(e) => setFormData(prev => ({
+                                                        ...prev,
+                                                        schedule: { ...prev.schedule, intervalValue: parseInt(e.target.value) || 1 }
+                                                    }))}
+                                                    className="w-[80px]"
+                                                />
+                                                <Select
+                                                    value={formData.schedule.intervalUnit}
+                                                    onValueChange={(v: "minutes" | "hours") => setFormData(prev => ({
+                                                        ...prev,
+                                                        schedule: { ...prev.schedule, intervalUnit: v }
+                                                    }))}
+                                                >
+                                                    <SelectTrigger className="w-[80px]">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="minutes">分钟</SelectItem>
+                                                        <SelectItem value="hours">小时</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
 
