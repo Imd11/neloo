@@ -171,11 +171,8 @@ async def list_store_agents(
     """
     supabase = get_supabase()
     
-    # Build query - join with user_profiles to get creator display name
-    query = supabase.table("agents").select(
-        "*, user_profiles!agents_user_id_fkey(display_name)", 
-        count="exact"
-    ).eq("is_public", True)
+    # Step 1: Get public agents
+    query = supabase.table("agents").select("*", count="exact").eq("is_public", True)
     
     # Apply search filter if provided
     if search:
@@ -190,14 +187,23 @@ async def list_store_agents(
     # Apply pagination
     result = query.range(offset, offset + limit - 1).execute()
     
+    # Step 2: Batch fetch creator names from user_profiles
+    user_ids = list(set(row["user_id"] for row in result.data if row.get("user_id")))
+    creator_names_map = {}
+    
+    if user_ids:
+        try:
+            profiles_result = supabase.table("user_profiles").select("id, display_name").in_("id", user_ids).execute()
+            for profile in profiles_result.data:
+                creator_names_map[profile["id"]] = profile.get("display_name")
+        except Exception as e:
+            # If user_profiles table doesn't exist or query fails, continue without creator names
+            print(f"Warning: Could not fetch user profiles: {e}")
+    
     # Convert rows to AgentResponse with creator names
     agents = []
     for row in result.data:
-        # Extract creator name from joined user_profiles
-        user_profile = row.pop("user_profiles", None)
-        creator_name = None
-        if user_profile and isinstance(user_profile, dict):
-            creator_name = user_profile.get("display_name")
+        creator_name = creator_names_map.get(row.get("user_id"))
         agents.append(row_to_agent(row, creator_name=creator_name))
     
     total = result.count or len(agents)
@@ -334,7 +340,8 @@ async def copy_agent(
     user: dict = Depends(get_current_user),
 ) -> AgentResponse:
     """
-    Copy a public agent to the current user's list.
+    Copy a public agent to the current user's list (add to favorites).
+    Also increments the source agent's favorite_count and usage_count.
     """
     user_id = get_user_id(user)
     supabase = get_supabase()
@@ -353,7 +360,7 @@ async def copy_agent(
         supabase.table("agents")
         .insert({
             "user_id": user_id,
-            "name": f"{source['name']} (副本)",
+            "name": source['name'],  # Keep original name (no "副本" suffix)
             "icon": source["icon"],
             "description": source["description"],
             "system_prompt": source["system_prompt"],
@@ -366,8 +373,16 @@ async def copy_agent(
     if not copy_result.data:
         raise HTTPException(status_code=500, detail="Failed to copy agent")
     
-    # Increment usage count on the source agent
-    supabase.rpc("increment_agent_usage", {"agent_uuid": agent_id}).execute()
+    # Increment both usage_count and favorite_count on the source agent
+    try:
+        supabase.rpc("increment_agent_usage", {"agent_uuid": agent_id}).execute()
+        supabase.rpc("increment_agent_favorite", {"agent_uuid": agent_id}).execute()
+    except Exception:
+        # If the RPC functions don't exist, fall back to direct update
+        supabase.table("agents").update({
+            "usage_count": source.get("usage_count", 0) + 1,
+            "favorite_count": source.get("favorite_count", 0) + 1,
+        }).eq("id", agent_id).execute()
     
     return row_to_agent(copy_result.data[0])
 
