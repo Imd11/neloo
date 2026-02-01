@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { getConfig } from "@/lib/config";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { useSidebar } from "@/app/context/SidebarContext";
 
 // Supported languages
 const LANGUAGES = [
@@ -60,6 +61,9 @@ interface TranslatePanelProps {
 }
 
 export function TranslatePanel({ onBack }: TranslatePanelProps) {
+    const { collapsed, width, collapsedWidth } = useSidebar();
+    const sidebarWidth = collapsed ? collapsedWidth : width;
+
     const [sourceText, setSourceText] = useState("");
     const [translatedText, setTranslatedText] = useState("");
     const [sourceLang, setSourceLang] = useState("auto");
@@ -140,10 +144,11 @@ export function TranslatePanel({ onBack }: TranslatePanelProps) {
 
     return (
         <div className="relative flex flex-col items-center justify-center h-full px-4 py-8 max-w-5xl mx-auto">
-            {/* Back Button - Fixed position, aligned with header logo */}
+            {/* Back Button - Fixed position, below TopBar and to the right of sidebar */}
             <button
                 onClick={onBack}
-                className="fixed top-16 left-4 p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors z-10"
+                className="fixed top-14 p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors z-10"
+                style={{ left: sidebarWidth + 16 }}
                 aria-label="返回"
             >
                 <ArrowLeft className="w-5 h-5" />
