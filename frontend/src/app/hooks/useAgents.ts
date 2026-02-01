@@ -305,6 +305,34 @@ export function useAgents(): UseAgentsResult {
         }
     }, []);
 
+    // Generate full agent (prompt + icon) from description
+    const generateAgent = useCallback(async (
+        name: string,
+        description: string,
+        tools: string[]
+    ): Promise<{ system_prompt: string; icon_url: string } | null> => {
+        try {
+            const headers = await getAuthHeaders();
+            const response = await fetch(`${getBaseUrl()}/api/agents/generate-agent`, {
+                method: "POST",
+                headers,
+                body: JSON.stringify({ name, description, tools }),
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || `Failed to generate agent: ${response.status}`);
+            }
+            const data = await response.json();
+            return {
+                system_prompt: data.system_prompt,
+                icon_url: data.icon_url || "",
+            };
+        } catch (error) {
+            console.error("Error generating agent:", error);
+            throw error;
+        }
+    }, []);
+
     // Initial data fetch
     useEffect(() => {
         refreshMyAgents();
@@ -331,6 +359,7 @@ export function useAgents(): UseAgentsResult {
         copyAgent,
         useAgent,
         generatePrompt,
+        generateAgent,
 
         // Loading states
         isCreating,
@@ -338,3 +367,4 @@ export function useAgents(): UseAgentsResult {
         isDeleting,
     };
 }
+

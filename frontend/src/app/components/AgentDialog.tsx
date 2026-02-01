@@ -94,6 +94,7 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
         copyAgent,
         useAgent,
         generatePrompt,
+        generateAgent,
         isCreating,
         isUpdating,
         isDeleting,
@@ -129,6 +130,7 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
         },
     });
     const [isGenerating, setIsGenerating] = useState(false);
+    const [generatedIcon, setGeneratedIcon] = useState<string | null>(null); // base64 data URL
 
     const tabs = [
         { id: "store" as const, label: "商店", icon: Store },
@@ -157,6 +159,30 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
             }
         } catch (error) {
             toast.error("生成提示词失败");
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    // NEW: Handle full agent generation (prompt + icon in parallel)
+    const handleGenerateAgent = async () => {
+        if (!formData.name.trim() || !formData.description.trim()) {
+            toast.error("请填写智能体名称和功能描述");
+            return;
+        }
+
+        setIsGenerating(true);
+        try {
+            const result = await generateAgent(formData.name, formData.description, formData.tools);
+            if (result) {
+                setFormData(prev => ({ ...prev, systemPrompt: result.system_prompt }));
+                if (result.icon_url) {
+                    setGeneratedIcon(result.icon_url);
+                }
+                toast.success("智能体已生成，请确认后保存");
+            }
+        } catch (error) {
+            toast.error("生成智能体失败");
         } finally {
             setIsGenerating(false);
         }
@@ -254,6 +280,7 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
 
     const resetForm = () => {
         setEditingAgent(null);
+        setGeneratedIcon(null);
         setFormData({
             name: "",
             icon: "🤖",
@@ -452,7 +479,15 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
     );
 
     const renderCreateContent = () => (
-        <div className="space-y-6">
+        <div className="space-y-6 relative">
+            {/* Loading Overlay */}
+            {isGenerating && (
+                <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center rounded-lg">
+                    <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-4" />
+                    <p className="text-sm text-muted-foreground">智能体生成中...</p>
+                </div>
+            )}
+
             {/* Title */}
             <h2 className="text-lg font-semibold text-foreground">
                 {editingAgent ? "编辑智能体" : "新建智能体"}
@@ -461,16 +496,34 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
             {/* Scrollable content */}
             <div className="max-h-[450px] overflow-y-auto pr-2 space-y-6">
                 {/* Icon Picker */}
+
                 <div>
                     <label className="text-sm text-foreground mb-2 block">图标</label>
-                    <div className="flex gap-2 flex-wrap">
+                    <div className="flex gap-2 flex-wrap items-center">
+                        {/* Generated AI Icon */}
+                        {generatedIcon && (
+                            <button
+                                onClick={() => setFormData(prev => ({ ...prev, icon: generatedIcon }))}
+                                className={cn(
+                                    "w-12 h-12 rounded-lg flex items-center justify-center transition-all overflow-hidden",
+                                    formData.icon === generatedIcon
+                                        ? "ring-2 ring-primary"
+                                        : "ring-1 ring-border hover:ring-primary/50"
+                                )}
+                            >
+                                <img src={generatedIcon} alt="AI生成图标" className="w-full h-full object-cover" />
+                            </button>
+                        )}
+                        {/* Emoji Options */}
                         {EMOJI_OPTIONS.map((emoji) => (
                             <button
                                 key={emoji}
-                                onClick={() => setFormData(prev => ({ ...prev, icon: emoji }))}
+                                onClick={() => {
+                                    setFormData(prev => ({ ...prev, icon: emoji }));
+                                }}
                                 className={cn(
                                     "w-10 h-10 rounded-lg text-xl flex items-center justify-center transition-all",
-                                    formData.icon === emoji
+                                    formData.icon === emoji && !generatedIcon?.startsWith('data:')
                                         ? "bg-primary/20 ring-2 ring-primary"
                                         : "bg-accent hover:bg-accent/80"
                                 )}
@@ -479,6 +532,9 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
                             </button>
                         ))}
                     </div>
+                    {generatedIcon && (
+                        <p className="text-xs text-muted-foreground mt-1">✨ 已生成 AI 图标</p>
+                    )}
                 </div>
 
                 {/* Name */}
@@ -502,18 +558,16 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
                     />
                 </div>
 
-                {/* Generate Prompt Button */}
-                <Button
-                    className="w-full"
-                    onClick={handleGeneratePrompt}
-                    disabled={!formData.description.trim() || isGenerating}
-                >
-                    {isGenerating ? (
-                        <>生成中...</>
-                    ) : (
-                        <><Sparkles className="w-4 h-4 mr-2" /> 生成系统提示词</>
-                    )}
-                </Button>
+                {/* Generate Agent Button - shown before generation */}
+                {!formData.systemPrompt && !editingAgent && (
+                    <Button
+                        className="w-full"
+                        onClick={handleGenerateAgent}
+                        disabled={!formData.name.trim() || !formData.description.trim() || isGenerating}
+                    >
+                        <Sparkles className="w-4 h-4 mr-2" /> 生成智能体
+                    </Button>
+                )}
 
                 {/* System Prompt (shown after generation or for editing) */}
                 {(formData.systemPrompt || editingAgent) && (

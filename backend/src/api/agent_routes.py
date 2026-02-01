@@ -541,3 +541,192 @@ async def generate_prompt(
         raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
 
 
+# =============================================================================
+# Generate Agent (Prompt + Icon in Parallel)
+# =============================================================================
+
+class GenerateAgentRequest(BaseModel):
+    """Request model for generating full agent (prompt + icon)."""
+    name: str = Field(..., min_length=1, max_length=100)
+    description: str = Field(..., min_length=1, max_length=1000)
+    tools: List[str] = []
+
+
+class GenerateAgentResponse(BaseModel):
+    """Response model for generated agent data."""
+    system_prompt: str
+    icon_url: str  # Data URL (base64) or empty string if failed
+
+
+@router.post("/generate-agent", response_model=GenerateAgentResponse)
+async def generate_agent(
+    data: GenerateAgentRequest,
+    user: dict = Depends(get_current_user),
+) -> GenerateAgentResponse:
+    """
+    Generate both system prompt and icon in parallel.
+    
+    - Uses DeepSeek for system prompt generation
+    - Uses FLUX.2 Klein via OpenRouter for icon generation
+    """
+    import httpx
+    import asyncio
+    
+    deepseek_key = os.environ.get("DEEPSEEK_API_KEY", "")
+    openrouter_key = os.environ.get("OPENROUTER_API_KEY", "")
+    
+    if not deepseek_key:
+        raise HTTPException(status_code=500, detail="DeepSeek API not configured")
+    
+    # Tool descriptions for context
+    tool_descriptions = {
+        "search_web": "搜索网络获取最新信息",
+        "code_sandbox": "执行 Python 代码，进行数据分析和可视化",
+        "file_operations": "读写和管理用户文件",
+        "image_generation": "生成 AI 图像",
+        "browser": "浏览网页和提取信息",
+    }
+    
+    tools_info = "\n".join([
+        f"- {tool}: {tool_descriptions.get(tool, '可用工具')}"
+        for tool in data.tools
+    ]) if data.tools else "无特殊工具"
+    
+    # Meta-prompt for system prompt generation
+    meta_prompt = """你是一个专业的 AI 提示词工程师。你的任务是根据用户提供的智能体需求，生成一个完整、专业的系统提示词（System Prompt）。
+
+请严格按照以下模板结构生成系统提示词：
+
+# [智能体名称] 指令模板
+
+## 1. 职责 (Role/Responsibility)
+* 清晰、简洁地定义这个智能体的核心身份和主要任务。
+
+## 2. 目标 (Goal)
+* (使用列表) 列出这个智能体需要达成的具体、可衡量的关键成果。
+
+## 3. 整体方向 (Overall Direction)
+* 设定贯穿始终的行为准则和风格。
+
+## 4. 分步指引 (Step-by-Step Guidance)
+* 详细描述智能体完成核心任务的标准工作流程。
+
+## 5. 可用工具
+* 列出智能体可以使用的工具及其用途。
+
+## 6. 注意事项
+* 列出关键的注意事项和限制。
+
+请根据用户提供的智能体信息，生成一个完整、个性化、高质量的系统提示词。直接输出生成的系统提示词，不需要额外解释。"""
+
+    user_prompt = f"""请为我生成一个智能体的系统提示词：
+
+**智能体名称**: {data.name}
+
+**智能体描述**: {data.description}
+
+**可用工具**:
+{tools_info}
+
+请根据以上信息，生成完整的系统提示词。"""
+
+    # Icon generation prompt
+    icon_prompt = f"""Create a simple, modern app icon for an AI assistant called "{data.name}". 
+The assistant's purpose is: {data.description}
+
+Requirements:
+- Simple, flat design style suitable for an app icon
+- Single centered symbol or object
+- Clean gradient background
+- No text or letters
+- Professional and modern look
+- Square format, suitable as a 512x512 icon
+- Vibrant but not garish colors"""
+
+    async def generate_system_prompt(client: httpx.AsyncClient) -> str:
+        """Generate system prompt using DeepSeek."""
+        try:
+            response = await client.post(
+                "https://api.deepseek.com/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {deepseek_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "deepseek-chat",
+                    "messages": [
+                        {"role": "system", "content": meta_prompt},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    "temperature": 0.7,
+                    "max_tokens": 4096,
+                },
+                timeout=60.0,
+            )
+            if response.status_code == 200:
+                result = response.json()
+                return result["choices"][0]["message"]["content"].strip()
+            return ""
+        except Exception as e:
+            print(f"Error generating prompt: {e}")
+            return ""
+
+    async def generate_icon(client: httpx.AsyncClient) -> str:
+        """Generate icon using FLUX.2 Klein via OpenRouter."""
+        if not openrouter_key:
+            return ""
+        
+        try:
+            response = await client.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {openrouter_key}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://metricsai.top",
+                    "X-Title": "Metrics AI",
+                },
+                json={
+                    "model": "black-forest-labs/flux.2-klein-4b",
+                    "messages": [
+                        {"role": "user", "content": icon_prompt}
+                    ],
+                    "modalities": ["image", "text"],
+                },
+                timeout=60.0,
+            )
+            if response.status_code == 200:
+                result = response.json()
+                # OpenRouter returns images in: choices[0].message.images[0].image_url.url
+                message = result.get("choices", [{}])[0].get("message", {})
+                images = message.get("images", [])
+                if images and len(images) > 0:
+                    image_url = images[0].get("image_url", {}).get("url", "")
+                    if image_url.startswith("data:image"):
+                        return image_url
+                # Fallback: check content field for base64 data
+                content = message.get("content", "")
+                if content and content.startswith("data:image"):
+                    return content
+                return ""
+            else:
+                print(f"OpenRouter error: {response.status_code} - {response.text}")
+                return ""
+        except Exception as e:
+            print(f"Error generating icon: {e}")
+            return ""
+
+    # Run both generations in parallel
+    async with httpx.AsyncClient() as client:
+        prompt_task = generate_system_prompt(client)
+        icon_task = generate_icon(client)
+        
+        system_prompt, icon_url = await asyncio.gather(prompt_task, icon_task)
+    
+    if not system_prompt:
+        raise HTTPException(status_code=502, detail="Failed to generate system prompt")
+    
+    return GenerateAgentResponse(
+        system_prompt=system_prompt,
+        icon_url=icon_url or ""
+    )
+
