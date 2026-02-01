@@ -62,6 +62,7 @@ export interface UseAgentsResult {
     copyAgent: (id: string) => Promise<Agent | null>;
     useAgent: (id: string) => Promise<{ system_prompt: string; tools: string[] } | null>;
     generatePrompt: (name: string, description: string, tools: string[]) => Promise<string | null>;
+    generateAgent: (name: string, description: string, tools: string[]) => Promise<{ system_prompt: string; icon_url: string } | null>;
 
     // Loading states for mutations
     isCreating: boolean;

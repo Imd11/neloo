@@ -405,11 +405,11 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
                             </div>
 
                             {/* Hover Action Button */}
-                            <div className="mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="pt-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <Button
                                     size="sm"
-                                    variant="secondary"
-                                    className="w-full"
+                                    variant="ghost"
+                                    className="w-full text-muted-foreground hover:text-foreground"
                                     onClick={(e) => { e.stopPropagation(); handleCopyAgent(agent); }}
                                 >
                                     <Heart className="w-3 h-3 mr-1" /> 收藏
