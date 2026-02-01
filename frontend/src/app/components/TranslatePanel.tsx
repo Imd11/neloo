@@ -140,10 +140,10 @@ export function TranslatePanel({ onBack }: TranslatePanelProps) {
 
     return (
         <div className="relative flex flex-col items-center justify-center h-full px-4 py-8 max-w-5xl mx-auto">
-            {/* Back Button - Top Left, aligned with header logo */}
+            {/* Back Button - Fixed position, aligned with header logo */}
             <button
                 onClick={onBack}
-                className="absolute top-0 -left-4 p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                className="fixed top-16 left-4 p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors z-10"
                 aria-label="返回"
             >
                 <ArrowLeft className="w-5 h-5" />
