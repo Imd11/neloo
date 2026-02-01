@@ -18,6 +18,8 @@ export interface Agent {
     tools: string[];
     is_public: boolean;
     usage_count: number;
+    favorite_count?: number;  // Number of times added to user collections
+    creator_name?: string;    // Display name of the creator
     created_at: string;
     updated_at: string;
 }

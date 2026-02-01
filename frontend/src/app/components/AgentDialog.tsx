@@ -6,11 +6,12 @@ import { useAgents, Agent } from "@/app/hooks/useAgents";
 import {
     Store,
     User,
+    Users,
     Plus,
     Search,
     Clock,
     MoreHorizontal,
-    Copy,
+    Heart,
     Pencil,
     Trash2,
     Play,
@@ -225,9 +226,9 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
     const handleCopyAgent = async (agent: Agent) => {
         try {
             await copyAgent(agent.id);
-            toast.success("智能体已复制到我的列表");
+            toast.success("智能体已收藏到我的列表");
         } catch (error) {
-            toast.error("复制失败");
+            toast.error("收藏失败");
         }
     };
 
@@ -269,64 +270,114 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
         }
     }, [activeTab]);
 
-    const renderStoreContent = () => (
-        <div className="space-y-4">
-            {/* Search and Sort */}
-            <div className="flex gap-3">
-                <div className="flex-1 relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                        placeholder="搜索智能体..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10 bg-background"
-                    />
-                </div>
-                <Select value={sortBy} onValueChange={(v) => setSortBy(v as "popular" | "newest")}>
-                    <SelectTrigger className="w-24">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="popular">热门</SelectItem>
-                        <SelectItem value="newest">最新</SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
+    const renderStoreContent = () => {
+        // Helper function to format count (e.g., 8800 -> "8.8K")
+        const formatCount = (count: number) => {
+            if (count >= 10000) {
+                return `${(count / 10000).toFixed(1)}万`;
+            } else if (count >= 1000) {
+                return `${(count / 1000).toFixed(1)}K`;
+            }
+            return count.toString();
+        };
 
-            {/* Agent Cards Grid */}
-            <div className="grid grid-cols-2 gap-4 max-h-[420px] overflow-y-auto pr-2">
-                {storeAgentsLoading ? (
-                    <div className="col-span-2 text-center py-8 text-muted-foreground">
-                        加载中...
+        return (
+            <div className="space-y-4">
+                {/* Search and Sort */}
+                <div className="flex gap-3">
+                    <div className="flex-1 relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                            placeholder="搜索智能体..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-10 bg-background"
+                        />
                     </div>
-                ) : storeAgents.filter((a: Agent) =>
-                    a.name.includes(searchQuery) || a.description.includes(searchQuery)
-                ).map((agent: Agent) => (
-                    <div
-                        key={agent.id}
-                        className="p-4 rounded-xl bg-accent/50 hover:bg-accent transition-colors cursor-pointer group"
-                        onClick={() => handleCopyAgent(agent)}
-                    >
-                        <div className="flex items-start gap-3">
-                            <span className="text-3xl">{agent.icon}</span>
-                            <div className="flex-1 min-w-0">
-                                <h4 className="font-medium text-foreground truncate">{agent.name}</h4>
-                                <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{agent.description}</p>
-                                <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-                                    <span>使用 {(agent.usage_count || 0) >= 1000 ? `${((agent.usage_count || 0) / 1000).toFixed(1)}k` : agent.usage_count || 0} 次</span>
+                    <Select value={sortBy} onValueChange={(v) => setSortBy(v as "popular" | "newest")}>
+                        <SelectTrigger className="w-24">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="popular">热门</SelectItem>
+                            <SelectItem value="newest">最新</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                {/* Agent Cards Grid */}
+                <div className="grid grid-cols-2 gap-4 max-h-[420px] overflow-y-auto pr-2">
+                    {storeAgentsLoading ? (
+                        <div className="col-span-2 text-center py-8 text-muted-foreground">
+                            加载中...
+                        </div>
+                    ) : storeAgents.filter((a: Agent) =>
+                        a.name.includes(searchQuery) || a.description.includes(searchQuery)
+                    ).map((agent: Agent) => (
+                        <div
+                            key={agent.id}
+                            className="p-4 rounded-xl border border-border bg-card hover:bg-accent/50 transition-colors cursor-pointer group"
+                            onClick={() => handleCopyAgent(agent)}
+                        >
+                            {/* Header: Icon + Name */}
+                            <div className="flex items-center gap-3 mb-2">
+                                <span className="text-2xl">{agent.icon}</span>
+                                <h4 className="font-semibold text-foreground truncate flex-1">{agent.name}</h4>
+                            </div>
+
+                            {/* Description */}
+                            <p className="text-sm text-muted-foreground line-clamp-2 mb-3 min-h-[40px]">
+                                {agent.description}
+                            </p>
+
+                            {/* Footer: Creator (left) + Stats (right) */}
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                <span className="truncate max-w-[100px]">
+                                    @{agent.creator_name || "匿名"}
+                                </span>
+                                <div className="flex items-center gap-3">
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <span className="flex items-center gap-1 cursor-default">
+                                                <Users className="w-3.5 h-3.5" />
+                                                {formatCount(agent.usage_count || 0)}
+                                            </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>{(agent.usage_count || 0).toLocaleString()} 人使用过</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <span className="flex items-center gap-1 cursor-default">
+                                                <Heart className="w-3.5 h-3.5" />
+                                                {formatCount(agent.favorite_count || 0)}
+                                            </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>{(agent.favorite_count || 0).toLocaleString()} 人已收藏</p>
+                                        </TooltipContent>
+                                    </Tooltip>
                                 </div>
                             </div>
+
+                            {/* Hover Action Button */}
+                            <div className="mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    className="w-full"
+                                    onClick={(e) => { e.stopPropagation(); handleCopyAgent(agent); }}
+                                >
+                                    <Heart className="w-3 h-3 mr-1" /> 收藏
+                                </Button>
+                            </div>
                         </div>
-                        <div className="mt-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button size="sm" variant="secondary" className="flex-1" onClick={(e) => { e.stopPropagation(); handleCopyAgent(agent); }}>
-                                <Copy className="w-3 h-3 mr-1" /> 复制
-                            </Button>
-                        </div>
-                    </div>
-                ))}
+                    ))}
+                </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     const renderMyAgentsContent = () => (
         <div className="space-y-4">
@@ -377,7 +428,7 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
 
                 {myAgents.length === 0 && (
                     <div className="text-center py-12 text-muted-foreground">
-                        <p>从商店复制或创建你的专属智能体</p>
+                        <p>从商店收藏或创建你的专属智能体</p>
                     </div>
                 )}
             </div>
