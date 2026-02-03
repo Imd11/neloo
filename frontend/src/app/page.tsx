@@ -665,7 +665,10 @@ function HomePageInner() {
   // Auth Loading OR minimum splash duration not yet elapsed
   if (authLoading || configLoading || !minSplashElapsed) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
+      <div
+        className="flex h-screen items-center justify-center bg-background"
+        style={{ transform: 'translateY(-5vh)' }}
+      >
         <WaterDropletMascot />
       </div>
     );
@@ -743,7 +746,10 @@ export default function HomePage() {
   return (
     <Suspense
       fallback={
-        <div className="flex h-screen items-center justify-center bg-background">
+        <div
+          className="flex h-screen items-center justify-center bg-background"
+          style={{ transform: 'translateY(-5vh)' }}
+        >
           <WaterDropletMascot />
         </div>
       }
