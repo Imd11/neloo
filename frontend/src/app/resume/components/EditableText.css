@@ -1,0 +1,49 @@
+/**
+ * 可编辑文本的视觉反馈样式
+ */
+
+.editable-text {
+    cursor: text;
+    transition: all 0.15s ease;
+    border-radius: 2px;
+    padding: 0 2px;
+    margin: 0 -2px;
+}
+
+/* Hover 状态 - 浅蓝色提示 */
+.editable-text:hover {
+    background: rgba(99, 102, 241, 0.08);
+    outline: 1px dashed rgba(99, 102, 241, 0.4);
+}
+
+/* Focus 状态 - 明显的编辑模式 */
+.editable-text:focus {
+    background: rgba(99, 102, 241, 0.12);
+    outline: 2px solid rgba(99, 102, 241, 0.6);
+    outline-offset: 1px;
+}
+
+/* Placeholder 样式 */
+.editable-text.is-placeholder {
+    color: rgba(128, 128, 128, 0.6);
+    font-style: italic;
+}
+
+.editable-text.is-placeholder:focus {
+    color: inherit;
+    font-style: normal;
+}
+
+/* 打印时隐藏编辑效果 */
+@media print {
+    .editable-text {
+        padding: 0;
+        margin: 0;
+    }
+
+    .editable-text:hover,
+    .editable-text:focus {
+        background: transparent;
+        outline: none;
+    }
+}

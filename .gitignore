@@ -98,3 +98,9 @@ backend/data/
 frontend-old/
 .vercel
 .env*.local
+
+# =============================================================================
+# ML Models (Large files - download separately)
+# =============================================================================
+*.onnx
+backend/src/resume/models/

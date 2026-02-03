@@ -1,0 +1,434 @@
+/* ============================================================================
+   Hipster CV - Creative Minimal 2024
+   Clean Layout with Teal Accents - Modern Professional Creative
+   ============================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ─── Container ──────────────────────────────────────────────────────────── */
+
+.hipster-container {
+    display: flex;
+    flex-direction: column;
+    width: var(--page-width, 210mm);
+    height: var(--page-height, 297mm);
+    overflow: hidden;
+    font-family: 'DM Sans', -apple-system, sans-serif;
+    font-size: var(--font-size, 9pt);
+    line-height: var(--line-height, 1.55);
+    background: #ffffff;
+    color: #1f2937;
+}
+
+/* ─── Header ─────────────────────────────────────────────────────────────── */
+
+.hipster-header {
+    background: linear-gradient(135deg, var(--primary-color, #0d9488) 0%, var(--primary-dark, #0f766e) 100%);
+    padding: 28px 36px;
+    color: white;
+}
+
+.hipster-header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.hipster-title-area {
+    text-align: right;
+}
+
+.hipster-title-label {
+    font-size: calc(9pt * var(--scale, 1));
+    font-weight: 400;
+    opacity: 0.85;
+    display: block;
+    margin-bottom: 4px;
+    letter-spacing: 0.05em;
+}
+
+.hipster-name {
+    font-size: calc(26pt * var(--scale, 1));
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    margin: 0 0 4px 0;
+}
+
+.hipster-subtitle {
+    font-size: calc(10pt * var(--scale, 1));
+    font-weight: 400;
+    opacity: 0.9;
+    letter-spacing: 0.03em;
+}
+
+/* ─── Body Layout ────────────────────────────────────────────────────────── */
+
+.hipster-body {
+    display: grid;
+    grid-template-columns: 180px 1fr 160px;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* ─── Left Sidebar ───────────────────────────────────────────────────────── */
+
+.hipster-sidebar-left {
+    background: #f8fafc;
+    padding: 24px 18px;
+    border-right: 1px solid #e2e8f0;
+}
+
+.hipster-photo-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.hipster-photo {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #0d9488;
+    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2);
+}
+
+.hipster-section {
+    margin-bottom: 20px;
+}
+
+.hipster-section-title {
+    margin-bottom: 10px;
+}
+
+.hipster-title-text {
+    font-size: calc(9pt * var(--scale, 1));
+    font-weight: 600;
+    color: #0d9488;
+    display: block;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.hipster-title-sub {
+    font-size: calc(7pt * var(--scale, 1));
+    color: #94a3b8;
+    font-weight: 400;
+}
+
+/* Facts */
+.hipster-facts {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.hipster-fact {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: calc(8pt * var(--scale, 1));
+    color: #475569;
+}
+
+.hipster-fact-icon {
+    color: #0d9488;
+    font-size: calc(10pt * var(--scale, 1));
+    width: 14px;
+    text-align: center;
+}
+
+/* Language Bars */
+.hipster-language-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.hipster-language-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.hipster-lang-name {
+    font-size: calc(8pt * var(--scale, 1));
+    font-weight: 500;
+    color: #334155;
+}
+
+.hipster-lang-level {
+    font-size: calc(7pt * var(--scale, 1));
+    color: #94a3b8;
+}
+
+/* Simplified Skills - Clean Tags */
+.hipster-interests-title {
+    font-size: calc(8pt * var(--scale, 1));
+    color: #64748b;
+    font-weight: 500;
+    margin-bottom: 10px;
+}
+
+.hipster-bubble-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.hipster-bubble {
+    padding: 4px 10px;
+    background: #0d9488;
+    color: white;
+    border-radius: 12px;
+    font-size: calc(7pt * var(--scale, 1));
+    font-weight: 500;
+}
+
+/* Tech List */
+.hipster-tech-title {
+    font-size: calc(8pt * var(--scale, 1));
+    color: #0d9488;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.hipster-tech-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.hipster-tech-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: calc(7.5pt * var(--scale, 1));
+    font-family: 'JetBrains Mono', monospace;
+    color: #475569;
+}
+
+.hipster-tech-icon {
+    color: #7c3aed;
+    font-size: calc(9pt * var(--scale, 1));
+}
+
+/* ─── Main Content ───────────────────────────────────────────────────────── */
+
+.hipster-main {
+    padding: 28px 32px;
+    background: #ffffff;
+    overflow: hidden;
+}
+
+.hipster-main-section {
+    margin-bottom: 24px;
+}
+
+.hipster-main-title {
+    font-size: calc(11pt * var(--scale, 1));
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 14px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #0d9488;
+    display: inline-block;
+}
+
+/* Timeline */
+.hipster-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.hipster-timeline-item {
+    display: grid;
+    grid-template-columns: 70px 1fr;
+    gap: 14px;
+}
+
+.hipster-timeline-date {
+    font-size: calc(8pt * var(--scale, 1));
+    font-weight: 600;
+    color: #0d9488;
+    text-align: right;
+    padding-top: 2px;
+}
+
+.hipster-timeline-content {
+    border-left: 2px solid #e2e8f0;
+    padding-left: 14px;
+    position: relative;
+}
+
+.hipster-timeline-content::before {
+    content: '';
+    position: absolute;
+    left: -5px;
+    top: 6px;
+    width: 8px;
+    height: 8px;
+    background: #0d9488;
+    border-radius: 50%;
+}
+
+.hipster-timeline-title {
+    font-size: calc(10pt * var(--scale, 1));
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0 0 3px 0;
+}
+
+.hipster-timeline-company {
+    font-size: calc(8.5pt * var(--scale, 1));
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.hipster-location,
+.hipster-edu-icon {
+    font-size: calc(9pt * var(--scale, 1));
+    color: #94a3b8;
+}
+
+.hipster-timeline-desc {
+    font-size: calc(8.5pt * var(--scale, 1));
+    color: #64748b;
+    margin: 6px 0 0 0;
+    line-height: 1.5;
+}
+
+.hipster-cert-name {
+    font-size: calc(8.5pt * var(--scale, 1));
+    color: #475569;
+}
+
+/* ─── Right Sidebar ──────────────────────────────────────────────────────── */
+
+.hipster-sidebar-right {
+    background: #f8fafc;
+    padding: 24px 16px;
+    border-left: 1px solid #e2e8f0;
+}
+
+.hipster-section-title-right {
+    font-size: calc(9pt * var(--scale, 1));
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Hobbies */
+.hipster-hobbies-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.hipster-hobby-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    font-size: calc(8pt * var(--scale, 1));
+}
+
+.hipster-hobby-icon {
+    font-size: calc(12pt * var(--scale, 1));
+}
+
+/* Publications */
+.hipster-publications {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.hipster-pub-item {
+    font-size: calc(8pt * var(--scale, 1));
+}
+
+.hipster-pub-year {
+    font-weight: 600;
+    color: #0d9488;
+    display: block;
+    margin-bottom: 2px;
+}
+
+.hipster-pub-title {
+    color: #475569;
+    line-height: 1.4;
+}
+
+/* Tags */
+.hipster-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.hipster-tag {
+    padding: 4px 10px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    font-size: calc(7.5pt * var(--scale, 1));
+    color: #475569;
+}
+
+/* Refs */
+.hipster-refs {
+    font-size: calc(8pt * var(--scale, 1));
+    color: #64748b;
+}
+
+.hipster-ref-item {
+    padding: 6px 10px;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    display: block;
+    margin-bottom: 6px;
+}
+
+/* ─── Footer ─────────────────────────────────────────────────────────────── */
+
+.hipster-footer {
+    background: #1e293b;
+    color: white;
+    padding: 14px 36px;
+}
+
+.hipster-footer-content {
+    display: flex;
+    justify-content: center;
+    gap: 28px;
+    font-size: calc(8pt * var(--scale, 1));
+    color: #94a3b8;
+}
+
+.hipster-footer-content a {
+    color: #94a3b8;
+    text-decoration: none;
+}
+
+/* ─── Print ──────────────────────────────────────────────────────────────── */
+
+@media print {
+    .hipster-container {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .hipster-header {
+        background: #0d9488 !important;
+    }
+}

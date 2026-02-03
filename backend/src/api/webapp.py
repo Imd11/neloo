@@ -3008,3 +3008,11 @@ app.include_router(trigger_router)
 
 from .translate_routes import translate_router
 app.include_router(translate_router)
+
+# =============================================================================
+# Resume Parsing Routes
+# =============================================================================
+
+from .resume_routes import router as resume_router
+app.include_router(resume_router)
+

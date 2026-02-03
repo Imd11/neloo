@@ -1,0 +1,353 @@
+/* ============================================================================
+   AdditionalStep - Form-only styles (AI panel handled by StepWizard)
+   ============================================================================ */
+
+.additional-step {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* ─── Section Header ─────────────────────────────────────────────────────── */
+
+.modules-section {
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 12px 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+/* ─── Existing Module Card ───────────────────────────────────────────────── */
+
+.module-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    overflow: hidden;
+}
+
+.module-card.existing {
+    border-left: 3px solid #10b981;
+}
+
+.module-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.module-card-header:hover {
+    background: #f9fafb;
+}
+
+.module-card-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.module-icon {
+    font-size: 18px;
+}
+
+.module-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #1f2937;
+}
+
+.module-count {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.expand-btn {
+    background: none;
+    border: none;
+    font-size: 12px;
+    color: #9ca3af;
+    cursor: pointer;
+}
+
+.module-content {
+    padding: 12px 16px 16px;
+    border-top: 1px solid #f3f4f6;
+}
+
+/* ─── Module Form Styles ─────────────────────────────────────────────────── */
+
+.module-items {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.module-item {
+    background: #f9fafb;
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.item-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.form-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+    transition: border-color 0.2s;
+}
+
+.form-input:focus {
+    border-color: #6366f1;
+    outline: none;
+}
+
+.form-input.small {
+    flex: 0 0 auto;
+    width: 120px;
+}
+
+.form-textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.form-textarea:focus {
+    border-color: #6366f1;
+    outline: none;
+}
+
+.btn-remove {
+    background: none;
+    border: none;
+    color: #dc2626;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.btn-remove:hover {
+    background: #fef2f2;
+}
+
+.btn-add {
+    padding: 10px 16px;
+    background: white;
+    border: 2px dashed #d1d5db;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-add:hover {
+    border-color: #6366f1;
+    color: #6366f1;
+    background: #f5f3ff;
+}
+
+/* Hobbies grid */
+.hobbies-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.hobby-tag {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: #f3f4f6;
+    border-radius: 20px;
+    padding: 4px 8px 4px 12px;
+}
+
+.form-input-inline {
+    background: transparent;
+    border: none;
+    font-size: 13px;
+    width: 100px;
+    outline: none;
+}
+
+.btn-remove-small {
+    background: none;
+    border: none;
+    color: #9ca3af;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.btn-remove-small:hover {
+    color: #dc2626;
+}
+
+.btn-add-circle {
+    background: white;
+    border: 2px dashed #d1d5db;
+    border-radius: 20px;
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+    color: #6b7280;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-add-circle:hover {
+    border-color: #6366f1;
+    color: #6366f1;
+}
+
+/* ─── AI Recommended Cards ───────────────────────────────────────────────── */
+
+.recommend-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.recommend-card {
+    background: white;
+    border: 1px solid #fbbf24;
+    border-left: 3px solid #f59e0b;
+    border-radius: 10px;
+    padding: 14px;
+}
+
+.recommend-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.badge.ai-tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    background: #fef3c7;
+    color: #92400e;
+    border-radius: 10px;
+    font-weight: 500;
+}
+
+.recommend-reason {
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 10px;
+    padding-left: 28px;
+}
+
+.recommend-preview {
+    background: #f9fafb;
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 12px;
+}
+
+.preview-item strong {
+    font-size: 13px;
+    color: #1f2937;
+}
+
+.preview-item p {
+    font-size: 12px;
+    color: #6b7280;
+    margin: 4px 0 0;
+}
+
+.recommend-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.btn-accept {
+    padding: 8px 16px;
+    background: #10b981;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-accept:hover {
+    background: #059669;
+}
+
+/* ─── Loading & Status ───────────────────────────────────────────────────── */
+
+.recommend-loading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px;
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #e5e7eb;
+    border-top-color: #6366f1;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.recommend-error {
+    padding: 12px;
+    color: #dc2626;
+    font-size: 13px;
+}
+
+.no-recommend {
+    padding: 16px;
+    color: #10b981;
+    font-size: 13px;
+    text-align: center;
+}
+
+.form-hint {
+    font-size: 12px;
+    color: #9ca3af;
+    text-align: center;
+    margin-top: 8px;
+}

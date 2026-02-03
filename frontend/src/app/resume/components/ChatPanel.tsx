@@ -1,0 +1,274 @@
+import { useState, useRef, useEffect } from 'react';
+import { sendMessage, createResumeContext, parseAIResponse, applySuggestion } from '../lib/deepseek';
+import type { ChatMessage, Suggestion } from '../lib/deepseek';
+import type { ResumeData } from '../types/resume';
+
+interface ChatPanelProps {
+    resumeData?: ResumeData;
+    onDataChange?: (data: ResumeData) => void;
+}
+
+interface DisplayMessage {
+    id: string;
+    role: 'user' | 'assistant';
+    content: string;
+    isStreaming?: boolean;
+    suggestion?: Suggestion;
+    suggestionApplied?: boolean;
+}
+
+export function ChatPanel({ resumeData, onDataChange }: ChatPanelProps) {
+    const [messages, setMessages] = useState<DisplayMessage[]>([
+        {
+            id: 'welcome',
+            role: 'assistant',
+            content: `你好！我是简历优化助手。你可以让我：
+
+• 优化某段工作经历的描述
+• 改进个人简介
+• 检查语法问题
+
+试试说："帮我优化第一段工作经历"`,
+        },
+    ]);
+    const [input, setInput] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // Scroll to bottom when messages change
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
+
+    const handleSend = async () => {
+        if (!input.trim() || isLoading) return;
+
+        const userMessage: DisplayMessage = {
+            id: Date.now().toString(),
+            role: 'user',
+            content: input,
+        };
+
+        // Add user message
+        setMessages(prev => [...prev, userMessage]);
+        setInput('');
+        setIsLoading(true);
+
+        // Create assistant placeholder
+        const assistantId = (Date.now() + 1).toString();
+        setMessages(prev => [
+            ...prev,
+            { id: assistantId, role: 'assistant', content: '', isStreaming: true },
+        ]);
+
+        try {
+            // Build message history for API
+            const apiMessages: ChatMessage[] = [];
+
+            // Include resume context in first message
+            if (resumeData) {
+                apiMessages.push({
+                    role: 'user',
+                    content: createResumeContext(resumeData),
+                });
+                apiMessages.push({
+                    role: 'assistant',
+                    content: '我已了解你的简历内容，请告诉我你需要什么帮助。',
+                });
+            }
+
+            // Add conversation history (skip welcome message)
+            messages
+                .filter(m => m.id !== 'welcome')
+                .forEach(m => {
+                    apiMessages.push({ role: m.role, content: m.content });
+                });
+
+            // Add current user message
+            apiMessages.push({ role: 'user', content: input });
+
+            // Send with streaming
+            const fullResponse = await sendMessage(apiMessages, (chunk) => {
+                setMessages(prev =>
+                    prev.map(m =>
+                        m.id === assistantId
+                            ? { ...m, content: m.content + chunk }
+                            : m
+                    )
+                );
+            });
+
+            // Parse the response for suggestions
+            const parsed = parseAIResponse(fullResponse);
+
+            // Update message with parsed content and suggestion
+            setMessages(prev =>
+                prev.map(m =>
+                    m.id === assistantId
+                        ? {
+                            ...m,
+                            content: parsed.message || fullResponse,
+                            isStreaming: false,
+                            suggestion: parsed.suggestion,
+                        }
+                        : m
+                )
+            );
+        } catch (error) {
+            console.error('Chat error:', error);
+            setMessages(prev =>
+                prev.map(m =>
+                    m.id === assistantId
+                        ? { ...m, content: `错误: ${error instanceof Error ? error.message : '请求失败'}`, isStreaming: false }
+                        : m
+                )
+            );
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleApplySuggestion = (messageId: string, suggestion: Suggestion) => {
+        if (!resumeData || !onDataChange) return;
+
+        // Apply the suggestion to resume data
+        const newData = applySuggestion(
+            resumeData as unknown as Record<string, unknown>,
+            suggestion
+        ) as unknown as ResumeData;
+
+        onDataChange(newData);
+
+        // Mark suggestion as applied
+        setMessages(prev =>
+            prev.map(m =>
+                m.id === messageId
+                    ? { ...m, suggestionApplied: true }
+                    : m
+            )
+        );
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSend();
+        }
+    };
+
+    return (
+        <div className="h-full flex flex-col">
+            {/* Header */}
+            <div className="h-12 border-b px-4 flex items-center shrink-0">
+                <h2 className="text-sm font-semibold text-gray-700">✨ AI 助手</h2>
+            </div>
+
+            {/* Messages Area */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {messages.map((message) => (
+                    <div key={message.id} className="flex gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm shrink-0 ${message.role === 'assistant' ? 'bg-gradient-to-br from-indigo-500 to-purple-600' : 'bg-gray-500'
+                            }`}>
+                            {message.role === 'assistant' ? 'AI' : '我'}
+                        </div>
+                        <div className="flex-1 space-y-2">
+                            {/* Message content */}
+                            <div className={`rounded-lg p-3 text-sm max-w-[95%] whitespace-pre-wrap ${message.role === 'assistant'
+                                    ? 'bg-gray-100 text-gray-700'
+                                    : 'bg-indigo-500 text-white'
+                                }`}>
+                                {message.content || (message.isStreaming ? '思考中...' : '')}
+                                {message.isStreaming && message.content && (
+                                    <span className="inline-block w-1.5 h-4 bg-indigo-500 ml-0.5 animate-pulse" />
+                                )}
+                            </div>
+
+                            {/* Suggestion Card */}
+                            {message.suggestion && !message.isStreaming && (
+                                <div className={`rounded-lg border-2 overflow-hidden ${message.suggestionApplied
+                                        ? 'border-green-300 bg-green-50'
+                                        : 'border-indigo-200 bg-indigo-50'
+                                    }`}>
+                                    <div className="px-3 py-2 bg-white border-b border-indigo-100">
+                                        <span className="text-xs font-medium text-indigo-600">
+                                            💡 建议修改: {message.suggestion.field}
+                                        </span>
+                                    </div>
+                                    <div className="p-3 space-y-2">
+                                        {/* Before */}
+                                        <div>
+                                            <span className="text-xs text-gray-500">修改前:</span>
+                                            <p className="text-sm text-red-600 line-through bg-red-50 p-2 rounded mt-1">
+                                                {message.suggestion.before || '(空)'}
+                                            </p>
+                                        </div>
+                                        {/* After */}
+                                        <div>
+                                            <span className="text-xs text-gray-500">修改后:</span>
+                                            <p className="text-sm text-green-700 bg-green-50 p-2 rounded mt-1">
+                                                {message.suggestion.after}
+                                            </p>
+                                        </div>
+                                        {/* Reason */}
+                                        {message.suggestion.reason && (
+                                            <p className="text-xs text-gray-500 italic">
+                                                💬 {message.suggestion.reason}
+                                            </p>
+                                        )}
+                                        {/* Action Buttons */}
+                                        {!message.suggestionApplied ? (
+                                            <div className="flex gap-2 pt-2">
+                                                <button
+                                                    onClick={() => handleApplySuggestion(message.id, message.suggestion!)}
+                                                    className="flex-1 px-3 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-sm font-medium rounded-lg hover:shadow-md transition-all"
+                                                >
+                                                    ✅ 接受修改
+                                                </button>
+                                                <button
+                                                    onClick={() => setMessages(prev =>
+                                                        prev.map(m => m.id === message.id ? { ...m, suggestion: undefined } : m)
+                                                    )}
+                                                    className="px-3 py-2 bg-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-300 transition-colors"
+                                                >
+                                                    忽略
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2 pt-2 text-green-600">
+                                                <span className="text-lg">✓</span>
+                                                <span className="text-sm font-medium">已应用修改</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ))}
+                <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input Area */}
+            <div className="p-3 border-t shrink-0">
+                <div className="flex gap-2">
+                    <input
+                        type="text"
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        placeholder="输入你的需求..."
+                        disabled={isLoading}
+                        className="flex-1 px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50"
+                    />
+                    <button
+                        onClick={handleSend}
+                        disabled={isLoading || !input.trim()}
+                        className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg hover:shadow-lg transition-all text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        发送
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}

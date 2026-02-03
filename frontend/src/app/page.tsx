@@ -113,8 +113,11 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
       setFortuneMode(false);
       setActiveFeatureId('web-dev');
       onPromptSubmit(userInput);
+    } else if (selectedFeature?.id === 'resume') {
+      // Resume feature - navigate to dedicated resume builder page
+      router.push('/resume');
     } else if (selectedFeature) {
-      // Other features (slides, resume, prompt-optimize, deai)
+      // Other features (slides, prompt-optimize, deai)
       setFortuneMode(false);
       setActiveFeatureId(selectedFeature.id);
       onPromptSubmit(userInput);

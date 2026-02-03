@@ -1,0 +1,344 @@
+/* ============================================================================
+   AltaCV Template - Academic Warm 2024
+   Terracotta Accent with Two-Column Academic Layout
+   ============================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700&display=swap');
+
+.altacv-container {
+    width: var(--page-width, 210mm);
+    height: var(--page-height, 297mm);
+    background: white;
+    display: grid;
+    grid-template-columns: 1fr var(--sidebar-width, 40%);
+    font-family: 'Libre Franklin', -apple-system, sans-serif;
+    font-size: var(--font-size, 9.5pt);
+    line-height: var(--line-height, 1.5);
+    color: #2d2d2d;
+    overflow: hidden;
+}
+
+/* ─── Main Column ────────────────────────────────────────────────────────── */
+
+.altacv-main {
+    padding: 32px 36px;
+}
+
+.altacv-header {
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 3px solid #c45c35;
+}
+
+.altacv-name {
+    font-size: calc(26pt * var(--scale, 1));
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0 0 6px 0;
+    letter-spacing: 0.01em;
+}
+
+.altacv-tagline {
+    font-size: calc(11pt * var(--scale, 1));
+    color: #c45c35;
+    margin: 0 0 14px 0;
+    font-weight: 500;
+}
+
+.altacv-contact-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    font-size: calc(8pt * var(--scale, 1));
+    color: #5a5a5a;
+}
+
+.altacv-contact-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.altacv-contact-item svg,
+.altacv-contact-item .icon {
+    color: #c45c35;
+}
+
+/* ─── Sections ───────────────────────────────────────────────────────────── */
+
+.altacv-section {
+    margin-bottom: 22px;
+}
+
+.altacv-section-title {
+    font-size: calc(11pt * var(--scale, 1));
+    font-weight: 700;
+    color: #c45c35;
+    margin: 0 0 14px 0;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #c45c35;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    display: inline-block;
+}
+
+/* ─── Entry ──────────────────────────────────────────────────────────────── */
+
+.altacv-entry {
+    margin-bottom: 16px;
+    padding-left: 14px;
+    border-left: 2px solid #e8e0dc;
+}
+
+.altacv-entry-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.altacv-entry-title {
+    font-size: calc(10pt * var(--scale, 1));
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.altacv-entry-location {
+    font-size: calc(8pt * var(--scale, 1));
+    color: #888;
+}
+
+.altacv-entry-company {
+    font-size: calc(9pt * var(--scale, 1));
+    color: #c45c35;
+    font-weight: 600;
+}
+
+.altacv-entry-date {
+    font-size: calc(8pt * var(--scale, 1));
+    color: #888;
+    margin: 3px 0 6px;
+}
+
+.altacv-entry-list {
+    margin: 8px 0 0 0;
+    padding-left: 16px;
+    font-size: calc(8.5pt * var(--scale, 1));
+    color: #4a4a4a;
+}
+
+.altacv-entry-list li {
+    margin-bottom: 3px;
+    line-height: 1.5;
+}
+
+.altacv-entry-list li::marker {
+    color: #c45c35;
+}
+
+.altacv-entry-desc {
+    font-size: calc(8.5pt * var(--scale, 1));
+    color: #4a4a4a;
+    margin-top: 6px;
+    line-height: 1.55;
+}
+
+/* ─── Sidebar Column ─────────────────────────────────────────────────────── */
+
+.altacv-sidebar {
+    background: #faf8f6;
+    padding: 32px 24px;
+    border-left: 1px solid #e8e0dc;
+}
+
+.altacv-photo-section {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.altacv-photo {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #c45c35;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.altacv-sidebar-section {
+    margin-bottom: 20px;
+}
+
+.altacv-sidebar-title {
+    font-size: calc(9pt * var(--scale, 1));
+    font-weight: 700;
+    color: #c45c35;
+    margin: 0 0 12px 0;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+/* ─── Philosophy ─────────────────────────────────────────────────────────── */
+
+.altacv-philosophy {
+    font-size: calc(9pt * var(--scale, 1));
+    font-style: italic;
+    color: #5a5a5a;
+    line-height: 1.6;
+    margin: 0;
+    padding-left: 12px;
+    border-left: 2px solid #c45c35;
+}
+
+/* ─── Achievements ───────────────────────────────────────────────────────── */
+
+.altacv-achievement {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.achievement-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+    color: #c45c35;
+}
+
+.achievement-content {
+    font-size: calc(8.5pt * var(--scale, 1));
+}
+
+.achievement-content strong {
+    display: block;
+    color: #1a1a1a;
+    margin-bottom: 2px;
+}
+
+.achievement-content p {
+    margin: 0;
+    color: #5a5a5a;
+}
+
+/* ─── Tags / Skills ──────────────────────────────────────────────────────── */
+
+.altacv-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.altacv-tag {
+    display: inline-block;
+    padding: 4px 12px;
+    background: white;
+    border: 1px solid #e8e0dc;
+    border-radius: 14px;
+    font-size: calc(8pt * var(--scale, 1));
+    color: #5a5a5a;
+}
+
+/* ─── Languages ──────────────────────────────────────────────────────────── */
+
+.altacv-language {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.lang-name {
+    font-size: calc(9pt * var(--scale, 1));
+    color: #2d2d2d;
+    font-weight: 500;
+}
+
+.lang-dots {
+    display: flex;
+    gap: 4px;
+}
+
+.lang-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1.5px solid #c45c35;
+}
+
+.lang-dot.filled {
+    background: #c45c35;
+}
+
+/* ─── Education ──────────────────────────────────────────────────────────── */
+
+.altacv-edu {
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e8e0dc;
+}
+
+.altacv-edu:last-child {
+    border-bottom: none;
+}
+
+.edu-degree {
+    font-size: calc(9pt * var(--scale, 1));
+    font-weight: 600;
+    color: #1a1a1a;
+}
+
+.edu-school {
+    font-size: calc(8.5pt * var(--scale, 1));
+    color: #c45c35;
+    font-weight: 500;
+}
+
+.edu-date {
+    font-size: calc(8pt * var(--scale, 1));
+    color: #888;
+    margin-top: 3px;
+}
+
+.edu-desc {
+    font-size: calc(8pt * var(--scale, 1));
+    color: #5a5a5a;
+    margin-top: 4px;
+}
+
+/* ─── Pie Chart (simplified) ─────────────────────────────────────────────── */
+
+.altacv-pie-chart {
+    display: none;
+    /* Hide complex chart, use tags instead */
+}
+
+.pie-labels {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: calc(8pt * var(--scale, 1));
+}
+
+.pie-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.pie-label::before {
+    content: '•';
+    color: #c45c35;
+    font-size: 14px;
+}
+
+/* ─── Print ──────────────────────────────────────────────────────────────── */
+
+@media print {
+    .altacv-container {
+        box-shadow: none;
+        margin: 0;
+    }
+
+    .altacv-sidebar {
+        background: #faf8f6 !important;
+    }
+}
