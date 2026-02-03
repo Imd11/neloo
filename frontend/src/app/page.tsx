@@ -32,7 +32,6 @@ import { FeatureButtons } from "@/app/components/FeatureButtons";
 import { FeatureTemplateGrid } from "@/app/components/FeatureTemplateGrid";
 import { Feature, Template } from "@/data/featureTemplates";
 import { ImageExperience } from "@/app/components/image/ImageExperience";
-import { ResumeExperience } from "@/app/components/resume/ResumeExperience";
 import { TranslatePanel } from "@/app/components/TranslatePanel";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGoogleDrivePicker } from "@/app/hooks/useGoogleDrivePicker";
@@ -362,9 +361,8 @@ function ChatWithFilePanel({
     }
 
     if (feature.id === "resume") {
-      // Resume mode is handled inline on the home page (no route change).
-      setActiveFeatureId("resume");
-      onModeChange?.("resume");
+      // Resume feature - navigate to dedicated resume builder page
+      router.push('/resume');
       return;
     }
 
@@ -406,20 +404,6 @@ function ChatWithFilePanel({
           onBack={() => {
             setSelectedFeature(null);
             setActiveFeatureId(null);
-          }}
-        />
-      </div>
-    );
-  }
-
-  if (showLandingView && selectedFeature?.id === "resume") {
-    return (
-      <div className="flex-1 overflow-y-auto">
-        <ResumeExperience
-          onExit={() => {
-            setSelectedFeature(null);
-            setActiveFeatureId(null);
-            onModeChange?.("chat");
           }}
         />
       </div>
