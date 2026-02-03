@@ -69,7 +69,7 @@ function TemplateRenderer({
     }
 }
 
-export default function ResumePage() {
+export function ResumePageContent({ onExit }: { onExit?: () => void } = {}) {
     const [mode, setMode] = useState<AppMode>('upload');
     const [resumeData, setResumeData] = useState<ResumeData>(defaultResumeData);
     const [styleSettings, setStyleSettings] = useState<StyleSettings>(defaultStyleSettings);
@@ -350,4 +350,9 @@ export default function ResumePage() {
             </div>
         </>
     );
+}
+
+// Default export for /resume route
+export default function ResumePage() {
+    return <ResumePageContent />;
 }

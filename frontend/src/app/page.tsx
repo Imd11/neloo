@@ -32,6 +32,7 @@ import { FeatureButtons } from "@/app/components/FeatureButtons";
 import { FeatureTemplateGrid } from "@/app/components/FeatureTemplateGrid";
 import { Feature, Template } from "@/data/featureTemplates";
 import { ImageExperience } from "@/app/components/image/ImageExperience";
+import { ResumeExperience } from "@/app/components/resume/ResumeExperience";
 import { TranslatePanel } from "@/app/components/TranslatePanel";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGoogleDrivePicker } from "@/app/hooks/useGoogleDrivePicker";
@@ -113,9 +114,6 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
       setFortuneMode(false);
       setActiveFeatureId('web-dev');
       onPromptSubmit(userInput);
-    } else if (selectedFeature?.id === 'resume') {
-      // Resume feature - navigate to dedicated resume builder page
-      router.push('/resume');
     } else if (selectedFeature) {
       // Other features (slides, prompt-optimize, deai)
       setFortuneMode(false);
@@ -230,7 +228,7 @@ function ChatWithFilePanel({
   onOpenFilePanel: () => void;
   onCloseFilePanel: () => void;
   threadId: string | null;
-  onModeChange?: (mode: "chat" | "image") => void;
+  onModeChange?: (mode: "chat" | "image" | "resume") => void;
 }) {
   const router = useRouter();
   const { messages, isLoading, isThreadLoading, webDevMode, sendMessage, setFortuneMode, enableWebDevMode, setActiveFeatureId } = useChatContext();
@@ -363,6 +361,13 @@ function ChatWithFilePanel({
       return;
     }
 
+    if (feature.id === "resume") {
+      // Resume mode is handled inline on the home page (no route change).
+      setActiveFeatureId("resume");
+      onModeChange?.("resume");
+      return;
+    }
+
     setActiveFeatureId(feature.id);
     onModeChange?.("chat");
   }, [router, setActiveFeatureId, setFortuneMode]);
@@ -401,6 +406,20 @@ function ChatWithFilePanel({
           onBack={() => {
             setSelectedFeature(null);
             setActiveFeatureId(null);
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (showLandingView && selectedFeature?.id === "resume") {
+    return (
+      <div className="flex-1 overflow-y-auto">
+        <ResumeExperience
+          onExit={() => {
+            setSelectedFeature(null);
+            setActiveFeatureId(null);
+            onModeChange?.("chat");
           }}
         />
       </div>
@@ -516,7 +535,7 @@ function HomePageInner() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
-  const [uiMode, setUiMode] = useState<"chat" | "image">("chat");
+  const [uiMode, setUiMode] = useState<"chat" | "image" | "resume">("chat");
 
   // Load config
   useEffect(() => {

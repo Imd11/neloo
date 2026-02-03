@@ -17,7 +17,7 @@ interface TopBarProps {
     currentModelId?: string;
     onModelSelect?: (modelId: string) => void;
     /** Override which model set to show (route-independent). */
-    mode?: "chat" | "image";
+    mode?: "chat" | "image" | "resume";
 }
 
 export function TopBar({ hideUserActions = false, currentModelId, onModelSelect, mode }: TopBarProps) {
