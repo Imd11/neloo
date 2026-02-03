@@ -85,10 +85,10 @@ class LayoutDetector:
     def _download_model(self, target_path: str) -> bool:
         """Download model from Hugging Face Hub"""
         try:
-            # Model URL on Hugging Face
-            model_url = "https://huggingface.co/imd11/resume-layout-yolov10/resolve/main/best.onnx"
+            # Model URL from Alibaba-EI/SmartResume official repo
+            model_url = "https://huggingface.co/Alibaba-EI/SmartResume/resolve/main/yolov10/best.onnx"
             
-            print(f"📥 Downloading layout model from Hugging Face...")
+            print(f"📥 Downloading layout model from Hugging Face (Alibaba-EI/SmartResume)...")
             
             import urllib.request
             
