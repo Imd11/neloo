@@ -70,73 +70,45 @@ export const RESUME_SYSTEM_PROMPT = `你是一位专业的简历优化助手。�
 - 如果是修改请求，返回包含 suggestion 的 JSON
 - JSON 必须用 \`\`\`json 包裹`;
 
+// Backend URL for API proxy
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
+
 export async function sendMessage(
     messages: ChatMessage[],
     onStream?: (chunk: string) => void
 ): Promise<string> {
-    const apiKey = process.env.NEXT_PUBLIC_DEEPSEEK_API_KEY;
-
-    if (!apiKey) {
-        throw new Error('DeepSeek API key not configured');
-    }
-
-    const response = await fetch(DEEPSEEK_API_URL, {
+    // Call backend proxy instead of direct DeepSeek API
+    // This avoids exposing API keys in frontend
+    const response = await fetch(`${BACKEND_URL}/api/resume/optimize`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-            model: 'deepseek-chat',
-            messages: [
-                { role: 'system', content: RESUME_SYSTEM_PROMPT },
-                ...messages,
-            ],
-            stream: !!onStream,
+            messages: messages.map(m => ({ role: m.role, content: m.content })),
+            stream: false,  // Streaming not supported via proxy yet
         }),
     });
 
     if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`DeepSeek API error: ${response.status} - ${error}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `API error: ${response.status}`);
     }
 
-    // Handle streaming
-    if (onStream && response.body) {
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let fullContent = '';
+    const data = await response.json();
 
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            const chunk = decoder.decode(value);
-            const lines = chunk.split('\n').filter(line => line.startsWith('data: '));
-
-            for (const line of lines) {
-                const data = line.slice(6);
-                if (data === '[DONE]') continue;
-
-                try {
-                    const parsed = JSON.parse(data);
-                    const content = parsed.choices?.[0]?.delta?.content || '';
-                    if (content) {
-                        fullContent += content;
-                        onStream(content);
-                    }
-                } catch {
-                    // Skip invalid JSON
-                }
-            }
-        }
-
-        return fullContent;
+    if (!data.success) {
+        throw new Error(data.detail || 'Optimization failed');
     }
 
-    // Non-streaming response
-    const data: DeepSeekResponse = await response.json();
-    return data.choices[0]?.message?.content || '';
+    const content = data.content || '';
+
+    // If onStream callback provided, simulate streaming with full content
+    if (onStream && content) {
+        onStream(content);
+    }
+
+    return content;
 }
 
 // Helper to create a context message with current resume data

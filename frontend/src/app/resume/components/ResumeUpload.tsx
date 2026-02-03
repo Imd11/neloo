@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { parseResumeText, extractTextFromPDF, extractImagesFromPDF } from '../lib/resumeParser';
+import { parseResumeText } from '../lib/resumeParser';
 import { parseResumeWithBackend } from '../lib/smartResumeClient';
 import { extractTextFromImage } from '../lib/ocr';
 import type { ResumeData } from '../types/resume';
@@ -27,35 +27,8 @@ export function ResumeUpload({ onParsed, onSkip }: ResumeUploadProps) {
             if (file.type === 'application/pdf') {
                 setStatus('parsing');
 
-                // Try SmartResume backend first
-                try {
-                    const parsedData = await parseResumeWithBackend(file);
-                    setStatus('success');
-                    setTimeout(() => onParsed(parsedData), 500);
-                    return;
-                } catch (backendError) {
-                    console.warn('SmartResume backend failed, falling back to frontend parsing:', backendError);
-                    // Fall back to original method
-                }
-
-                // Fallback: frontend parsing
-                setStatus('extracting');
-                const [text, extractedPhoto] = await Promise.all([
-                    extractTextFromPDF(file),
-                    extractImagesFromPDF(file),
-                ]);
-
-                if (!text.trim()) {
-                    throw new Error('无法从文件中提取文字');
-                }
-
-                setStatus('parsing');
-                const parsedData = await parseResumeText(text);
-
-                if (extractedPhoto && !parsedData.personal.photo) {
-                    parsedData.personal.photo = extractedPhoto;
-                }
-
+                // Use SmartResume backend for PDF parsing
+                const parsedData = await parseResumeWithBackend(file);
                 setStatus('success');
                 setTimeout(() => onParsed(parsedData), 500);
                 return;
