@@ -36,6 +36,7 @@ import { TranslatePanel } from "@/app/components/TranslatePanel";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGoogleDrivePicker } from "@/app/hooks/useGoogleDrivePicker";
 import { useDataFileUpload } from "@/app/hooks/useDataFileUpload";
+import { WaterDropletMascot } from "@/app/components/WaterDropletMascot";
 import { toast } from "sonner";
 
 interface LandingViewProps {
@@ -657,19 +658,7 @@ function HomePageInner() {
   if (authLoading || configLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <img
-            src="/meloo-bounce.gif"
-            alt="Meloo"
-            className="w-28 h-28"
-          />
-          <span
-            className="text-lg text-muted-foreground font-medium"
-            style={{ fontFamily: "'Nunito', sans-serif" }}
-          >
-            Meloo
-          </span>
-        </div>
+        <WaterDropletMascot />
       </div>
     );
   }
@@ -747,19 +736,7 @@ export default function HomePage() {
     <Suspense
       fallback={
         <div className="flex h-screen items-center justify-center bg-background">
-          <div className="flex flex-col items-center gap-4">
-            <img
-              src="/meloo-bounce.gif"
-              alt="Meloo"
-              className="w-28 h-28"
-            />
-            <span
-              className="text-lg text-muted-foreground font-medium"
-              style={{ fontFamily: "'Nunito', sans-serif" }}
-            >
-              Meloo
-            </span>
-          </div>
+          <WaterDropletMascot />
         </div>
       }
     >
