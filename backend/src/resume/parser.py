@@ -45,20 +45,20 @@ class ResumeParser:
     def __init__(
         self,
         api_key: Optional[str] = None,
-        api_base: str = "https://api.deepseek.com",
-        model: str = "deepseek-chat",
+        api_base: str = "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        model: str = "qwen-plus",
         use_layout_detection: bool = True
     ):
         """
         Initialize parser
         
         Args:
-            api_key: DeepSeek API key. If None, reads from DEEPSEEK_API_KEY env var.
+            api_key: Qwen API key. If None, reads from QWEN_API_KEY env var.
             api_base: API base URL
             model: Model name to use
             use_layout_detection: Whether to use YOLOv10 layout detection
         """
-        self.api_key = api_key or os.environ.get("DEEPSEEK_API_KEY")
+        self.api_key = api_key or os.environ.get("QWEN_API_KEY")
         self.api_base = api_base
         self.model = model
         self.use_layout_detection = use_layout_detection

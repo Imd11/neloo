@@ -2,7 +2,7 @@
 Resume AI API Routes
 
 Provides endpoints for AI-powered resume optimization.
-Uses DeepSeek API via backend proxy, reusing existing DEEPSEEK_API_KEY.
+Uses Qwen API via backend proxy, reusing existing QWEN_API_KEY.
 """
 
 import os
@@ -13,9 +13,9 @@ from typing import List, Optional
 
 router = APIRouter(prefix="/api/resume", tags=["resume-ai"])
 
-# DeepSeek API configuration
-DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions"
-DEEPSEEK_MODEL = "deepseek-chat"
+# Qwen API configuration
+QWEN_API_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+QWEN_MODEL = "qwen-plus"
 
 
 class ChatMessage(BaseModel):
@@ -82,14 +82,14 @@ async def optimize_resume(request: OptimizeRequest) -> OptimizeResponse:
     """
     AI-powered resume optimization endpoint.
     
-    Proxies requests to DeepSeek API using backend API key.
+    Proxies requests to Qwen API using backend API key.
     """
-    api_key = os.environ.get("DEEPSEEK_API_KEY")
+    api_key = os.environ.get("QWEN_API_KEY")
     
     if not api_key:
         raise HTTPException(
             status_code=500, 
-            detail="DeepSeek API key not configured on server"
+            detail="Qwen API key not configured on server"
         )
     
     # Build messages with system prompt
@@ -100,13 +100,13 @@ async def optimize_resume(request: OptimizeRequest) -> OptimizeResponse:
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
-                DEEPSEEK_API_URL,
+                QWEN_API_URL,
                 headers={
                     "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json"
                 },
                 json={
-                    "model": DEEPSEEK_MODEL,
+                    "model": QWEN_MODEL,
                     "messages": messages,
                     "stream": False,
                     "temperature": 0.7,
@@ -116,10 +116,10 @@ async def optimize_resume(request: OptimizeRequest) -> OptimizeResponse:
             
             if response.status_code != 200:
                 error_text = response.text
-                print(f"❌ DeepSeek API error: {response.status_code} - {error_text}")
+                print(f"❌ Qwen API error: {response.status_code} - {error_text}")
                 raise HTTPException(
                     status_code=response.status_code,
-                    detail=f"DeepSeek API error: {error_text}"
+                    detail=f"Qwen API error: {error_text}"
                 )
             
             data = response.json()
@@ -128,7 +128,7 @@ async def optimize_resume(request: OptimizeRequest) -> OptimizeResponse:
             return OptimizeResponse(content=content, success=True)
             
     except httpx.TimeoutException:
-        raise HTTPException(status_code=504, detail="DeepSeek API timeout")
+        raise HTTPException(status_code=504, detail="Qwen API timeout")
     except Exception as e:
         print(f"❌ Resume optimize error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
