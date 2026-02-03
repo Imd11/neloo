@@ -296,14 +296,18 @@ export function AppSidebar({
               onMouseLeave={() => setLogoHovered(false)}
               onClick={collapsed ? toggle : undefined}
             >
-              {/* Logo */}
+              {/* Logo Image */}
               <div
                 className={cn(
-                  "absolute inset-0 rounded-lg bg-foreground flex items-center justify-center transition-opacity duration-150",
+                  "absolute inset-0 rounded-lg overflow-hidden transition-opacity duration-150",
                   collapsed && logoHovered ? "opacity-0" : "opacity-100"
                 )}
               >
-                <span className="text-background font-bold text-xs">M</span>
+                <img
+                  src="/meloo-logo.png"
+                  alt="Meloo"
+                  className="w-full h-full object-cover"
+                />
               </div>
               {/* Expand button when collapsed */}
               {collapsed && (
@@ -332,7 +336,12 @@ export function AppSidebar({
               collapsed ? "opacity-0 pointer-events-none" : "opacity-100"
             )}
           >
-            <span className="font-semibold text-foreground text-sm">MAI</span>
+            <span
+              className="font-semibold text-foreground text-sm"
+              style={{ fontFamily: "'Nunito', sans-serif" }}
+            >
+              Meloo
+            </span>
             <Button
               variant="ghost"
               size="icon"
