@@ -659,10 +659,9 @@ function HomePageInner() {
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <img
-            src="/meloo-blink.gif"
+            src="/meloo-bounce.gif"
             alt="Meloo"
-            className="w-24 h-24 animate-bounce"
-            style={{ animationDuration: '1.5s' }}
+            className="w-28 h-28"
           />
           <span
             className="text-lg text-muted-foreground font-medium"
