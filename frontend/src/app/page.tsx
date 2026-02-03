@@ -746,8 +746,20 @@ export default function HomePage() {
   return (
     <Suspense
       fallback={
-        <div className="flex h-screen items-center justify-center">
-          <p className="text-muted-foreground">Loading...</p>
+        <div className="flex h-screen items-center justify-center bg-background">
+          <div className="flex flex-col items-center gap-4">
+            <img
+              src="/meloo-bounce.gif"
+              alt="Meloo"
+              className="w-28 h-28"
+            />
+            <span
+              className="text-lg text-muted-foreground font-medium"
+              style={{ fontFamily: "'Nunito', sans-serif" }}
+            >
+              Meloo
+            </span>
+          </div>
         </div>
       }
     >
