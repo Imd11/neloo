@@ -656,8 +656,21 @@ function HomePageInner() {
   // Auth Loading
   if (authLoading || configLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <p className="text-muted-foreground">Loading...</p>
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <img
+            src="/meloo-blink.gif"
+            alt="Meloo"
+            className="w-24 h-24 animate-bounce"
+            style={{ animationDuration: '1.5s' }}
+          />
+          <span
+            className="text-lg text-muted-foreground font-medium"
+            style={{ fontFamily: "'Nunito', sans-serif" }}
+          >
+            Meloo
+          </span>
+        </div>
       </div>
     );
   }
