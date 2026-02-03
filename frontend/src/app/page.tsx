@@ -498,6 +498,14 @@ function HomePageInner() {
   // Config state
   const [config, setConfig] = useState<StandaloneConfig | null>(null);
   const [configLoading, setConfigLoading] = useState(true);
+
+  // Minimum splash screen duration (2 seconds = 2 complete bounce cycles)
+  const [minSplashElapsed, setMinSplashElapsed] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setMinSplashElapsed(true), 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
   // assistantId is now derived from config directly, not stored in URL
 
   const [mutateThreads, setMutateThreads] = useState<(() => void) | null>(null);
@@ -654,8 +662,8 @@ function HomePageInner() {
     setSearchOpen(false);
   };
 
-  // Auth Loading
-  if (authLoading || configLoading) {
+  // Auth Loading OR minimum splash duration not yet elapsed
+  if (authLoading || configLoading || !minSplashElapsed) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <WaterDropletMascot />
