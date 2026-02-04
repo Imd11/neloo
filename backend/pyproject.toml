@@ -63,6 +63,9 @@ dependencies = [
     "onnxruntime>=1.17.0",
     "opencv-python-headless>=4.7.0",
     "json-repair>=0.16.0",
+
+    # PDF Export (Playwright + Chromium)
+    "playwright>=1.40.0",
 ]
 
 [project.optional-dependencies]

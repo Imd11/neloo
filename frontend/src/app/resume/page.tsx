@@ -154,10 +154,10 @@ export function ResumePageContent({ onExit }: { onExit?: () => void } = {}) {
         styleEl.textContent = `@page { size: ${pagePreset.printSize}; margin: 0; }`;
     }, [pagePreset.printSize]);
 
-    const handleExportPDF = () => {
-        const printWindow = window.open('', '_blank');
-        if (!printWindow || !previewRef.current) return;
+    const handleExportPDF = async () => {
+        if (!previewRef.current) return;
 
+        // Build full HTML document
         const content = previewRef.current.innerHTML;
         const linkTags = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
             .map((link) => `<link rel="stylesheet" href="${(link as HTMLLinkElement).href}">`)
@@ -166,7 +166,7 @@ export function ResumePageContent({ onExit }: { onExit?: () => void } = {}) {
             .map((style) => `<style>${style.textContent || ''}</style>`)
             .join('\n');
 
-        printWindow.document.write(`
+        const fullHTML = `
       <!DOCTYPE html>
       <html>
         <head>
@@ -191,7 +191,46 @@ export function ResumePageContent({ onExit }: { onExit?: () => void } = {}) {
           ${content}
         </body>
       </html>
-    `);
+    `;
+
+        const filename = `${resumeData.personal.name || 'resume'}.pdf`;
+        // Use backend API URL from environment variable (for cross-origin deployment)
+        const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
+        const backendUrl = `${apiBase}/api/resume/pdf`;
+
+        // Try backend PDF generation first (high quality, vector PDF)
+        try {
+            console.log('📄 Attempting backend PDF generation...');
+            const response = await fetch(backendUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ html: fullHTML, filename }),
+            });
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                console.log('✅ Backend PDF generated successfully');
+                return;
+            }
+            console.warn('⚠️ Backend returned non-OK status:', response.status);
+        } catch (error) {
+            console.warn('⚠️ Backend PDF failed, using fallback:', error);
+        }
+
+        // Fallback: browser print dialog (built-in, no additional library needed)
+        console.log('📄 Using browser print dialog as fallback...');
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) return;
+
+        printWindow.document.write(fullHTML);
         printWindow.document.close();
 
         setTimeout(() => {

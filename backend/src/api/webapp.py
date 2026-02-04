@@ -123,6 +123,18 @@ app = FastAPI(
 )
 
 # =============================================================================
+# Include Routers
+# =============================================================================
+
+# Resume routes (parsing and PDF export)
+from .resume_routes import router as resume_router
+from .resume_pdf_routes import router as resume_pdf_router
+
+app.include_router(resume_router)
+app.include_router(resume_pdf_router)
+
+
+# =============================================================================
 # Request Context Middleware
 # =============================================================================
 #
