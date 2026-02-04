@@ -26,6 +26,10 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir "langgraph-cli[inmem]" && \
     pip install --no-cache-dir "langgraph-api>=0.0.1"
 
+# 安装 Playwright Chromium 浏览器（用于 /api/resume/pdf 矢量 PDF 导出）
+# 注意：仅安装 Python 包不包含浏览器二进制，必须额外执行 install。
+RUN python -m playwright install chromium --with-deps
+
 # 复制应用代码
 COPY backend/ .
 
