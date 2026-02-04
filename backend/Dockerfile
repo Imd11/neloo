@@ -40,12 +40,13 @@ RUN apt-get update && apt-get install -y \
 # 复制依赖文件
 COPY pyproject.toml ./
 
-# 安装 Python 依赖
+# 安装 Python 依赖 (包括 playwright)
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir .
 
-# 安装 Playwright Chromium
-RUN playwright install chromium
+# 安装 Playwright Chromium 浏览器
+# 注意: 必须在 pip install 之后执行，确保 playwright 包已安装
+RUN python -m playwright install chromium --with-deps
 
 # 复制应用代码
 COPY . .
