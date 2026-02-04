@@ -103,6 +103,22 @@ export function FortySecondsCVTemplate({ data, style, onDataChange }: Props) {
         }
     }, [data, onDataChange]);
 
+    const updateLanguage = useCallback((index: number, field: string, value: string) => {
+        if (onDataChange) {
+            const newLangs = [...data.languages];
+            newLangs[index] = { ...newLangs[index], [field]: value };
+            onDataChange({ ...data, languages: newLangs });
+        }
+    }, [data, onDataChange]);
+
+    const updateHobby = useCallback((index: number, field: string, value: string) => {
+        if (onDataChange) {
+            const newHobbies = [...(data.hobbies || [])];
+            newHobbies[index] = { ...newHobbies[index], [field]: value };
+            onDataChange({ ...data, hobbies: newHobbies });
+        }
+    }, [data, onDataChange]);
+
     return (
         <div className="cv-container" style={cssVars}>
             {/* SIDEBAR */}
@@ -162,10 +178,15 @@ export function FortySecondsCVTemplate({ data, style, onDataChange }: Props) {
                                 />
                             </div>
                         )}
-                        {personal.website && (
+                        {(personal.website || onDataChange) && (
                             <div className="contact-item">
                                 <span className="icon">🌐</span>
-                                <span>{personal.website}</span>
+                                <EditableText
+                                    tag="span"
+                                    value={personal.website || ''}
+                                    onChange={onDataChange ? (v) => updatePersonal('website', v) : undefined}
+                                    placeholder="Website"
+                                />
                             </div>
                         )}
                     </div>
@@ -191,7 +212,13 @@ export function FortySecondsCVTemplate({ data, style, onDataChange }: Props) {
                         {languages.map((lang, i) => (
                             <div key={i} className="language-item">
                                 <span className="language-flag">{lang.flag || '🏳️'}</span>
-                                <span className="language-name">{lang.name}</span>
+                                <EditableText
+                                    tag="span"
+                                    className="language-name"
+                                    value={lang.name || ''}
+                                    onChange={onDataChange ? (v) => updateLanguage(i, 'name', v) : undefined}
+                                    placeholder="Language"
+                                />
                                 <SkillDots level={lang.levelNumber || 3} />
                             </div>
                         ))}
@@ -224,10 +251,16 @@ export function FortySecondsCVTemplate({ data, style, onDataChange }: Props) {
                 )}
 
                 {/* About Me with Diagrams */}
-                {personal.summary && (
+                {(personal.summary || onDataChange) && (
                     <div className="sidebar-section">
                         <div className="section-title">{getLabel('summary', lang)}</div>
-                        <p className="about-text">{personal.summary}</p>
+                        <EditableText
+                            tag="p"
+                            className="about-text"
+                            value={personal.summary || ''}
+                            onChange={onDataChange ? (v) => updatePersonal('summary', v) : undefined}
+                            placeholder="Brief summary about yourself..."
+                        />
                     </div>
                 )}
 
@@ -259,13 +292,17 @@ export function FortySecondsCVTemplate({ data, style, onDataChange }: Props) {
                     </div>
                 )}
 
-                {/* Hobbies */}
                 {showHobbies && hobbies.length > 0 && (
                     <div className="sidebar-section">
                         <div className="section-title">{getLabel('interests', lang)}</div>
                         <div className="hobbies-list">
                             {hobbies.map((hobby, i) => (
-                                <span key={i} className="hobby-tag">{hobby.icon} {hobby.name}</span>
+                                <span key={i} className="hobby-tag">{hobby.icon} <EditableText
+                                    tag="span"
+                                    value={hobby.name || ''}
+                                    onChange={onDataChange ? (v) => updateHobby(i, 'name', v) : undefined}
+                                    placeholder="Hobby"
+                                /></span>
                             ))}
                         </div>
                     </div>
@@ -375,9 +412,23 @@ export function FortySecondsCVTemplate({ data, style, onDataChange }: Props) {
                                         onChange={onDataChange ? (v) => updateEducation(index, 'institution', v) : undefined}
                                         placeholder="Institution"
                                     />
-                                    {edu.description && <div className="cv-entry-desc">{edu.description}</div>}
+                                    {(edu.description || onDataChange) && (
+                                        <EditableText
+                                            tag="div"
+                                            className="cv-entry-desc"
+                                            value={edu.description || ''}
+                                            onChange={onDataChange ? (v) => updateEducation(index, 'description', v) : undefined}
+                                            placeholder="Description"
+                                        />
+                                    )}
                                 </div>
-                                <div className="cv-entry-location">{edu.location}</div>
+                                <EditableText
+                                    tag="div"
+                                    className="cv-entry-location"
+                                    value={edu.location || ''}
+                                    onChange={onDataChange ? (v) => updateEducation(index, 'location', v) : undefined}
+                                    placeholder="Location"
+                                />
                             </div>
                         ))}
                     </section>

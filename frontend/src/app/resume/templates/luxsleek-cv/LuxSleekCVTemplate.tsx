@@ -78,6 +78,32 @@ export function LuxSleekCVTemplate({ data, style, onDataChange }: Props) {
         }
     }, [data, onDataChange]);
 
+    const updatePublication = useCallback((index: number, field: string, value: string) => {
+        if (onDataChange) {
+            const newPubs = [...(data.publications || [])];
+            newPubs[index] = { ...newPubs[index], [field]: value };
+            onDataChange({ ...data, publications: newPubs });
+        }
+    }, [data, onDataChange]);
+
+    const updateAward = useCallback((index: number, field: string, value: string) => {
+        if (onDataChange) {
+            const newAwards = [...(data.awards || [])];
+            newAwards[index] = { ...newAwards[index], [field]: value };
+            onDataChange({ ...data, awards: newAwards });
+        }
+    }, [data, onDataChange]);
+
+    const updateHighlight = useCallback((expIndex: number, highlightIndex: number, value: string) => {
+        if (onDataChange) {
+            const newExp = [...data.experience];
+            const newHighlights = [...(newExp[expIndex].highlights || [])];
+            newHighlights[highlightIndex] = value;
+            newExp[expIndex] = { ...newExp[expIndex], highlights: newHighlights };
+            onDataChange({ ...data, experience: newExp });
+        }
+    }, [data, onDataChange]);
+
     return (
         <div className="luxsleek-container" style={cssVars}>
             {/* Left Sidebar */}
@@ -105,42 +131,67 @@ export function LuxSleekCVTemplate({ data, style, onDataChange }: Props) {
                 <section className="luxsleek-section">
                     <h2 className="luxsleek-section-title">{getLabel('contact', lang)}</h2>
                     <div className="luxsleek-contact-list">
-                        {personal.email && (
+                        {(personal.email || onDataChange) && (
                             <div className="luxsleek-contact-item">
                                 <span className="luxsleek-contact-icon">✉</span>
-                                <span>{personal.email}</span>
+                                <EditableText
+                                    tag="span"
+                                    value={personal.email || ''}
+                                    onChange={onDataChange ? (v) => updatePersonal('email', v) : undefined}
+                                    placeholder="email@example.com"
+                                />
                             </div>
                         )}
-                        {personal.phone && (
+                        {(personal.phone || onDataChange) && (
                             <div className="luxsleek-contact-item">
                                 <span className="luxsleek-contact-icon">✆</span>
-                                <span>{personal.phone}</span>
+                                <EditableText
+                                    tag="span"
+                                    value={personal.phone || ''}
+                                    onChange={onDataChange ? (v) => updatePersonal('phone', v) : undefined}
+                                    placeholder="+1 234 567 890"
+                                />
                             </div>
                         )}
-                        {personal.website && (
+                        {(personal.website || onDataChange) && (
                             <div className="luxsleek-contact-item">
                                 <span className="luxsleek-contact-icon">⌘</span>
-                                <span>{personal.website}</span>
+                                <EditableText
+                                    tag="span"
+                                    value={personal.website || ''}
+                                    onChange={onDataChange ? (v) => updatePersonal('website', v) : undefined}
+                                    placeholder="www.example.com"
+                                />
                             </div>
                         )}
-                        {personal.address && (
+                        {(personal.address || onDataChange) && (
                             <div className="luxsleek-contact-item">
                                 <span className="luxsleek-contact-icon">⌂</span>
-                                <span>{personal.address}</span>
+                                <EditableText
+                                    tag="span"
+                                    value={personal.address || ''}
+                                    onChange={onDataChange ? (v) => updatePersonal('address', v) : undefined}
+                                    placeholder="City, Country"
+                                />
                             </div>
                         )}
                     </div>
                 </section>
 
                 {/* Personal Information */}
-                {(personal.nationality || personal.birthday) && (
+                {(personal.nationality || personal.birthday || onDataChange) && (
                     <section className="luxsleek-section">
                         <h2 className="luxsleek-section-title">Personal Information</h2>
                         <div className="luxsleek-info-list">
-                            {personal.nationality && (
+                            {(personal.nationality || onDataChange) && (
                                 <div className="luxsleek-info-item">
                                     <span className="luxsleek-info-label">Citizenship:</span>
-                                    <span>{personal.nationality}</span>
+                                    <EditableText
+                                        tag="span"
+                                        value={personal.nationality || ''}
+                                        onChange={onDataChange ? (v) => updatePersonal('nationality', v) : undefined}
+                                        placeholder="Nationality"
+                                    />
                                 </div>
                             )}
                         </div>
@@ -198,7 +249,13 @@ export function LuxSleekCVTemplate({ data, style, onDataChange }: Props) {
             <main className="luxsleek-main">
                 {/* Header */}
                 <header className="luxsleek-header">
-                    <h1 className="luxsleek-name">{personal.name || 'Your Name'}</h1>
+                    <EditableText
+                        tag="h1"
+                        className="luxsleek-name"
+                        value={personal.name || ''}
+                        onChange={onDataChange ? (v) => updatePersonal('name', v) : undefined}
+                        placeholder="Your Name"
+                    />
                 </header>
 
                 {/* Experience */}
@@ -246,7 +303,12 @@ export function LuxSleekCVTemplate({ data, style, onDataChange }: Props) {
                                     {exp.highlights && exp.highlights.length > 0 && (
                                         <ul className="luxsleek-highlights">
                                             {exp.highlights.map((h, j) => (
-                                                <li key={j}>○ {h}</li>
+                                                <li key={j}>○ <EditableText
+                                                    tag="span"
+                                                    value={h || ''}
+                                                    onChange={onDataChange ? (v) => updateHighlight(i, j, v) : undefined}
+                                                    placeholder="Highlight"
+                                                /></li>
                                             ))}
                                         </ul>
                                     )}
@@ -299,10 +361,14 @@ export function LuxSleekCVTemplate({ data, style, onDataChange }: Props) {
                                             placeholder="Institution"
                                         />
                                     </div>
-                                    {edu.description && (
-                                        <p className="luxsleek-entry-description">
-                                            ○ {edu.description}
-                                        </p>
+                                    {(edu.description || onDataChange) && (
+                                        <EditableText
+                                            tag="p"
+                                            className="luxsleek-entry-description"
+                                            value={edu.description ? `○ ${edu.description}` : ''}
+                                            onChange={onDataChange ? (v) => updateEducation(i, 'description', v.replace(/^○\s*/, '')) : undefined}
+                                            placeholder="Description"
+                                        />
                                     )}
                                 </div>
                             ))}
@@ -325,7 +391,12 @@ export function LuxSleekCVTemplate({ data, style, onDataChange }: Props) {
                                             onChange={onDataChange ? (v) => updateProject(i, 'name', v) : undefined}
                                             placeholder="Name"
                                         />
-                                        <span className="luxsleek-entry-dates">{proj.startDate}</span>
+                                        <span className="luxsleek-entry-dates"><EditableText
+                                            tag="span"
+                                            value={proj.startDate || ''}
+                                            onChange={onDataChange ? (v) => updateProject(i, 'startDate', v) : undefined}
+                                            placeholder="Date"
+                                        /></span>
                                     </div>
                                     <EditableText
                                         tag="p"
@@ -340,7 +411,6 @@ export function LuxSleekCVTemplate({ data, style, onDataChange }: Props) {
                     </section>
                 )}
 
-                {/* Publications */}
                 {showPublications && publications && publications.length > 0 && (
                     <section className="luxsleek-main-section">
                         <h2 className="luxsleek-main-title">{getLabel('publications', lang)}</h2>
@@ -348,7 +418,22 @@ export function LuxSleekCVTemplate({ data, style, onDataChange }: Props) {
                             {publications.map((pub, i) => (
                                 <div key={pub.id || i} className="luxsleek-entry">
                                     <p className="luxsleek-publication">
-                                        {pub.title}. <em>{pub.publisher}</em>. {pub.date}
+                                        <EditableText
+                                            tag="span"
+                                            value={pub.title || ''}
+                                            onChange={onDataChange ? (v) => updatePublication(i, 'title', v) : undefined}
+                                            placeholder="Title"
+                                        />. <em><EditableText
+                                            tag="span"
+                                            value={pub.publisher || ''}
+                                            onChange={onDataChange ? (v) => updatePublication(i, 'publisher', v) : undefined}
+                                            placeholder="Publisher"
+                                        /></em>. <EditableText
+                                            tag="span"
+                                            value={pub.date || ''}
+                                            onChange={onDataChange ? (v) => updatePublication(i, 'date', v) : undefined}
+                                            placeholder="Date"
+                                        />
                                     </p>
                                 </div>
                             ))}
@@ -356,14 +441,23 @@ export function LuxSleekCVTemplate({ data, style, onDataChange }: Props) {
                     </section>
                 )}
 
-                {/* Hobbies */}
                 {showHobbies && awards && awards.length > 0 && (
                     <section className="luxsleek-main-section">
                         <h2 className="luxsleek-main-title">{getLabel('hobbies', lang)}</h2>
                         <div className="luxsleek-hobbies">
                             {awards.map((award, i) => (
                                 <p key={award.id || i} className="luxsleek-hobby">
-                                    <strong>{award.title}:</strong> {award.description}
+                                    <strong><EditableText
+                                        tag="span"
+                                        value={award.title || ''}
+                                        onChange={onDataChange ? (v) => updateAward(i, 'title', v) : undefined}
+                                        placeholder="Title"
+                                    />:</strong> <EditableText
+                                        tag="span"
+                                        value={award.description || ''}
+                                        onChange={onDataChange ? (v) => updateAward(i, 'description', v) : undefined}
+                                        placeholder="Description"
+                                    />
                                 </p>
                             ))}
                         </div>

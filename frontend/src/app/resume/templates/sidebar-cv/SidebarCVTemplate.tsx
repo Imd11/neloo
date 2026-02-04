@@ -60,15 +60,40 @@ export function SidebarCVTemplate({ data, style, onDataChange }: SidebarCVTempla
         }
     }, [data, onDataChange]);
 
+    const updateHobby = useCallback((index: number, field: string, value: string) => {
+        if (onDataChange) {
+            const newHobbies = [...(data.hobbies || [])];
+            newHobbies[index] = { ...newHobbies[index], [field]: value };
+            onDataChange({ ...data, hobbies: newHobbies });
+        }
+    }, [data, onDataChange]);
+
+    const updateSocialLink = useCallback((index: number, field: string, value: string) => {
+        if (onDataChange) {
+            const newLinks = [...data.socialLinks];
+            newLinks[index] = { ...newLinks[index], [field]: value };
+            onDataChange({ ...data, socialLinks: newLinks });
+        }
+    }, [data, onDataChange]);
+
     return (
         <div className="sidebar-cv-container" style={cssVars}>
             {/* Left Sidebar */}
             <aside className="sidebar-cv-left">
-                {/* Header */}
                 <header className="sidebar-cv-header">
                     <div className="header-name-section">
                         <h1 className="header-name">
-                            {data.personal.name?.split(' ')[0] || 'JAN'} <span className="name-highlight">{data.personal.name?.split(' ').slice(1).join(' ') || 'KÜSTER'}</span>
+                            <EditableText
+                                tag="span"
+                                value={(data.personal.name?.split(' ')[0]) || ''}
+                                onChange={onDataChange ? (v) => updatePersonal('name', v + ' ' + (data.personal.name?.split(' ').slice(1).join(' ') || '')) : undefined}
+                                placeholder="First"
+                            /> <span className="name-highlight"><EditableText
+                                tag="span"
+                                value={(data.personal.name?.split(' ').slice(1).join(' ')) || ''}
+                                onChange={onDataChange ? (v) => updatePersonal('name', (data.personal.name?.split(' ')[0] || '') + ' ' + v) : undefined}
+                                placeholder="Last"
+                            /></span>
                         </h1>
                         <div className="header-divider">|</div>
                         <span className="header-title">RESUME</span>
@@ -79,7 +104,13 @@ export function SidebarCVTemplate({ data, style, onDataChange }: SidebarCVTempla
                         {data.personal.photo && (
                             <img src={data.personal.photo} alt="" className="header-photo" />
                         )}
-                        <p className="header-summary">{data.personal.summary || 'I create awesome resume templates in LaTeX for everyone.'}</p>
+                        <EditableText
+                            tag="p"
+                            className="header-summary"
+                            value={data.personal.summary || ''}
+                            onChange={onDataChange ? (v) => updatePersonal('summary', v) : undefined}
+                            placeholder="Your introduction or summary"
+                        />
                     </div>
 
                     {/* Status */}
@@ -128,11 +159,14 @@ export function SidebarCVTemplate({ data, style, onDataChange }: SidebarCVTempla
                                     />
                                 </span>
                             </div>
-                            {exp.description && (
+                            {(exp.description || onDataChange) && (
                                 <ul className="entry-list">
-                                    {exp.description.split('\n').filter(Boolean).slice(0, 2).map((line, i) => (
-                                        <li key={i}>{line}</li>
-                                    ))}
+                                    <li><EditableText
+                                        tag="span"
+                                        value={exp.description || ''}
+                                        onChange={onDataChange ? (v) => updateExperience(index, 'description', v) : undefined}
+                                        placeholder="Description"
+                                    /></li>
                                 </ul>
                             )}
                         </div>
@@ -179,9 +213,14 @@ export function SidebarCVTemplate({ data, style, onDataChange }: SidebarCVTempla
                                     />
                                 </span>
                             </div>
-                            {edu.description && (
+                            {(edu.description || onDataChange) && (
                                 <ul className="entry-list">
-                                    <li>{edu.description}</li>
+                                    <li><EditableText
+                                        tag="span"
+                                        value={edu.description || ''}
+                                        onChange={onDataChange ? (v) => updateEducation(index, 'description', v) : undefined}
+                                        placeholder="Description"
+                                    /></li>
                                 </ul>
                             )}
                         </div>
@@ -195,34 +234,59 @@ export function SidebarCVTemplate({ data, style, onDataChange }: SidebarCVTempla
                 <section className="right-section contact-section">
                     <h3 className="right-title">CONTACT</h3>
                     <div className="contact-grid">
-                        {data.personal.address && (
+                        {(data.personal.address || onDataChange) && (
                             <div className="contact-item">
                                 <span className="contact-icon">📍</span>
-                                <span>{data.personal.address}</span>
+                                <EditableText
+                                    tag="span"
+                                    value={data.personal.address || ''}
+                                    onChange={onDataChange ? (v) => updatePersonal('address', v) : undefined}
+                                    placeholder="Address"
+                                />
                             </div>
                         )}
-                        {data.personal.phone && (
+                        {(data.personal.phone || onDataChange) && (
                             <div className="contact-item">
                                 <span className="contact-icon">📞</span>
-                                <span>{data.personal.phone}</span>
+                                <EditableText
+                                    tag="span"
+                                    value={data.personal.phone || ''}
+                                    onChange={onDataChange ? (v) => updatePersonal('phone', v) : undefined}
+                                    placeholder="Phone"
+                                />
                             </div>
                         )}
-                        {data.personal.email && (
+                        {(data.personal.email || onDataChange) && (
                             <div className="contact-item">
                                 <span className="contact-icon">✉️</span>
-                                <span>{data.personal.email}</span>
+                                <EditableText
+                                    tag="span"
+                                    value={data.personal.email || ''}
+                                    onChange={onDataChange ? (v) => updatePersonal('email', v) : undefined}
+                                    placeholder="Email"
+                                />
                             </div>
                         )}
-                        {data.personal.website && (
+                        {(data.personal.website || onDataChange) && (
                             <div className="contact-item">
                                 <span className="contact-icon">🌐</span>
-                                <span>{data.personal.website}</span>
+                                <EditableText
+                                    tag="span"
+                                    value={data.personal.website || ''}
+                                    onChange={onDataChange ? (v) => updatePersonal('website', v) : undefined}
+                                    placeholder="Website"
+                                />
                             </div>
                         )}
-                        {data.socialLinks.map((link) => (
+                        {data.socialLinks.map((link, i) => (
                             <div key={link.platform} className="contact-item">
                                 <span className="contact-icon">{link.icon}</span>
-                                <span>{link.username}</span>
+                                <EditableText
+                                    tag="span"
+                                    value={link.username || ''}
+                                    onChange={onDataChange ? (v) => updateSocialLink(i, 'username', v) : undefined}
+                                    placeholder="Username"
+                                />
                             </div>
                         ))}
                     </div>
@@ -288,7 +352,17 @@ export function SidebarCVTemplate({ data, style, onDataChange }: SidebarCVTempla
                     <section className="right-section">
                         <h3 className="right-title">ACTIVITIES</h3>
                         <div className="activities-text">
-                            {data.hobbies.map(h => h.name).join(', ')}
+                            {data.hobbies.map((hobby, i) => (
+                                <span key={hobby.id || i}>
+                                    <EditableText
+                                        tag="span"
+                                        value={hobby.name || ''}
+                                        onChange={onDataChange ? (v) => updateHobby(i, 'name', v) : undefined}
+                                        placeholder="Hobby"
+                                    />
+                                    {i < data.hobbies.length - 1 && ', '}
+                                </span>
+                            ))}
                         </div>
                     </section>
                 )}

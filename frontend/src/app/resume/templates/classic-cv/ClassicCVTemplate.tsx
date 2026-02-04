@@ -69,6 +69,32 @@ export function ClassicCVTemplate({ data, style, onDataChange }: Props) {
         }
     }, [data, onDataChange]);
 
+    const updateCertificate = useCallback((index: number, field: string, value: string) => {
+        if (onDataChange) {
+            const newCerts = [...(data.certificates || [])];
+            newCerts[index] = { ...newCerts[index], [field]: value };
+            onDataChange({ ...data, certificates: newCerts });
+        }
+    }, [data, onDataChange]);
+
+    const updateHobby = useCallback((index: number, field: string, value: string) => {
+        if (onDataChange) {
+            const newHobbies = [...(data.hobbies || [])];
+            newHobbies[index] = { ...newHobbies[index], [field]: value };
+            onDataChange({ ...data, hobbies: newHobbies });
+        }
+    }, [data, onDataChange]);
+
+    const updateHighlight = useCallback((expIndex: number, highlightIndex: number, value: string) => {
+        if (onDataChange) {
+            const newExp = [...data.experience];
+            const newHighlights = [...(newExp[expIndex].highlights || [])];
+            newHighlights[highlightIndex] = value;
+            newExp[expIndex] = { ...newExp[expIndex], highlights: newHighlights };
+            onDataChange({ ...data, experience: newExp });
+        }
+    }, [data, onDataChange]);
+
     return (
         <div className="classic-container" style={cssVars}>
             {/* Sidebar */}
@@ -103,35 +129,56 @@ export function ClassicCVTemplate({ data, style, onDataChange }: Props) {
                 <section className="classic-section">
                     <h2 className="classic-section-title">{getLabel('contact', lang)}</h2>
                     <div className="classic-contact-list">
-                        {personal.email && (
+                        {(personal.email || onDataChange) && (
                             <div className="classic-contact-item">
                                 <span className="classic-contact-icon">○</span>
-                                <span>{personal.email}</span>
+                                <EditableText
+                                    tag="span"
+                                    value={personal.email || ''}
+                                    onChange={onDataChange ? (v) => updatePersonal('email', v) : undefined}
+                                    placeholder="email@example.com"
+                                />
                             </div>
                         )}
-                        {personal.phone && (
+                        {(personal.phone || onDataChange) && (
                             <div className="classic-contact-item">
                                 <span className="classic-contact-icon">#</span>
-                                <span>{personal.phone}</span>
+                                <EditableText
+                                    tag="span"
+                                    value={personal.phone || ''}
+                                    onChange={onDataChange ? (v) => updatePersonal('phone', v) : undefined}
+                                    placeholder="+1 234 567 890"
+                                />
                             </div>
                         )}
-                        {personal.address && (
+                        {(personal.address || onDataChange) && (
                             <div className="classic-contact-item">
                                 <span className="classic-contact-icon">⌂</span>
-                                <span>{personal.address}</span>
+                                <EditableText
+                                    tag="span"
+                                    value={personal.address || ''}
+                                    onChange={onDataChange ? (v) => updatePersonal('address', v) : undefined}
+                                    placeholder="City, Country"
+                                />
                             </div>
                         )}
                     </div>
                 </section>
 
                 {/* Personal Information */}
-                {personal.nationality && (
+                {(personal.nationality || onDataChange) && (
                     <section className="classic-section">
                         <h2 className="classic-section-title">Personal Information</h2>
                         <div className="classic-info-list">
                             <div className="classic-info-row">
                                 <span className="classic-info-label">Citizenship:</span>
-                                <span className="classic-info-value">{personal.nationality}</span>
+                                <EditableText
+                                    tag="span"
+                                    className="classic-info-value"
+                                    value={personal.nationality || ''}
+                                    onChange={onDataChange ? (v) => updatePersonal('nationality', v) : undefined}
+                                    placeholder="Nationality"
+                                />
                             </div>
                         </div>
                     </section>
@@ -232,11 +279,18 @@ export function ClassicCVTemplate({ data, style, onDataChange }: Props) {
                                         /></li>
                                     </ul>
                                 )}
-                                {exp.highlights && exp.highlights.map((h, j) => (
-                                    <ul key={j} className="classic-bullets">
-                                        <li>○ {h}</li>
+                                {exp.highlights && exp.highlights.length > 0 && (
+                                    <ul className="classic-bullets">
+                                        {exp.highlights.map((h, j) => (
+                                            <li key={j}>○ <EditableText
+                                                tag="span"
+                                                value={h || ''}
+                                                onChange={onDataChange ? (v) => updateHighlight(index, j, v) : undefined}
+                                                placeholder="Highlight"
+                                            /></li>
+                                        ))}
                                     </ul>
-                                ))}
+                                )}
                             </div>
                         ))}
                     </div>
@@ -290,7 +344,6 @@ export function ClassicCVTemplate({ data, style, onDataChange }: Props) {
                     </div>
                 </section>
 
-                {/* Certifications */}
                 {showCertificates && certificates && certificates.length > 0 && (
                     <section className="classic-main-section">
                         <h2 className="classic-main-title">{getLabel('certificates', lang)}</h2>
@@ -298,24 +351,47 @@ export function ClassicCVTemplate({ data, style, onDataChange }: Props) {
                             {certificates.map((cert, i) => (
                                 <div key={cert.id || i} className="classic-cert-item">
                                     <span className="classic-cert-icon">○</span>
-                                    <span className="classic-cert-name">{cert.name}</span>
-                                    <span className="classic-cert-issuer">, {cert.issuer}</span>
-                                    <span className="classic-cert-date">. {cert.date}</span>
+                                    <EditableText
+                                        tag="span"
+                                        className="classic-cert-name"
+                                        value={cert.name || ''}
+                                        onChange={onDataChange ? (v) => updateCertificate(i, 'name', v) : undefined}
+                                        placeholder="Certificate Name"
+                                    />
+                                    <span className="classic-cert-issuer">, <EditableText
+                                        tag="span"
+                                        value={cert.issuer || ''}
+                                        onChange={onDataChange ? (v) => updateCertificate(i, 'issuer', v) : undefined}
+                                        placeholder="Issuer"
+                                    /></span>
+                                    <span className="classic-cert-date">. <EditableText
+                                        tag="span"
+                                        value={cert.date || ''}
+                                        onChange={onDataChange ? (v) => updateCertificate(i, 'date', v) : undefined}
+                                        placeholder="Date"
+                                    /></span>
                                 </div>
                             ))}
                         </div>
                     </section>
                 )}
 
-                {/* Hobbies */}
                 {showHobbies && (
                     <section className="classic-main-section">
                         <h2 className="classic-main-title">{getLabel('hobbies', lang)}</h2>
-                        <p className="classic-hobbies-text">
-                            {data.hobbies?.length
-                                ? data.hobbies.map((h) => h.name).join(', ')
-                                : personal.summary?.split('.').slice(-2).join('. ') || 'Reading, Music, Sports'}
-                        </p>
+                        <div className="classic-hobbies-text">
+                            {data.hobbies?.map((hobby, i) => (
+                                <span key={hobby.id || i}>
+                                    {i > 0 && ', '}
+                                    <EditableText
+                                        tag="span"
+                                        value={hobby.name || ''}
+                                        onChange={onDataChange ? (v) => updateHobby(i, 'name', v) : undefined}
+                                        placeholder="Hobby"
+                                    />
+                                </span>
+                            ))}
+                        </div>
                     </section>
                 )}
             </main>

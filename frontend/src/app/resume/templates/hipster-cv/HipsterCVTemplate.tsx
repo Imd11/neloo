@@ -75,6 +75,38 @@ export function HipsterCVTemplate({ data, style, onDataChange }: Props) {
         }
     }, [data, onDataChange]);
 
+    const updateLanguage = useCallback((index: number, field: string, value: string) => {
+        if (onDataChange) {
+            const newLangs = [...data.languages];
+            newLangs[index] = { ...newLangs[index], [field]: value };
+            onDataChange({ ...data, languages: newLangs });
+        }
+    }, [data, onDataChange]);
+
+    const updateCertificate = useCallback((index: number, field: string, value: string) => {
+        if (onDataChange) {
+            const newCerts = [...(data.certificates || [])];
+            newCerts[index] = { ...newCerts[index], [field]: value };
+            onDataChange({ ...data, certificates: newCerts });
+        }
+    }, [data, onDataChange]);
+
+    const updateHobby = useCallback((index: number, field: string, value: string) => {
+        if (onDataChange) {
+            const newHobbies = [...(data.hobbies || [])];
+            newHobbies[index] = { ...newHobbies[index], [field]: value };
+            onDataChange({ ...data, hobbies: newHobbies });
+        }
+    }, [data, onDataChange]);
+
+    const updateProject = useCallback((index: number, field: string, value: string) => {
+        if (onDataChange) {
+            const newProjects = [...(data.projects || [])];
+            newProjects[index] = { ...newProjects[index], [field]: value };
+            onDataChange({ ...data, projects: newProjects });
+        }
+    }, [data, onDataChange]);
+
     return (
         <div className="hipster-container" style={cssVars}>
             {/* Header Bar */}
@@ -118,22 +150,37 @@ export function HipsterCVTemplate({ data, style, onDataChange }: Props) {
                             <span className="hipster-title-sub">personal</span>
                         </h2>
                         <div className="hipster-facts">
-                            {personal.name && (
+                            {(personal.name || onDataChange) && (
                                 <div className="hipster-fact">
                                     <span className="hipster-fact-icon">○</span>
-                                    <span>{personal.name}</span>
+                                    <EditableText
+                                        tag="span"
+                                        value={personal.name || ''}
+                                        onChange={onDataChange ? (v) => updatePersonal('name', v) : undefined}
+                                        placeholder="Name"
+                                    />
                                 </div>
                             )}
-                            {personal.nationality && (
+                            {(personal.nationality || onDataChange) && (
                                 <div className="hipster-fact">
                                     <span className="hipster-fact-icon">●</span>
-                                    <span>nationality: {personal.nationality}</span>
+                                    <span>nationality: <EditableText
+                                        tag="span"
+                                        value={personal.nationality || ''}
+                                        onChange={onDataChange ? (v) => updatePersonal('nationality', v) : undefined}
+                                        placeholder="Nationality"
+                                    /></span>
                                 </div>
                             )}
-                            {personal.address && (
+                            {(personal.address || onDataChange) && (
                                 <div className="hipster-fact">
                                     <span className="hipster-fact-icon">◉</span>
-                                    <span>{personal.address}</span>
+                                    <EditableText
+                                        tag="span"
+                                        value={personal.address || ''}
+                                        onChange={onDataChange ? (v) => updatePersonal('address', v) : undefined}
+                                        placeholder="Address"
+                                    />
                                 </div>
                             )}
                         </div>
@@ -147,10 +194,22 @@ export function HipsterCVTemplate({ data, style, onDataChange }: Props) {
                         </h2>
                         {languages.length > 0 && (
                             <div className="hipster-language-bars">
-                                {languages.map((lang, i) => (
-                                    <div key={lang.id || i} className="hipster-language-bar">
-                                        <span className="hipster-lang-name">{lang.name}</span>
-                                        <span className="hipster-lang-level">{lang.level}</span>
+                                {languages.map((langItem, i) => (
+                                    <div key={langItem.id || i} className="hipster-language-bar">
+                                        <EditableText
+                                            tag="span"
+                                            className="hipster-lang-name"
+                                            value={langItem.name || ''}
+                                            onChange={onDataChange ? (v) => updateLanguage(i, 'name', v) : undefined}
+                                            placeholder="Language"
+                                        />
+                                        <EditableText
+                                            tag="span"
+                                            className="hipster-lang-level"
+                                            value={langItem.level || ''}
+                                            onChange={onDataChange ? (v) => updateLanguage(i, 'level', v) : undefined}
+                                            placeholder="Level"
+                                        />
                                     </div>
                                 ))}
                             </div>
@@ -293,9 +352,21 @@ export function HipsterCVTemplate({ data, style, onDataChange }: Props) {
                             <div className="hipster-timeline">
                                 {certificates.map((cert, i) => (
                                     <div key={cert.id || i} className="hipster-timeline-item hipster-timeline-mini">
-                                        <div className="hipster-timeline-date">{cert.date}</div>
+                                        <EditableText
+                                            tag="div"
+                                            className="hipster-timeline-date"
+                                            value={cert.date || ''}
+                                            onChange={onDataChange ? (v) => updateCertificate(i, 'date', v) : undefined}
+                                            placeholder="Date"
+                                        />
                                         <div className="hipster-timeline-content">
-                                            <span className="hipster-cert-name">{cert.name}</span>
+                                            <EditableText
+                                                tag="span"
+                                                className="hipster-cert-name"
+                                                value={cert.name || ''}
+                                                onChange={onDataChange ? (v) => updateCertificate(i, 'name', v) : undefined}
+                                                placeholder="Certificate Name"
+                                            />
                                         </div>
                                     </div>
                                 ))}
@@ -311,10 +382,15 @@ export function HipsterCVTemplate({ data, style, onDataChange }: Props) {
                         <section className="hipster-section">
                             <h2 className="hipster-section-title-right">{getLabel('hobbies', lang)}</h2>
                             <div className="hipster-hobbies-grid">
-                                {hobbySource.slice(0, 4).map((item, i) => (
-                                    <div key={item.id || i} className="hipster-hobby-item">
+                                {data.hobbies?.slice(0, 4).map((hobby, i) => (
+                                    <div key={hobby.id || i} className="hipster-hobby-item">
                                         <span className="hipster-hobby-icon">🎯</span>
-                                        <span>{item.name || item.title}</span>
+                                        <EditableText
+                                            tag="span"
+                                            value={hobby.name || ''}
+                                            onChange={onDataChange ? (v) => updateHobby(i, 'name', v) : undefined}
+                                            placeholder="Hobby"
+                                        />
                                     </div>
                                 ))}
                             </div>
@@ -328,7 +404,13 @@ export function HipsterCVTemplate({ data, style, onDataChange }: Props) {
                             <div className="hipster-publications">
                                 {publications.map((pub, i) => (
                                     <div key={pub.id || i} className="hipster-pub-item">
-                                        <span className="hipster-pub-year">{pub.date}</span>
+                                        <EditableText
+                                            tag="span"
+                                            className="hipster-pub-year"
+                                            value={pub.date || ''}
+                                            onChange={onDataChange ? (v) => updatePublication(i, 'date', v) : undefined}
+                                            placeholder="Year"
+                                        />
                                         <EditableText
                                             tag="span"
                                             className="hipster-pub-title"
@@ -348,9 +430,14 @@ export function HipsterCVTemplate({ data, style, onDataChange }: Props) {
                             <h2 className="hipster-section-title-right">Strengths</h2>
                             <div className="hipster-tags">
                                 {projects.slice(0, 3).map((proj, i) => (
-                                    <span key={proj.id || i} className="hipster-tag">
-                                        {proj.name}
-                                    </span>
+                                    <EditableText
+                                        key={proj.id || i}
+                                        tag="span"
+                                        className="hipster-tag"
+                                        value={proj.name || ''}
+                                        onChange={onDataChange ? (v) => updateProject(i, 'name', v) : undefined}
+                                        placeholder="Strength"
+                                    />
                                 ))}
                             </div>
                         </section>
@@ -369,10 +456,30 @@ export function HipsterCVTemplate({ data, style, onDataChange }: Props) {
             {/* Footer */}
             <footer className="hipster-footer">
                 <div className="hipster-footer-content">
-                    <span>{personal.name}</span>
-                    <span>📍 {personal.address}</span>
-                    <span>📞 {personal.phone}</span>
-                    <span>✉ {personal.email}</span>
+                    <EditableText
+                        tag="span"
+                        value={personal.name || ''}
+                        onChange={onDataChange ? (v) => updatePersonal('name', v) : undefined}
+                        placeholder="Name"
+                    />
+                    <span>📍 <EditableText
+                        tag="span"
+                        value={personal.address || ''}
+                        onChange={onDataChange ? (v) => updatePersonal('address', v) : undefined}
+                        placeholder="Address"
+                    /></span>
+                    <span>📞 <EditableText
+                        tag="span"
+                        value={personal.phone || ''}
+                        onChange={onDataChange ? (v) => updatePersonal('phone', v) : undefined}
+                        placeholder="Phone"
+                    /></span>
+                    <span>✉ <EditableText
+                        tag="span"
+                        value={personal.email || ''}
+                        onChange={onDataChange ? (v) => updatePersonal('email', v) : undefined}
+                        placeholder="Email"
+                    /></span>
                 </div>
             </footer>
         </div>

@@ -76,6 +76,16 @@ export function TimelineCVTemplate({ data, style, onDataChange }: Props) {
         }
     }, [data, onDataChange]);
 
+    const updateHighlight = useCallback((expIndex: number, highlightIndex: number, value: string) => {
+        if (onDataChange) {
+            const newExp = [...data.experience];
+            const newHighlights = [...(newExp[expIndex].highlights || [])];
+            newHighlights[highlightIndex] = value;
+            newExp[expIndex] = { ...newExp[expIndex], highlights: newHighlights };
+            onDataChange({ ...data, experience: newExp });
+        }
+    }, [data, onDataChange]);
+
     return (
         <div className="timeline-container" style={cssVars}>
             {/* Left Sidebar */}
@@ -104,28 +114,48 @@ export function TimelineCVTemplate({ data, style, onDataChange }: Props) {
                 {/* Contact */}
                 <section className="timeline-section">
                     <div className="timeline-contact-list">
-                        {personal.address && (
+                        {(personal.address || onDataChange) && (
                             <div className="timeline-contact-item">
                                 <span className="timeline-contact-icon">📍</span>
-                                <span>{personal.address}</span>
+                                <EditableText
+                                    tag="span"
+                                    value={personal.address || ''}
+                                    onChange={onDataChange ? (v) => updatePersonal('address', v) : undefined}
+                                    placeholder="Address"
+                                />
                             </div>
                         )}
-                        {personal.phone && (
+                        {(personal.phone || onDataChange) && (
                             <div className="timeline-contact-item">
                                 <span className="timeline-contact-icon">📞</span>
-                                <span>{personal.phone}</span>
+                                <EditableText
+                                    tag="span"
+                                    value={personal.phone || ''}
+                                    onChange={onDataChange ? (v) => updatePersonal('phone', v) : undefined}
+                                    placeholder="Phone"
+                                />
                             </div>
                         )}
-                        {personal.website && (
+                        {(personal.website || onDataChange) && (
                             <div className="timeline-contact-item">
                                 <span className="timeline-contact-icon">🔗</span>
-                                <span>{personal.website}</span>
+                                <EditableText
+                                    tag="span"
+                                    value={personal.website || ''}
+                                    onChange={onDataChange ? (v) => updatePersonal('website', v) : undefined}
+                                    placeholder="Website"
+                                />
                             </div>
                         )}
-                        {personal.email && (
+                        {(personal.email || onDataChange) && (
                             <div className="timeline-contact-item">
                                 <span className="timeline-contact-icon">✉️</span>
-                                <span>{personal.email}</span>
+                                <EditableText
+                                    tag="span"
+                                    value={personal.email || ''}
+                                    onChange={onDataChange ? (v) => updatePersonal('email', v) : undefined}
+                                    placeholder="Email"
+                                />
                             </div>
                         )}
                     </div>
@@ -134,16 +164,32 @@ export function TimelineCVTemplate({ data, style, onDataChange }: Props) {
                 {/* Profile Summary */}
                 <section className="timeline-section">
                     <h2 className="timeline-section-title">{getLabel('summary', lang)}</h2>
-                    <p className="timeline-profile-text">{personal.summary}</p>
+                    <EditableText
+                        tag="p"
+                        className="timeline-profile-text"
+                        value={personal.summary || ''}
+                        onChange={onDataChange ? (v) => updatePersonal('summary', v) : undefined}
+                        placeholder="Your professional summary"
+                    />
                 </section>
 
                 {/* Other Interest */}
                 {showAwards && awards && awards.length > 0 && (
                     <section className="timeline-section">
                         <h2 className="timeline-section-title">{getLabel('interests', lang)}</h2>
-                        <p className="timeline-interest-text">
-                            {awards.map(a => a.title).join('. ')}
-                        </p>
+                        <div className="timeline-interest-text">
+                            {awards.map((award, i) => (
+                                <span key={award.id || i}>
+                                    <EditableText
+                                        tag="span"
+                                        value={award.title || ''}
+                                        onChange={onDataChange ? (v) => updateAward(i, 'title', v) : undefined}
+                                        placeholder="Interest"
+                                    />
+                                    {i < awards.length - 1 && '. '}
+                                </span>
+                            ))}
+                        </div>
                     </section>
                 )}
 
@@ -256,11 +302,18 @@ export function TimelineCVTemplate({ data, style, onDataChange }: Props) {
                                             onChange={onDataChange ? (v) => updateExperience(i, 'description', v) : undefined}
                                             placeholder="Description"
                                         />
-                                        {exp.highlights && exp.highlights.map((h, j) => (
-                                            <ul key={j} className="timeline-desc-list">
-                                                <li>{h}</li>
+                                        {exp.highlights && exp.highlights.length > 0 && (
+                                            <ul className="timeline-desc-list">
+                                                {exp.highlights.map((h, j) => (
+                                                    <li key={j}><EditableText
+                                                        tag="span"
+                                                        value={h || ''}
+                                                        onChange={onDataChange ? (v) => updateHighlight(i, j, v) : undefined}
+                                                        placeholder="Highlight"
+                                                    /></li>
+                                                ))}
                                             </ul>
-                                        ))}
+                                        )}
                                     </div>
                                 </div>
                             ))}
@@ -314,8 +367,14 @@ export function TimelineCVTemplate({ data, style, onDataChange }: Props) {
                                                 placeholder="Institution"
                                             />
                                         </div>
-                                        {edu.field && (
-                                            <p className="timeline-field">{edu.field}</p>
+                                        {(edu.field || onDataChange) && (
+                                            <EditableText
+                                                tag="p"
+                                                className="timeline-field"
+                                                value={edu.field || ''}
+                                                onChange={onDataChange ? (v) => updateEducation(i, 'field', v) : undefined}
+                                                placeholder="Field of study"
+                                            />
                                         )}
                                     </div>
                                 </div>
@@ -331,7 +390,13 @@ export function TimelineCVTemplate({ data, style, onDataChange }: Props) {
                         <div className="timeline-awards">
                             {awards.map((award, i) => (
                                 <div key={award.id || i} className="timeline-award-item">
-                                    <span className="timeline-award-year">{award.date}</span>
+                                    <EditableText
+                                        tag="span"
+                                        className="timeline-award-year"
+                                        value={award.date || ''}
+                                        onChange={onDataChange ? (v) => updateAward(i, 'date', v) : undefined}
+                                        placeholder="Year"
+                                    />
                                     <div className="timeline-award-content">
                                         <EditableText
                                             tag="span"

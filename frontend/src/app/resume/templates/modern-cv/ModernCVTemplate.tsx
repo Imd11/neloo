@@ -59,20 +59,62 @@ export function ModernCVTemplate({ data, style, onDataChange }: Props) {
         }
     }, [data, onDataChange]);
 
+    const updateLanguage = useCallback((index: number, field: string, value: string) => {
+        if (onDataChange) {
+            const newLangs = [...data.languages];
+            newLangs[index] = { ...newLangs[index], [field]: value };
+            onDataChange({ ...data, languages: newLangs });
+        }
+    }, [data, onDataChange]);
+
+    const updateHighlight = useCallback((expIndex: number, highlightIndex: number, value: string) => {
+        if (onDataChange) {
+            const newExp = [...data.experience];
+            const newHighlights = [...(newExp[expIndex].highlights || [])];
+            newHighlights[highlightIndex] = value;
+            newExp[expIndex] = { ...newExp[expIndex], highlights: newHighlights };
+            onDataChange({ ...data, experience: newExp });
+        }
+    }, [data, onDataChange]);
+
     return (
         <div className="modern-container" style={cssVars}>
-            {/* Header */}
             <header className="modern-header">
                 <div className="modern-header-top">
-                    <span>{personal.name}</span>
+                    <EditableText
+                        tag="span"
+                        value={personal.name || ''}
+                        onChange={onDataChange ? (v) => updatePersonal('name', v) : undefined}
+                        placeholder="Name"
+                    />
                     <span className="modern-header-sep">·</span>
-                    <span>{personal.title}</span>
+                    <EditableText
+                        tag="span"
+                        value={personal.title || ''}
+                        onChange={onDataChange ? (v) => updatePersonal('title', v) : undefined}
+                        placeholder="Title"
+                    />
                     <span className="modern-header-sep">·</span>
-                    <span>{personal.address}</span>
+                    <EditableText
+                        tag="span"
+                        value={personal.address || ''}
+                        onChange={onDataChange ? (v) => updatePersonal('address', v) : undefined}
+                        placeholder="Address"
+                    />
                     <span className="modern-header-sep">·</span>
-                    <span>{personal.email}</span>
+                    <EditableText
+                        tag="span"
+                        value={personal.email || ''}
+                        onChange={onDataChange ? (v) => updatePersonal('email', v) : undefined}
+                        placeholder="Email"
+                    />
                     <span className="modern-header-sep">·</span>
-                    <span>{personal.phone}</span>
+                    <EditableText
+                        tag="span"
+                        value={personal.phone || ''}
+                        onChange={onDataChange ? (v) => updatePersonal('phone', v) : undefined}
+                        placeholder="Phone"
+                    />
                 </div>
                 <div className="modern-name-area">
                     <EditableText
@@ -89,11 +131,16 @@ export function ModernCVTemplate({ data, style, onDataChange }: Props) {
 
             {/* Main Content */}
             <main className="modern-main">
-                {/* Info Cards */}
                 <div className="modern-info-cards">
                     <div className="modern-info-card">
                         <span className="modern-info-label">Status</span>
-                        <span className="modern-info-value">{personal.title}</span>
+                        <EditableText
+                            tag="span"
+                            className="modern-info-value"
+                            value={personal.title || ''}
+                            onChange={onDataChange ? (v) => updatePersonal('title', v) : undefined}
+                            placeholder="Your Title"
+                        />
                     </div>
                     <div className="modern-info-card">
                         <span className="modern-info-label">Fields</span>
@@ -110,7 +157,13 @@ export function ModernCVTemplate({ data, style, onDataChange }: Props) {
                     </div>
                     <div className="modern-info-card">
                         <span className="modern-info-label">Loves</span>
-                        <span className="modern-info-value">{personal.summary?.substring(0, 50)}</span>
+                        <EditableText
+                            tag="span"
+                            className="modern-info-value"
+                            value={personal.summary?.substring(0, 50) || ''}
+                            onChange={onDataChange ? (v) => updatePersonal('summary', v) : undefined}
+                            placeholder="What you love"
+                        />
                     </div>
                 </div>
 
@@ -165,11 +218,18 @@ export function ModernCVTemplate({ data, style, onDataChange }: Props) {
                                         onChange={onDataChange ? (v) => updateExperience(i, 'description', v) : undefined}
                                         placeholder="Description"
                                     />
-                                    {exp.highlights && exp.highlights.map((h, j) => (
-                                        <ul key={j} className="modern-entry-bullets">
-                                            <li>○ {h}</li>
+                                    {exp.highlights && exp.highlights.length > 0 && (
+                                        <ul className="modern-entry-bullets">
+                                            {exp.highlights.map((h, j) => (
+                                                <li key={j}>○ <EditableText
+                                                    tag="span"
+                                                    value={h || ''}
+                                                    onChange={onDataChange ? (v) => updateHighlight(i, j, v) : undefined}
+                                                    placeholder="Highlight"
+                                                /></li>
+                                            ))}
                                         </ul>
-                                    ))}
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -213,9 +273,14 @@ export function ModernCVTemplate({ data, style, onDataChange }: Props) {
                                         onChange={onDataChange ? (v) => updateEducation(i, 'institution', v) : undefined}
                                         placeholder="Institution"
                                     />
-                                    {edu.description && (
+                                    {(edu.description || onDataChange) && (
                                         <ul className="modern-entry-bullets">
-                                            <li>○ {edu.description}</li>
+                                            <li>○ <EditableText
+                                                tag="span"
+                                                value={edu.description || ''}
+                                                onChange={onDataChange ? (v) => updateEducation(i, 'description', v) : undefined}
+                                                placeholder="Description"
+                                            /></li>
                                         </ul>
                                     )}
                                 </div>
@@ -234,7 +299,13 @@ export function ModernCVTemplate({ data, style, onDataChange }: Props) {
                         <div className="modern-entries">
                             {projects.map((proj, i) => (
                                 <div key={proj.id || i} className="modern-entry">
-                                    <div className="modern-entry-date">{proj.startDate}</div>
+                                    <EditableText
+                                        tag="div"
+                                        className="modern-entry-date"
+                                        value={proj.startDate || ''}
+                                        onChange={onDataChange ? (v) => updateProject(i, 'startDate', v) : undefined}
+                                        placeholder="Date"
+                                    />
                                     <div className="modern-entry-content">
                                         <EditableText
                                             tag="h3"
@@ -257,7 +328,6 @@ export function ModernCVTemplate({ data, style, onDataChange }: Props) {
                     </section>
                 )}
 
-                {/* Languages */}
                 {languages.length > 0 && (
                     <section className="modern-section modern-section-inline">
                         <div className="modern-section-header">
@@ -265,9 +335,19 @@ export function ModernCVTemplate({ data, style, onDataChange }: Props) {
                             <h2 className="modern-section-title">{getLabel('languages', lang)}</h2>
                         </div>
                         <div className="modern-languages">
-                            {languages.map((lang, i) => (
-                                <span key={lang.id || i} className="modern-language">
-                                    {lang.name} ({lang.level})
+                            {languages.map((langItem, i) => (
+                                <span key={langItem.id || i} className="modern-language">
+                                    <EditableText
+                                        tag="span"
+                                        value={langItem.name || ''}
+                                        onChange={onDataChange ? (v) => updateLanguage(i, 'name', v) : undefined}
+                                        placeholder="Language"
+                                    /> (<EditableText
+                                        tag="span"
+                                        value={langItem.level || ''}
+                                        onChange={onDataChange ? (v) => updateLanguage(i, 'level', v) : undefined}
+                                        placeholder="Level"
+                                    />)
                                 </span>
                             ))}
                         </div>

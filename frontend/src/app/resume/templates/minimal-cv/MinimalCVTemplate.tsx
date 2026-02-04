@@ -78,6 +78,30 @@ export function MinimalCVTemplate({ data, style, onDataChange }: MinimalCVTempla
         }
     }, [data, onDataChange]);
 
+    const updateCertificate = useCallback((index: number, field: string, value: string) => {
+        if (onDataChange) {
+            const newCerts = [...data.certificates];
+            newCerts[index] = { ...newCerts[index], [field]: value };
+            onDataChange({ ...data, certificates: newCerts });
+        }
+    }, [data, onDataChange]);
+
+    const updateHobby = useCallback((index: number, field: string, value: string) => {
+        if (onDataChange) {
+            const newHobbies = [...data.hobbies];
+            newHobbies[index] = { ...newHobbies[index], [field]: value };
+            onDataChange({ ...data, hobbies: newHobbies });
+        }
+    }, [data, onDataChange]);
+
+    const updateSocialLink = useCallback((index: number, field: string, value: string) => {
+        if (onDataChange) {
+            const newLinks = [...data.socialLinks];
+            newLinks[index] = { ...newLinks[index], [field]: value };
+            onDataChange({ ...data, socialLinks: newLinks });
+        }
+    }, [data, onDataChange]);
+
     return (
         <div className="minimal-container" style={cssVars}>
             {/* Left Sidebar */}
@@ -110,22 +134,37 @@ export function MinimalCVTemplate({ data, style, onDataChange }: MinimalCVTempla
                 {/* Contact */}
                 <section className="minimal-section">
                     <h3 className="minimal-section-title">{getLabelUpper('contact', lang)}</h3>
-                    {data.personal.address && (
+                    {(data.personal.address || onDataChange) && (
                         <div className="minimal-contact-item">
                             <span className="contact-icon">📍</span>
-                            <span>Address<br />{data.personal.address}</span>
+                            <span>Address<br /><EditableText
+                                tag="span"
+                                value={data.personal.address || ''}
+                                onChange={onDataChange ? (v) => updatePersonal('address', v) : undefined}
+                                placeholder="Your Address"
+                            /></span>
                         </div>
                     )}
-                    {data.personal.phone && (
+                    {(data.personal.phone || onDataChange) && (
                         <div className="minimal-contact-item">
                             <span className="contact-icon">📞</span>
-                            <span>Phone<br />{data.personal.phone}</span>
+                            <span>Phone<br /><EditableText
+                                tag="span"
+                                value={data.personal.phone || ''}
+                                onChange={onDataChange ? (v) => updatePersonal('phone', v) : undefined}
+                                placeholder="+1 234 567 890"
+                            /></span>
                         </div>
                     )}
-                    {data.personal.email && (
+                    {(data.personal.email || onDataChange) && (
                         <div className="minimal-contact-item">
                             <span className="contact-icon">✉️</span>
-                            <span>E-Mail<br />{data.personal.email}</span>
+                            <span>E-Mail<br /><EditableText
+                                tag="span"
+                                value={data.personal.email || ''}
+                                onChange={onDataChange ? (v) => updatePersonal('email', v) : undefined}
+                                placeholder="email@example.com"
+                            /></span>
                         </div>
                     )}
                 </section>
@@ -133,16 +172,26 @@ export function MinimalCVTemplate({ data, style, onDataChange }: MinimalCVTempla
                 {/* Personal */}
                 <section className="minimal-section">
                     <h3 className="minimal-section-title">PERSONAL</h3>
-                    {data.personal.birthday && (
+                    {(data.personal.birthday || onDataChange) && (
                         <div className="minimal-info-item">
                             <span className="info-icon">🎂</span>
-                            <span>Date of Birth<br />{data.personal.birthday}</span>
+                            <span>Date of Birth<br /><EditableText
+                                tag="span"
+                                value={data.personal.birthday || ''}
+                                onChange={onDataChange ? (v) => updatePersonal('birthday', v) : undefined}
+                                placeholder="YYYY-MM-DD"
+                            /></span>
                         </div>
                     )}
-                    {data.personal.nationality && (
+                    {(data.personal.nationality || onDataChange) && (
                         <div className="minimal-info-item">
                             <span className="info-icon">🌍</span>
-                            <span>Nationality<br />{data.personal.nationality}</span>
+                            <span>Nationality<br /><EditableText
+                                tag="span"
+                                value={data.personal.nationality || ''}
+                                onChange={onDataChange ? (v) => updatePersonal('nationality', v) : undefined}
+                                placeholder="Nationality"
+                            /></span>
                         </div>
                     )}
                 </section>
@@ -151,10 +200,20 @@ export function MinimalCVTemplate({ data, style, onDataChange }: MinimalCVTempla
                 {data.socialLinks.length > 0 && (
                     <section className="minimal-section">
                         <h3 className="minimal-section-title">PLATFORMS</h3>
-                        {data.socialLinks.map((link) => (
+                        {data.socialLinks.map((link, i) => (
                             <div key={link.platform} className="minimal-info-item">
                                 <span className="info-icon">{link.icon}</span>
-                                <span>{link.platform}<br />{link.username}</span>
+                                <span><EditableText
+                                    tag="span"
+                                    value={link.platform || ''}
+                                    onChange={onDataChange ? (v) => updateSocialLink(i, 'platform', v) : undefined}
+                                    placeholder="Platform"
+                                /><br /><EditableText
+                                        tag="span"
+                                        value={link.username || ''}
+                                        onChange={onDataChange ? (v) => updateSocialLink(i, 'username', v) : undefined}
+                                        placeholder="Username"
+                                    /></span>
                             </div>
                         ))}
                     </section>
@@ -233,7 +292,15 @@ export function MinimalCVTemplate({ data, style, onDataChange }: MinimalCVTempla
                                             placeholder="Field"
                                         />
                                     </div>
-                                    {edu.description && <div className="entry-desc">{edu.description}</div>}
+                                    {(edu.description || onDataChange) && (
+                                        <EditableText
+                                            tag="div"
+                                            className="entry-desc"
+                                            value={edu.description || ''}
+                                            onChange={onDataChange ? (v) => updateEducation(index, 'description', v) : undefined}
+                                            placeholder="Description"
+                                        />
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -289,13 +356,18 @@ export function MinimalCVTemplate({ data, style, onDataChange }: MinimalCVTempla
                     </section>
                 )}
 
-                {/* Publications */}
                 {showPublications && data.publications.length > 0 && (
                     <section className="minimal-main-section">
                         <h2 className="minimal-main-title">{getLabelUpper('publications', lang)}</h2>
                         {data.publications.map((pub, i) => (
                             <div key={pub.id} className="minimal-pub">
-                                <span className="pub-date">{pub.date}</span>
+                                <EditableText
+                                    tag="span"
+                                    className="pub-date"
+                                    value={pub.date || ''}
+                                    onChange={onDataChange ? (v) => updatePublication(i, 'date', v) : undefined}
+                                    placeholder="Date"
+                                />
                                 <EditableText
                                     tag="span"
                                     className="pub-title"
@@ -308,13 +380,18 @@ export function MinimalCVTemplate({ data, style, onDataChange }: MinimalCVTempla
                     </section>
                 )}
 
-                {/* Awards */}
                 {showAwards && data.awards.length > 0 && (
                     <section className="minimal-main-section">
                         <h2 className="minimal-main-title">{getLabelUpper('awards', lang)}</h2>
                         {data.awards.map((award, i) => (
                             <div key={award.id} className="minimal-pub">
-                                <span className="pub-date">{award.date}</span>
+                                <EditableText
+                                    tag="span"
+                                    className="pub-date"
+                                    value={award.date || ''}
+                                    onChange={onDataChange ? (v) => updateAward(i, 'date', v) : undefined}
+                                    placeholder="Date"
+                                />
                                 <EditableText
                                     tag="span"
                                     className="pub-title"
@@ -327,29 +404,52 @@ export function MinimalCVTemplate({ data, style, onDataChange }: MinimalCVTempla
                     </section>
                 )}
 
-                {/* Memberships / Certificates */}
                 {showCertificates && data.certificates.length > 0 && (
                     <section className="minimal-main-section">
                         <h2 className="minimal-main-title">{getLabelUpper('certificates', lang)}</h2>
-                        {data.certificates.map((cert) => (
+                        {data.certificates.map((cert, i) => (
                             <div key={cert.id} className="minimal-entry">
-                                <div className="entry-date">{cert.date}</div>
+                                <EditableText
+                                    tag="div"
+                                    className="entry-date"
+                                    value={cert.date || ''}
+                                    onChange={onDataChange ? (v) => updateCertificate(i, 'date', v) : undefined}
+                                    placeholder="Date"
+                                />
                                 <div className="entry-content">
-                                    <div className="entry-title">{cert.name}</div>
-                                    <div className="entry-subtitle">{cert.issuer}</div>
+                                    <EditableText
+                                        tag="div"
+                                        className="entry-title"
+                                        value={cert.name || ''}
+                                        onChange={onDataChange ? (v) => updateCertificate(i, 'name', v) : undefined}
+                                        placeholder="Certificate Name"
+                                    />
+                                    <EditableText
+                                        tag="div"
+                                        className="entry-subtitle"
+                                        value={cert.issuer || ''}
+                                        onChange={onDataChange ? (v) => updateCertificate(i, 'issuer', v) : undefined}
+                                        placeholder="Issuer"
+                                    />
                                 </div>
                             </div>
                         ))}
                     </section>
                 )}
 
-                {/* Hobbies */}
                 {showHobbies && data.hobbies.length > 0 && (
                     <section className="minimal-main-section">
                         <h2 className="minimal-main-title">{getLabelUpper('hobbies', lang)}</h2>
                         <div className="minimal-hobbies">
-                            {data.hobbies.map((hobby) => (
-                                <span key={hobby.id} className="hobby-item">{hobby.name}</span>
+                            {data.hobbies.map((hobby, i) => (
+                                <EditableText
+                                    key={hobby.id}
+                                    tag="span"
+                                    className="hobby-item"
+                                    value={hobby.name || ''}
+                                    onChange={onDataChange ? (v) => updateHobby(i, 'name', v) : undefined}
+                                    placeholder="Hobby"
+                                />
                             ))}
                         </div>
                     </section>

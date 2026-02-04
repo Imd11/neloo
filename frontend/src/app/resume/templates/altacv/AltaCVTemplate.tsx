@@ -78,6 +78,22 @@ export function AltaCVTemplate({ data, style, onDataChange }: AltaCVTemplateProp
         }
     }, [data, onDataChange]);
 
+    const updateAward = useCallback((index: number, field: string, value: string) => {
+        if (onDataChange) {
+            const newAwards = [...(data.awards || [])];
+            newAwards[index] = { ...newAwards[index], [field]: value };
+            onDataChange({ ...data, awards: newAwards });
+        }
+    }, [data, onDataChange]);
+
+    const updateHobby = useCallback((index: number, field: string, value: string) => {
+        if (onDataChange) {
+            const newHobbies = [...(data.hobbies || [])];
+            newHobbies[index] = { ...newHobbies[index], [field]: value };
+            onDataChange({ ...data, hobbies: newHobbies });
+        }
+    }, [data, onDataChange]);
+
     return (
         <div className="altacv-container" style={cssVars}>
             {/* Left Column - Main Content */}
@@ -100,17 +116,37 @@ export function AltaCVTemplate({ data, style, onDataChange }: AltaCVTemplateProp
                     />
 
                     <div className="altacv-contact-row">
-                        {data.personal.email && (
-                            <span className="altacv-contact-item">✉ {data.personal.email}</span>
+                        {(data.personal.email || onDataChange) && (
+                            <span className="altacv-contact-item">✉ <EditableText
+                                tag="span"
+                                value={data.personal.email || ''}
+                                onChange={onDataChange ? (v) => updatePersonal('email', v) : undefined}
+                                placeholder="email@example.com"
+                            /></span>
                         )}
-                        {data.personal.phone && (
-                            <span className="altacv-contact-item">📞 {data.personal.phone}</span>
+                        {(data.personal.phone || onDataChange) && (
+                            <span className="altacv-contact-item">📞 <EditableText
+                                tag="span"
+                                value={data.personal.phone || ''}
+                                onChange={onDataChange ? (v) => updatePersonal('phone', v) : undefined}
+                                placeholder="+1 234 567 890"
+                            /></span>
                         )}
-                        {data.personal.address && (
-                            <span className="altacv-contact-item">📍 {data.personal.address}</span>
+                        {(data.personal.address || onDataChange) && (
+                            <span className="altacv-contact-item">📍 <EditableText
+                                tag="span"
+                                value={data.personal.address || ''}
+                                onChange={onDataChange ? (v) => updatePersonal('address', v) : undefined}
+                                placeholder="City, Country"
+                            /></span>
                         )}
-                        {data.personal.website && (
-                            <span className="altacv-contact-item">🌐 {data.personal.website}</span>
+                        {(data.personal.website || onDataChange) && (
+                            <span className="altacv-contact-item">🌐 <EditableText
+                                tag="span"
+                                value={data.personal.website || ''}
+                                onChange={onDataChange ? (v) => updatePersonal('website', v) : undefined}
+                                placeholder="www.example.com"
+                            /></span>
                         )}
                     </div>
                 </header>
@@ -129,7 +165,12 @@ export function AltaCVTemplate({ data, style, onDataChange }: AltaCVTemplateProp
                                         onChange={onDataChange ? (v) => updateExperience(index, 'position', v) : undefined}
                                         placeholder="Position"
                                     />
-                                    <span className="altacv-entry-location">📍 {exp.location}</span>
+                                    <span className="altacv-entry-location">📍 <EditableText
+                                        tag="span"
+                                        value={exp.location || ''}
+                                        onChange={onDataChange ? (v) => updateExperience(index, 'location', v) : undefined}
+                                        placeholder="Location"
+                                    /></span>
                                 </div>
                                 <EditableText
                                     tag="div"
@@ -151,12 +192,14 @@ export function AltaCVTemplate({ data, style, onDataChange }: AltaCVTemplateProp
                                         placeholder="End"
                                     />}
                                 </div>
-                                {exp.description && (
-                                    <ul className="altacv-entry-list">
-                                        {exp.description.split('\n').filter(Boolean).map((line, i) => (
-                                            <li key={i}>{line}</li>
-                                        ))}
-                                    </ul>
+                                {(exp.description || onDataChange) && (
+                                    <EditableText
+                                        tag="p"
+                                        className="altacv-entry-desc"
+                                        value={exp.description || ''}
+                                        onChange={onDataChange ? (v) => updateExperience(index, 'description', v) : undefined}
+                                        placeholder="Description (use newlines for bullet points)"
+                                    />
                                 )}
                             </div>
                         ))}
@@ -197,7 +240,6 @@ export function AltaCVTemplate({ data, style, onDataChange }: AltaCVTemplateProp
                     </section>
                 )}
 
-                {/* A Day of My Life - Pie Chart Placeholder */}
                 {showHobbies && data.hobbies.length > 0 && (
                     <section className="altacv-section">
                         <h2 className="altacv-section-title">A DAY OF MY LIFE</h2>
@@ -210,8 +252,15 @@ export function AltaCVTemplate({ data, style, onDataChange }: AltaCVTemplateProp
                                 <div className="pie-segment" style={{ '--rotation': '270deg', '--color': '#e27d60' } as React.CSSProperties} />
                             </div>
                             <div className="pie-labels">
-                                {data.hobbies.slice(0, 4).map((hobby) => (
-                                    <span key={hobby.id} className="pie-label">{hobby.name}</span>
+                                {data.hobbies.slice(0, 4).map((hobby, i) => (
+                                    <EditableText
+                                        key={hobby.id}
+                                        tag="span"
+                                        className="pie-label"
+                                        value={hobby.name || ''}
+                                        onChange={onDataChange ? (v) => updateHobby(i, 'name', v) : undefined}
+                                        placeholder="Hobby"
+                                    />
                                 ))}
                             </div>
                         </div>
@@ -229,23 +278,38 @@ export function AltaCVTemplate({ data, style, onDataChange }: AltaCVTemplateProp
                 )}
 
                 {/* Philosophy */}
-                {data.personal.philosophy && (
+                {(data.personal.philosophy || onDataChange) && (
                     <section className="altacv-sidebar-section">
                         <h3 className="altacv-sidebar-title">MY LIFE PHILOSOPHY</h3>
-                        <p className="altacv-philosophy">"{data.personal.philosophy}"</p>
+                        <EditableText
+                            tag="p"
+                            className="altacv-philosophy"
+                            value={data.personal.philosophy ? `"${data.personal.philosophy}"` : ''}
+                            onChange={onDataChange ? (v) => updatePersonal('philosophy', v.replace(/^"|"$/g, '')) : undefined}
+                            placeholder="Your philosophy here"
+                        />
                     </section>
                 )}
 
-                {/* Achievements */}
                 {showAwards && data.awards.length > 0 && (
                     <section className="altacv-sidebar-section">
                         <h3 className="altacv-sidebar-title">MOST PROUD OF</h3>
-                        {data.awards.map((award) => (
+                        {data.awards.map((award, i) => (
                             <div key={award.id} className="altacv-achievement">
                                 <span className="achievement-icon">🏆</span>
                                 <div className="achievement-content">
-                                    <strong>{award.title}</strong>
-                                    <p>{award.description}</p>
+                                    <strong><EditableText
+                                        tag="span"
+                                        value={award.title || ''}
+                                        onChange={onDataChange ? (v) => updateAward(i, 'title', v) : undefined}
+                                        placeholder="Award Title"
+                                    /></strong>
+                                    <EditableText
+                                        tag="p"
+                                        value={award.description || ''}
+                                        onChange={onDataChange ? (v) => updateAward(i, 'description', v) : undefined}
+                                        placeholder="Description"
+                                    />
                                 </div>
                             </div>
                         ))}
@@ -337,7 +401,15 @@ export function AltaCVTemplate({ data, style, onDataChange }: AltaCVTemplateProp
                                         placeholder="End"
                                     />
                                 </div>
-                                {edu.description && <div className="edu-desc">{edu.description}</div>}
+                                {(edu.description || onDataChange) && (
+                                    <EditableText
+                                        tag="div"
+                                        className="edu-desc"
+                                        value={edu.description || ''}
+                                        onChange={onDataChange ? (v) => updateEducation(i, 'description', v) : undefined}
+                                        placeholder="Description"
+                                    />
+                                )}
                             </div>
                         ))}
                     </section>
