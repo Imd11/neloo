@@ -180,3 +180,4 @@ async def pdf_health_check():
             "chromium": "error",
             "error": str(e)
         }
+
