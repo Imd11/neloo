@@ -333,7 +333,7 @@ export const features: Feature[] = [
         id: "resume",
         title: "制作简历",
         icon: "FileUser",
-        placeholder: "描述你的职业背景和目标岗位...",
+        placeholder: "点击左侧 + 上传简历，或直接输入描述",
         templates: [
             {
                 id: 1,

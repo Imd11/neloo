@@ -172,7 +172,7 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
             />
           ) : (
             <PromptInput
-              placeholder={selectedFeature?.id === 'resume' ? '点击左侧 + 上传简历，或直接输入描述' : '描述你想要创建的内容...'}
+              placeholder="描述你想要创建的内容..."
               selectedFeature={selectedFeature}
               onClearFeature={() => onSelectFeature(null)}
               onSubmit={handlePromptSubmit}
