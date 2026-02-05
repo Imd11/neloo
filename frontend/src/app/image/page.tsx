@@ -54,10 +54,12 @@ interface ModelInfo {
     name: string;
     logo: typeof nanoBananaLogo;
     available: boolean; // true = 可用, false = 即将上线
+    modelId?: string; // Optional: specific model ID to use with API
 }
 
 const imageModels: ModelInfo[] = [
     { name: "Nano Banana", logo: nanoBananaLogo, available: true },
+    { name: "Flash Image (测试)", logo: nanoBananaLogo, available: true, modelId: "gemini-2.5-flash-image-preview-nt" },
     { name: "可灵 AI", logo: klingLogo, available: false },
     { name: "即梦", logo: jimengLogo, available: false },
     { name: "Midjourney", logo: midjourneyLogo, available: false },
@@ -215,7 +217,8 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
                 body: JSON.stringify({
                     prompt: value,
                     resolution: resolution,
-                    ...(ratio !== "auto" && { size: ratio })
+                    ...(ratio !== "auto" && { size: ratio }),
+                    ...(imageModel.modelId && { model: imageModel.modelId })
                 })
             });
 

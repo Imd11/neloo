@@ -6,7 +6,7 @@ export const maxDuration = 120;
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { prompt, resolution = "1k", size } = body;
+        const { prompt, resolution = "1k", size, model } = body;
 
         if (!prompt || typeof prompt !== "string") {
             return NextResponse.json(
@@ -28,7 +28,9 @@ export async function POST(req: NextRequest) {
             prompt,
             apiKey,
             resolution as ResolutionTier,
-            size as ImageSize
+            size as ImageSize,
+            120000,
+            model as string | undefined
         );
 
         if (!images || images.length === 0) {

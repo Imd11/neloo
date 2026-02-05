@@ -46,18 +46,20 @@ export async function generateImage(
     apiKey: string,
     resolution: ResolutionTier = "1k",
     size?: ImageSize,
-    timeoutMs = 120000
+    timeoutMs = 120000,
+    model?: string // Optional: override the model selection
 ): Promise<string[] | null> {
     if (!apiKey) {
         console.error("[AI Image] Missing API Key");
         return null;
     }
 
-    const model = MODEL_MAP[resolution] || MODEL_MAP["1k"];
+    // Use specified model or fallback to MODEL_MAP based on resolution
+    const selectedModel = model || MODEL_MAP[resolution] || MODEL_MAP["1k"];
 
     const buildRequestBody = (attemptPrompt: string) => {
         const body: Record<string, any> = {
-            model,
+            model: selectedModel,
             prompt: attemptPrompt,
             n: 1,
             response_format: "url",
