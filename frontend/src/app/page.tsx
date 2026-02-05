@@ -193,6 +193,8 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
               onUploadClick={() => fileUpload.triggerFileSelect()}
               onLibraryClick={handleLibraryImport}
               onGoogleDriveClick={() => googleDrivePicker.openPicker()}
+              resumeFile={selectedFeature?.id === 'resume' ? resumeFile : null}
+              onRemoveFile={() => setResumeFile(null)}
             />
           )}
         </div>

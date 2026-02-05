@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Mic, ArrowUp, X, Upload, FolderOpen } from "lucide-react";
+import { Plus, Mic, ArrowUp, X, Upload, FolderOpen, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Feature } from "@/data/featureTemplates";
@@ -22,6 +22,9 @@ interface PromptInputProps {
     onUploadClick?: () => void;
     onLibraryClick?: () => void;
     onGoogleDriveClick?: () => void;
+    // Resume file preview
+    resumeFile?: File | null;
+    onRemoveFile?: () => void;
 }
 
 export function PromptInput({
@@ -34,7 +37,9 @@ export function PromptInput({
     disabled,
     onUploadClick,
     onLibraryClick,
-    onGoogleDriveClick
+    onGoogleDriveClick,
+    resumeFile,
+    onRemoveFile
 }: PromptInputProps) {
     const [value, setValue] = useState(initialValue);
     const [isFocused, setIsFocused] = useState(false);
@@ -46,8 +51,16 @@ export function PromptInput({
         }
     }, [initialValue]);
 
+    // Format file size
+    const formatFileSize = (bytes: number): string => {
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    };
+
     const handleSubmit = () => {
-        if (value.trim() && onSubmit) {
+        // Allow submit if there's text OR a resume file
+        if ((value.trim() || resumeFile) && onSubmit) {
             onSubmit(value.trim());
             setValue("");
         }
@@ -71,6 +84,36 @@ export function PromptInput({
                 className
             )}
         >
+            {/* Resume File Preview Card */}
+            {resumeFile && (
+                <div className="px-4 pt-3 pb-2">
+                    <div className="relative inline-flex items-center gap-3 px-3 py-2.5 bg-muted/50 rounded-xl">
+                        {/* PDF Icon */}
+                        <div className="w-10 h-10 bg-red-500/15 rounded-lg flex items-center justify-center shrink-0">
+                            <FileText className="w-5 h-5 text-red-500" />
+                        </div>
+                        {/* File Info */}
+                        <div className="flex flex-col min-w-0">
+                            <span className="text-sm font-medium text-foreground truncate max-w-[180px]">
+                                {resumeFile.name}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                                PDF · {formatFileSize(resumeFile.size)}
+                            </span>
+                        </div>
+                        {/* Remove Button - positioned at top-right corner of card */}
+                        <button
+                            onClick={onRemoveFile}
+                            type="button"
+                            className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-muted hover:bg-muted-foreground/20 rounded-full flex items-center justify-center transition-colors"
+                            aria-label="移除文件"
+                        >
+                            <X className="w-3 h-3 text-muted-foreground" />
+                        </button>
+                    </div>
+                </div>
+            )}
+
             <div className="flex items-center gap-2 px-4 py-3">
                 {/* Plus Button with Dropdown Menu - only show if any handlers are provided */}
                 {(onGoogleDriveClick || onLibraryClick || onUploadClick) && (
@@ -170,10 +213,10 @@ export function PromptInput({
                     variant="send"
                     size="icon-sm"
                     onClick={handleSubmit}
-                    disabled={!value.trim() || disabled}
+                    disabled={(!value.trim() && !resumeFile) || disabled}
                     className={cn(
                         "shrink-0 transition-all duration-200",
-                        !value.trim() && "opacity-50 cursor-not-allowed"
+                        (!value.trim() && !resumeFile) && "opacity-50 cursor-not-allowed"
                     )}
                 >
                     <ArrowUp className="w-4 h-4" />
