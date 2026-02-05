@@ -23,6 +23,7 @@ import {
     FileText,
     X,
     HelpCircle,
+    RefreshCw,
 } from "lucide-react";
 import {
     Dialog,
@@ -73,9 +74,6 @@ const TOOLS = {
     ],
 };
 
-// Emoji picker options
-const EMOJI_OPTIONS = ["🤖", "📊", "✍️", "🧑‍💻", "📈", "🎨", "💡", "🔧", "📝", "🎯", "🚀", "💬"];
-
 type TabId = "store" | "my" | "create";
 type EditTab = "info" | "prompt" | "schedule";
 
@@ -109,7 +107,7 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
     const [editTab, setEditTab] = useState<EditTab>("info");
     const [formData, setFormData] = useState({
         name: "",
-        icon: "🤖",
+        icon: "",
         description: "",
         systemPrompt: "",
         tools: ["search_web"],
@@ -131,6 +129,8 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
     });
     const [isGenerating, setIsGenerating] = useState(false);
     const [generatedIcon, setGeneratedIcon] = useState<string | null>(null); // base64 data URL
+    const [isGenerated, setIsGenerated] = useState(false); // Controls button state (Create vs Save)
+    const [isRegeneratingIcon, setIsRegeneratingIcon] = useState(false);
 
     const tabs = [
         { id: "store" as const, label: "商店", icon: Store },
@@ -175,10 +175,15 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
         try {
             const result = await generateAgent(formData.name, formData.description, formData.tools);
             if (result) {
-                setFormData(prev => ({ ...prev, systemPrompt: result.system_prompt }));
+                setFormData(prev => ({ 
+                    ...prev, 
+                    systemPrompt: result.system_prompt,
+                    icon: result.icon_url || ""
+                }));
                 if (result.icon_url) {
                     setGeneratedIcon(result.icon_url);
                 }
+                setIsGenerated(true);
                 toast.success("智能体已生成，请确认后保存");
             }
         } catch (error) {
@@ -222,6 +227,13 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
 
     const handleEditAgent = (agent: Agent) => {
         setEditingAgent(agent);
+        setIsGenerated(true); // Edit mode starts in generated state
+        // If agent has a data URL icon, set it as generatedIcon for display
+        if (agent.icon?.startsWith('data:')) {
+            setGeneratedIcon(agent.icon);
+        } else {
+            setGeneratedIcon(null);
+        }
         setFormData({
             name: agent.name,
             icon: agent.icon,
@@ -278,12 +290,31 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
         }
     };
 
+    // Handle icon regeneration separately
+    const handleRegenerateIcon = async () => {
+        if (!formData.name.trim() || !formData.description.trim()) return;
+        setIsRegeneratingIcon(true);
+        try {
+            const result = await generateAgent(formData.name, formData.description, formData.tools);
+            if (result?.icon_url) {
+                setGeneratedIcon(result.icon_url);
+                setFormData(prev => ({ ...prev, icon: result.icon_url }));
+                toast.success("图标已重新生成");
+            }
+        } catch (error) {
+            toast.error("重新生成图标失败");
+        } finally {
+            setIsRegeneratingIcon(false);
+        }
+    };
+
     const resetForm = () => {
         setEditingAgent(null);
         setGeneratedIcon(null);
+        setIsGenerated(false);
         setFormData({
             name: "",
-            icon: "🤖",
+            icon: "",
             description: "",
             systemPrompt: "",
             tools: ["search_web"],
