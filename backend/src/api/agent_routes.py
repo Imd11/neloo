@@ -573,7 +573,7 @@ async def generate_agent(
     import asyncio
     
     deepseek_key = os.environ.get("DEEPSEEK_API_KEY", "")
-    openrouter_key = os.environ.get("OPENROUTER_API_KEY", "")
+    tuzi_key = os.environ.get("TUZI_API_KEY", "")
     
     if not deepseek_key:
         raise HTTPException(status_code=500, detail="DeepSeek API not configured")
@@ -672,76 +672,59 @@ Requirements:
             return ""
 
     async def generate_icon(client: httpx.AsyncClient) -> str:
-        """Generate icon using FLUX.2 Klein via OpenRouter."""
+        """Generate icon using Gemini via tu-zi.com API."""
         print(f"[Icon Generation] Starting icon generation...")
-        print(f"[Icon Generation] OpenRouter API Key configured: {bool(openrouter_key)}")
-        if not openrouter_key:
-            print("[Icon Generation] ERROR: No OpenRouter API Key!")
+        print(f"[Icon Generation] TUZI API Key configured: {bool(tuzi_key)}")
+        if not tuzi_key:
+            print("[Icon Generation] ERROR: No TUZI API Key!")
             return ""
         
         try:
             request_body = {
-                "model": "black-forest-labs/flux.2-klein-4b",
-                "messages": [
-                    {"role": "user", "content": icon_prompt}
-                ],
-                "modalities": ["image", "text"],
+                "model": "gemini-2.5-flash-image-preview-nt",
+                "prompt": icon_prompt,
+                "size": "1024x1024",
+                "n": 1,
+                "response_format": "b64_json"
             }
             print(f"[Icon Generation] Request body: {request_body}")
             
             response = await client.post(
-                "https://openrouter.ai/api/v1/chat/completions",
+                "https://api.tu-zi.com/v1/images/generations",
                 headers={
-                    "Authorization": f"Bearer {openrouter_key}",
+                    "Authorization": f"Bearer {tuzi_key}",
                     "Content-Type": "application/json",
-                    "HTTP-Referer": "https://metricsai.top",
-                    "X-Title": "Metrics AI",
                 },
                 json=request_body,
-                timeout=60.0,
+                timeout=120.0,
             )
             
             print(f"[Icon Generation] Response status: {response.status_code}")
             
             if response.status_code == 200:
                 result = response.json()
-                print(f"[Icon Generation] Full response: {result}")
+                print(f"[Icon Generation] Full response keys: {result.keys() if isinstance(result, dict) else 'not a dict'}")
                 
-                # OpenRouter returns images in: choices[0].message.images[0].image_url.url
-                message = result.get("choices", [{}])[0].get("message", {})
-                print(f"[Icon Generation] Message content: {message}")
-                
-                images = message.get("images", [])
-                print(f"[Icon Generation] Images array: {images}")
-                
-                if images and len(images) > 0:
-                    # Try both access patterns
-                    image_data = images[0]
-                    print(f"[Icon Generation] First image data: {image_data}")
-                    
-                    # Pattern 1: image_url.url (snake_case - raw API)
-                    image_url = image_data.get("image_url", {}).get("url", "")
-                    
-                    if not image_url:
-                        # Pattern 2: directly check if it's the URL itself
-                        if isinstance(image_data, str) and image_data.startswith("data:image"):
-                            image_url = image_data
-                    
-                    print(f"[Icon Generation] Extracted image_url: {image_url[:100] if image_url else 'EMPTY'}...")
-                    
-                    if image_url.startswith("data:image"):
+                # tu-zi.com returns: { "data": [{ "b64_json": "..." }] }
+                data = result.get("data", [])
+                if data and len(data) > 0:
+                    b64_json = data[0].get("b64_json", "")
+                    if b64_json:
+                        # Convert to data URL format
+                        image_url = f"data:image/png;base64,{b64_json}"
+                        print(f"[Icon Generation] Successfully got image, length: {len(b64_json)}")
                         return image_url
+                    
+                    # Alternative: check for url field
+                    url = data[0].get("url", "")
+                    if url:
+                        print(f"[Icon Generation] Got image URL: {url[:100]}...")
+                        return url
                 
-                # Fallback: check content field for base64 data
-                content = message.get("content", "")
-                if content and content.startswith("data:image"):
-                    print(f"[Icon Generation] Found image in content field")
-                    return content
-                
-                print(f"[Icon Generation] No valid image found in response")
+                print(f"[Icon Generation] No valid image found in response: {result}")
                 return ""
             else:
-                print(f"[Icon Generation] OpenRouter error: {response.status_code} - {response.text}")
+                print(f"[Icon Generation] API error: {response.status_code} - {response.text}")
                 return ""
         except Exception as e:
             print(f"[Icon Generation] Exception: {e}")

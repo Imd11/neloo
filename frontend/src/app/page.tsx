@@ -172,7 +172,7 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
             />
           ) : (
             <PromptInput
-              placeholder="描述你想要创建的内容..."
+              placeholder={selectedFeature?.id === 'resume' ? '点击左侧 + 上传简历，或直接输入描述' : '描述你想要创建的内容...'}
               selectedFeature={selectedFeature}
               onClearFeature={() => onSelectFeature(null)}
               onSubmit={handlePromptSubmit}
@@ -192,7 +192,7 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
 
         {/* 3.5 Skip Button for Resume */}
         {selectedFeature?.id === 'resume' && (
-          <div className="w-full max-w-3xl mx-auto">
+          <div className="w-full max-w-3xl mx-auto text-center">
             <button
               onClick={() => onEnterResumeEditMode?.(null, '', true)}
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
