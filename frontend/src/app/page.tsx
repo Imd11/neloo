@@ -35,6 +35,7 @@ import type { TemplateId } from "@/app/resume/components/TemplateGallery";
 import { Feature, Template } from "@/data/featureTemplates";
 import { ImageExperience } from "@/app/components/image/ImageExperience";
 import { ResumeExperience } from "@/app/components/resume/ResumeExperience";
+import SlidesExperience from "@/app/components/slides/SlidesExperience";
 import { TranslatePanel } from "@/app/components/TranslatePanel";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGoogleDrivePicker } from "@/app/hooks/useGoogleDrivePicker";
@@ -50,9 +51,10 @@ interface LandingViewProps {
   enableWebDevMode: () => void;
   setActiveFeatureId: (featureId: string | null) => void;
   onEnterResumeEditMode?: (file: File | null, prompt: string, skipUpload: boolean) => void;
+  onEnterSlidesEditMode?: (file: File | null, prompt: string) => void;
 }
 
-function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFortuneMode, enableWebDevMode, setActiveFeatureId, onEnterResumeEditMode }: LandingViewProps) {
+function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFortuneMode, enableWebDevMode, setActiveFeatureId, onEnterResumeEditMode, onEnterSlidesEditMode }: LandingViewProps) {
   const router = useRouter();
 
   // Track selected fortune template ID for prefix injection
@@ -68,6 +70,10 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
   // Resume file - stored locally without uploading to data API
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const resumeInputRef = useRef<HTMLInputElement>(null);
+
+  // Slides file - stored locally without uploading to data API
+  const [slidesFile, setSlidesFile] = useState<File | null>(null);
+  const slidesInputRef = useRef<HTMLInputElement>(null);
 
   // Handle resume file selection
   const handleResumeFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -86,6 +92,23 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
     resumeInputRef.current?.click();
   }, []);
 
+  // Handle slides file selection
+  const handleSlidesFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      setSlidesFile(files[0]);
+      toast.success(`已选择文件: ${files[0].name}`);
+    }
+    // Reset input
+    if (slidesInputRef.current) {
+      slidesInputRef.current.value = '';
+    }
+  }, []);
+
+  const triggerSlidesFileSelect = useCallback(() => {
+    slidesInputRef.current?.click();
+  }, []);
+
   // Use data file upload hook for proper Supabase upload
   const fileUpload = useDataFileUpload({
     apiUrl: process.env.NEXT_PUBLIC_API_URL || "",
@@ -94,11 +117,13 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
     maxFiles: 5,
   });
 
-  // Google Drive picker - add files through the upload hook or store locally for resume
   const handleGoogleDriveFile = useCallback((file: File) => {
     if (selectedFeature?.id === 'resume') {
       setResumeFile(file);
       toast.success(`已选择简历: ${file.name}`);
+    } else if (selectedFeature?.id === 'slides') {
+      setSlidesFile(file);
+      toast.success(`已选择文件: ${file.name}`);
     } else {
       fileUpload.addFiles([file]);
       toast.success(`已添加文件: ${file.name}`);
@@ -106,7 +131,7 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
   }, [fileUpload, selectedFeature?.id]);
   const googleDrivePicker = useGoogleDrivePicker(handleGoogleDriveFile);
 
-  // Handle local file selection - use upload hook or store locally for resume
+  // Handle local file selection - use upload hook or store locally for resume/slides
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
@@ -114,6 +139,9 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
       if (selectedFeature?.id === 'resume') {
         setResumeFile(files[0]);
         toast.success(`已选择简历: ${files[0].name}`);
+      } else if (selectedFeature?.id === 'slides') {
+        setSlidesFile(files[0]);
+        toast.success(`已选择文件: ${files[0].name}`);
       } else {
         fileUpload.addFiles(files);
       }
@@ -147,6 +175,10 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
       // Resume mode - enter resume edit mode with the locally stored resume file
       onEnterResumeEditMode?.(resumeFile, userInput, false);
       setResumeFile(null); // Clear after use
+    } else if (selectedFeature?.id === 'slides') {
+      // Slides mode - enter slides edit mode with the locally stored file
+      onEnterSlidesEditMode?.(slidesFile, userInput);
+      setSlidesFile(null); // Clear after use
     } else if (selectedFeature?.id === 'web-dev') {
       // Enable web-dev mode graph
       enableWebDevMode();
@@ -208,11 +240,25 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
               onClearFeature={() => onSelectFeature(null)}
               onSubmit={handlePromptSubmit}
               disabled={false}
-              onUploadClick={() => selectedFeature?.id === 'resume' ? triggerResumeFileSelect() : fileUpload.triggerFileSelect()}
+              onUploadClick={() => {
+                if (selectedFeature?.id === 'resume') {
+                  triggerResumeFileSelect();
+                } else if (selectedFeature?.id === 'slides') {
+                  triggerSlidesFileSelect();
+                } else {
+                  fileUpload.triggerFileSelect();
+                }
+              }}
               onLibraryClick={handleLibraryImport}
               onGoogleDriveClick={() => googleDrivePicker.openPicker()}
-              resumeFile={selectedFeature?.id === 'resume' ? resumeFile : null}
-              onRemoveFile={() => setResumeFile(null)}
+              resumeFile={selectedFeature?.id === 'resume' ? resumeFile : (selectedFeature?.id === 'slides' ? slidesFile : null)}
+              onRemoveFile={() => {
+                if (selectedFeature?.id === 'resume') {
+                  setResumeFile(null);
+                } else if (selectedFeature?.id === 'slides') {
+                  setSlidesFile(null);
+                }
+              }}
             />
           )}
         </div>
@@ -223,6 +269,15 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
           type="file"
           accept=".pdf,.doc,.docx,.txt,image/*"
           onChange={handleResumeFileSelect}
+          className="hidden"
+        />
+
+        {/* Hidden input for slides file selection */}
+        <input
+          ref={slidesInputRef}
+          type="file"
+          accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,image/*,audio/*"
+          onChange={handleSlidesFileSelect}
           className="hidden"
         />
 
@@ -304,7 +359,7 @@ function ChatWithFilePanel({
   onOpenFilePanel: () => void;
   onCloseFilePanel: () => void;
   threadId: string | null;
-  onModeChange?: (mode: "chat" | "image" | "resume") => void;
+  onModeChange?: (mode: "chat" | "image" | "resume" | "slides") => void;
 }) {
   const router = useRouter();
   const { messages, isLoading, isThreadLoading, webDevMode, sendMessage, setFortuneMode, enableWebDevMode, setActiveFeatureId } = useChatContext();
@@ -322,6 +377,18 @@ function ChatWithFilePanel({
     setResumePrompt(prompt);
     setResumeSkipUpload(skipUpload);
     setResumeEditMode(true);
+  }, []);
+
+  // Slides edit mode state
+  const [slidesEditMode, setSlidesEditMode] = useState(false);
+  const [slidesFile, setSlidesFile] = useState<File | null>(null);
+  const [slidesPrompt, setSlidesPrompt] = useState('');
+
+  // Handler for entering slides edit mode
+  const handleEnterSlidesEditMode = useCallback((file: File | null, prompt: string) => {
+    setSlidesFile(file);
+    setSlidesPrompt(prompt);
+    setSlidesEditMode(true);
   }, []);
 
   // Selected artifact from inline cards - this is what drives the right panel
@@ -523,6 +590,25 @@ function ChatWithFilePanel({
     );
   }
 
+  if (showLandingView && slidesEditMode) {
+    return (
+      <div className="flex-1 overflow-hidden">
+        <SlidesExperience
+          onExit={() => {
+            setSlidesEditMode(false);
+            setSlidesFile(null);
+            setSlidesPrompt('');
+            setSelectedFeature(null);
+            setActiveFeatureId(null);
+            onModeChange?.("chat");
+          }}
+          initialFile={slidesFile}
+          initialPrompt={slidesPrompt}
+        />
+      </div>
+    );
+  }
+
   if (showLandingView) {
     return (
       <div className="flex-1 overflow-y-auto">
@@ -534,6 +620,7 @@ function ChatWithFilePanel({
           enableWebDevMode={enableWebDevMode}
           setActiveFeatureId={setActiveFeatureId}
           onEnterResumeEditMode={handleEnterResumeEditMode}
+          onEnterSlidesEditMode={handleEnterSlidesEditMode}
         />
       </div>
     );
@@ -633,7 +720,7 @@ function HomePageInner() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
-  const [uiMode, setUiMode] = useState<"chat" | "image" | "resume">("chat");
+  const [uiMode, setUiMode] = useState<"chat" | "image" | "resume" | "slides">("chat");
 
   // Load config
   useEffect(() => {

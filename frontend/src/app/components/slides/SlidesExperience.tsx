@@ -8,23 +8,55 @@ import SlideShow from '@/app/components/slides/SlideShow';
 import { MessageSquare, Sparkles, X } from 'lucide-react';
 
 interface SlidesExperienceProps {
-    topic: string;
+    topic?: string;
     attachments?: Attachment[];
     presentationId?: string;
     userId?: string;
     onExit: () => void;
     onPresentationCreated?: (presentation: PresentationData) => void;
+    // New props for file-based input
+    initialFile?: File | null;
+    initialPrompt?: string;
 }
 
 const SlidesExperience: React.FC<SlidesExperienceProps> = ({
-    topic,
-    attachments = [],
+    topic: propTopic,
+    attachments: propAttachments = [],
     presentationId: initialPresentationId,
     userId,
     onExit,
-    onPresentationCreated
+    onPresentationCreated,
+    initialFile,
+    initialPrompt
 }) => {
     const { setCollapsed, setHideTopBar } = useSidebar();
+
+    // Convert initialFile to attachment if provided
+    const [topic, setTopic] = React.useState(propTopic || initialPrompt || '');
+    const [attachments, setAttachments] = React.useState<Attachment[]>(propAttachments);
+    const [isProcessingFile, setIsProcessingFile] = React.useState(false);
+
+    // Convert initial file to base64 attachment on mount
+    React.useEffect(() => {
+        if (initialFile && attachments.length === 0) {
+            setIsProcessingFile(true);
+            const reader = new FileReader();
+            reader.onload = () => {
+                const base64 = (reader.result as string).split(',')[1] || '';
+                setAttachments([{
+                    name: initialFile.name,
+                    mimeType: initialFile.type || 'application/octet-stream',
+                    data: base64
+                }]);
+                setIsProcessingFile(false);
+            };
+            reader.onerror = () => {
+                console.error('Failed to read file');
+                setIsProcessingFile(false);
+            };
+            reader.readAsDataURL(initialFile);
+        }
+    }, [initialFile]);
 
     // View state
     const [viewState, setViewState] = useState<SlidesViewState>('GENERATING');
