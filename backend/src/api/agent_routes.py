@@ -52,7 +52,9 @@ def get_supabase() -> Client:
 class AgentCreate(BaseModel):
     """Request model for creating an agent."""
     name: str = Field(..., min_length=1, max_length=100)
-    icon: str = Field(default="🤖", max_length=10)
+    # Can be an emoji (legacy) or an AI-generated image Data URL / URL.
+    # Data URLs for 1024x1024 PNGs can be >1MB, so avoid tiny limits.
+    icon: str = Field(default="🤖", max_length=6_000_000)
     description: str = Field(..., min_length=1, max_length=1000)
     system_prompt: str = Field(..., min_length=1)
     tools: List[str] = Field(default=["search_web"])
@@ -62,7 +64,8 @@ class AgentCreate(BaseModel):
 class AgentUpdate(BaseModel):
     """Request model for updating an agent."""
     name: Optional[str] = Field(None, min_length=1, max_length=100)
-    icon: Optional[str] = Field(None, max_length=10)
+    # Same format as AgentCreate.icon (emoji or image Data URL / URL).
+    icon: Optional[str] = Field(None, max_length=6_000_000)
     description: Optional[str] = Field(None, min_length=1, max_length=1000)
     system_prompt: Optional[str] = Field(None, min_length=1)
     tools: Optional[List[str]] = None
@@ -746,4 +749,3 @@ Requirements:
         system_prompt=system_prompt,
         icon_url=icon_url or ""
     )
-

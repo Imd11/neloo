@@ -77,6 +77,15 @@ const TOOLS = {
 type TabId = "store" | "my" | "create";
 type EditTab = "info" | "prompt" | "schedule";
 
+function isImageIcon(icon: string | null | undefined): boolean {
+    if (!icon) return false;
+    return (
+        icon.startsWith("data:image") ||
+        icon.startsWith("http://") ||
+        icon.startsWith("https://")
+    );
+}
+
 export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps) {
     // Use the agents hook for real data
     const {
@@ -228,8 +237,8 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
     const handleEditAgent = (agent: Agent) => {
         setEditingAgent(agent);
         setIsGenerated(true); // Edit mode starts in generated state
-        // If agent has a data URL icon, set it as generatedIcon for display
-        if (agent.icon?.startsWith('data:')) {
+        // If agent has an image icon (data URL or URL), set it for display
+        if (isImageIcon(agent.icon)) {
             setGeneratedIcon(agent.icon);
         } else {
             setGeneratedIcon(null);
@@ -395,7 +404,15 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
                         >
                             {/* Header: Icon + Name */}
                             <div className="flex items-center gap-3 mb-2">
-                                <span className="text-2xl">{agent.icon}</span>
+                                {isImageIcon(agent.icon) ? (
+                                    <img
+                                        src={agent.icon}
+                                        alt="智能体图标"
+                                        className="h-10 w-10 rounded-lg object-cover"
+                                    />
+                                ) : (
+                                    <span className="text-2xl">{agent.icon}</span>
+                                )}
                                 <h4 className="font-semibold text-foreground truncate flex-1">{agent.name}</h4>
                             </div>
 
@@ -471,7 +488,15 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
                         className="p-4 rounded-xl bg-accent/50 hover:bg-accent transition-colors"
                     >
                         <div className="flex items-center gap-4">
-                            <span className="text-3xl">{agent.icon}</span>
+                            {isImageIcon(agent.icon) ? (
+                                <img
+                                    src={agent.icon}
+                                    alt="智能体图标"
+                                    className="h-12 w-12 rounded-xl object-cover"
+                                />
+                            ) : (
+                                <span className="text-3xl">{agent.icon}</span>
+                            )}
                             <div className="flex-1 min-w-0">
                                 <h4 className="font-medium text-foreground">{agent.name}</h4>
                                 <p className="text-xs text-muted-foreground">{agent.description}</p>
