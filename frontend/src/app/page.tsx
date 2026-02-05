@@ -67,6 +67,24 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
 
   // Resume file - stored locally without uploading to data API
   const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const resumeInputRef = useRef<HTMLInputElement>(null);
+
+  // Handle resume file selection
+  const handleResumeFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      setResumeFile(files[0]);
+      toast.success(`已选择简历: ${files[0].name}`);
+    }
+    // Reset input
+    if (resumeInputRef.current) {
+      resumeInputRef.current.value = '';
+    }
+  }, []);
+
+  const triggerResumeFileSelect = useCallback(() => {
+    resumeInputRef.current?.click();
+  }, []);
 
   // Use data file upload hook for proper Supabase upload
   const fileUpload = useDataFileUpload({
@@ -190,7 +208,7 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
               onClearFeature={() => onSelectFeature(null)}
               onSubmit={handlePromptSubmit}
               disabled={false}
-              onUploadClick={() => fileUpload.triggerFileSelect()}
+              onUploadClick={() => selectedFeature?.id === 'resume' ? triggerResumeFileSelect() : fileUpload.triggerFileSelect()}
               onLibraryClick={handleLibraryImport}
               onGoogleDriveClick={() => googleDrivePicker.openPicker()}
               resumeFile={selectedFeature?.id === 'resume' ? resumeFile : null}
@@ -198,6 +216,15 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
             />
           )}
         </div>
+
+        {/* Hidden input for resume file selection */}
+        <input
+          ref={resumeInputRef}
+          type="file"
+          accept=".pdf,.doc,.docx,.txt,image/*"
+          onChange={handleResumeFileSelect}
+          className="hidden"
+        />
 
         {/* 3. Feature Buttons */}
         <FeatureButtons
