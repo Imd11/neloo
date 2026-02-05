@@ -30,8 +30,11 @@ import { PromptInput } from "@/app/components/PromptInput";
 import { TemplatePromptInput } from "@/app/components/TemplatePromptInput";
 import { FeatureButtons } from "@/app/components/FeatureButtons";
 import { FeatureTemplateGrid } from "@/app/components/FeatureTemplateGrid";
+import { ResumeTemplateGrid } from "@/app/resume/components/ResumeTemplateGrid";
+import type { TemplateId } from "@/app/resume/components/TemplateGallery";
 import { Feature, Template } from "@/data/featureTemplates";
 import { ImageExperience } from "@/app/components/image/ImageExperience";
+import { ResumeExperience } from "@/app/components/resume/ResumeExperience";
 import { TranslatePanel } from "@/app/components/TranslatePanel";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGoogleDrivePicker } from "@/app/hooks/useGoogleDrivePicker";
@@ -46,9 +49,10 @@ interface LandingViewProps {
   setFortuneMode: (mode: boolean) => void;
   enableWebDevMode: () => void;
   setActiveFeatureId: (featureId: string | null) => void;
+  onEnterResumeEditMode?: (file: File | null, prompt: string, skipUpload: boolean) => void;
 }
 
-function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFortuneMode, enableWebDevMode, setActiveFeatureId }: LandingViewProps) {
+function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFortuneMode, enableWebDevMode, setActiveFeatureId, onEnterResumeEditMode }: LandingViewProps) {
   const router = useRouter();
 
   // Track selected fortune template ID for prefix injection
@@ -107,6 +111,11 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
 
       // Send user input for display, prefix as hidden for backend
       onPromptSubmit(userInput, prefix);
+    } else if (selectedFeature?.id === 'resume') {
+      // Resume mode - enter resume edit mode
+      // Get the first uploaded file if any (resume file)
+      const resumeFile = fileUpload.files.length > 0 ? fileUpload.files[0].file : null;
+      onEnterResumeEditMode?.(resumeFile, userInput, false);
     } else if (selectedFeature?.id === 'web-dev') {
       // Enable web-dev mode graph
       enableWebDevMode();
@@ -181,11 +190,37 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
           onSelectFeature={onSelectFeature}
         />
 
-        {/* 4. Feature Template Grid (Expandable) */}
-        <FeatureTemplateGrid
-          feature={selectedFeature}
-          onSelectTemplate={handleSelectTemplate}
-        />
+        {/* 3.5 Skip Button for Resume */}
+        {selectedFeature?.id === 'resume' && (
+          <div className="w-full max-w-3xl mx-auto">
+            <button
+              onClick={() => onEnterResumeEditMode?.(null, '', true)}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              跳过，手动填写简历 →
+            </button>
+          </div>
+        )}
+
+        {/* 4. Feature Template Grid (Expandable) - skip for resume which has its own grid */}
+        {selectedFeature?.id !== 'resume' && (
+          <FeatureTemplateGrid
+            feature={selectedFeature}
+            onSelectTemplate={handleSelectTemplate}
+          />
+        )}
+
+        {/* 4.5 Resume Template Grid */}
+        {selectedFeature?.id === 'resume' && (
+          <div className="w-full max-w-5xl mx-auto px-4">
+            <ResumeTemplateGrid
+              activeTemplate="forty-seconds-cv"
+              onSelectTemplate={(templateId: TemplateId) => {
+                console.log('[Resume] Selected template:', templateId);
+              }}
+            />
+          </div>
+        )}
       </div>
 
       {/* Hidden file input - using hook's ref and accept attribute */}
@@ -232,6 +267,20 @@ function ChatWithFilePanel({
   const router = useRouter();
   const { messages, isLoading, isThreadLoading, webDevMode, sendMessage, setFortuneMode, enableWebDevMode, setActiveFeatureId } = useChatContext();
   const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
+
+  // Resume edit mode state
+  const [resumeEditMode, setResumeEditMode] = useState(false);
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [resumePrompt, setResumePrompt] = useState('');
+  const [resumeSkipUpload, setResumeSkipUpload] = useState(false);
+
+  // Handler for entering resume edit mode
+  const handleEnterResumeEditMode = useCallback((file: File | null, prompt: string, skipUpload: boolean) => {
+    setResumeFile(file);
+    setResumePrompt(prompt);
+    setResumeSkipUpload(skipUpload);
+    setResumeEditMode(true);
+  }, []);
 
   // Selected artifact from inline cards - this is what drives the right panel
   const [selectedArtifact, setSelectedArtifact] = useState<Artifact | null>(null);
@@ -361,8 +410,9 @@ function ChatWithFilePanel({
     }
 
     if (feature.id === "resume") {
-      // Resume feature - navigate to dedicated resume builder page
-      router.push('/resume');
+      // Resume mode is handled inline on the home page (no route change).
+      setActiveFeatureId("resume");
+      onModeChange?.("resume");
       return;
     }
 
@@ -410,6 +460,27 @@ function ChatWithFilePanel({
     );
   }
 
+  if (showLandingView && resumeEditMode) {
+    return (
+      <div className="flex-1 overflow-y-auto">
+        <ResumeExperience
+          onExit={() => {
+            setResumeEditMode(false);
+            setResumeFile(null);
+            setResumePrompt('');
+            setResumeSkipUpload(false);
+            setSelectedFeature(null);
+            setActiveFeatureId(null);
+            onModeChange?.("chat");
+          }}
+          initialFile={resumeFile}
+          initialPrompt={resumePrompt}
+          skipUpload={resumeSkipUpload}
+        />
+      </div>
+    );
+  }
+
   if (showLandingView) {
     return (
       <div className="flex-1 overflow-y-auto">
@@ -420,6 +491,7 @@ function ChatWithFilePanel({
           setFortuneMode={setFortuneMode}
           enableWebDevMode={enableWebDevMode}
           setActiveFeatureId={setActiveFeatureId}
+          onEnterResumeEditMode={handleEnterResumeEditMode}
         />
       </div>
     );
