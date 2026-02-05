@@ -673,10 +673,22 @@ Requirements:
 
     async def generate_icon(client: httpx.AsyncClient) -> str:
         """Generate icon using FLUX.2 Klein via OpenRouter."""
+        print(f"[Icon Generation] Starting icon generation...")
+        print(f"[Icon Generation] OpenRouter API Key configured: {bool(openrouter_key)}")
         if not openrouter_key:
+            print("[Icon Generation] ERROR: No OpenRouter API Key!")
             return ""
         
         try:
+            request_body = {
+                "model": "black-forest-labs/flux.2-klein-4b",
+                "messages": [
+                    {"role": "user", "content": icon_prompt}
+                ],
+                "modalities": ["image", "text"],
+            }
+            print(f"[Icon Generation] Request body: {request_body}")
+            
             response = await client.post(
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers={
@@ -685,34 +697,56 @@ Requirements:
                     "HTTP-Referer": "https://metricsai.top",
                     "X-Title": "Metrics AI",
                 },
-                json={
-                    "model": "black-forest-labs/flux.2-klein-4b",
-                    "messages": [
-                        {"role": "user", "content": icon_prompt}
-                    ],
-                    "modalities": ["image", "text"],
-                },
+                json=request_body,
                 timeout=60.0,
             )
+            
+            print(f"[Icon Generation] Response status: {response.status_code}")
+            
             if response.status_code == 200:
                 result = response.json()
+                print(f"[Icon Generation] Full response: {result}")
+                
                 # OpenRouter returns images in: choices[0].message.images[0].image_url.url
                 message = result.get("choices", [{}])[0].get("message", {})
+                print(f"[Icon Generation] Message content: {message}")
+                
                 images = message.get("images", [])
+                print(f"[Icon Generation] Images array: {images}")
+                
                 if images and len(images) > 0:
-                    image_url = images[0].get("image_url", {}).get("url", "")
+                    # Try both access patterns
+                    image_data = images[0]
+                    print(f"[Icon Generation] First image data: {image_data}")
+                    
+                    # Pattern 1: image_url.url (snake_case - raw API)
+                    image_url = image_data.get("image_url", {}).get("url", "")
+                    
+                    if not image_url:
+                        # Pattern 2: directly check if it's the URL itself
+                        if isinstance(image_data, str) and image_data.startswith("data:image"):
+                            image_url = image_data
+                    
+                    print(f"[Icon Generation] Extracted image_url: {image_url[:100] if image_url else 'EMPTY'}...")
+                    
                     if image_url.startswith("data:image"):
                         return image_url
+                
                 # Fallback: check content field for base64 data
                 content = message.get("content", "")
                 if content and content.startswith("data:image"):
+                    print(f"[Icon Generation] Found image in content field")
                     return content
+                
+                print(f"[Icon Generation] No valid image found in response")
                 return ""
             else:
-                print(f"OpenRouter error: {response.status_code} - {response.text}")
+                print(f"[Icon Generation] OpenRouter error: {response.status_code} - {response.text}")
                 return ""
         except Exception as e:
-            print(f"Error generating icon: {e}")
+            print(f"[Icon Generation] Exception: {e}")
+            import traceback
+            traceback.print_exc()
             return ""
 
     # Run both generations in parallel
