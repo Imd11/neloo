@@ -175,8 +175,8 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
         try {
             const result = await generateAgent(formData.name, formData.description, formData.tools);
             if (result) {
-                setFormData(prev => ({ 
-                    ...prev, 
+                setFormData(prev => ({
+                    ...prev,
                     systemPrompt: result.system_prompt,
                     icon: result.icon_url || ""
                 }));
@@ -526,45 +526,36 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
 
             {/* Scrollable content */}
             <div className="max-h-[350px] overflow-y-auto pr-2 space-y-6">
-                {/* Icon Picker */}
+                {/* Icon Display (AI-generated only) */}
 
                 <div>
                     <label className="text-sm text-foreground mb-2 block">图标</label>
-                    <div className="flex gap-2 flex-wrap items-center">
-                        {/* Generated AI Icon */}
-                        {generatedIcon && (
-                            <button
-                                onClick={() => setFormData(prev => ({ ...prev, icon: generatedIcon }))}
-                                className={cn(
-                                    "w-12 h-12 rounded-lg flex items-center justify-center transition-all overflow-hidden",
-                                    formData.icon === generatedIcon
-                                        ? "ring-2 ring-primary"
-                                        : "ring-1 ring-border hover:ring-primary/50"
-                                )}
+                    <div className="flex items-center gap-3">
+                        {/* AI Generated Icon or Placeholder */}
+                        <div className="w-16 h-16 rounded-xl border border-border flex items-center justify-center bg-accent/50 overflow-hidden">
+                            {isGenerating || isRegeneratingIcon ? (
+                                <div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+                            ) : generatedIcon ? (
+                                <img src={generatedIcon} alt="智能体图标" className="w-full h-full object-cover" />
+                            ) : (
+                                <ImageIcon className="w-6 h-6 text-muted-foreground" />
+                            )}
+                        </div>
+                        {/* Regenerate Icon Button - shown after generation */}
+                        {isGenerated && !isGenerating && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleRegenerateIcon}
+                                disabled={isRegeneratingIcon}
                             >
-                                <img src={generatedIcon} alt="AI生成图标" className="w-full h-full object-cover" />
-                            </button>
+                                <RefreshCw className={cn("w-4 h-4 mr-1", isRegeneratingIcon && "animate-spin")} />
+                                重新生成
+                            </Button>
                         )}
-                        {/* Emoji Options */}
-                        {EMOJI_OPTIONS.map((emoji) => (
-                            <button
-                                key={emoji}
-                                onClick={() => {
-                                    setFormData(prev => ({ ...prev, icon: emoji }));
-                                }}
-                                className={cn(
-                                    "w-10 h-10 rounded-lg text-xl flex items-center justify-center transition-all",
-                                    formData.icon === emoji && !generatedIcon?.startsWith('data:')
-                                        ? "bg-primary/20 ring-2 ring-primary"
-                                        : "bg-accent hover:bg-accent/80"
-                                )}
-                            >
-                                {emoji}
-                            </button>
-                        ))}
                     </div>
-                    {generatedIcon && (
-                        <p className="text-xs text-muted-foreground mt-1">✨ 已生成 AI 图标</p>
+                    {!isGenerated && !generatedIcon && (
+                        <p className="text-xs text-muted-foreground mt-2">点击创建后将自动生成图标</p>
                     )}
                 </div>
 
@@ -588,17 +579,6 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
                         rows={3}
                     />
                 </div>
-
-                {/* Generate Agent Button - shown before generation */}
-                {!formData.systemPrompt && !editingAgent && (
-                    <Button
-                        className="w-full"
-                        onClick={handleGenerateAgent}
-                        disabled={!formData.name.trim() || !formData.description.trim() || isGenerating}
-                    >
-                        <Sparkles className="w-4 h-4 mr-2" /> 生成智能体
-                    </Button>
-                )}
 
                 {/* System Prompt (shown after generation or for editing) */}
                 {(formData.systemPrompt || editingAgent) && (
@@ -975,13 +955,22 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
 
                 {/* Footer - inside scrollable area */}
                 <div className="flex justify-end gap-2 pt-4 mt-2 border-t border-border">
-                    <Button variant="outline" onClick={resetForm}>取消</Button>
-                    <Button
-                        onClick={handleSaveAgent}
-                        disabled={!formData.name || !formData.description || (formData.schedule.enabled && !formData.schedule.model)}
-                    >
-                        保存
-                    </Button>
+                    <Button variant="outline" onClick={() => { resetForm(); onOpenChange(false); }}>取消</Button>
+                    {editingAgent || isGenerated ? (
+                        <Button
+                            onClick={handleSaveAgent}
+                            disabled={!formData.name || !formData.description || !formData.systemPrompt || isCreating || isUpdating}
+                        >
+                            {isCreating || isUpdating ? "保存中..." : "保存"}
+                        </Button>
+                    ) : (
+                        <Button
+                            onClick={handleGenerateAgent}
+                            disabled={!formData.name.trim() || !formData.description.trim() || isGenerating}
+                        >
+                            {isGenerating ? "生成中..." : "创建"}
+                        </Button>
+                    )}
                 </div>
             </div>
         </div>
