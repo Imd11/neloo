@@ -65,6 +65,9 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
   const { session } = useAuth();
   const [libraryDialogOpen, setLibraryDialogOpen] = useState(false);
 
+  // Resume file - stored locally without uploading to data API
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+
   // Use data file upload hook for proper Supabase upload
   const fileUpload = useDataFileUpload({
     apiUrl: process.env.NEXT_PUBLIC_API_URL || "",
@@ -73,24 +76,35 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
     maxFiles: 5,
   });
 
-  // Google Drive picker - add files through the upload hook
+  // Google Drive picker - add files through the upload hook or store locally for resume
   const handleGoogleDriveFile = useCallback((file: File) => {
-    fileUpload.addFiles([file]);
-    toast.success(`已添加文件: ${file.name}`);
-  }, [fileUpload]);
+    if (selectedFeature?.id === 'resume') {
+      setResumeFile(file);
+      toast.success(`已选择简历: ${file.name}`);
+    } else {
+      fileUpload.addFiles([file]);
+      toast.success(`已添加文件: ${file.name}`);
+    }
+  }, [fileUpload, selectedFeature?.id]);
   const googleDrivePicker = useGoogleDrivePicker(handleGoogleDriveFile);
 
-  // Handle local file selection - use upload hook
+  // Handle local file selection - use upload hook or store locally for resume
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      fileUpload.addFiles(files);
+      // For resume mode, store file locally instead of uploading to data API
+      if (selectedFeature?.id === 'resume') {
+        setResumeFile(files[0]);
+        toast.success(`已选择简历: ${files[0].name}`);
+      } else {
+        fileUpload.addFiles(files);
+      }
     }
     // Reset input
     if (fileUpload.inputRef.current) {
       fileUpload.inputRef.current.value = '';
     }
-  }, [fileUpload]);
+  }, [fileUpload, selectedFeature?.id]);
 
   // Handle library file import
   const handleLibraryImport = useCallback(() => {
@@ -112,10 +126,9 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
       // Send user input for display, prefix as hidden for backend
       onPromptSubmit(userInput, prefix);
     } else if (selectedFeature?.id === 'resume') {
-      // Resume mode - enter resume edit mode
-      // Get the first uploaded file if any (resume file)
-      const resumeFile = fileUpload.files.length > 0 ? fileUpload.files[0].file : null;
+      // Resume mode - enter resume edit mode with the locally stored resume file
       onEnterResumeEditMode?.(resumeFile, userInput, false);
+      setResumeFile(null); // Clear after use
     } else if (selectedFeature?.id === 'web-dev') {
       // Enable web-dev mode graph
       enableWebDevMode();
