@@ -102,8 +102,12 @@ LOCAL_STORAGE_DIR = Path(tempfile.gettempdir()) / "data-analyst-sandbox" / "data
 ALLOWED_EXTENSIONS = {
     # Data files
     ".csv", ".xlsx", ".xls", ".dta", ".sav", ".parquet",
+    # Office documents
+    ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".txt", ".rtf",
     # Image files (for multimodal)
     ".png", ".jpg", ".jpeg", ".gif", ".webp",
+    # Audio files (for slides/transcription)
+    ".mp3", ".wav", ".m4a", ".ogg", ".flac",
 }
 
 # Maximum file size (100 MB)

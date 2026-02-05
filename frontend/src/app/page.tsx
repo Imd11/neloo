@@ -26,7 +26,7 @@ import { parseArtifacts, getStreamingArtifact } from "@/lib/artifactParser";
 import { extractStringFromMessageContent } from "@/app/utils/utils";
 import { Button } from "@/components/ui/button";
 import { RotatingHeadline } from "@/app/components/RotatingHeadline";
-import { PromptInput } from "@/app/components/PromptInput";
+import { PromptInput, FilePreviewItem } from "@/app/components/PromptInput";
 import { TemplatePromptInput } from "@/app/components/TemplatePromptInput";
 import { FeatureButtons } from "@/app/components/FeatureButtons";
 import { FeatureTemplateGrid } from "@/app/components/FeatureTemplateGrid";
@@ -67,48 +67,6 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
   const { session } = useAuth();
   const [libraryDialogOpen, setLibraryDialogOpen] = useState(false);
 
-  // Resume file - stored locally without uploading to data API
-  const [resumeFile, setResumeFile] = useState<File | null>(null);
-  const resumeInputRef = useRef<HTMLInputElement>(null);
-
-  // Slides file - stored locally without uploading to data API
-  const [slidesFile, setSlidesFile] = useState<File | null>(null);
-  const slidesInputRef = useRef<HTMLInputElement>(null);
-
-  // Handle resume file selection
-  const handleResumeFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      setResumeFile(files[0]);
-      toast.success(`已选择简历: ${files[0].name}`);
-    }
-    // Reset input
-    if (resumeInputRef.current) {
-      resumeInputRef.current.value = '';
-    }
-  }, []);
-
-  const triggerResumeFileSelect = useCallback(() => {
-    resumeInputRef.current?.click();
-  }, []);
-
-  // Handle slides file selection
-  const handleSlidesFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      setSlidesFile(files[0]);
-      toast.success(`已选择文件: ${files[0].name}`);
-    }
-    // Reset input
-    if (slidesInputRef.current) {
-      slidesInputRef.current.value = '';
-    }
-  }, []);
-
-  const triggerSlidesFileSelect = useCallback(() => {
-    slidesInputRef.current?.click();
-  }, []);
-
   // Use data file upload hook for proper Supabase upload
   const fileUpload = useDataFileUpload({
     apiUrl: process.env.NEXT_PUBLIC_API_URL || "",
@@ -117,40 +75,25 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
     maxFiles: 5,
   });
 
+  // Unified file handling - all modes now use fileUpload hook
   const handleGoogleDriveFile = useCallback((file: File) => {
-    if (selectedFeature?.id === 'resume') {
-      setResumeFile(file);
-      toast.success(`已选择简历: ${file.name}`);
-    } else if (selectedFeature?.id === 'slides') {
-      setSlidesFile(file);
-      toast.success(`已选择文件: ${file.name}`);
-    } else {
-      fileUpload.addFiles([file]);
-      toast.success(`已添加文件: ${file.name}`);
-    }
-  }, [fileUpload, selectedFeature?.id]);
+    fileUpload.addFiles([file]);
+    toast.success(`已添加文件: ${file.name}`);
+  }, [fileUpload]);
   const googleDrivePicker = useGoogleDrivePicker(handleGoogleDriveFile);
 
-  // Handle local file selection - use upload hook or store locally for resume/slides
+  // Handle local file selection - unified for all modes
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      // For resume mode, store file locally instead of uploading to data API
-      if (selectedFeature?.id === 'resume') {
-        setResumeFile(files[0]);
-        toast.success(`已选择简历: ${files[0].name}`);
-      } else if (selectedFeature?.id === 'slides') {
-        setSlidesFile(files[0]);
-        toast.success(`已选择文件: ${files[0].name}`);
-      } else {
-        fileUpload.addFiles(files);
-      }
+      // All modes now use unified fileUpload hook
+      fileUpload.addFiles(files);
     }
     // Reset input
     if (fileUpload.inputRef.current) {
       fileUpload.inputRef.current.value = '';
     }
-  }, [fileUpload, selectedFeature?.id]);
+  }, [fileUpload]);
 
   // Handle library file import
   const handleLibraryImport = useCallback(() => {
@@ -172,13 +115,15 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
       // Send user input for display, prefix as hidden for backend
       onPromptSubmit(userInput, prefix);
     } else if (selectedFeature?.id === 'resume') {
-      // Resume mode - enter resume edit mode with the locally stored resume file
-      onEnterResumeEditMode?.(resumeFile, userInput, false);
-      setResumeFile(null); // Clear after use
+      // Resume mode - use the first file from fileUpload (already uploaded to Supabase)
+      const firstFile = fileUpload.files.length > 0 ? fileUpload.files[0].file : null;
+      onEnterResumeEditMode?.(firstFile, userInput, false);
+      fileUpload.clearFiles(); // Clear after use
     } else if (selectedFeature?.id === 'slides') {
-      // Slides mode - enter slides edit mode with the locally stored file
-      onEnterSlidesEditMode?.(slidesFile, userInput);
-      setSlidesFile(null); // Clear after use
+      // Slides mode - use the first file from fileUpload (already uploaded to Supabase)
+      const firstFile = fileUpload.files.length > 0 ? fileUpload.files[0].file : null;
+      onEnterSlidesEditMode?.(firstFile, userInput);
+      fileUpload.clearFiles(); // Clear after use
     } else if (selectedFeature?.id === 'web-dev') {
       // Enable web-dev mode graph
       enableWebDevMode();
@@ -240,46 +185,21 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
               onClearFeature={() => onSelectFeature(null)}
               onSubmit={handlePromptSubmit}
               disabled={false}
-              onUploadClick={() => {
-                if (selectedFeature?.id === 'resume') {
-                  triggerResumeFileSelect();
-                } else if (selectedFeature?.id === 'slides') {
-                  triggerSlidesFileSelect();
-                } else {
-                  fileUpload.triggerFileSelect();
-                }
-              }}
+              onUploadClick={() => fileUpload.triggerFileSelect()}
               onLibraryClick={handleLibraryImport}
               onGoogleDriveClick={() => googleDrivePicker.openPicker()}
-              resumeFile={selectedFeature?.id === 'resume' ? resumeFile : (selectedFeature?.id === 'slides' ? slidesFile : null)}
-              onRemoveFile={() => {
-                if (selectedFeature?.id === 'resume') {
-                  setResumeFile(null);
-                } else if (selectedFeature?.id === 'slides') {
-                  setSlidesFile(null);
-                }
-              }}
+              files={fileUpload.files.map(f => ({
+                id: f.id,
+                name: f.file.name,
+                size: f.displaySize || f.file.size,
+                type: f.file.type,
+                status: f.status,
+                error: f.error
+              }))}
+              onRemoveFile={(fileId) => fileUpload.removeFile(fileId)}
             />
           )}
         </div>
-
-        {/* Hidden input for resume file selection */}
-        <input
-          ref={resumeInputRef}
-          type="file"
-          accept=".pdf,.doc,.docx,.txt,image/*"
-          onChange={handleResumeFileSelect}
-          className="hidden"
-        />
-
-        {/* Hidden input for slides file selection */}
-        <input
-          ref={slidesInputRef}
-          type="file"
-          accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,image/*,audio/*"
-          onChange={handleSlidesFileSelect}
-          className="hidden"
-        />
 
         {/* 3. Feature Buttons */}
         <FeatureButtons

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Mic, ArrowUp, X, Upload, FolderOpen, FileText } from "lucide-react";
+import { Plus, Mic, ArrowUp, X, Upload, FolderOpen, FileText, Image, Music, Table, File, Presentation, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Feature } from "@/data/featureTemplates";
@@ -10,6 +10,16 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+// File preview item interface
+export interface FilePreviewItem {
+    id: string;
+    name: string;
+    size: number;
+    type: string;  // MIME type or extension
+    status: 'pending' | 'uploading' | 'uploaded' | 'error';
+    error?: string;
+}
 
 interface PromptInputProps {
     placeholder?: string;
@@ -22,9 +32,11 @@ interface PromptInputProps {
     onUploadClick?: () => void;
     onLibraryClick?: () => void;
     onGoogleDriveClick?: () => void;
-    // Resume file preview
+    // Multi-file preview support
+    files?: FilePreviewItem[];
+    onRemoveFile?: (fileId: string) => void;
+    // Legacy single file support (deprecated, use files instead)
     resumeFile?: File | null;
-    onRemoveFile?: () => void;
 }
 
 export function PromptInput({
@@ -38,8 +50,9 @@ export function PromptInput({
     onUploadClick,
     onLibraryClick,
     onGoogleDriveClick,
-    resumeFile,
-    onRemoveFile
+    files = [],
+    onRemoveFile,
+    resumeFile
 }: PromptInputProps) {
     const [value, setValue] = useState(initialValue);
     const [isFocused, setIsFocused] = useState(false);
@@ -58,9 +71,49 @@ export function PromptInput({
         return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     };
 
+    // Get file type info (icon, color, label) based on file name or MIME type
+    const getFileTypeInfo = (fileName: string, mimeType?: string) => {
+        const ext = fileName.toLowerCase().split('.').pop() || '';
+
+        // PDF
+        if (ext === 'pdf' || mimeType?.includes('pdf')) {
+            return { Icon: FileText, color: 'red', label: 'PDF' };
+        }
+        // PPT/PPTX
+        if (['ppt', 'pptx'].includes(ext) || mimeType?.includes('presentation')) {
+            return { Icon: Presentation, color: 'orange', label: ext.toUpperCase() };
+        }
+        // DOC/DOCX
+        if (['doc', 'docx'].includes(ext) || mimeType?.includes('document')) {
+            return { Icon: FileText, color: 'blue', label: ext.toUpperCase() };
+        }
+        // Images
+        if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext) || mimeType?.startsWith('image/')) {
+            return { Icon: Image, color: 'green', label: '图片' };
+        }
+        // Audio
+        if (['mp3', 'wav', 'm4a', 'ogg', 'flac'].includes(ext) || mimeType?.startsWith('audio/')) {
+            return { Icon: Music, color: 'purple', label: '音频' };
+        }
+        // Data files
+        if (['csv', 'xlsx', 'xls', 'parquet'].includes(ext)) {
+            return { Icon: Table, color: 'emerald', label: ext.toUpperCase() };
+        }
+        // Text
+        if (['txt', 'rtf'].includes(ext) || mimeType?.startsWith('text/')) {
+            return { Icon: FileText, color: 'gray', label: 'TXT' };
+        }
+        // Default
+        return { Icon: File, color: 'gray', label: '文件' };
+    };
+
+    // Check if there are any files (new format or legacy)
+    const hasFiles = files.length > 0 || resumeFile;
+    const hasUploadedFiles = files.some(f => f.status === 'uploaded') || resumeFile;
+
     const handleSubmit = () => {
-        // Allow submit if there's text OR a resume file
-        if ((value.trim() || resumeFile) && onSubmit) {
+        // Allow submit if there's text OR files
+        if ((value.trim() || hasUploadedFiles) && onSubmit) {
             onSubmit(value.trim());
             setValue("");
         }
@@ -84,33 +137,96 @@ export function PromptInput({
                 className
             )}
         >
-            {/* Resume File Preview Card */}
-            {resumeFile && (
-                <div className="px-4 pt-3 pb-2">
-                    <div className="relative inline-flex items-center gap-3 px-3 py-2.5 bg-muted/50 rounded-xl">
-                        {/* PDF Icon */}
-                        <div className="w-10 h-10 bg-red-500/15 rounded-lg flex items-center justify-center shrink-0">
-                            <FileText className="w-5 h-5 text-red-500" />
-                        </div>
-                        {/* File Info */}
-                        <div className="flex flex-col min-w-0">
-                            <span className="text-sm font-medium text-foreground truncate max-w-[180px]">
-                                {resumeFile.name}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                                PDF · {formatFileSize(resumeFile.size)}
-                            </span>
-                        </div>
-                        {/* Remove Button - positioned at top-right corner of card */}
-                        <button
-                            onClick={onRemoveFile}
-                            type="button"
-                            className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-muted hover:bg-muted-foreground/20 rounded-full flex items-center justify-center transition-colors"
-                            aria-label="移除文件"
-                        >
-                            <X className="w-3 h-3 text-muted-foreground" />
-                        </button>
-                    </div>
+            {/* File Preview Cards - Multi-file support */}
+            {(files.length > 0 || resumeFile) && (
+                <div className="px-4 pt-3 pb-2 flex flex-wrap gap-2">
+                    {/* New multi-file format */}
+                    {files.map((file) => {
+                        const { Icon, color, label } = getFileTypeInfo(file.name, file.type);
+                        const colorClasses = {
+                            red: 'bg-red-500/15 text-red-500',
+                            orange: 'bg-orange-500/15 text-orange-500',
+                            blue: 'bg-blue-500/15 text-blue-500',
+                            green: 'bg-green-500/15 text-green-500',
+                            purple: 'bg-purple-500/15 text-purple-500',
+                            emerald: 'bg-emerald-500/15 text-emerald-500',
+                            gray: 'bg-gray-500/15 text-gray-500',
+                        }[color] || 'bg-gray-500/15 text-gray-500';
+
+                        return (
+                            <div
+                                key={file.id}
+                                className="relative inline-flex items-center gap-3 px-3 py-2.5 bg-muted/50 rounded-xl"
+                            >
+                                {/* File Icon with status overlay */}
+                                <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0", colorClasses.split(' ')[0])}>
+                                    {file.status === 'uploading' ? (
+                                        <Loader2 className={cn("w-5 h-5 animate-spin", colorClasses.split(' ')[1])} />
+                                    ) : (
+                                        <Icon className={cn("w-5 h-5", colorClasses.split(' ')[1])} />
+                                    )}
+                                </div>
+                                {/* File Info */}
+                                <div className="flex flex-col min-w-0">
+                                    <span className="text-sm font-medium text-foreground truncate max-w-[180px]">
+                                        {file.name}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                        {label} · {formatFileSize(file.size)}
+                                        {file.status === 'uploading' && ' · 上传中...'}
+                                        {file.status === 'error' && ' · 上传失败'}
+                                    </span>
+                                </div>
+                                {/* Remove Button */}
+                                <button
+                                    onClick={() => onRemoveFile?.(file.id)}
+                                    type="button"
+                                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-muted hover:bg-muted-foreground/20 rounded-full flex items-center justify-center transition-colors"
+                                    aria-label="移除文件"
+                                >
+                                    <X className="w-3 h-3 text-muted-foreground" />
+                                </button>
+                            </div>
+                        );
+                    })}
+
+                    {/* Legacy single file support (resumeFile) */}
+                    {resumeFile && files.length === 0 && (() => {
+                        const { Icon, color, label } = getFileTypeInfo(resumeFile.name, resumeFile.type);
+                        const colorClasses = {
+                            red: 'bg-red-500/15 text-red-500',
+                            orange: 'bg-orange-500/15 text-orange-500',
+                            blue: 'bg-blue-500/15 text-blue-500',
+                            green: 'bg-green-500/15 text-green-500',
+                            purple: 'bg-purple-500/15 text-purple-500',
+                            emerald: 'bg-emerald-500/15 text-emerald-500',
+                            gray: 'bg-gray-500/15 text-gray-500',
+                        }[color] || 'bg-gray-500/15 text-gray-500';
+
+                        return (
+                            <div className="relative inline-flex items-center gap-3 px-3 py-2.5 bg-muted/50 rounded-xl">
+                                <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0", colorClasses.split(' ')[0])}>
+                                    <Icon className={cn("w-5 h-5", colorClasses.split(' ')[1])} />
+                                </div>
+                                <div className="flex flex-col min-w-0">
+                                    <span className="text-sm font-medium text-foreground truncate max-w-[180px]">
+                                        {resumeFile.name}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                        {label} · {formatFileSize(resumeFile.size)}
+                                    </span>
+                                </div>
+                                <button
+                                    onClick={() => onRemoveFile?.('')}
+                                    type="button"
+                                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-muted hover:bg-muted-foreground/20 rounded-full flex items-center justify-center transition-colors"
+                                    aria-label="移除文件"
+                                >
+                                    <X className="w-3 h-3 text-muted-foreground" />
+                                </button>
+                            </div>
+                        );
+                    })()}
                 </div>
             )}
 
@@ -213,10 +329,10 @@ export function PromptInput({
                     variant="send"
                     size="icon-sm"
                     onClick={handleSubmit}
-                    disabled={(!value.trim() && !resumeFile) || disabled}
+                    disabled={(!value.trim() && !hasUploadedFiles) || disabled}
                     className={cn(
                         "shrink-0 transition-all duration-200",
-                        (!value.trim() && !resumeFile) && "opacity-50 cursor-not-allowed"
+                        (!value.trim() && !hasUploadedFiles) && "opacity-50 cursor-not-allowed"
                     )}
                 >
                     <ArrowUp className="w-4 h-4" />
