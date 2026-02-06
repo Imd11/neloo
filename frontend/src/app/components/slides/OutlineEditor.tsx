@@ -11,6 +11,7 @@ interface OutlineEditorProps {
     onBack: () => void;
     onGenerateSlides: (slides: Slide[]) => void;
     onStreamUpdate?: (text: string) => void; // For AI chat panel
+    showAIPanel?: boolean; // For adjusting button position
 }
 
 const OutlineEditor: React.FC<OutlineEditorProps> = ({
@@ -18,7 +19,8 @@ const OutlineEditor: React.FC<OutlineEditorProps> = ({
     initialAttachments,
     onBack,
     onGenerateSlides,
-    onStreamUpdate
+    onStreamUpdate,
+    showAIPanel = true
 }) => {
     const [rawOutput, setRawOutput] = useState('');
     const [slides, setSlides] = useState<Slide[]>([]);
@@ -191,7 +193,7 @@ const OutlineEditor: React.FC<OutlineEditorProps> = ({
 
                     {/* Generate Button Footer */}
                     {slides.length > 0 && (
-                        <div className="fixed bottom-6 right-6 z-20">
+                        <div className={`fixed bottom-6 z-20 transition-all duration-300 ${showAIPanel ? 'right-[340px]' : 'right-6'}`}>
                             <button
                                 onClick={() => onGenerateSlides(slides)}
                                 disabled={isGenerating}
