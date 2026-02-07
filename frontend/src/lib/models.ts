@@ -47,6 +47,7 @@ export const CHAT_MODELS: ModelInfo[] = [
 // Image generation models
 export const IMAGE_MODELS: ModelInfo[] = [
     { id: "nano-banana", name: "Nano Banana", logo: "/logos/nano-banana.png", provider: "Tu-zi" },
+    { id: "gemini-2.5-flash-image-preview-nt", name: "Flash Image", logo: "/logos/gemini.png", provider: "Google" },
     { id: "kling-image", name: "可灵 AI", logo: "/logos/kling.png", provider: "Kuaishou" },
     { id: "jimeng-image", name: "即梦", logo: "/logos/jimeng.png", provider: "ByteDance" },
     { id: "midjourney", name: "Midjourney", logo: "/logos/midjourney.png", provider: "Midjourney" },
