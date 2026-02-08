@@ -403,7 +403,7 @@ export const CanvasImage = forwardRef<CanvasImageRef, CanvasImageProps>(({
                 trigger={
                     <div className={`relative group rounded-xl overflow-hidden transition-all duration-300 ${isSelected || isEditing || isMenuOpen
                         ? "ring-2 ring-blue-500 shadow-2xl shadow-blue-500/20"
-                        : "border border-white/5 shadow-2xl shadow-black/50"
+                        : "border border-white/5 shadow-lg shadow-black/20"
                         }`}>
                         {url ? (
                             <img
