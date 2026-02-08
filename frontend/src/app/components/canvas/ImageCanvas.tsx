@@ -16,12 +16,14 @@ import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Brush, Eraser, Square, X, Check, Loader2 } from "lucide-react";
 
+type CanvasGenerationParams = NonNullable<CanvasImage["generationParams"]>;
+
 interface ImageCanvasProps {
     images: CanvasImage[];
     onImagesChange: Dispatch<SetStateAction<CanvasImage[]>>;
     editModelId?: string;
     editModelName?: string;
-    editResolution?: CanvasImage["generationParams"]["resolution"];
+    editResolution?: CanvasGenerationParams["resolution"];
     editSize?: string;
     onEditTargetSelected?: (params?: CanvasImage["generationParams"]) => void;
     flyingImage?: {
