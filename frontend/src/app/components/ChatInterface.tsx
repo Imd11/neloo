@@ -949,7 +949,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
         mode="select"
         onFilesSelected={handleLibraryFilesSelected}
       />
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-hidden px-6">
         <div
           className="relative flex-1 overflow-y-auto overflow-x-hidden overscroll-contain"
           ref={scrollRef}
@@ -959,7 +959,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
           onTouchMove={handleChatTouchMove}
         >
           <div
-            className="mx-auto w-full max-w-[1024px] px-6 pb-6 pt-4"
+            className="mx-auto w-full max-w-3xl pb-6 pt-4"
             ref={contentRef}
           >
             {/* Large conversation warning */}
@@ -1350,8 +1350,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
         <div className="flex-shrink-0 bg-background">
           <div
             className={cn(
-              "mx-4 mb-6 flex flex-shrink-0 flex-col overflow-hidden rounded-3xl border border-border bg-input-bg shadow-sm transition-all duration-200 ease-in-out focus-within:border-ring focus-within:shadow-md",
-              "mx-auto w-[calc(100%-32px)] max-w-[1024px]"
+              "mx-auto mb-6 flex w-full max-w-3xl flex-shrink-0 flex-col overflow-hidden rounded-3xl border border-border bg-input-bg shadow-sm transition-all duration-200 ease-in-out focus-within:border-ring focus-within:shadow-md"
             )}
           >
             {(hasTasks || hasFiles) && (
