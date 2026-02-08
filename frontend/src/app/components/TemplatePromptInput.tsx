@@ -139,8 +139,8 @@ export function TemplatePromptInput({
                 "relative w-full",
                 "bg-input-bg rounded-3xl",
                 "border border-border",
-                "transition-all duration-200",
-                isFocused && "border-ring shadow-glow",
+                "shadow-xs transition-all duration-200",
+                isFocused && "border-ring shadow-[0_0_14px_hsl(var(--glow)/0.2)]",
                 className
             )}
         >

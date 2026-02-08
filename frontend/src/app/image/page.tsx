@@ -69,6 +69,8 @@ const imageModels: ModelInfo[] = [
     { name: "通义万相", logo: qwenLogo, available: false },
 ];
 
+const SUPPORTED_IMAGE_RATIOS: ImageRatio[] = ["auto", "1x1", "16x9", "9x16", "4x3", "3x4"];
+
 export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
     const router = useRouter();
     const { setCollapsed, setHideTopBar } = useSidebar();
@@ -240,6 +242,8 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
                 prompt: value,
                 resolution,
                 ...(ratio !== "auto" ? { size: ratio } : {}),
+                ...(imageModel.modelId ? { modelId: imageModel.modelId } : {}),
+                modelName: imageModel.name,
             });
 
             // Preload image then trigger auto fly animation
@@ -263,7 +267,7 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
             setIsGenerating(false);
             toast.error(error instanceof Error ? error.message : "图片生成失败");
         }
-    }, [setCollapsed, messages, createImageThread, generateTitle]);
+    }, [setCollapsed, messages, createImageThread, generateTitle, imageModel, ratio, resolution]);
 
     const handleSelectTemplate = (template: Template) => {
         toast.info(`已选择模板: ${template.title}`);
@@ -295,6 +299,30 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
         setMessages(prev => prev.map(msg =>
             msg.id === messageId ? { ...msg, autoFly: false } : msg
         ));
+    }, []);
+
+    const handleEditTargetSelected = useCallback((params?: CanvasImage["generationParams"]) => {
+        if (!params) return;
+
+        const matchedModel = imageModels.find(model =>
+            model.available && (
+                (params.modelId && model.modelId === params.modelId) ||
+                (params.modelName && model.name === params.modelName)
+            )
+        );
+        if (matchedModel) {
+            setImageModel(matchedModel);
+        }
+
+        if (params.resolution) {
+            setResolution(params.resolution);
+        }
+
+        if (params.size && SUPPORTED_IMAGE_RATIOS.includes(params.size as ImageRatio)) {
+            setRatio(params.size as ImageRatio);
+        } else {
+            setRatio("auto");
+        }
     }, []);
 
     // Handle going back to input mode
@@ -515,6 +543,11 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
                                     <ImageCanvas
                                         images={canvasImages}
                                         onImagesChange={setCanvasImages}
+                                        editModelId={imageModel.modelId}
+                                        editModelName={imageModel.name}
+                                        editResolution={resolution}
+                                        editSize={ratio !== "auto" ? ratio : undefined}
+                                        onEditTargetSelected={handleEditTargetSelected}
                                         flyingImage={flyingImage}
                                         onFlyingComplete={handleFlyingComplete}
                                     />

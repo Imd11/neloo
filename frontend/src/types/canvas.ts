@@ -12,6 +12,8 @@ export interface CanvasImage {
         prompt: string;
         resolution: "1k" | "2k" | "4k";
         size?: string;
+        modelId?: string;
+        modelName?: string;
     };
 }
 

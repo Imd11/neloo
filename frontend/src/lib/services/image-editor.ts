@@ -1,6 +1,17 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_IMAGE_API_URL || "https://api.tu-zi.com";
 const CHAT_ENDPOINT = `${API_BASE_URL}/v1/chat/completions`;
-const MODEL = "gemini-3-pro-image-preview";
+const MODEL_MAP: Record<string, string> = {
+    "1k": "gemini-3-pro-image-preview",
+    "2k": "gemini-3-pro-image-preview-2k",
+    "4k": "gemini-3-pro-image-preview-4k",
+};
+const DEFAULT_MODEL = MODEL_MAP["1k"];
+
+interface EditImageOptions {
+    model?: string;
+    resolution?: string;
+    size?: string;
+}
 
 /**
  * Edit image using two-image approach:
@@ -13,8 +24,10 @@ export async function editImage(
     originalImageUrl: string,
     markedImageDataUrl: string,
     prompt: string,
-    apiKey: string
+    apiKey: string,
+    options: EditImageOptions = {}
 ): Promise<string[]> {
+    const selectedModel = options.model || MODEL_MAP[options.resolution || "1k"] || DEFAULT_MODEL;
     const systemPrompt = `你是一个专业的图片编辑AI。用户会给你两张图片：
 1. 第一张是原始图片（需要被修改的干净完整图片）
 2. 第二张是标记参考图（与第一张相同的原图 + 红色半透明标记层）
@@ -42,6 +55,7 @@ ${prompt}
         console.log("[AI Edit] Sending two-image request to", CHAT_ENDPOINT);
         console.log("[AI Edit] Original image URL:", originalImageUrl.substring(0, 100) + "...");
         console.log("[AI Edit] Marked image Data URL length:", markedImageDataUrl.length);
+        console.log("[AI Edit] Using model:", selectedModel, "resolution:", options.resolution, "size:", options.size);
 
         const res = await fetch(CHAT_ENDPOINT, {
             method: "POST",
@@ -50,7 +64,7 @@ ${prompt}
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                model: MODEL,
+                model: selectedModel,
                 messages: [
                     {
                         role: "system",

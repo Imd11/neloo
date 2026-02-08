@@ -10,6 +10,9 @@ export async function POST(req: NextRequest) {
         const originalImageUrl = formData.get("originalImageUrl") as string | null;
         const markedImageDataUrl = formData.get("markedImageDataUrl") as string | null;
         const prompt = formData.get("prompt") as string | null;
+        const model = formData.get("model");
+        const resolution = formData.get("resolution");
+        const size = formData.get("size");
 
         if (!originalImageUrl || !markedImageDataUrl || !prompt) {
             return NextResponse.json(
@@ -21,7 +24,10 @@ export async function POST(req: NextRequest) {
         console.log("[API Edit] Received two-image request", {
             originalImageUrlLength: originalImageUrl.length,
             markedImageDataUrlLength: markedImageDataUrl.length,
-            prompt
+            prompt,
+            model,
+            resolution,
+            size,
         });
 
         const apiKey = process.env.NANOBANANA_IMAGE_API_KEY;
@@ -33,7 +39,11 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const urls = await editImage(originalImageUrl, markedImageDataUrl, prompt, apiKey);
+        const urls = await editImage(originalImageUrl, markedImageDataUrl, prompt, apiKey, {
+            model: typeof model === "string" ? model : undefined,
+            resolution: typeof resolution === "string" ? resolution : undefined,
+            size: typeof size === "string" ? size : undefined,
+        });
 
         return NextResponse.json({ urls });
     } catch (error) {

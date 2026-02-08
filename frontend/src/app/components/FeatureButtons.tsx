@@ -33,11 +33,11 @@ export function FeatureButtons({
     }
 
     return (
-        <div className="flex flex-col items-center gap-3">
+        <div className="flex flex-col items-center gap-2">
             {rows.map((row, rowIndex) => (
                 <div
                     key={rowIndex}
-                    className="flex justify-center gap-3 flex-wrap lg:flex-nowrap"
+                    className="flex justify-center gap-2 flex-wrap lg:flex-nowrap"
                 >
                     {row.map((feature) => {
                         const emoji = featureEmojis[feature.id] || "📌";
@@ -47,16 +47,16 @@ export function FeatureButtons({
                                 key={feature.id}
                                 onClick={() => onSelectFeature(feature)}
                                 className={cn(
-                                    "flex items-center gap-2 px-4 py-2.5 rounded-full",
-                                    "text-sm font-medium",
-                                    "bg-muted/50 hover:bg-muted",
-                                    "border border-border hover:border-border/80",
-                                    "text-foreground",
-                                    "transition-all duration-200",
-                                    "hover:shadow-sm"
+                                    "flex items-center gap-1.5 px-3 py-1.5 rounded-full",
+                                    "text-xs font-medium",
+                                    "bg-transparent hover:bg-muted/60",
+                                    "border border-border/50 hover:border-border",
+                                    "text-muted-foreground hover:text-foreground",
+                                    "transition-all duration-150",
+                                    "cursor-pointer"
                                 )}
                             >
-                                <span className="text-base">{emoji}</span>
+                                <span className="text-sm leading-none">{emoji}</span>
                                 <span>{feature.title}</span>
                             </button>
                         );
