@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { Plus, Mic, ArrowUp, X, FolderOpen, FileText, Image, Music, Table, File, Presentation, Loader2 } from "lucide-react";
+import { Plus, Mic, ArrowUp, X, FolderOpen, FileText, Image, Music, Table, File, Presentation, Loader2, ChevronDown, LayoutTemplate } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Feature } from "@/data/featureTemplates";
+import { Feature, Template } from "@/data/featureTemplates";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -37,6 +37,8 @@ interface PromptInputProps {
     onRemoveFile?: (fileId: string) => void;
     // Legacy single file support (deprecated, use files instead)
     resumeFile?: File | null;
+    // Template selection callback
+    onSelectTemplate?: (template: Template) => void;
 }
 
 export function PromptInput({
@@ -52,11 +54,13 @@ export function PromptInput({
     onGoogleDriveClick,
     files = [],
     onRemoveFile,
-    resumeFile
+    resumeFile,
+    onSelectTemplate,
 }: PromptInputProps) {
     const [value, setValue] = useState(initialValue);
     const [isFocused, setIsFocused] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
 
     // Update value if initialValue changes
     useEffect(() => {
@@ -65,12 +69,17 @@ export function PromptInput({
         }
     }, [initialValue]);
 
+    // Reset selected template when feature changes
+    useEffect(() => {
+        setSelectedTemplate(null);
+    }, [selectedFeature?.id]);
+
     // Autosize textarea (up to a max height), so long prompts remain viewable/editable.
     useEffect(() => {
         const el = textareaRef.current;
         if (!el) return;
         el.style.height = "auto";
-        const maxHeight = 200;
+        const maxHeight = 160;
         el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`;
     }, [value]);
 
@@ -135,10 +144,19 @@ export function PromptInput({
         }
     };
 
+    // Get template-related data
+    const featureTemplates = selectedFeature?.templates || [];
+    const hasTemplates = featureTemplates.length > 0;
+
+    const handleTemplateSelect = (template: Template) => {
+        setSelectedTemplate(template);
+        onSelectTemplate?.(template);
+    };
+
     return (
         <div
             className={cn(
-                "relative w-full",
+                "relative w-full flex flex-col",
                 "bg-input-bg rounded-3xl",
                 "border border-border",
                 "transition-all duration-200",
@@ -148,7 +166,7 @@ export function PromptInput({
         >
             {/* File Preview Cards - Multi-file support */}
             {(files.length > 0 || resumeFile) && (
-                <div className="px-4 pt-3 pb-2 flex flex-wrap gap-2">
+                <div className="px-4 pt-3 pb-0 flex flex-wrap gap-2">
                     {/* New multi-file format */}
                     {files.map((file) => {
                         const { Icon, color, label } = getFileTypeInfo(file.name, file.type);
@@ -239,115 +257,163 @@ export function PromptInput({
                 </div>
             )}
 
-            <div className="flex items-end gap-2 px-4 py-3">
-                {/* Plus Button with Dropdown Menu - only show if any handlers are provided */}
-                {(onGoogleDriveClick || onLibraryClick || onUploadClick) && (
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button
-                                variant="icon"
-                                size="icon-sm"
-                                className="shrink-0 text-muted-foreground hover:text-foreground"
-                            >
-                                <Plus className="w-5 h-5" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-56">
-                            {onGoogleDriveClick && (
-                                <DropdownMenuItem onClick={onGoogleDriveClick}>
-                                    <svg className="w-4 h-4 mr-2" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M6.6 66.85L3.75 61.5 28.2 20.25l29.1 0 24.55 41.2-29.2 0-24.5 0z" fill="#0066da" />
-                                        <path d="M57.3 20.25L32.8 61.5l2.9 5.35L58.2 26.35l29.1 0-27-46.1z" fill="#00ac47" />
-                                        <path d="M.15 61.5l27-46.1 29.15 0-27 46.1z" fill="#ffba00" />
-                                    </svg>
-                                    从 Google Drive 文件中添加
-                                </DropdownMenuItem>
-                            )}
-                            {onLibraryClick && (
-                                <DropdownMenuItem onClick={onLibraryClick}>
-                                    <FolderOpen className="w-4 h-4 mr-2" />
-                                    从库中选择
-                                </DropdownMenuItem>
-                            )}
-                            {(onGoogleDriveClick || onLibraryClick) && onUploadClick && (
-                                <DropdownMenuSeparator />
-                            )}
-                            {onUploadClick && (
-                                <DropdownMenuItem onClick={onUploadClick}>
-                                    <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-                                    </svg>
-                                    从本地文件中添加
-                                </DropdownMenuItem>
-                            )}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                )}
+            {/* Row 1: Textarea (top ~70%) */}
+            <textarea
+                ref={textareaRef}
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                onFocus={() => setIsFocused(true)}
+                onBlur={() => setIsFocused(false)}
+                onKeyDown={handleKeyDown}
+                disabled={disabled}
+                placeholder={selectedFeature?.placeholder || placeholder}
+                rows={2}
+                aria-label="提示词输入"
+                className="w-full resize-none bg-transparent text-foreground placeholder:text-muted-foreground text-base leading-6 outline-none ring-0 focus:ring-0 focus:outline-none border-none px-5 pt-4 pb-1 max-h-[160px] overflow-y-auto disabled:opacity-50 disabled:cursor-not-allowed"
+            />
 
-                {/* Selected Feature Tag */}
-                {selectedFeature && (
-                    <div className={cn(
-                        "group relative flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium shrink-0 cursor-default overflow-hidden transition-all duration-150",
-                        "hover:shadow-xs hover:ring-1 hover:ring-current/25",
-                        "before:content-[''] before:absolute before:inset-0 before:rounded-full before:bg-foreground/10 before:opacity-0 before:transition-opacity before:duration-150 before:pointer-events-none before:z-0",
-                        "hover:before:opacity-100",
-                        selectedFeature.id === "image" && "bg-cyan-500/15 text-cyan-700 dark:text-cyan-400",
-                        selectedFeature.id === "web-dev" && "bg-blue-500/15 text-blue-600 dark:text-blue-400",
-                        selectedFeature.id === "slides" && "bg-orange-500/15 text-orange-600 dark:text-orange-400",
-                        selectedFeature.id === "resume" && "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
-                        selectedFeature.id === "prompt-optimize" && "bg-violet-500/15 text-violet-600 dark:text-violet-400",
-                        selectedFeature.id === "fortune" && "bg-amber-500/15 text-amber-600 dark:text-amber-400",
-                        selectedFeature.id === "deai" && "bg-rose-500/15 text-rose-600 dark:text-rose-400",
-                    )}>
-                        <span className="relative z-10">{selectedFeature.title}</span>
-                        <button
-                            onClick={onClearFeature}
-                            type="button"
-                            className="relative z-10 flex items-center justify-center w-4 h-4 rounded-full cursor-pointer transition-all duration-150 hover:bg-current/45 hover:scale-125 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                            aria-label="清除已选功能"
-                        >
-                            <X className="w-2.5 h-2.5" />
-                        </button>
-                    </div>
-                )}
-
-                {/* Input */}
-                <textarea
-                    ref={textareaRef}
-                    value={value}
-                    onChange={(e) => setValue(e.target.value)}
-                    onFocus={() => setIsFocused(true)}
-                    onBlur={() => setIsFocused(false)}
-                    onKeyDown={handleKeyDown}
-                    disabled={disabled}
-                    placeholder={selectedFeature?.placeholder || placeholder}
-                    rows={1}
-                    aria-label="提示词输入"
-                    className="flex-1 resize-none bg-transparent text-foreground placeholder:text-muted-foreground text-base leading-5 outline-none ring-0 focus:ring-0 focus:outline-none border-none min-w-0 translate-y-[1px] max-h-[200px] overflow-y-auto py-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                />
-
-                {/* Voice Button */}
-                <Button
-                    variant="icon"
-                    size="icon-sm"
-                    className="shrink-0 text-muted-foreground hover:text-foreground"
-                >
-                    <Mic className="w-5 h-5" />
-                </Button>
-
-                {/* Send Button */}
-                <Button
-                    variant="send"
-                    size="icon-sm"
-                    onClick={handleSubmit}
-                    disabled={(!value.trim() && !hasUploadedFiles) || disabled}
-                    className={cn(
-                        "shrink-0 transition-all duration-200",
-                        (!value.trim() && !hasUploadedFiles) && "opacity-50 cursor-not-allowed"
+            {/* Row 2: Controls bar (bottom) */}
+            <div className="flex items-center gap-1.5 px-3 pb-3 pt-1">
+                {/* Left side controls */}
+                <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                    {/* Plus Button with Dropdown Menu */}
+                    {(onGoogleDriveClick || onLibraryClick || onUploadClick) && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant="icon"
+                                    size="icon-sm"
+                                    className="shrink-0 text-muted-foreground hover:text-foreground"
+                                >
+                                    <Plus className="w-5 h-5" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-56">
+                                {onGoogleDriveClick && (
+                                    <DropdownMenuItem onClick={onGoogleDriveClick}>
+                                        <svg className="w-4 h-4 mr-2" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M6.6 66.85L3.75 61.5 28.2 20.25l29.1 0 24.55 41.2-29.2 0-24.5 0z" fill="#0066da" />
+                                            <path d="M57.3 20.25L32.8 61.5l2.9 5.35L58.2 26.35l29.1 0-27-46.1z" fill="#00ac47" />
+                                            <path d="M.15 61.5l27-46.1 29.15 0-27 46.1z" fill="#ffba00" />
+                                        </svg>
+                                        从 Google Drive 文件中添加
+                                    </DropdownMenuItem>
+                                )}
+                                {onLibraryClick && (
+                                    <DropdownMenuItem onClick={onLibraryClick}>
+                                        <FolderOpen className="w-4 h-4 mr-2" />
+                                        从库中选择
+                                    </DropdownMenuItem>
+                                )}
+                                {(onGoogleDriveClick || onLibraryClick) && onUploadClick && (
+                                    <DropdownMenuSeparator />
+                                )}
+                                {onUploadClick && (
+                                    <DropdownMenuItem onClick={onUploadClick}>
+                                        <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                                        </svg>
+                                        从本地文件中添加
+                                    </DropdownMenuItem>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     )}
-                >
-                    <ArrowUp className="w-4 h-4" />
-                </Button>
+
+                    {/* Selected Feature Tag */}
+                    {selectedFeature && (
+                        <div className={cn(
+                            "group relative flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium shrink-0 cursor-default overflow-hidden transition-all duration-150",
+                            "hover:shadow-xs hover:ring-1 hover:ring-current/25",
+                            "before:content-[''] before:absolute before:inset-0 before:rounded-full before:bg-foreground/10 before:opacity-0 before:transition-opacity before:duration-150 before:pointer-events-none before:z-0",
+                            "hover:before:opacity-100",
+                            selectedFeature.id === "image" && "bg-cyan-500/15 text-cyan-700 dark:text-cyan-400",
+                            selectedFeature.id === "web-dev" && "bg-blue-500/15 text-blue-600 dark:text-blue-400",
+                            selectedFeature.id === "slides" && "bg-orange-500/15 text-orange-600 dark:text-orange-400",
+                            selectedFeature.id === "resume" && "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+                            selectedFeature.id === "prompt-optimize" && "bg-violet-500/15 text-violet-600 dark:text-violet-400",
+                            selectedFeature.id === "fortune" && "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+                            selectedFeature.id === "deai" && "bg-rose-500/15 text-rose-600 dark:text-rose-400",
+                        )}>
+                            <span className="relative z-10">{selectedFeature.title}</span>
+                            <button
+                                onClick={onClearFeature}
+                                type="button"
+                                className="relative z-10 flex items-center justify-center w-4 h-4 rounded-full cursor-pointer transition-all duration-150 hover:bg-current/45 hover:scale-125 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                aria-label="清除已选功能"
+                            >
+                                <X className="w-2.5 h-2.5" />
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Template Selector - only show when feature has templates */}
+                    {selectedFeature && hasTemplates && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <button
+                                    type="button"
+                                    className={cn(
+                                        "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm shrink-0 transition-all duration-150",
+                                        "border border-border/60 hover:border-border hover:bg-muted/50",
+                                        "text-muted-foreground hover:text-foreground",
+                                        selectedTemplate && "text-foreground bg-muted/30"
+                                    )}
+                                >
+                                    <LayoutTemplate className="w-3.5 h-3.5" />
+                                    <span className="max-w-[120px] truncate">
+                                        {selectedTemplate ? selectedTemplate.title : "选择模板"}
+                                    </span>
+                                    <ChevronDown className="w-3 h-3 opacity-60" />
+                                </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-56 max-h-[300px] overflow-y-auto">
+                                {featureTemplates.map((template) => (
+                                    <DropdownMenuItem
+                                        key={template.id}
+                                        onClick={() => handleTemplateSelect(template)}
+                                        className={cn(
+                                            selectedTemplate?.id === template.id && "bg-accent"
+                                        )}
+                                    >
+                                        <div className="flex flex-col gap-0.5">
+                                            <span className="font-medium">{template.title}</span>
+                                            {template.description && (
+                                                <span className="text-xs text-muted-foreground">{template.description}</span>
+                                            )}
+                                        </div>
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
+                </div>
+
+                {/* Right side controls */}
+                <div className="flex items-center gap-1">
+                    {/* Voice Button */}
+                    <Button
+                        variant="icon"
+                        size="icon-sm"
+                        className="shrink-0 text-muted-foreground hover:text-foreground"
+                    >
+                        <Mic className="w-5 h-5" />
+                    </Button>
+
+                    {/* Send Button */}
+                    <Button
+                        variant="send"
+                        size="icon-sm"
+                        onClick={handleSubmit}
+                        disabled={(!value.trim() && !hasUploadedFiles) || disabled}
+                        className={cn(
+                            "shrink-0 transition-all duration-200",
+                            (!value.trim() && !hasUploadedFiles) && "opacity-50 cursor-not-allowed"
+                        )}
+                    >
+                        <ArrowUp className="w-4 h-4" />
+                    </Button>
+                </div>
             </div>
         </div>
     );
