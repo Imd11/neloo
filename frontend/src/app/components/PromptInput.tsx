@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Plus, Mic, ArrowUp, X, FolderOpen, FileText, Image, Music, Table, File, Presentation, Loader2, ChevronDown, LayoutTemplate } from "lucide-react";
+import { Plus, Mic, ArrowUp, X, FolderOpen, FileText, Image, Music, Table, File, Presentation, Loader2, LayoutTemplate } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Feature, Template } from "@/data/featureTemplates";
@@ -37,8 +37,8 @@ interface PromptInputProps {
     onRemoveFile?: (fileId: string) => void;
     // Legacy single file support (deprecated, use files instead)
     resumeFile?: File | null;
-    // Template selection callback
-    onSelectTemplate?: (template: Template) => void;
+    // Template name to display (selected externally from grid)
+    selectedTemplateName?: string | null;
 }
 
 export function PromptInput({
@@ -55,12 +55,11 @@ export function PromptInput({
     files = [],
     onRemoveFile,
     resumeFile,
-    onSelectTemplate,
+    selectedTemplateName,
 }: PromptInputProps) {
     const [value, setValue] = useState(initialValue);
     const [isFocused, setIsFocused] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
 
     // Update value if initialValue changes
     useEffect(() => {
@@ -69,10 +68,7 @@ export function PromptInput({
         }
     }, [initialValue]);
 
-    // Reset selected template when feature changes
-    useEffect(() => {
-        setSelectedTemplate(null);
-    }, [selectedFeature?.id]);
+
 
     // Autosize textarea (up to a max height), so long prompts remain viewable/editable.
     useEffect(() => {
@@ -144,14 +140,7 @@ export function PromptInput({
         }
     };
 
-    // Get template-related data
-    const featureTemplates = selectedFeature?.templates || [];
-    const hasTemplates = featureTemplates.length > 0;
 
-    const handleTemplateSelect = (template: Template) => {
-        setSelectedTemplate(template);
-        onSelectTemplate?.(template);
-    };
 
     return (
         <div
@@ -183,19 +172,22 @@ export function PromptInput({
                         return (
                             <div
                                 key={file.id}
-                                className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 bg-muted/50 rounded-full text-xs"
+                                className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1.5 bg-muted/50 rounded-lg text-xs max-w-[220px]"
                             >
                                 {file.status === 'uploading' ? (
-                                    <Loader2 className={cn("w-3.5 h-3.5 animate-spin shrink-0", iconColor)} />
+                                    <Loader2 className={cn("w-4 h-4 animate-spin shrink-0", iconColor)} />
                                 ) : (
-                                    <Icon className={cn("w-3.5 h-3.5 shrink-0", iconColor)} />
+                                    <Icon className={cn("w-4 h-4 shrink-0", iconColor)} />
                                 )}
-                                <span className="font-medium text-foreground truncate max-w-[140px]">
-                                    {file.name}
-                                </span>
-                                {file.status === 'uploading' && (
-                                    <span className="text-muted-foreground shrink-0">上传中</span>
-                                )}
+                                <div className="flex flex-col min-w-0 gap-0">
+                                    <span className="font-medium text-foreground truncate">
+                                        {file.name}
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground leading-tight">
+                                        {formatFileSize(file.size)}
+                                        {file.status === 'uploading' && ' · 上传中'}
+                                    </span>
+                                </div>
                                 <button
                                     onClick={() => onRemoveFile?.(file.id)}
                                     type="button"
@@ -222,11 +214,16 @@ export function PromptInput({
                         }[color] || 'text-gray-500';
 
                         return (
-                            <div className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 bg-muted/50 rounded-full text-xs">
-                                <Icon className={cn("w-3.5 h-3.5 shrink-0", iconColor)} />
-                                <span className="font-medium text-foreground truncate max-w-[140px]">
-                                    {resumeFile.name}
-                                </span>
+                            <div className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1.5 bg-muted/50 rounded-lg text-xs max-w-[220px]">
+                                <Icon className={cn("w-4 h-4 shrink-0", iconColor)} />
+                                <div className="flex flex-col min-w-0 gap-0">
+                                    <span className="font-medium text-foreground truncate">
+                                        {resumeFile.name}
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground leading-tight">
+                                        {formatFileSize(resumeFile.size)}
+                                    </span>
+                                </div>
                                 <button
                                     onClick={() => onRemoveFile?.('')}
                                     type="button"
@@ -331,45 +328,12 @@ export function PromptInput({
                         </div>
                     )}
 
-                    {/* Template Selector - only show when feature has templates */}
-                    {selectedFeature && hasTemplates && (
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <button
-                                    type="button"
-                                    className={cn(
-                                        "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm shrink-0 transition-all duration-150",
-                                        "border border-border/60 hover:border-border hover:bg-muted/50",
-                                        "text-muted-foreground hover:text-foreground",
-                                        selectedTemplate && "text-foreground bg-muted/30"
-                                    )}
-                                >
-                                    <LayoutTemplate className="w-3.5 h-3.5" />
-                                    <span className="max-w-[120px] truncate">
-                                        {selectedTemplate ? selectedTemplate.title : "选择模板"}
-                                    </span>
-                                    <ChevronDown className="w-3 h-3 opacity-60" />
-                                </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="w-56 max-h-[300px] overflow-y-auto">
-                                {featureTemplates.map((template) => (
-                                    <DropdownMenuItem
-                                        key={template.id}
-                                        onClick={() => handleTemplateSelect(template)}
-                                        className={cn(
-                                            selectedTemplate?.id === template.id && "bg-accent"
-                                        )}
-                                    >
-                                        <div className="flex flex-col gap-0.5">
-                                            <span className="font-medium">{template.title}</span>
-                                            {template.description && (
-                                                <span className="text-xs text-muted-foreground">{template.description}</span>
-                                            )}
-                                        </div>
-                                    </DropdownMenuItem>
-                                ))}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                    {/* Selected Template Tag - read-only, selected from grid below */}
+                    {selectedTemplateName && (
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm shrink-0 bg-muted/40 text-foreground">
+                            <LayoutTemplate className="w-3.5 h-3.5 opacity-60" />
+                            <span className="max-w-[140px] truncate">{selectedTemplateName}</span>
+                        </div>
                     )}
                 </div>
 

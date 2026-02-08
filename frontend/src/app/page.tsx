@@ -59,6 +59,7 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
 
   // Track selected fortune template ID for prefix injection
   const [selectedFortuneTemplateId, setSelectedFortuneTemplateId] = useState<number | null>(null);
+  const [selectedTemplateName, setSelectedTemplateName] = useState<string | null>(null);
 
   // Import fortune template prefix helper
   const { getFortuneTemplatePrefix } = require('@/data/fortuneTemplatePrefix');
@@ -145,6 +146,9 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
 
   // Handle template selection
   const handleSelectTemplate = (template: Template) => {
+    // Save template name for display in input bar
+    setSelectedTemplateName(template.title);
+
     if (selectedFeature?.id === 'image') {
       // In image mode, templates are handled by the image experience UI.
       return;
@@ -155,8 +159,6 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
     } else {
       // For text/chat features, we ideally start a new thread with this template
       console.log("Selected template:", template);
-      // For now, just reset or maybe pre-fill input?
-      onSelectFeature(null);
     }
   };
 
@@ -182,7 +184,7 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
             <PromptInput
               placeholder="描述你想要创建的内容..."
               selectedFeature={selectedFeature}
-              onClearFeature={() => onSelectFeature(null)}
+              onClearFeature={() => { onSelectFeature(null); setSelectedTemplateName(null); }}
               onSubmit={handlePromptSubmit}
               disabled={false}
               onUploadClick={() => fileUpload.triggerFileSelect()}
@@ -197,6 +199,7 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
                 error: f.error
               }))}
               onRemoveFile={(fileId) => fileUpload.removeFile(fileId)}
+              selectedTemplateName={selectedTemplateName}
             />
           )}
         </div>
