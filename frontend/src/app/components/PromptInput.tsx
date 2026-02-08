@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Plus, Mic, ArrowUp, X, Upload, FolderOpen, FileText, Image, Music, Table, File, Presentation, Loader2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Plus, Mic, ArrowUp, X, FolderOpen, FileText, Image, Music, Table, File, Presentation, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Feature } from "@/data/featureTemplates";
@@ -56,6 +56,7 @@ export function PromptInput({
 }: PromptInputProps) {
     const [value, setValue] = useState(initialValue);
     const [isFocused, setIsFocused] = useState(false);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     // Update value if initialValue changes
     useEffect(() => {
@@ -63,6 +64,15 @@ export function PromptInput({
             setValue(initialValue);
         }
     }, [initialValue]);
+
+    // Autosize textarea (up to a max height), so long prompts remain viewable/editable.
+    useEffect(() => {
+        const el = textareaRef.current;
+        if (!el) return;
+        el.style.height = "auto";
+        const maxHeight = 200;
+        el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`;
+    }, [value]);
 
     // Format file size
     const formatFileSize = (bytes: number): string => {
@@ -108,7 +118,6 @@ export function PromptInput({
     };
 
     // Check if there are any files (new format or legacy)
-    const hasFiles = files.length > 0 || resumeFile;
     const hasUploadedFiles = files.some(f => f.status === 'uploaded') || resumeFile;
 
     const handleSubmit = () => {
@@ -230,7 +239,7 @@ export function PromptInput({
                 </div>
             )}
 
-            <div className="flex items-center gap-2 px-4 py-3">
+            <div className="flex items-end gap-2 px-4 py-3">
                 {/* Plus Button with Dropdown Menu - only show if any handlers are provided */}
                 {(onGoogleDriveClick || onLibraryClick || onUploadClick) && (
                     <DropdownMenu>
@@ -303,8 +312,8 @@ export function PromptInput({
                 )}
 
                 {/* Input */}
-                <input
-                    type="text"
+                <textarea
+                    ref={textareaRef}
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
                     onFocus={() => setIsFocused(true)}
@@ -312,7 +321,9 @@ export function PromptInput({
                     onKeyDown={handleKeyDown}
                     disabled={disabled}
                     placeholder={selectedFeature?.placeholder || placeholder}
-                    className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground text-base leading-none outline-none ring-0 focus:ring-0 focus:outline-none border-none min-w-0 translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed"
+                    rows={1}
+                    aria-label="提示词输入"
+                    className="flex-1 resize-none bg-transparent text-foreground placeholder:text-muted-foreground text-base leading-5 outline-none ring-0 focus:ring-0 focus:outline-none border-none min-w-0 translate-y-[1px] max-h-[200px] overflow-y-auto py-1 disabled:opacity-50 disabled:cursor-not-allowed"
                 />
 
                 {/* Voice Button */}

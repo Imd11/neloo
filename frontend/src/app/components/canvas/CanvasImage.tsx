@@ -6,6 +6,7 @@ import { ContextMenu, ContextMenuItem } from "@/app/components/ui/custom-context
 import { PenTool, Type as TypeIcon, Download, RotateCcw, X, AlertCircle } from "lucide-react";
 import { useLanguageSafe } from "@/providers/LanguageProvider";
 import { DownloadOverlay } from "@/app/components/ui/download-overlay";
+import { CANVAS_IMAGE_CARD_WIDTH, getCanvasImagePlaceholderHeight } from "@/types/canvas";
 
 interface CanvasImageProps {
     id: string;
@@ -16,6 +17,7 @@ interface CanvasImageProps {
     isEditing: boolean;
     tool: "select" | "hand";
     onUpdate: (id: string, updates: { x: number; y: number }) => void;
+    onImageLoad?: (id: string, measuredHeight: number) => void;
     onEditStart: (id: string, mode: "inpainting" | "text") => void;
     onRegenerate?: (id: string) => void;
     onDelete?: (id: string) => void;
@@ -28,6 +30,8 @@ interface CanvasImageProps {
     deviceWidth?: number;
     deviceHeight?: number;
     loadingType?: "generate" | "edit";
+    generationSize?: string;
+    displayHeight?: number;
 }
 
 export interface CanvasImageRef {
@@ -35,13 +39,14 @@ export interface CanvasImageRef {
     getImageBlob: () => Promise<Blob | null>;
     getOriginalImageUrl: () => string;
     getMarkedImageDataUrl: () => string | null;
+    getDisplayHeight: () => number;
     clearMask: () => void;
 }
 
 export const CanvasImage = forwardRef<CanvasImageRef, CanvasImageProps>(({
-    id, url, x, y, isSelected, isEditing, tool, onUpdate, onEditStart, onRegenerate, onDelete, parentId,
+    id, url, x, y, isSelected, isEditing, tool, onUpdate, onImageLoad, onEditStart, onRegenerate, onDelete, parentId,
     status, error, brushSize = 30, isEraser = false, isRectTool = false, deviceWidth, deviceHeight,
-    loadingType = "edit"
+    loadingType = "edit", generationSize, displayHeight
 }, ref) => {
     const { t } = useLanguageSafe();
     const [isDragging, setIsDragging] = useState(false);
@@ -58,6 +63,15 @@ export const CanvasImage = forwardRef<CanvasImageRef, CanvasImageProps>(({
     const [currentRect, setCurrentRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const placeholderHeight = displayHeight ?? getCanvasImagePlaceholderHeight(generationSize);
+
+    const handleImageLoad = () => {
+        if (!imageRef.current || !onImageLoad) return;
+        const { naturalWidth, naturalHeight } = imageRef.current;
+        if (!naturalWidth || !naturalHeight) return;
+        const measuredHeight = Math.round(CANVAS_IMAGE_CARD_WIDTH * naturalHeight / naturalWidth);
+        onImageLoad(id, measuredHeight);
+    };
 
     useImperativeHandle(ref, () => ({
         getMaskBlob: async () => {
@@ -146,6 +160,13 @@ export const CanvasImage = forwardRef<CanvasImageRef, CanvasImageProps>(({
             }
 
             return markCanvas.toDataURL("image/jpeg", 0.9);
+        },
+        getDisplayHeight: () => {
+            const imageHeight = imageRef.current?.getBoundingClientRect().height;
+            if (imageHeight && Number.isFinite(imageHeight) && imageHeight > 0) {
+                return imageHeight;
+            }
+            return placeholderHeight;
         },
         clearMask: () => {
             const vCtx = visualCanvasRef.current?.getContext("2d");
@@ -370,7 +391,7 @@ export const CanvasImage = forwardRef<CanvasImageRef, CanvasImageProps>(({
             style={{
                 left: x,
                 top: y,
-                width: "300px",
+                width: `${CANVAS_IMAGE_CARD_WIDTH}px`,
                 cursor: tool === "hand" ? "grab" : isEditing ? "none" : "move"
             }}
             onMouseDown={handleMouseDown}
@@ -380,7 +401,7 @@ export const CanvasImage = forwardRef<CanvasImageRef, CanvasImageProps>(({
                 fixedPosition={true}
                 onOpenChange={setIsMenuOpen}
                 trigger={
-                    <div className={`relative group rounded-[32px] overflow-hidden transition-all duration-300 ${isSelected || isEditing || isMenuOpen
+                    <div className={`relative group rounded-xl overflow-hidden transition-all duration-300 ${isSelected || isEditing || isMenuOpen
                         ? "ring-2 ring-blue-500 shadow-2xl shadow-blue-500/20"
                         : "border border-white/5 shadow-2xl shadow-black/50"
                         }`}>
@@ -391,9 +412,13 @@ export const CanvasImage = forwardRef<CanvasImageRef, CanvasImageProps>(({
                                 alt="Generated"
                                 className="w-full h-auto object-contain pointer-events-none block"
                                 crossOrigin="anonymous"
+                                onLoad={handleImageLoad}
                             />
                         ) : status === "failed" ? (
-                            <div className="relative w-full h-[600px] overflow-hidden bg-gradient-to-br from-red-950/40 via-zinc-900/80 to-red-900/30 text-xs text-zinc-200 flex items-center justify-center border-2 border-red-900/50">
+                            <div
+                                className="relative w-full overflow-hidden bg-gradient-to-br from-red-950/40 via-zinc-900/80 to-red-900/30 text-xs text-zinc-200 flex items-center justify-center border-2 border-red-900/50"
+                                style={{ height: `${placeholderHeight}px` }}
+                            >
                                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(220,38,38,0.1),transparent_70%)]" />
                                 <div className="relative flex flex-col items-center gap-4 px-6 text-center">
                                     <div className="relative">
@@ -425,7 +450,10 @@ export const CanvasImage = forwardRef<CanvasImageRef, CanvasImageProps>(({
                                 </div>
                             </div>
                         ) : (
-                            <div className="relative w-full h-[600px] overflow-hidden bg-zinc-900/80 text-xs text-zinc-200 flex items-center justify-center">
+                            <div
+                                className="relative w-full overflow-hidden bg-zinc-900/80 text-xs text-zinc-200 flex items-center justify-center"
+                                style={{ height: `${placeholderHeight}px` }}
+                            >
                                 <div className="absolute inset-0 bg-gradient-to-br from-sky-500/10 via-cyan-400/5 to-purple-500/10 animate-pulse" />
                                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(14,165,233,0.08),transparent_35%),radial-gradient(circle_at_80%_30%,rgba(168,85,247,0.08),transparent_30%)]" />
 
@@ -443,9 +471,11 @@ export const CanvasImage = forwardRef<CanvasImageRef, CanvasImageProps>(({
                                         {loadingType === "generate" ? t("canvas.loading_generate_title") : t("canvas.loading_edit_title")}
                                     </div>
 
-                                    <span className="text-sm text-zinc-400">
-                                        {loadingType === "generate" ? t("canvas.loading_generate_desc") : t("canvas.loading_edit_desc")}
-                                    </span>
+                                    {loadingType !== "generate" && (
+                                        <span className="text-sm text-zinc-400">
+                                            {t("canvas.loading_edit_desc")}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                         )}

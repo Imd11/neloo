@@ -1,7 +1,13 @@
 import { useState, useRef, useCallback, useEffect, type Dispatch, type SetStateAction } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { CanvasImage, CanvasTool } from "@/types/canvas";
+import {
+    CANVAS_IMAGE_CARD_WIDTH,
+    CanvasImage,
+    CanvasTool,
+    getCanvasImageHeight,
+    getCanvasImagePlaceholderHeight,
+} from "@/types/canvas";
 import { CanvasTopBar } from "./CanvasTopBar";
 import { CanvasImage as CanvasImageCard, type CanvasImageRef } from "./CanvasImage";
 import { useLanguageSafe } from "@/providers/LanguageProvider";
@@ -58,17 +64,28 @@ export function ImageCanvas({
         };
     }, []);
 
+    const getImageDimensions = useCallback((image: CanvasImage) => {
+        const width = CANVAS_IMAGE_CARD_WIDTH;
+        const fallbackHeight = image.url
+            ? getCanvasImageHeight(image.generationParams?.size)
+            : getCanvasImagePlaceholderHeight(image.generationParams?.size);
+        const height = image.displayHeight ?? fallbackHeight;
+        return { width, height };
+    }, []);
+
     // Handle flying image animation complete
     useEffect(() => {
         if (flyingImage && onFlyingComplete) {
             const timer = setTimeout(() => {
                 // Add the image to canvas
                 const targetPos = getTargetPosition();
+                const imageHeight = getCanvasImageHeight(flyingImage.generationParams?.size);
                 const newImage: CanvasImage = {
                     id: flyingImage.id,
                     url: flyingImage.src,
-                    x: targetPos.x - 150, // offset for image size
-                    y: targetPos.y - 150,
+                    x: targetPos.x - CANVAS_IMAGE_CARD_WIDTH / 2,
+                    y: targetPos.y - imageHeight / 2,
+                    displayHeight: imageHeight,
                     loadingType: "generate",
                     generationParams: flyingImage.generationParams,
                 };
@@ -135,6 +152,7 @@ export function ImageCanvas({
         try {
             const originalImageUrl = activeImageRef.current.getOriginalImageUrl();
             const markedImageDataUrl = activeImageRef.current.getMarkedImageDataUrl();
+            const parentDisplayHeight = activeImageRef.current.getDisplayHeight();
 
             if (!originalImageUrl || !markedImageDataUrl) {
                 throw new Error("Failed to get image data");
@@ -144,14 +162,19 @@ export function ImageCanvas({
                 const parent = prev.find(img => img.id === editingImageId);
                 const baseX = parent ? parent.x + 450 : 100;
                 const baseY = parent ? parent.y : 100;
+                const parentDimensions = parent
+                    ? getImageDimensions(parent)
+                    : { width: CANVAS_IMAGE_CARD_WIDTH, height: getCanvasImagePlaceholderHeight() };
 
                 const placeholder: CanvasImage = {
                     id: placeholderId,
                     url: "",
                     x: baseX,
                     y: baseY,
+                    displayHeight: parentDisplayHeight || parentDimensions.height,
                     parentId: editingImageId,
                     loadingType: "edit",
+                    generationParams: parent?.generationParams,
                 };
 
                 return [...prev, placeholder];
@@ -186,7 +209,7 @@ export function ImageCanvas({
                         : img
                 ));
             }
-        } catch (error) {
+        } catch {
             onImagesChange(prev => prev.map(img =>
                 img.id === placeholderId
                     ? { ...img, status: "failed" as const, error: "Edit failed" }
@@ -231,7 +254,7 @@ export function ImageCanvas({
                     ? { ...item, url: nextUrl, generationParams: img.generationParams }
                     : item
             ));
-        } catch (error) {
+        } catch {
             alert(t("canvas.error_regenerate_failed"));
             onImagesChange(prev => prev.map(item =>
                 item.id === imageId
@@ -261,7 +284,7 @@ export function ImageCanvas({
     };
 
     return (
-        <div className="relative w-full h-full flex flex-col bg-[#0B0C10] overflow-hidden">
+        <div className="relative w-full h-full flex flex-col bg-canvas-bg overflow-hidden">
             {/* Top Bar */}
             <CanvasTopBar
                 activeTool={tool}
@@ -285,7 +308,7 @@ export function ImageCanvas({
                 onMouseLeave={handleCanvasMouseUp}
                 style={{
                     cursor: tool === "hand" ? (isPanning ? "grabbing" : "grab") : "default",
-                    backgroundImage: "radial-gradient(#333 1px, transparent 1px)",
+                    backgroundImage: "radial-gradient(hsl(var(--canvas-dots)) 1px, transparent 1px)",
                     backgroundSize: "16px 16px"
                 }}
             >
@@ -303,101 +326,32 @@ export function ImageCanvas({
                             const parent = images.find(p => p.id === img.parentId);
                             if (!parent) return null;
 
-                            const parentCenterX = parent.x + 150;
-                            const parentCenterY = parent.y + 300;
-                            const childCenterX = img.x + 150;
-                            const childCenterY = img.y + 300;
-
+                            const parentDimensions = getImageDimensions(parent);
+                            const childDimensions = getImageDimensions(img);
+                            const parentCenterY = parent.y + parentDimensions.height / 2;
+                            const childCenterY = img.y + childDimensions.height / 2;
+                            const parentIsOnLeft = parent.x <= img.x;
+                            const direction = parentIsOnLeft ? 1 : -1;
                             const EDGE_OFFSET = 10;
+                            const endpointX1 = parentIsOnLeft
+                                ? parent.x + parentDimensions.width
+                                : parent.x;
+                            const endpointY1 = parentCenterY;
+                            const endpointX2 = parentIsOnLeft
+                                ? img.x
+                                : img.x + childDimensions.width;
+                            const endpointY2 = childCenterY;
 
-                            const parentEdgesNoOffset = [
-                                { x: parent.x + 300, y: parentCenterY },
-                                { x: parent.x, y: parentCenterY },
-                                { x: parentCenterX, y: parent.y + 600 },
-                                { x: parentCenterX, y: parent.y }
-                            ];
+                            const x1 = endpointX1 + direction * EDGE_OFFSET;
+                            const y1 = endpointY1;
+                            const x2 = endpointX2 - direction * EDGE_OFFSET;
+                            const y2 = endpointY2;
 
-                            const childEdgesNoOffset = [
-                                { x: img.x + 300, y: childCenterY },
-                                { x: img.x, y: childCenterY },
-                                { x: childCenterX, y: img.y + 600 },
-                                { x: childCenterX, y: img.y }
-                            ];
-
-                            const parentEdges = [
-                                { x: parent.x + 300 + EDGE_OFFSET, y: parentCenterY },
-                                { x: parent.x - EDGE_OFFSET, y: parentCenterY },
-                                { x: parentCenterX, y: parent.y + 600 + EDGE_OFFSET },
-                                { x: parentCenterX, y: parent.y - EDGE_OFFSET }
-                            ];
-
-                            const childEdges = [
-                                { x: img.x + 300 + EDGE_OFFSET, y: childCenterY },
-                                { x: img.x - EDGE_OFFSET, y: childCenterY },
-                                { x: childCenterX, y: img.y + 600 + EDGE_OFFSET },
-                                { x: childCenterX, y: img.y - EDGE_OFFSET }
-                            ];
-
-                            // Find shortest connection (optimal edge pairing)
-                            let minDist = Infinity;
-                            let bestConnection: { start: { x: number; y: number }; end: { x: number; y: number }; distance: number } | null = null;
-                            let bestEdgeIndices = { parent: 0, child: 0 };
-
-                            for (let pIdx = 0; pIdx < parentEdges.length; pIdx++) {
-                                for (let cIdx = 0; cIdx < childEdges.length; cIdx++) {
-                                    const pEdge = parentEdges[pIdx];
-                                    const cEdge = childEdges[cIdx];
-                                    const dist = Math.sqrt(
-                                        (pEdge.x - cEdge.x) ** 2 +
-                                        (pEdge.y - cEdge.y) ** 2
-                                    );
-                                    if (dist < minDist) {
-                                        minDist = dist;
-                                        bestConnection = { start: pEdge, end: cEdge, distance: dist };
-                                        bestEdgeIndices = { parent: pIdx, child: cIdx };
-                                    }
-                                }
-                            }
-
-                            const x1 = bestConnection!.start.x;
-                            const y1 = bestConnection!.start.y;
-                            const x2 = bestConnection!.end.x;
-                            const y2 = bestConnection!.end.y;
-
-                            // Endpoints use edge coordinates (on image border)
-                            const endpointX1 = parentEdgesNoOffset[bestEdgeIndices.parent].x;
-                            const endpointY1 = parentEdgesNoOffset[bestEdgeIndices.parent].y;
-                            const endpointX2 = childEdgesNoOffset[bestEdgeIndices.child].x;
-                            const endpointY2 = childEdgesNoOffset[bestEdgeIndices.child].y;
-
-                            // Calculate curve parameters
-                            const dx = x2 - x1;
-                            const dy = y2 - y1;
-                            const distance = bestConnection!.distance;
-                            const tension = Math.min(distance * 0.2, 60);
-
-                            // Control points at 1/3 and 2/3 positions
-                            let c1x = x1 + dx * 0.33;
-                            let c1y = y1 + dy * 0.33;
-                            let c2x = x1 + dx * 0.67;
-                            let c2y = y1 + dy * 0.67;
-
-                            // Create symmetric S-curve with opposite offsets
-                            const absDx = Math.abs(dx);
-                            const absDy = Math.abs(dy);
-
-                            if (absDx > absDy) {
-                                // Horizontal connection: curve in vertical direction
-                                const curveDir = dy >= 0 ? 1 : -1;
-                                c1y += curveDir * tension;   // Offset one way
-                                c2y -= curveDir * tension;   // Offset opposite way (symmetric S-curve!)
-                            } else {
-                                // Vertical connection: curve in horizontal direction
-                                const curveDir = dx >= 0 ? 1 : -1;
-                                c1x += curveDir * tension;
-                                c2x -= curveDir * tension;   // Opposite offset
-                            }
-
+                            const curveOffset = Math.max(40, Math.abs(x2 - x1) * 0.45);
+                            const c1x = x1 + direction * curveOffset;
+                            const c1y = y1;
+                            const c2x = x2 - direction * curveOffset;
+                            const c2y = y2;
                             const path = `M ${x1} ${y1} C ${c1x} ${c1y} ${c2x} ${c2y} ${x2} ${y2}`;
 
                             return (
@@ -440,11 +394,20 @@ export function ImageCanvas({
                             status={img.status}
                             error={img.error}
                             loadingType={img.loadingType}
+                            generationSize={img.generationParams?.size}
+                            displayHeight={img.displayHeight}
                             isSelected={false}
                             isEditing={editingImageId === img.id}
                             tool={tool === "hand" ? "hand" : "select"}
                             onUpdate={(id, pos) => {
                                 onImagesChange(prev => prev.map(item => item.id === id ? { ...item, ...pos } : item));
+                            }}
+                            onImageLoad={(id, measuredHeight) => {
+                                onImagesChange(prev => prev.map(item => (
+                                    item.id === id && item.displayHeight !== measuredHeight
+                                        ? { ...item, displayHeight: measuredHeight }
+                                        : item
+                                )));
                             }}
                             onEditStart={handleEditStart}
                             onRegenerate={handleRegenerate}
@@ -470,10 +433,10 @@ export function ImageCanvas({
                                 zIndex: 100
                             }}
                             animate={{
-                                left: canvasRef.current.getBoundingClientRect().left + canvasRef.current.offsetWidth * 0.35 - 150,
-                                top: canvasRef.current.getBoundingClientRect().top + canvasRef.current.offsetHeight * 0.5 - 150,
-                                width: 300,
-                                height: 300,
+                                left: canvasRef.current.getBoundingClientRect().left + canvasRef.current.offsetWidth * 0.35 - CANVAS_IMAGE_CARD_WIDTH / 2,
+                                top: canvasRef.current.getBoundingClientRect().top + canvasRef.current.offsetHeight * 0.5 - getCanvasImageHeight(flyingImage.generationParams?.size) / 2,
+                                width: CANVAS_IMAGE_CARD_WIDTH,
+                                height: getCanvasImageHeight(flyingImage.generationParams?.size),
                                 opacity: 1
                             }}
                             exit={{ opacity: 0 }}

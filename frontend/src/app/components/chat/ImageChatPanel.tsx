@@ -35,8 +35,8 @@ export function ImageChatPanel({
     const [isFocused, setIsFocused] = useState(false);
     const [templateOpen, setTemplateOpen] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState<TemplateCategory>("all");
-    const scrollRef = useRef<HTMLDivElement>(null);
     const imageRefs = useRef<Map<string, HTMLImageElement>>(new Map());
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     const filteredTemplates = selectedCategory === "all"
         ? imageTemplates
@@ -61,6 +61,15 @@ export function ImageChatPanel({
             onImageGenerated(imageUrl, e.currentTarget);
         }
     }, [onImageGenerated]);
+
+    // Autosize textarea (up to a max height), so long prompts remain viewable/editable.
+    useEffect(() => {
+        const el = textareaRef.current;
+        if (!el) return;
+        el.style.height = "auto";
+        const maxHeight = 180;
+        el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`;
+    }, [inputValue]);
 
     // Handle auto-fly for newly generated images
     useEffect(() => {
@@ -102,9 +111,9 @@ export function ImageChatPanel({
     }, []);
 
     return (
-        <div className="flex flex-col h-full bg-background">
+        <div className="flex flex-col h-full min-h-0 bg-background">
             {/* Messages Area */}
-            <ScrollArea className="flex-1 px-4 py-4">
+            <ScrollArea className="h-0 flex-1 px-4 py-4">
                 <div className="space-y-4">
                     <AnimatePresence mode="popLayout">
                         {messages.map((message) => (
@@ -122,7 +131,7 @@ export function ImageChatPanel({
                                 {/* User Message - with bubble */}
                                 {message.role === "user" && (
                                     <div className="max-w-[85%] rounded-2xl px-4 py-2.5 bg-primary text-primary-foreground">
-                                        <p className="text-sm leading-relaxed">{message.content}</p>
+                                        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{message.content}</p>
                                     </div>
                                 )}
 
@@ -131,7 +140,7 @@ export function ImageChatPanel({
                                     <div className="flex flex-col items-start">
                                         {/* Text Content (if any) */}
                                         {message.content && (
-                                            <p className="text-sm text-muted-foreground mb-2">{message.content}</p>
+                                            <p className="text-sm text-muted-foreground mb-2 whitespace-pre-wrap break-words">{message.content}</p>
                                         )}
 
                                         {/* Image Content - fixed size, no bubble */}
@@ -145,11 +154,11 @@ export function ImageChatPanel({
                                                     ref={(el) => handleImageRef(message.id, el)}
                                                     src={message.imageUrl}
                                                     alt="Generated"
-                                                    className="rounded-lg shadow-md"
+                                                    className="rounded-md shadow-md"
                                                     style={{ width: '120px', height: 'auto' }}
                                                     onClick={(e) => handleImageClick(message.imageUrl!, e)}
                                                 />
-                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-md flex items-center justify-center">
                                                     <span className="text-white text-xs font-medium">
                                                         添加到画布
                                                     </span>
@@ -270,7 +279,7 @@ export function ImageChatPanel({
                         isFocused && "border-ring shadow-glow"
                     )}
                 >
-                    <div className="flex items-center gap-2 px-3 py-2.5">
+                    <div className="flex items-end gap-2 px-3 py-2.5">
                         <Button
                             variant="ghost"
                             size="icon"
@@ -279,15 +288,17 @@ export function ImageChatPanel({
                             <Plus className="w-4 h-4" />
                         </Button>
 
-                        <input
-                            type="text"
+                        <textarea
+                            ref={textareaRef}
                             value={inputValue}
                             onChange={(e) => setInputValue(e.target.value)}
                             onFocus={() => setIsFocused(true)}
                             onBlur={() => setIsFocused(false)}
                             onKeyDown={handleKeyDown}
                             placeholder="继续描述或修改..."
-                            className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground text-sm leading-none outline-none min-w-0"
+                            rows={1}
+                            aria-label="提示词输入"
+                            className="flex-1 resize-none bg-transparent text-foreground placeholder:text-muted-foreground text-sm leading-5 outline-none min-w-0 max-h-[180px] overflow-y-auto py-1"
                         />
 
                         <Button
