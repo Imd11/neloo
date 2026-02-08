@@ -164,54 +164,45 @@ export function PromptInput({
                 className
             )}
         >
-            {/* File Preview Cards - Multi-file support */}
+            {/* File Preview Tags - Compact pill style */}
             {(files.length > 0 || resumeFile) && (
-                <div className="px-4 pt-3 pb-0 flex flex-wrap gap-2">
-                    {/* New multi-file format */}
+                <div className="px-5 pt-3 pb-0 flex flex-wrap gap-1.5">
+                    {/* Multi-file format */}
                     {files.map((file) => {
-                        const { Icon, color, label } = getFileTypeInfo(file.name, file.type);
-                        const colorClasses = {
-                            red: 'bg-red-500/15 text-red-500',
-                            orange: 'bg-orange-500/15 text-orange-500',
-                            blue: 'bg-blue-500/15 text-blue-500',
-                            green: 'bg-green-500/15 text-green-500',
-                            purple: 'bg-purple-500/15 text-purple-500',
-                            emerald: 'bg-emerald-500/15 text-emerald-500',
-                            gray: 'bg-gray-500/15 text-gray-500',
-                        }[color] || 'bg-gray-500/15 text-gray-500';
+                        const { Icon, color } = getFileTypeInfo(file.name, file.type);
+                        const iconColor = {
+                            red: 'text-red-500',
+                            orange: 'text-orange-500',
+                            blue: 'text-blue-500',
+                            green: 'text-green-500',
+                            purple: 'text-purple-500',
+                            emerald: 'text-emerald-500',
+                            gray: 'text-gray-500',
+                        }[color] || 'text-gray-500';
 
                         return (
                             <div
                                 key={file.id}
-                                className="relative inline-flex items-center gap-3 px-3 py-2.5 bg-muted/50 rounded-xl"
+                                className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 bg-muted/50 rounded-full text-xs"
                             >
-                                {/* File Icon with status overlay */}
-                                <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0", colorClasses.split(' ')[0])}>
-                                    {file.status === 'uploading' ? (
-                                        <Loader2 className={cn("w-5 h-5 animate-spin", colorClasses.split(' ')[1])} />
-                                    ) : (
-                                        <Icon className={cn("w-5 h-5", colorClasses.split(' ')[1])} />
-                                    )}
-                                </div>
-                                {/* File Info */}
-                                <div className="flex flex-col min-w-0">
-                                    <span className="text-sm font-medium text-foreground truncate max-w-[180px]">
-                                        {file.name}
-                                    </span>
-                                    <span className="text-xs text-muted-foreground">
-                                        {label} · {formatFileSize(file.size)}
-                                        {file.status === 'uploading' && ' · 上传中...'}
-                                        {file.status === 'error' && ' · 上传失败'}
-                                    </span>
-                                </div>
-                                {/* Remove Button */}
+                                {file.status === 'uploading' ? (
+                                    <Loader2 className={cn("w-3.5 h-3.5 animate-spin shrink-0", iconColor)} />
+                                ) : (
+                                    <Icon className={cn("w-3.5 h-3.5 shrink-0", iconColor)} />
+                                )}
+                                <span className="font-medium text-foreground truncate max-w-[140px]">
+                                    {file.name}
+                                </span>
+                                {file.status === 'uploading' && (
+                                    <span className="text-muted-foreground shrink-0">上传中</span>
+                                )}
                                 <button
                                     onClick={() => onRemoveFile?.(file.id)}
                                     type="button"
-                                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-muted hover:bg-muted-foreground/20 rounded-full flex items-center justify-center transition-colors"
+                                    className="flex items-center justify-center w-4 h-4 rounded-full shrink-0 cursor-pointer transition-all duration-150 hover:bg-foreground/10 hover:scale-110"
                                     aria-label="移除文件"
                                 >
-                                    <X className="w-3 h-3 text-muted-foreground" />
+                                    <X className="w-2.5 h-2.5 text-muted-foreground" />
                                 </button>
                             </div>
                         );
@@ -219,37 +210,30 @@ export function PromptInput({
 
                     {/* Legacy single file support (resumeFile) */}
                     {resumeFile && files.length === 0 && (() => {
-                        const { Icon, color, label } = getFileTypeInfo(resumeFile.name, resumeFile.type);
-                        const colorClasses = {
-                            red: 'bg-red-500/15 text-red-500',
-                            orange: 'bg-orange-500/15 text-orange-500',
-                            blue: 'bg-blue-500/15 text-blue-500',
-                            green: 'bg-green-500/15 text-green-500',
-                            purple: 'bg-purple-500/15 text-purple-500',
-                            emerald: 'bg-emerald-500/15 text-emerald-500',
-                            gray: 'bg-gray-500/15 text-gray-500',
-                        }[color] || 'bg-gray-500/15 text-gray-500';
+                        const { Icon, color } = getFileTypeInfo(resumeFile.name, resumeFile.type);
+                        const iconColor = {
+                            red: 'text-red-500',
+                            orange: 'text-orange-500',
+                            blue: 'text-blue-500',
+                            green: 'text-green-500',
+                            purple: 'text-purple-500',
+                            emerald: 'text-emerald-500',
+                            gray: 'text-gray-500',
+                        }[color] || 'text-gray-500';
 
                         return (
-                            <div className="relative inline-flex items-center gap-3 px-3 py-2.5 bg-muted/50 rounded-xl">
-                                <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0", colorClasses.split(' ')[0])}>
-                                    <Icon className={cn("w-5 h-5", colorClasses.split(' ')[1])} />
-                                </div>
-                                <div className="flex flex-col min-w-0">
-                                    <span className="text-sm font-medium text-foreground truncate max-w-[180px]">
-                                        {resumeFile.name}
-                                    </span>
-                                    <span className="text-xs text-muted-foreground">
-                                        {label} · {formatFileSize(resumeFile.size)}
-                                    </span>
-                                </div>
+                            <div className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 bg-muted/50 rounded-full text-xs">
+                                <Icon className={cn("w-3.5 h-3.5 shrink-0", iconColor)} />
+                                <span className="font-medium text-foreground truncate max-w-[140px]">
+                                    {resumeFile.name}
+                                </span>
                                 <button
                                     onClick={() => onRemoveFile?.('')}
                                     type="button"
-                                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-muted hover:bg-muted-foreground/20 rounded-full flex items-center justify-center transition-colors"
+                                    className="flex items-center justify-center w-4 h-4 rounded-full shrink-0 cursor-pointer transition-all duration-150 hover:bg-foreground/10 hover:scale-110"
                                     aria-label="移除文件"
                                 >
-                                    <X className="w-3 h-3 text-muted-foreground" />
+                                    <X className="w-2.5 h-2.5 text-muted-foreground" />
                                 </button>
                             </div>
                         );
