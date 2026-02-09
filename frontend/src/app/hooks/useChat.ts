@@ -81,6 +81,7 @@ export function useChat({
   const config = getConfig();
   const createdThreadsRef = useRef<Set<string>>(new Set());
   const creatingThreadsRef = useRef<Set<string>>(new Set());
+  const recoveringThreadsRef = useRef<Set<string>>(new Set());
 
   // Web Development mode state
   const [webDevMode, setWebDevMode] = useState(false);
@@ -226,9 +227,51 @@ export function useChat({
     setHistoryUnavailable(false);
   }, [threadId]);
 
+  const recoverRuntimeThread = useCallback(
+    async (currentThreadId: string): Promise<boolean> => {
+      if (!config?.deploymentUrl || !session?.access_token) return false;
+      if (recoveringThreadsRef.current.has(currentThreadId)) return false;
+
+      recoveringThreadsRef.current.add(currentThreadId);
+
+      try {
+        const mode = (threadMode === "web-dev" || webDevMode) ? "web-dev" : "default";
+        const response = await fetch(`${config.deploymentUrl}/api/threads`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            langgraph_thread_id: currentThreadId,
+            title: "New Task",
+            mode,
+          }),
+        });
+
+        if (!response.ok) {
+          const detail = await response.text().catch(() => "");
+          console.error(`[useChat] Runtime recover failed: ${response.status} ${detail}`);
+          return false;
+        }
+
+        createdThreadsRef.current.add(currentThreadId);
+        console.log(`[useChat] Runtime recover succeeded for thread: ${currentThreadId.slice(0, 8)}...`);
+        return true;
+      } catch (error) {
+        console.error("[useChat] Runtime recover error:", error);
+        return false;
+      } finally {
+        recoveringThreadsRef.current.delete(currentThreadId);
+      }
+    },
+    [config?.deploymentUrl, session?.access_token, threadMode, webDevMode]
+  );
+
   // Handle errors, especially 404 when thread history doesn't exist in LangGraph
   const handleError = async (error: unknown) => {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    const lowerError = errorMessage.toLowerCase();
 
     // Save any unsent messages even on error (important for message persistence)
     const currentThreadId = threadId;
@@ -252,9 +295,32 @@ export function useChat({
       }
     }
 
-    // Check if it's a 404 error (thread history not found in LangGraph checkpoint store)
-    // This happens when LangGraph Server restarts and loses in-memory checkpoints
-    if (errorMessage.includes("404") || errorMessage.includes("not found")) {
+    const isRuntimeThreadMissing =
+      lowerError.includes("thread or assistant not found") ||
+      (lowerError.includes("/runs/stream") && lowerError.includes("404"));
+    if (isRuntimeThreadMissing && currentThreadId) {
+      const recovered = await recoverRuntimeThread(currentThreadId);
+      if (recovered) {
+        toast.warning("会话运行态已恢复", {
+          description: "请重新发送一次刚才的消息。",
+          duration: 5000,
+        });
+      } else {
+        toast.error("会话恢复失败", {
+          description: "请刷新页面后重试。",
+          duration: 5000,
+        });
+      }
+      onHistoryRevalidate?.();
+      return;
+    }
+
+    const isHistoryMissingError =
+      lowerError.includes("/history") ||
+      lowerError.includes("thread history not found in langgraph");
+
+    // Check if it's a history-not-found error (checkpoint lost after restart)
+    if (isHistoryMissingError) {
       console.warn("[useChat] Thread history not found in LangGraph (checkpoint may have been lost):", threadId);
 
       // Don't clear threadId - that causes blank UI and triggers new thread creation

@@ -94,6 +94,81 @@ USE_LOCAL_STORAGE = not (SUPABASE_URL and SUPABASE_SERVICE_KEY)
 # Async Supabase client singleton
 _supabase_client = None
 
+
+def _parse_cors_origins() -> list[str]:
+    """
+    Parse CORS origins from environment.
+
+    Env vars (priority):
+    1) CORS_ALLOWED_ORIGINS
+    2) CORS_ORIGINS
+    Fallback: ["*"]
+    """
+    raw = os.environ.get("CORS_ALLOWED_ORIGINS") or os.environ.get("CORS_ORIGINS") or ""
+    origins = [origin.strip() for origin in raw.split(",") if origin.strip()]
+    return origins or ["*"]
+
+
+def _get_langgraph_internal_base_url() -> str:
+    """Get internal LangGraph server base URL."""
+    return (
+        os.environ.get("LANGGRAPH_INTERNAL_URL")
+        or f"http://127.0.0.1:{os.environ.get('LANGGRAPH_INTERNAL_PORT') or os.environ.get('PORT') or '8000'}"
+    ).rstrip("/")
+
+
+async def _ensure_langgraph_runtime_thread(thread_id: str) -> bool:
+    """
+    Ensure a LangGraph runtime thread exists for the SAME thread_id.
+
+    This does not create a new conversation id. It only reconstructs missing runtime
+    thread/checkpoint shell so users can continue chatting in historical threads.
+    """
+    import httpx
+
+    base_url = _get_langgraph_internal_base_url()
+
+    try:
+        async with httpx.AsyncClient() as client:
+            # 1) Ensure runtime thread exists (idempotent).
+            create_resp = await client.post(
+                f"{base_url}/threads",
+                json={"thread_id": thread_id, "if_exists": "do_nothing"},
+                timeout=10.0,
+            )
+            if create_resp.status_code not in (200, 201, 202, 409):
+                print(f"[runtime_recover] create thread returned {create_resp.status_code} for {thread_id[:8]}...")
+
+            # 2) If runtime state already has messages, we're done.
+            state_resp = await client.get(f"{base_url}/threads/{thread_id}/state", timeout=10.0)
+            if state_resp.status_code == 200:
+                state_data = state_resp.json()
+                values = state_data.get("values", {}) if isinstance(state_data, dict) else {}
+                runtime_messages = values.get("messages") if isinstance(values, dict) else None
+                if isinstance(runtime_messages, list) and len(runtime_messages) > 0:
+                    return True
+
+            # 3) Rehydrate runtime state from DB fallback (same thread_id).
+            db_messages = await get_chat_messages(thread_id)
+            if not db_messages:
+                return True
+
+            todos = extract_todos_from_messages(db_messages)
+            patch_resp = await client.post(
+                f"{base_url}/threads/{thread_id}/state",
+                json={"values": {"messages": db_messages, "todos": todos}},
+                timeout=10.0,
+            )
+            if patch_resp.status_code not in (200, 201):
+                print(f"[runtime_recover] patch state returned {patch_resp.status_code} for {thread_id[:8]}...")
+                return False
+
+            print(f"[runtime_recover] Rehydrated runtime state for {thread_id[:8]}... from DB messages")
+            return True
+    except Exception as e:
+        print(f"[runtime_recover] Failed to recover thread {thread_id[:8]}...: {e}")
+        return False
+
 # Local storage directory - use the sandbox data directory for simplicity
 # This way uploaded files are directly available to the sandbox executor
 LOCAL_STORAGE_DIR = Path(tempfile.gettempdir()) / "data-analyst-sandbox" / "data"
@@ -203,10 +278,12 @@ async def _set_runtime_context(request: Request, call_next):
     return response
 
 # CORS configuration
+cors_origins = _parse_cors_origins()
+cors_allow_credentials = cors_origins != ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify exact origins
-    allow_credentials=True,
+    allow_origins=cors_origins,
+    allow_credentials=cors_allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -1987,6 +2064,12 @@ async def create_thread_api(
         if not thread_record:
             raise HTTPException(status_code=500, detail="Failed to create thread")
 
+        # Ensure LangGraph runtime thread exists for the same thread_id so historical
+        # threads can continue chatting even after checkpoint loss.
+        recovered = await _ensure_langgraph_runtime_thread(data.langgraph_thread_id)
+        if not recovered:
+            print(f"[thread_create] runtime recovery skipped/failed for {data.langgraph_thread_id[:8]}...")
+
         return ThreadInfo(
             id=thread_record["id"],
             user_id=thread_record["user_id"],
@@ -2829,10 +2912,7 @@ async def get_thread_history(
             "tasks": [],
         }]
 
-    internal_base_url = (
-        os.environ.get("LANGGRAPH_INTERNAL_URL")
-        or f"http://127.0.0.1:{os.environ.get('LANGGRAPH_INTERNAL_PORT') or os.environ.get('PORT') or '8000'}"
-    ).rstrip("/")
+    internal_base_url = _get_langgraph_internal_base_url()
 
     try:
         # Call LangGraph API's internal /threads/{thread_id}/state endpoint
@@ -2845,6 +2925,7 @@ async def get_thread_history(
             
             if response.status_code == 404:
                 # Checkpoint missing after restart; use DB fallback if available.
+                await _ensure_langgraph_runtime_thread(thread_id)
                 return await fallback_from_db()
             
             if response.status_code != 200:

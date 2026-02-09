@@ -28,6 +28,7 @@ sys.path.insert(0, str(backend_dir))
 import uvicorn
 from langgraph.server import GraphConfig
 from langgraph.server.app import create_app
+from fastapi.middleware.cors import CORSMiddleware
 
 # =============================================================================
 # PostgreSQL Checkpointer Configuration
@@ -126,6 +127,20 @@ def create_checkpointer():
         return None
 
 
+def parse_cors_origins() -> list[str]:
+    """
+    Parse CORS origins from environment.
+
+    Env vars (priority):
+    1) CORS_ALLOWED_ORIGINS
+    2) CORS_ORIGINS
+    Fallback: ["*"]
+    """
+    raw = os.environ.get("CORS_ALLOWED_ORIGINS") or os.environ.get("CORS_ORIGINS") or ""
+    origins = [origin.strip() for origin in raw.split(",") if origin.strip()]
+    return origins or ["*"]
+
+
 # Import our graph and webapp
 from src.agent.graph import graph
 from src.api.webapp import app as webapp
@@ -144,6 +159,15 @@ config = GraphConfig(
 )
 
 app = create_app(config)
+cors_origins = parse_cors_origins()
+cors_allow_credentials = cors_origins != ["*"]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=cors_allow_credentials,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app = RuntimeContextASGIMiddleware(app)
 
 if __name__ == "__main__":
@@ -158,6 +182,7 @@ if __name__ == "__main__":
         print(f"   - Checkpoint: PostgreSQL (persistent)")
     else:
         print(f"   - Checkpoint: In-Memory (NON-persistent)")
+    print(f"   - CORS origins: {', '.join(cors_origins)}")
 
     uvicorn.run(
         app,
