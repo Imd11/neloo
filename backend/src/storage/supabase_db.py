@@ -1523,42 +1523,50 @@ async def save_chat_message(
         return None
 
 
+async def get_chat_message_rows(
+    thread_id: str,
+    limit: int = 500,
+) -> list[dict]:
+    """
+    Get chat message rows for a thread, ordered by sequence number.
+
+    Returns raw rows containing message_id, role, seq and message_data.
+    """
+    if not USE_SUPABASE_DB:
+        return []
+
+    try:
+        supabase = await get_supabase_client()
+        if not supabase:
+            return []
+
+        result = await supabase.table("chat_messages")\
+            .select("message_id, role, message_data, seq")\
+            .eq("thread_id", thread_id)\
+            .order("seq")\
+            .limit(limit)\
+            .execute()
+
+        return result.data or []
+    except Exception as e:
+        print(f"[SupabaseDB] Error getting chat message rows: {e}")
+        return []
+
+
 async def get_chat_messages(
     thread_id: str,
     limit: int = 500,
 ) -> list[dict]:
     """
-    Get all chat messages for a thread, ordered by sequence number.
-    
-    Args:
-        thread_id: The thread ID (langgraph_thread_id)
-        limit: Maximum number of messages to return
-        
-    Returns:
-        List of message_data objects in order
+    Get message_data payloads for a thread, ordered by sequence number.
+
+    This is a compatibility wrapper around get_chat_message_rows.
     """
-    if not USE_SUPABASE_DB:
-        return []
-    
-    try:
-        supabase = await get_supabase_client()
-        if not supabase:
-            return []
-        
-        result = await supabase.table("chat_messages")\
-            .select("message_data, seq, role")\
-            .eq("thread_id", thread_id)\
-            .order("seq")\
-            .limit(limit)\
-            .execute()
-        
-        if result.data:
-            messages = [row["message_data"] for row in result.data]
-            print(f"[SupabaseDB] Retrieved {len(messages)} messages for thread {thread_id[:8]}...")
-            return messages
-        
-        return []
-        
-    except Exception as e:
-        print(f"[SupabaseDB] Error getting chat messages: {e}")
-        return []
+    rows = await get_chat_message_rows(thread_id, limit=limit)
+    messages: list[dict] = []
+    for row in rows:
+        if isinstance(row, dict) and isinstance(row.get("message_data"), dict):
+            messages.append(row["message_data"])
+    if messages:
+        print(f"[SupabaseDB] Retrieved {len(messages)} messages for thread {thread_id[:8]}...")
+    return messages

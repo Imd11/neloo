@@ -78,6 +78,7 @@ from ..storage.supabase_db import (
     # Chat message persistence
     save_chat_message,
     get_chat_messages,
+    get_chat_message_rows,
 )
 
 # =============================================================================
@@ -117,7 +118,134 @@ def _get_langgraph_internal_base_url() -> str:
     ).rstrip("/")
 
 
-async def _ensure_langgraph_runtime_thread(thread_id: str) -> bool:
+def _resolve_runtime_graph_id(mode: Optional[str] = None) -> str:
+    """
+    Resolve graph_id used by LangGraph runtime thread recovery.
+
+    Default graph can be configured with LANGGRAPH_DEFAULT_GRAPH_ID.
+    """
+    base_graph_id = (os.environ.get("LANGGRAPH_DEFAULT_GRAPH_ID") or "data_analyst").strip() or "data_analyst"
+    normalized_mode = (mode or "").strip().lower()
+    if normalized_mode in {"web-dev", "web_dev", "webdev"} and not base_graph_id.endswith("-web-dev"):
+        return f"{base_graph_id}-web-dev"
+    if normalized_mode == "fortune" and not base_graph_id.endswith("-fortune"):
+        return f"{base_graph_id}-fortune"
+    return base_graph_id
+
+
+def _normalize_message_type(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    normalized = str(value).strip().lower()
+    if not normalized:
+        return None
+    if normalized in {"user", "human"}:
+        return "human"
+    if normalized in {"assistant", "ai"}:
+        return "ai"
+    if normalized in {"tool", "system"}:
+        return normalized
+    return normalized
+
+
+def _normalize_message_for_langgraph(
+    raw_message: dict,
+    *,
+    fallback_role: Optional[str] = None,
+    fallback_message_id: Optional[str] = None,
+    fallback_index: Optional[int] = None,
+) -> Optional[dict]:
+    """
+    Normalize persisted/runtime messages into LangGraph-compatible chat message dicts.
+    """
+    if not isinstance(raw_message, dict):
+        return None
+
+    message_type = (
+        _normalize_message_type(raw_message.get("type"))
+        or _normalize_message_type(raw_message.get("role"))
+        or _normalize_message_type(fallback_role)
+    )
+    if not message_type:
+        return None
+
+    content = raw_message.get("content", "")
+    message_id = raw_message.get("id") or raw_message.get("message_id") or fallback_message_id
+    if message_id is None and fallback_index is not None:
+        message_id = f"msg:{fallback_index}"
+    if message_id is None:
+        return None
+
+    normalized: dict = {
+        "id": str(message_id),
+        "type": message_type,
+        "content": content if content is not None else "",
+        "additional_kwargs": raw_message.get("additional_kwargs")
+        if isinstance(raw_message.get("additional_kwargs"), dict)
+        else {},
+        "name": raw_message.get("name"),
+    }
+
+    if message_type == "ai":
+        if isinstance(raw_message.get("tool_calls"), list):
+            normalized["tool_calls"] = raw_message["tool_calls"]
+        if isinstance(raw_message.get("invalid_tool_calls"), list):
+            normalized["invalid_tool_calls"] = raw_message["invalid_tool_calls"]
+        if isinstance(raw_message.get("response_metadata"), dict):
+            normalized["response_metadata"] = raw_message["response_metadata"]
+        if isinstance(raw_message.get("usage_metadata"), dict):
+            normalized["usage_metadata"] = raw_message["usage_metadata"]
+    elif message_type == "tool":
+        if raw_message.get("tool_call_id"):
+            normalized["tool_call_id"] = raw_message.get("tool_call_id")
+        if raw_message.get("status"):
+            normalized["status"] = raw_message.get("status")
+        if raw_message.get("artifact") is not None:
+            normalized["artifact"] = raw_message.get("artifact")
+
+    return normalized
+
+
+async def _load_db_messages_for_history(thread_id: str) -> list[dict]:
+    """
+    Load and normalize chat history from DB so it can be used by history API and runtime rehydrate.
+    """
+    rows = await get_chat_message_rows(thread_id)
+    normalized_messages: list[dict] = []
+    for idx, row in enumerate(rows):
+        if not isinstance(row, dict):
+            continue
+        message_data = row.get("message_data")
+        if not isinstance(message_data, dict):
+            continue
+        normalized = _normalize_message_for_langgraph(
+            message_data,
+            fallback_role=row.get("role"),
+            fallback_message_id=row.get("message_id"),
+            fallback_index=idx,
+        )
+        if normalized:
+            normalized_messages.append(normalized)
+    return normalized_messages
+
+
+def _select_history_messages(runtime_messages: list[dict], db_messages: list[dict]) -> tuple[list[dict], str]:
+    """
+    Pick the more complete history source.
+    """
+    if db_messages and len(db_messages) > len(runtime_messages):
+        return db_messages, "db"
+    if runtime_messages:
+        return runtime_messages, "runtime"
+    if db_messages:
+        return db_messages, "db"
+    return [], "empty"
+
+
+async def _ensure_langgraph_runtime_thread(
+    thread_id: str,
+    preferred_graph_id: Optional[str] = None,
+) -> bool:
     """
     Ensure a LangGraph runtime thread exists for the SAME thread_id.
 
@@ -127,17 +255,41 @@ async def _ensure_langgraph_runtime_thread(thread_id: str) -> bool:
     import httpx
 
     base_url = _get_langgraph_internal_base_url()
+    graph_id = (preferred_graph_id or _resolve_runtime_graph_id()).strip()
 
     try:
         async with httpx.AsyncClient() as client:
             # 1) Ensure runtime thread exists (idempotent).
+            create_payload: dict = {"thread_id": thread_id, "if_exists": "do_nothing"}
+            if graph_id:
+                create_payload["metadata"] = {"graph_id": graph_id}
             create_resp = await client.post(
                 f"{base_url}/threads",
-                json={"thread_id": thread_id, "if_exists": "do_nothing"},
+                json=create_payload,
                 timeout=10.0,
             )
             if create_resp.status_code not in (200, 201, 202, 409):
                 print(f"[runtime_recover] create thread returned {create_resp.status_code} for {thread_id[:8]}...")
+
+            # 1.5) Existing threads created in older versions may miss graph_id.
+            if graph_id:
+                thread_resp = await client.get(f"{base_url}/threads/{thread_id}", timeout=10.0)
+                if thread_resp.status_code == 200:
+                    thread_payload = thread_resp.json()
+                    metadata = thread_payload.get("metadata", {}) if isinstance(thread_payload, dict) else {}
+                    existing_graph_id = metadata.get("graph_id") if isinstance(metadata, dict) else None
+                    if not existing_graph_id:
+                        patch_resp = await client.patch(
+                            f"{base_url}/threads/{thread_id}",
+                            json={"metadata": {"graph_id": graph_id}},
+                            timeout=10.0,
+                        )
+                        if patch_resp.status_code != 200:
+                            detail = (patch_resp.text or "").replace("\n", " ")[:240]
+                            print(
+                                f"[runtime_recover] patch thread metadata returned {patch_resp.status_code} "
+                                f"for {thread_id[:8]}... detail={detail}"
+                            )
 
             # 2) If runtime state already has messages, we're done.
             state_resp = await client.get(f"{base_url}/threads/{thread_id}/state", timeout=10.0)
@@ -145,11 +297,19 @@ async def _ensure_langgraph_runtime_thread(thread_id: str) -> bool:
                 state_data = state_resp.json()
                 values = state_data.get("values", {}) if isinstance(state_data, dict) else {}
                 runtime_messages = values.get("messages") if isinstance(values, dict) else None
+                if isinstance(runtime_messages, list):
+                    normalized_runtime_messages = [
+                        _normalize_message_for_langgraph(msg, fallback_index=i)
+                        for i, msg in enumerate(runtime_messages)
+                        if isinstance(msg, dict)
+                    ]
+                    if any(normalized_runtime_messages):
+                        return True
                 if isinstance(runtime_messages, list) and len(runtime_messages) > 0:
                     return True
 
             # 3) Rehydrate runtime state from DB fallback (same thread_id).
-            db_messages = await get_chat_messages(thread_id)
+            db_messages = await _load_db_messages_for_history(thread_id)
             if not db_messages:
                 return True
 
@@ -160,7 +320,11 @@ async def _ensure_langgraph_runtime_thread(thread_id: str) -> bool:
                 timeout=10.0,
             )
             if patch_resp.status_code not in (200, 201):
-                print(f"[runtime_recover] patch state returned {patch_resp.status_code} for {thread_id[:8]}...")
+                detail = (patch_resp.text or "").replace("\n", " ")[:280]
+                print(
+                    f"[runtime_recover] patch state returned {patch_resp.status_code} "
+                    f"for {thread_id[:8]}... detail={detail}"
+                )
                 return False
 
             print(f"[runtime_recover] Rehydrated runtime state for {thread_id[:8]}... from DB messages")
@@ -2066,7 +2230,11 @@ async def create_thread_api(
 
         # Ensure LangGraph runtime thread exists for the same thread_id so historical
         # threads can continue chatting even after checkpoint loss.
-        recovered = await _ensure_langgraph_runtime_thread(data.langgraph_thread_id)
+        preferred_graph_id = _resolve_runtime_graph_id(data.mode)
+        recovered = await _ensure_langgraph_runtime_thread(
+            data.langgraph_thread_id,
+            preferred_graph_id=preferred_graph_id,
+        )
         if not recovered:
             print(f"[thread_create] runtime recovery skipped/failed for {data.langgraph_thread_id[:8]}...")
 
@@ -2896,18 +3064,24 @@ async def get_thread_history(
     if thread_record and thread_record.get("user_id") != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
+    preferred_graph_id = _resolve_runtime_graph_id(thread_record.get("mode") if thread_record else None)
+
     async def fallback_from_db() -> list[dict]:
-        messages = await get_chat_messages(thread_id)
-        if not messages:
+        db_messages = await _load_db_messages_for_history(thread_id)
+        if not db_messages:
             return []
-        todos = extract_todos_from_messages(messages)
+        todos = extract_todos_from_messages(db_messages)
         return [{
             "values": {
-                "messages": messages,
+                "messages": db_messages,
                 "todos": todos,
             },
             "next": [],
-            "metadata": {},
+            "metadata": {
+                "history_source": "db",
+                "db_message_count": len(db_messages),
+                "runtime_message_count": 0,
+            },
             "created_at": None,
             "tasks": [],
         }]
@@ -2915,67 +3089,73 @@ async def get_thread_history(
     internal_base_url = _get_langgraph_internal_base_url()
 
     try:
-        # Call LangGraph API's internal /threads/{thread_id}/state endpoint
-        # This reads from the PostgresSaver checkpointer that already has the messages
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 f"{internal_base_url}/threads/{thread_id}/state",
                 timeout=10.0,
             )
-            
+
             if response.status_code == 404:
-                # Checkpoint missing after restart; use DB fallback if available.
-                await _ensure_langgraph_runtime_thread(thread_id)
+                await _ensure_langgraph_runtime_thread(
+                    thread_id,
+                    preferred_graph_id=preferred_graph_id,
+                )
                 return await fallback_from_db()
-            
+
             if response.status_code != 200:
                 print(f"[history] LangGraph state API returned {response.status_code}")
                 return await fallback_from_db()
-            
-            state_data = response.json()
-            
-            # Extract messages from state
-            values = state_data.get("values", {})
-            messages = values.get("messages", [])
-            
-            if not messages:
-                return await fallback_from_db()
-            
-            # Format messages for frontend compatibility
-            formatted_messages = []
-            for i, msg in enumerate(messages):
-                # Handle both dict and LangChain message objects
-                if isinstance(msg, dict):
-                    formatted_msg = msg.copy()
-                else:
-                    # Convert LangChain message to dict
-                    formatted_msg = {
-                        "id": getattr(msg, 'id', None) or f"{thread_id}:{i}",
-                        "type": getattr(msg, 'type', 'unknown'),
-                        "content": getattr(msg, 'content', ''),
-                    }
-                    if hasattr(msg, 'additional_kwargs'):
-                        formatted_msg["additional_kwargs"] = msg.additional_kwargs
-                
-                formatted_messages.append(formatted_msg)
-            
-            # Extract todos: priority from state, fallback from messages
-            todos = values.get("todos", [])
+
+            raw_state_data = response.json()
+            state_data = raw_state_data if isinstance(raw_state_data, dict) else {}
+            values = state_data.get("values", {}) if isinstance(state_data, dict) else {}
+            runtime_messages_raw = values.get("messages", []) if isinstance(values, dict) else []
+
+            runtime_messages: list[dict] = []
+            if isinstance(runtime_messages_raw, list):
+                for idx, msg in enumerate(runtime_messages_raw):
+                    if not isinstance(msg, dict):
+                        continue
+                    normalized = _normalize_message_for_langgraph(msg, fallback_index=idx)
+                    if normalized:
+                        runtime_messages.append(normalized)
+
+            db_messages = await _load_db_messages_for_history(thread_id)
+            selected_messages, selected_source = _select_history_messages(runtime_messages, db_messages)
+
+            if not selected_messages:
+                return []
+
+            # Best-effort self-heal: if DB is more complete than runtime, try to rehydrate runtime state.
+            if selected_source == "db" and len(db_messages) > len(runtime_messages):
+                await _ensure_langgraph_runtime_thread(
+                    thread_id,
+                    preferred_graph_id=preferred_graph_id,
+                )
+
+            todos = values.get("todos", []) if isinstance(values, dict) else []
             if not todos:
-                todos = extract_todos_from_messages(formatted_messages)
-            
-            # Return in ThreadState[] format expected by LangGraph SDK
+                todos = extract_todos_from_messages(selected_messages)
+
+            metadata = state_data.get("metadata", {}) if isinstance(state_data, dict) else {}
+            if not isinstance(metadata, dict):
+                metadata = {}
+            metadata = metadata.copy()
+            metadata["history_source"] = selected_source
+            metadata["db_message_count"] = len(db_messages)
+            metadata["runtime_message_count"] = len(runtime_messages)
+
             return [{
                 "values": {
-                    "messages": formatted_messages,
-                    "todos": todos
+                    "messages": selected_messages,
+                    "todos": todos,
                 },
                 "next": [],
-                "metadata": state_data.get("metadata", {}),
-                "created_at": state_data.get("created_at"),
-                "tasks": []
+                "metadata": metadata,
+                "created_at": state_data.get("created_at") if isinstance(state_data, dict) else None,
+                "tasks": [],
             }]
-            
+
     except Exception as e:
         print(f"[history] Error fetching from LangGraph state API: {e}")
         return await fallback_from_db()
