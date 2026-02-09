@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { ArrowLeft, Download, Loader2, Undo, Redo } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import pptxgen from 'pptxgenjs';
 import type { Slide, CanvasObject } from '@/app/slides/types/slides';
 import { generateSlideImage, generateSingleSlide } from '@/app/slides/lib/slidesService';
@@ -12,7 +13,14 @@ import {
 } from '@/app/slides/lib/slidesPersistence';
 
 import SlideThumbnails from './SlideThumbnails';
-import SlideViewer from './SlideViewer';
+const SlideViewer = dynamic(() => import('./SlideViewer'), {
+    ssr: false,
+    loading: () => (
+        <div className="flex-1 bg-zinc-900/50 flex items-center justify-center">
+            <Loader2 className="animate-spin text-purple-500" size={32} />
+        </div>
+    )
+});
 import RegenerateModal from './RegenerateModal';
 import NewSlideModal from './NewSlideModal';
 import ConfirmationModal from './ConfirmationModal';

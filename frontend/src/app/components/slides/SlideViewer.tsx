@@ -1,22 +1,13 @@
-'use client';
-
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import {
     ChevronLeft, ChevronRight, Square, RefreshCw, Trash2, MousePointer2,
     Loader2, AlertCircle, Undo, Redo, Type, Bold, Italic, Underline,
     Palette, Plus, Minus, AlignLeft, AlignCenter, AlignRight
 } from 'lucide-react';
-import dynamic from 'next/dynamic';
+import { Stage, Layer, Rect, Text, Image as KonvaImage, Transformer } from 'react-konva';
+import useImage from 'use-image';
 import type { Slide, CanvasObject } from '@/app/slides/types/slides';
 import { CANVAS_WIDTH, CANVAS_HEIGHT, LINE_HEIGHT } from '@/app/slides/types/slides';
-
-// Dynamic imports for react-konva (SSR fix)
-const Stage = dynamic(() => import('react-konva').then(mod => mod.Stage), { ssr: false });
-const Layer = dynamic(() => import('react-konva').then(mod => mod.Layer), { ssr: false });
-const Rect = dynamic(() => import('react-konva').then(mod => mod.Rect), { ssr: false });
-const Text = dynamic(() => import('react-konva').then(mod => mod.Text), { ssr: false });
-const KonvaImage = dynamic(() => import('react-konva').then(mod => mod.Image), { ssr: false });
-const Transformer = dynamic(() => import('react-konva').then(mod => mod.Transformer), { ssr: false });
 
 interface SlideViewerProps {
     slide: Slide;
@@ -34,20 +25,9 @@ interface SlideViewerProps {
     onTextBlur: () => void;
 }
 
-// Background image component
+// Background image component using useImage hook for clean loading
 const BackgroundImageLayer = React.memo(({ base64 }: { base64?: string }) => {
-    const [image, setImage] = useState<HTMLImageElement | null>(null);
-
-    useEffect(() => {
-        if (!base64) {
-            setImage(null);
-            return;
-        }
-        const img = new window.Image();
-        img.crossOrigin = 'anonymous';
-        img.src = `data:image/png;base64,${base64}`;
-        img.onload = () => setImage(img);
-    }, [base64]);
+    const [image] = useImage(base64 ? `data:image/png;base64,${base64}` : '', 'anonymous');
 
     if (!image) {
         return <Rect x={0} y={0} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} fill="#000000" name="background" />;
@@ -100,12 +80,6 @@ const SlideViewer: React.FC<SlideViewerProps> = ({
     const [editAreaStyle, setEditAreaStyle] = useState<React.CSSProperties | null>(null);
     const [history, setHistory] = useState<string[]>([]);
     const [historyIndex, setHistoryIndex] = useState(-1);
-    const [isMounted, setIsMounted] = useState(false);
-
-    // SSR mount check
-    useEffect(() => {
-        setIsMounted(true);
-    }, []);
 
     // Initialize slide data
     useEffect(() => {
@@ -409,13 +383,7 @@ const SlideViewer: React.FC<SlideViewerProps> = ({
         }
     }, [selectedId, objects]);
 
-    if (!isMounted) {
-        return (
-            <div className="flex-1 bg-zinc-900/50 flex items-center justify-center">
-                <Loader2 className="animate-spin text-purple-500" size={32} />
-            </div>
-        );
-    }
+
 
     return (
         <div className="flex-1 bg-zinc-900/50 flex flex-col relative overflow-hidden">
