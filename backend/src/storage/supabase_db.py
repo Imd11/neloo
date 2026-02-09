@@ -1477,9 +1477,23 @@ async def save_chat_message(
             .execute()
         
         if existing.data and len(existing.data) > 0:
-            # Record already exists, return it without modification
+            # Record already exists: update message_data (keep seq stable)
             record = existing.data[0]
-            print(f"[SupabaseDB] Message already exists: {thread_id[:8]}... #{record.get('seq')} ({role})")
+            update_data = {
+                "role": role,
+                "message_data": message_data,
+                "updated_at": datetime.now().isoformat(),
+            }
+            update_result = await supabase.table("chat_messages")\
+                .update(update_data)\
+                .eq("thread_id", thread_id)\
+                .eq("message_id", message_id)\
+                .execute()
+            if update_result.data and len(update_result.data) > 0:
+                updated = update_result.data[0]
+                print(f"[SupabaseDB] Updated chat message: {thread_id[:8]}... #{updated.get('seq')} ({role})")
+                return updated
+            print(f"[SupabaseDB] Message exists but update returned empty: {thread_id[:8]}... #{record.get('seq')} ({role})")
             return record
         
         # Record doesn't exist, get next seq and insert
@@ -1548,4 +1562,3 @@ async def get_chat_messages(
     except Exception as e:
         print(f"[SupabaseDB] Error getting chat messages: {e}")
         return []
-

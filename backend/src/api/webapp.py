@@ -16,6 +16,7 @@ Routes:
 """
 
 import os
+import json
 import uuid
 import tempfile
 import asyncio
@@ -2791,7 +2792,7 @@ async def fork_thread(
 @app.get("/threads/{thread_id}/history")
 async def get_thread_history(
     thread_id: str,
-    user: dict = Depends(get_optional_user),
+    user: dict = Depends(get_current_user),
 ):
     """
     Get chat history for a thread (LangGraph SDK compatible format).
@@ -2806,24 +2807,49 @@ async def get_thread_history(
         ThreadState[] format expected by SDK's fetchHistory()
     """
     import httpx
-    
+
+    user_id = auth_get_user_id(user)
+    thread_record = await get_thread_by_langgraph_id(thread_id)
+    if thread_record and thread_record.get("user_id") != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    async def fallback_from_db() -> list[dict]:
+        messages = await get_chat_messages(thread_id)
+        if not messages:
+            return []
+        todos = extract_todos_from_messages(messages)
+        return [{
+            "values": {
+                "messages": messages,
+                "todos": todos,
+            },
+            "next": [],
+            "metadata": {},
+            "created_at": None,
+            "tasks": [],
+        }]
+
+    internal_base_url = (
+        os.environ.get("LANGGRAPH_INTERNAL_URL")
+        or f"http://127.0.0.1:{os.environ.get('LANGGRAPH_INTERNAL_PORT') or os.environ.get('PORT') or '8000'}"
+    ).rstrip("/")
+
     try:
         # Call LangGraph API's internal /threads/{thread_id}/state endpoint
         # This reads from the PostgresSaver checkpointer that already has the messages
         async with httpx.AsyncClient() as client:
-            # LangGraph API runs on localhost:8000 (same process)
             response = await client.get(
-                f"http://127.0.0.1:8000/threads/{thread_id}/state",
+                f"{internal_base_url}/threads/{thread_id}/state",
                 timeout=10.0,
             )
             
             if response.status_code == 404:
-                # Thread not found - return empty history
-                return []
+                # Checkpoint missing after restart; use DB fallback if available.
+                return await fallback_from_db()
             
             if response.status_code != 200:
                 print(f"[history] LangGraph state API returned {response.status_code}")
-                return []
+                return await fallback_from_db()
             
             state_data = response.json()
             
@@ -2832,7 +2858,7 @@ async def get_thread_history(
             messages = values.get("messages", [])
             
             if not messages:
-                return []
+                return await fallback_from_db()
             
             # Format messages for frontend compatibility
             formatted_messages = []
@@ -2871,24 +2897,7 @@ async def get_thread_history(
             
     except Exception as e:
         print(f"[history] Error fetching from LangGraph state API: {e}")
-        # Fallback to chat_messages table
-        messages = await get_chat_messages(thread_id)
-        if not messages:
-            return []
-        
-        # Extract todos from fallback messages
-        todos = extract_todos_from_messages(messages)
-        
-        return [{
-            "values": {
-                "messages": messages,
-                "todos": todos
-            },
-            "next": [],
-            "metadata": {},
-            "created_at": None,
-            "tasks": []
-        }]
+        return await fallback_from_db()
 
 
 def extract_todos_from_messages(messages: list) -> list:
@@ -2935,7 +2944,7 @@ def extract_todos_from_messages(messages: list) -> list:
 @app.post("/threads/{thread_id}/history")
 async def post_thread_history(
     thread_id: str,
-    user: dict = Depends(get_optional_user),
+    user: dict = Depends(get_current_user),
 ):
     """
     POST version of history endpoint for SDK compatibility.
@@ -2959,7 +2968,7 @@ class SaveMessageRequest(BaseModel):
 async def save_thread_message(
     thread_id: str,
     request: SaveMessageRequest,
-    user: dict = Depends(get_optional_user),
+    user: dict = Depends(get_current_user),
 ):
     """
     Save a chat message to the database.
@@ -2983,6 +2992,11 @@ async def save_thread_message(
     # Validate role
     if request.role not in ('user', 'assistant', 'system', 'tool'):
         raise HTTPException(status_code=400, detail=f"Invalid role: {request.role}")
+
+    user_id = auth_get_user_id(user)
+    thread_record = await get_thread_by_langgraph_id(thread_id)
+    if thread_record and thread_record.get("user_id") != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
     
     result = await save_chat_message(
         thread_id=thread_id,
@@ -3034,4 +3048,3 @@ app.include_router(resume_router)
 
 from .resume_ai_routes import router as resume_ai_router
 app.include_router(resume_ai_router)
-

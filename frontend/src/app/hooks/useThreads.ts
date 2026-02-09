@@ -14,6 +14,7 @@ export interface ThreadItem {
 }
 
 const DEFAULT_PAGE_SIZE = 20;
+const THREADS_FETCH_TIMEOUT_MS = 10000;
 
 export function useThreads(props: {
   status?: Thread["status"];
@@ -68,30 +69,45 @@ export function useThreads(props: {
         offset: String(pageIndex * pageSize),
       });
 
-      const resp = await fetch(`${deploymentUrl}/api/threads?${params.toString()}`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), THREADS_FETCH_TIMEOUT_MS);
 
-      if (!resp.ok) {
-        // If auth fails or backend is unavailable, return empty list rather than leaking global history.
+      try {
+        const resp = await fetch(`${deploymentUrl}/api/threads?${params.toString()}`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+          signal: controller.signal,
+        });
+
+        if (!resp.ok) {
+          // If auth fails or backend is unavailable, return empty list rather than leaking global history.
+          return [];
+        }
+
+        const data = await resp.json();
+        const threads = Array.isArray(data?.threads) ? data.threads : [];
+
+        // DB threads do not contain LangGraph status or message previews; keep UI stable with defaults.
+        return threads.map((t: any): ThreadItem => ({
+          id: t.langgraph_thread_id,
+          updatedAt: new Date(t.updated_at || t.created_at || Date.now()),
+          status: "idle" as Thread["status"],
+          title: t.title || "Untitled Thread",
+          description: "",
+          assistantId: undefined,
+          type: t.type || "chat",  // 默认为 chat
+        }));
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+          console.warn(`[useThreads] Request timeout after ${THREADS_FETCH_TIMEOUT_MS}ms`);
+        } else {
+          console.error("[useThreads] Failed to fetch threads:", error);
+        }
         return [];
+      } finally {
+        clearTimeout(timeoutId);
       }
-
-      const data = await resp.json();
-      const threads = Array.isArray(data?.threads) ? data.threads : [];
-
-      // DB threads do not contain LangGraph status or message previews; keep UI stable with defaults.
-      return threads.map((t: any): ThreadItem => ({
-        id: t.langgraph_thread_id,
-        updatedAt: new Date(t.updated_at || t.created_at || Date.now()),
-        status: "idle" as Thread["status"],
-        title: t.title || "Untitled Thread",
-        description: "",
-        assistantId: undefined,
-        type: t.type || "chat",  // 默认为 chat
-      }));
     },
     {
       revalidateFirstPage: true,
