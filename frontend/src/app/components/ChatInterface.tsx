@@ -61,7 +61,6 @@ import { Assistant, Message } from "@langchain/langgraph-sdk";
 import { extractStringFromMessageContent } from "@/app/utils/utils";
 import { useChatContext } from "@/providers/ChatProvider";
 import { cn } from "@/lib/utils";
-import { useStickToBottom } from "use-stick-to-bottom";
 import { FilesPopover } from "@/app/components/TasksFilesSidebar";
 import { toast } from "sonner";
 import { useQueryState } from "nuqs";
@@ -136,7 +135,8 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
 
 
   const [input, setInput] = useState("");
-  const { scrollRef, contentRef } = useStickToBottom();
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
   const bottomSentinelRef = useRef<HTMLDivElement | null>(null);
   const didMountRef = useRef(false);
   const lastAnchoredUserMessageIdRef = useRef<string | null>(null);
@@ -144,6 +144,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
   const touchStartYRef = useRef<number | null>(null);
   const isProgrammaticScrollRef = useRef(false);
   const lastScrollTopRef = useRef(0);
+  const overflowedInCurrentTurnRef = useRef(false);
 
 
 
@@ -575,12 +576,20 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
     const streamCompleted = prevIsLoadingRef.current && !isLoading;
     const historyLoaded = prevIsThreadLoadingRef.current && !isThreadLoading;
 
-    if (streamCompleted && anchorSpacerHeight > 0) {
+    if (streamCompleted) {
       const container = scrollRef.current;
-      if (container) {
-        // Keep the spacer only if it's still needed to prevent scrollTop from being clamped.
-        // This avoids the "page drops down" effect when the AI output is short and the
-        // conversation would otherwise become non-scrollable.
+      const overflowedInThisTurn = overflowedInCurrentTurnRef.current;
+      overflowedInCurrentTurnRef.current = false;
+
+      if (overflowedInThisTurn) {
+        // Overflow already started in this turn: remove artificial bottom space
+        // so the conversation does not end with a large blank area.
+        if (anchorSpacerHeight !== 0) {
+          setAnchorSpacerHeight(0);
+        }
+      } else if (anchorSpacerHeight > 0 && container) {
+        // No overflow during this turn: keep only the minimum spacer required
+        // to avoid abrupt scroll clamping when stream ends.
         const maxScrollTopWithoutSpacer = Math.max(
           0,
           (container.scrollHeight - anchorSpacerHeight) - container.clientHeight
@@ -613,7 +622,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
     }
     prevIsLoadingRef.current = isLoading;
     prevIsThreadLoadingRef.current = isThreadLoading;
-  }, [isLoading, isThreadLoading, messages, fetchSuggestedQuestions]);
+  }, [isLoading, isThreadLoading, messages, fetchSuggestedQuestions, anchorSpacerHeight, scrollRef]);
 
   // Clear suggestions when user starts typing
   useEffect(() => {
@@ -649,12 +658,17 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
     if (latestHuman.id === pendingAnchorMessageId) return;
 
     // New turn: re-enable follow by default.
+    overflowedInCurrentTurnRef.current = false;
+    if (anchorSpacerHeight !== 0) {
+      setAnchorSpacerHeight(0);
+    }
     setAutoFollowEnabled(true);
     setPendingAnchorMessageId(latestHuman.id);
   }, [
     messages,
     isThreadLoading,
     pendingAnchorMessageId,
+    anchorSpacerHeight,
   ]);
 
   // Ensure we have enough scroll range to place the latest user message at the top.
@@ -711,6 +725,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
   useEffect(() => {
     if (!isLoading) return;
     if (!autoFollowEnabled) return;
+    if (pendingAnchorMessageId) return;
 
     const container = scrollRef.current;
     const sentinel = bottomSentinelRef.current;
@@ -723,6 +738,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
       const overflow =
         sentinelRect.bottom - (containerRect.bottom - bottomPadding);
       if (overflow > 0) {
+        overflowedInCurrentTurnRef.current = true;
         isProgrammaticScrollRef.current = true;
         container.scrollTop += overflow;
         requestAnimationFrame(() => {
@@ -733,7 +749,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
     });
 
     return () => cancelAnimationFrame(raf);
-  }, [isLoading, autoFollowEnabled, messages, todos.length, scrollRef]);
+  }, [isLoading, autoFollowEnabled, messages, todos.length, scrollRef, pendingAnchorMessageId]);
 
   const handleChatWheel = useCallback(
     (e: React.WheelEvent) => {
