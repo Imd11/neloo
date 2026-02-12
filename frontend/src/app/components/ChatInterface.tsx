@@ -303,6 +303,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
           });
 
           // Send message first - this will trigger useStream to create thread
+          setSuggestedQuestions([]);
           sendMessage(messageContent);
           setInput("");
 
@@ -313,12 +314,14 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
         } else if (hasStagedFiles && threadId) {
           // We already have a threadId, commit files first then send
           await fileUpload.commitFiles(threadId);
+          setSuggestedQuestions([]);
           sendMessage(messageContent);
           setInput("");
           fileUpload.clearFiles();
         } else {
           // No files to commit, just send message
           // useStream will create thread if needed (via onThreadId callback)
+          setSuggestedQuestions([]);
           sendMessage(messageContent);
           setInput("");
           fileUpload.clearFiles();
@@ -624,13 +627,6 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
     prevIsThreadLoadingRef.current = isThreadLoading;
   }, [isLoading, isThreadLoading, messages, fetchSuggestedQuestions, anchorSpacerHeight, scrollRef]);
 
-  // Clear suggestions when user starts typing
-  useEffect(() => {
-    if (input.length > 0) {
-      setSuggestedQuestions([]);
-    }
-  }, [input]);
-
   // Reposition: when a new user message appears, scroll it to the top of viewport (with padding).
   // Do not reposition when loading history or when user has manually scrolled up (autoFollow disabled).
   useEffect(() => {
@@ -797,7 +793,6 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
   // Handle clicking a suggested question
   const handleSuggestionClick = useCallback((question: string) => {
     setInput(question);
-    setSuggestedQuestions([]);
     inputRef.current?.focus();
   }, []);
 
