@@ -68,6 +68,7 @@ export interface AppSidebarProps {
   onMutateReady?: (mutate: () => void) => void;
   onInterruptCountChange?: (count: number) => void;
   onUseAgent?: (agentId: string, agentName: string, systemPrompt: string) => void;
+  activeThreadId?: string | null;
 }
 
 export function AppSidebar({
@@ -78,6 +79,7 @@ export function AppSidebar({
   onMutateReady,
   onInterruptCountChange,
   onUseAgent,
+  activeThreadId,
 }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -459,6 +461,7 @@ export function AppSidebar({
             {sortedHistory.map((item) => {
               const isPinned = pinnedIds.includes(item.id);
               const isMenuOpen = openMenuId === item.id;
+              const isActive = activeThreadId === item.id;
 
               return (
                 <div
@@ -467,7 +470,8 @@ export function AppSidebar({
                     "group relative w-full flex items-center px-2 py-2 rounded-lg text-sm text-sidebar-foreground cursor-pointer",
                     "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                     "transition-colors duration-150",
-                    isMenuOpen && "bg-sidebar-accent text-sidebar-accent-foreground"
+                    isMenuOpen && "bg-sidebar-accent text-sidebar-accent-foreground",
+                    isActive && "bg-sidebar-accent text-sidebar-accent-foreground"
                   )}
                   onClick={() => onThreadSelect?.(item.id)}
                 >

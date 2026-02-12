@@ -843,7 +843,8 @@ function HomePageInner() {
             onLibrary: handleLibrary,
             onThreadSelect: (id: string) => { handleThreadSelect(id); },
             onMutateReady: (fn: () => void) => setMutateThreads(() => fn),
-            onInterruptCountChange: undefined
+            onInterruptCountChange: undefined,
+            activeThreadId: threadId,
           }}
           topBarProps={{
             currentModelId: selectedModel || undefined,
