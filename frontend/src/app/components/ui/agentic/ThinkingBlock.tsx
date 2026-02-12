@@ -6,15 +6,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { MarkdownContent } from "@/app/components/MarkdownContent";
 
-// Helper to strip basic markdown for preview
-function getPreviewText(content: string): string {
-    return content
-        .replace(/[#*`_[\]]/g, '')
-        .replace(/\n/g, ' ')
-        .trim()
-        .substring(0, 100);
-}
-
 interface ThinkingBlockProps {
     content: string;
     isRedacted?: boolean;
@@ -74,8 +65,6 @@ export function ThinkingBlock({
         );
     }
 
-    const previewText = getPreviewText(content);
-
     return (
         <div className={cn("font-sans py-0.5", className)}>
             {/* Capsule Button - identical structure to ToolStep */}
@@ -95,12 +84,7 @@ export function ThinkingBlock({
                 )}
 
                 {/* Text Content */}
-                <span className="font-medium text-zinc-700 dark:text-zinc-300 truncate max-w-[400px] flex items-center gap-1.5">
-                    <span className="text-zinc-500 dark:text-zinc-300 font-normal">正在思考</span>
-                    {!isExpanded && previewText && (
-                        <span className="text-zinc-800 dark:text-zinc-200">{previewText}</span>
-                    )}
-                </span>
+                <span className="text-zinc-500 dark:text-zinc-300 font-normal text-[13px]">正在思考</span>
 
                 {/* Chevron */}
                 <span className="text-zinc-400 dark:text-zinc-500">
