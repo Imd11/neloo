@@ -18,14 +18,40 @@ import { useAgentContext } from "@/providers/AgentProvider";
 import { toast } from "sonner";
 import { extractStringFromMessageContent } from "@/app/utils/utils";
 
+const SAVE_MESSAGE_MAX_RETRIES = 2;
+const SAVE_MESSAGE_RETRY_BASE_DELAY_MS = 500;
+const SAVE_MESSAGE_RETRY_MAX_DELAY_MS = 4000;
+const PENDING_SAVE_FLUSH_INTERVAL_MS = 15000;
+
+type SaveMessageResult = {
+  ok: boolean;
+  retryable: boolean;
+  status?: number;
+};
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+function isRetryableSaveStatus(status: number): boolean {
+  if (status === 401 || status === 403) {
+    return false;
+  }
+  return status >= 500 || status === 408;
+}
+
 // Helper to save a message to the database
 async function saveMessageToDb(
   config: { deploymentUrl: string } | null,
   accessToken: string | undefined,
   threadId: string,
   message: Message
-): Promise<void> {
-  if (!config?.deploymentUrl || !accessToken || !threadId) return;
+): Promise<SaveMessageResult> {
+  if (!config?.deploymentUrl || !accessToken || !threadId || !message.id) {
+    return { ok: false, retryable: false };
+  }
 
   try {
     const response = await fetch(
@@ -46,11 +72,48 @@ async function saveMessageToDb(
 
     if (response.ok) {
       console.log(`[useChat] Saved message ${message.id?.slice(0, 8)}... to database`);
+      return { ok: true, retryable: false, status: response.status };
     } else {
-      console.error("[useChat] Failed to save message:", await response.text());
+      const detail = await response.text().catch(() => "");
+      const retryable = isRetryableSaveStatus(response.status);
+      console.error(`[useChat] Failed to save message (${response.status}): ${detail}`);
+      return { ok: false, retryable, status: response.status };
     }
   } catch (error) {
     console.error("[useChat] Error saving message:", error);
+    return { ok: false, retryable: true };
+  }
+}
+
+async function saveMessageToDbWithRetry(
+  config: { deploymentUrl: string } | null,
+  accessToken: string | undefined,
+  threadId: string,
+  message: Message,
+  maxRetries: number = SAVE_MESSAGE_MAX_RETRIES
+): Promise<boolean> {
+  let retryCount = 0;
+
+  while (true) {
+    const result = await saveMessageToDb(config, accessToken, threadId, message);
+    if (result.ok) {
+      return true;
+    }
+
+    if (!result.retryable || retryCount >= maxRetries) {
+      return false;
+    }
+
+    retryCount += 1;
+    const backoff = Math.min(
+      SAVE_MESSAGE_RETRY_BASE_DELAY_MS * 2 ** (retryCount - 1),
+      SAVE_MESSAGE_RETRY_MAX_DELAY_MS
+    );
+    console.warn(
+      `[useChat] Retry saving message ${message.id?.slice(0, 8)}... ` +
+      `(${retryCount}/${maxRetries}) in ${backoff}ms`
+    );
+    await delay(backoff);
   }
 }
 
@@ -79,6 +142,8 @@ export function useChat({
   const client = useClient();
   const { session } = useAuth();
   const config = getConfig();
+  const deploymentUrl = config?.deploymentUrl;
+  const accessToken = session?.access_token;
   const createdThreadsRef = useRef<Set<string>>(new Set());
   const creatingThreadsRef = useRef<Set<string>>(new Set());
   const recoveringThreadsRef = useRef<Set<string>>(new Set());
@@ -96,6 +161,11 @@ export function useChat({
 
   // Track if thread history is unavailable (e.g., LangGraph checkpoint lost after restart)
   const [historyUnavailable, setHistoryUnavailable] = useState(false);
+  // Track saved message IDs to avoid duplicate saves
+  const savedMessageIdsRef = useRef<Set<string>>(new Set());
+  // Track failed saves so we can retry in the background.
+  const pendingSaveMessagesRef = useRef<Map<string, { threadId: string; message: Message }>>(new Map());
+  const isFlushingPendingSavesRef = useRef(false);
 
   // Track whether we've generated a title for this thread.
   // Also keep the first user message so we can generate a title once the thread record exists.
@@ -268,6 +338,88 @@ export function useChat({
     [config?.deploymentUrl, session?.access_token, threadMode, webDevMode]
   );
 
+  const persistMessage = useCallback(
+    async (targetThreadId: string, message: Message): Promise<boolean> => {
+      if (!message.id || !deploymentUrl || !accessToken) {
+        return false;
+      }
+
+      if (savedMessageIdsRef.current.has(message.id)) {
+        pendingSaveMessagesRef.current.delete(message.id);
+        return true;
+      }
+
+      const saved = await saveMessageToDbWithRetry(
+        { deploymentUrl },
+        accessToken,
+        targetThreadId,
+        message
+      );
+
+      if (saved) {
+        savedMessageIdsRef.current.add(message.id);
+        pendingSaveMessagesRef.current.delete(message.id);
+        return true;
+      }
+
+      pendingSaveMessagesRef.current.set(message.id, {
+        threadId: targetThreadId,
+        message,
+      });
+      return false;
+    },
+    [accessToken, deploymentUrl]
+  );
+
+  const persistUnsavedMessages = useCallback(
+    async (
+      targetThreadId: string,
+      messagesToSave: Message[]
+    ): Promise<{ attempted: number; failed: number }> => {
+      if (!accessToken || !deploymentUrl) {
+        return { attempted: 0, failed: 0 };
+      }
+
+      const tasks: Promise<boolean>[] = [];
+      for (const msg of messagesToSave) {
+        if (!msg.id || savedMessageIdsRef.current.has(msg.id)) {
+          continue;
+        }
+        tasks.push(persistMessage(targetThreadId, msg));
+      }
+
+      if (tasks.length === 0) {
+        return { attempted: 0, failed: 0 };
+      }
+
+      const results = await Promise.all(tasks);
+      const failed = results.filter((ok) => !ok).length;
+      return { attempted: tasks.length, failed };
+    },
+    [accessToken, deploymentUrl, persistMessage]
+  );
+
+  const flushPendingSaveQueue = useCallback(async () => {
+    if (isFlushingPendingSavesRef.current || !accessToken || !deploymentUrl) {
+      return;
+    }
+
+    const pending = Array.from(pendingSaveMessagesRef.current.values());
+    if (pending.length === 0) {
+      return;
+    }
+
+    isFlushingPendingSavesRef.current = true;
+    try {
+      console.log(`[useChat] Flushing ${pending.length} pending message saves...`);
+      for (const item of pending) {
+        await persistMessage(item.threadId, item.message);
+      }
+    } finally {
+      isFlushingPendingSavesRef.current = false;
+    }
+  }, [accessToken, deploymentUrl, persistMessage]);
+
   // Handle errors, especially 404 when thread history doesn't exist in LangGraph
   const handleError = async (error: unknown) => {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -275,23 +427,11 @@ export function useChat({
 
     // Save any unsent messages even on error (important for message persistence)
     const currentThreadId = threadId;
-    const token = session?.access_token;
-    const currentConfig = config;
-
-    if (currentThreadId && token && currentConfig) {
+    if (currentThreadId && accessToken && deploymentUrl) {
       const messagesToSave = messagesSnapshotRef.current;
-      const savePromises: Promise<void>[] = [];
-
-      for (const msg of messagesToSave) {
-        if (msg.id && !savedMessageIdsRef.current.has(msg.id)) {
-          savedMessageIdsRef.current.add(msg.id);
-          savePromises.push(saveMessageToDb(currentConfig, token, currentThreadId, msg));
-        }
-      }
-
-      if (savePromises.length > 0) {
-        console.log(`[useChat] Saving ${savePromises.length} messages on error...`);
-        await Promise.all(savePromises);
+      const { attempted, failed } = await persistUnsavedMessages(currentThreadId, messagesToSave);
+      if (attempted > 0) {
+        console.log(`[useChat] Save-on-error attempted=${attempted}, failed=${failed}`);
       }
     }
 
@@ -373,7 +513,22 @@ export function useChat({
 
   // Ref to hold the latest messages snapshot for saving before history rehydrate
   const messagesSnapshotRef = useRef<Message[]>([]);
-  const pendingSavePromisesRef = useRef<Promise<void>[]>([]);
+
+  // Best-effort retry loop for transient persistence failures.
+  useEffect(() => {
+    if (!accessToken || !deploymentUrl) {
+      return;
+    }
+
+    void flushPendingSaveQueue();
+    const timer = window.setInterval(() => {
+      void flushPendingSaveQueue();
+    }, PENDING_SAVE_FLUSH_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [accessToken, deploymentUrl, flushPendingSaveQueue]);
 
   const stream = useStream<StateType>({
     assistantId: effectiveAssistantId,
@@ -391,32 +546,22 @@ export function useChat({
     // This prevents race condition where history rehydrate overwrites unsaved messages
     onFinish: async () => {
       const currentThreadId = threadId;
-      const token = session?.access_token;
-      const currentConfig = config;
 
-      if (!currentThreadId || !token || !currentConfig) {
+      if (!currentThreadId || !accessToken || !deploymentUrl) {
         onHistoryRevalidate?.();
         return;
       }
 
       // Use the latest snapshot of messages (captured in useEffect below)
       const messagesToSave = messagesSnapshotRef.current;
-      const savePromises: Promise<void>[] = [];
+      const { attempted, failed } = await persistUnsavedMessages(currentThreadId, messagesToSave);
 
-      for (const msg of messagesToSave) {
-        if (msg.id && !savedMessageIdsRef.current.has(msg.id)) {
-          // Save all message types (human, ai, tool)
-          savedMessageIdsRef.current.add(msg.id);
-          savePromises.push(saveMessageToDb(currentConfig, token, currentThreadId, msg));
-        }
+      // Wait for all save attempts to complete BEFORE revalidating.
+      if (attempted > 0) {
+        console.log(`[useChat] Save-on-finish attempted=${attempted}, failed=${failed}`);
       }
 
-      // Wait for all saves to complete BEFORE revalidating
-      if (savePromises.length > 0) {
-        console.log(`[useChat] Saving ${savePromises.length} messages before rehydrate...`);
-        await Promise.all(savePromises);
-        console.log(`[useChat] All messages saved, now revalidating history`);
-      }
+      void flushPendingSaveQueue();
 
       onHistoryRevalidate?.();
     },
@@ -481,11 +626,8 @@ export function useChat({
         }
       }
     },
-    [stream, activeAssistant?.config, onHistoryRevalidate, threadId, generateTitleForThread, session?.access_token, config, activeAgent]
+    [stream, activeAssistant?.config, onHistoryRevalidate, threadId, generateTitleForThread, activeAgent]
   );
-
-  // Track saved message IDs to avoid duplicate saves
-  const savedMessageIdsRef = useRef<Set<string>>(new Set());
 
   // Keep messagesSnapshotRef updated with the latest messages during streaming
   // This captures the "complete state" before history rehydrate overwrites it
