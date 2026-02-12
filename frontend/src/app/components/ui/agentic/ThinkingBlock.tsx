@@ -29,6 +29,37 @@ export function ThinkingBlock({
     className,
 }: ThinkingBlockProps) {
     const [isExpanded, setIsExpanded] = useState(defaultExpanded ?? false);
+    const [elapsed, setElapsed] = useState(0);
+    const startRef = useRef<number | null>(null);
+    const frozenRef = useRef<number | null>(null);
+
+    // Timer logic
+    useEffect(() => {
+        if (isStreaming) {
+            // Capture start time once
+            if (!startRef.current) {
+                startRef.current = startTime || Date.now();
+            }
+            frozenRef.current = null;
+            const tick = () => {
+                const s = Math.floor((Date.now() - (startRef.current || Date.now())) / 1000);
+                setElapsed(s);
+            };
+            tick();
+            const id = setInterval(tick, 1000);
+            return () => clearInterval(id);
+        } else {
+            // Streaming just ended — freeze the value
+            if (duration != null) {
+                frozenRef.current = Math.round(duration);
+            } else if (startRef.current && !frozenRef.current) {
+                frozenRef.current = Math.floor((Date.now() - startRef.current) / 1000);
+            }
+            if (frozenRef.current != null) {
+                setElapsed(frozenRef.current);
+            }
+        }
+    }, [isStreaming, startTime, duration]);
 
     // Auto-expand when streaming, collapse when done
     useEffect(() => {
@@ -85,6 +116,11 @@ export function ThinkingBlock({
 
                 {/* Text Content */}
                 <span className="text-zinc-500 dark:text-zinc-300 font-normal text-[13px]">正在思考</span>
+
+                {/* Timer */}
+                {elapsed > 0 && (
+                    <span className="text-zinc-400 dark:text-zinc-500 font-normal text-[12px] tabular-nums">{elapsed}s</span>
+                )}
 
                 {/* Chevron */}
                 <span className="text-zinc-400 dark:text-zinc-500">
