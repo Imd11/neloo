@@ -144,6 +144,7 @@ export function useChat({
   const config = getConfig();
   const deploymentUrl = config?.deploymentUrl;
   const accessToken = session?.access_token;
+  const currentThreadIdRef = useRef<string | null>(threadId);
   const createdThreadsRef = useRef<Set<string>>(new Set());
   const creatingThreadsRef = useRef<Set<string>>(new Set());
   const recoveringThreadsRef = useRef<Set<string>>(new Set());
@@ -171,6 +172,10 @@ export function useChat({
   // Also keep the first user message so we can generate a title once the thread record exists.
   const titleGeneratedRef = useRef<Set<string>>(new Set());
   const pendingFirstMessageRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    currentThreadIdRef.current = threadId;
+  }, [threadId]);
 
   const generateTitleForThread = useCallback(
     async (currentThreadId: string, userMessage: string) => {
@@ -426,7 +431,7 @@ export function useChat({
     const lowerError = errorMessage.toLowerCase();
 
     // Save any unsent messages even on error (important for message persistence)
-    const currentThreadId = threadId;
+    const currentThreadId = currentThreadIdRef.current;
     if (currentThreadId && accessToken && deploymentUrl) {
       const messagesToSave = messagesSnapshotRef.current;
       const { attempted, failed } = await persistUnsavedMessages(currentThreadId, messagesToSave);
@@ -535,7 +540,10 @@ export function useChat({
     client: client ?? undefined,
     reconnectOnMount: true,
     threadId: threadId ?? null,
-    onThreadId: setThreadId,
+    onThreadId: (nextThreadId) => {
+      currentThreadIdRef.current = nextThreadId;
+      setThreadId(nextThreadId);
+    },
     defaultHeaders: {
       "x-auth-scheme": "langsmith",
       ...(session?.access_token
@@ -545,7 +553,7 @@ export function useChat({
     // Save all unsaved messages and AWAIT completion BEFORE revalidating history
     // This prevents race condition where history rehydrate overwrites unsaved messages
     onFinish: async () => {
-      const currentThreadId = threadId;
+      const currentThreadId = currentThreadIdRef.current;
 
       if (!currentThreadId || !accessToken || !deploymentUrl) {
         onHistoryRevalidate?.();
