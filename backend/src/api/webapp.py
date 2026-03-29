@@ -316,7 +316,10 @@ async def _ensure_langgraph_runtime_thread(
             todos = extract_todos_from_messages(db_messages)
             patch_resp = await client.post(
                 f"{base_url}/threads/{thread_id}/state",
-                json={"values": {"messages": db_messages, "todos": todos}},
+                json={
+                    "values": {"messages": db_messages, "todos": todos},
+                    "as_node": "__input__",
+                },
                 timeout=10.0,
             )
             if patch_resp.status_code not in (200, 201):

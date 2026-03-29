@@ -44,5 +44,5 @@ ENV PORT=8000
 # 暴露端口
 EXPOSE 8000
 
-# 启动命令 - 使用当前环境兼容的 LangGraph CLI 入口
-CMD ["python", "-m", "langgraph_cli", "dev", "--port", "8000", "--host", "0.0.0.0", "--allow-blocking"]
+# 启动命令 - 使用当前环境兼容的 LangGraph CLI 入口，并关闭热重载
+CMD ["python", "-m", "langgraph_cli", "dev", "--no-reload", "--port", "8000", "--host", "0.0.0.0", "--allow-blocking"]
