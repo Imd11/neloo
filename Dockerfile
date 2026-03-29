@@ -44,6 +44,5 @@ ENV PORT=8000
 # 暴露端口
 EXPOSE 8000
 
-# 启动命令 - 使用 langgraph dev 启动服务
-# langgraph.json 已配置 PostgreSQL store 用于持久化
-CMD ["python", "-m", "langgraph_cli", "dev", "--port", "8000", "--host", "0.0.0.0", "--allow-blocking"]
+# 启动命令 - 使用生产入口，显式启用 PostgreSQL checkpointer
+CMD ["python", "start.py"]

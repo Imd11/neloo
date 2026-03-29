@@ -40,6 +40,7 @@ from ..storage import save_image_base64, get_image_url
 from ..runtime_context import user_id_ctx as _user_id_ctx, thread_id_ctx as _thread_id_ctx
 from ..sandbox import get_executor, get_e2b_backend_factory
 from .integration_tools import INTEGRATION_TOOLS
+from .persistence_middleware import MessagePersistenceMiddleware
 
 # Document generation tools (each in separate file)
 from ..tools.excel_generator import EXCEL_TOOLS
@@ -1351,10 +1352,12 @@ def build_graph(model_id: str | None = None, mode: str = "default"):
     # Use CUSTOM_TOOLS which now includes INTEGRATION_TOOLS
     # (Runtime Dispatcher pattern - no dynamic injection needed)
     tools = list(CUSTOM_TOOLS)
+    middleware = [MessagePersistenceMiddleware()]
     
     return create_deep_agent(
         model=model,
         tools=tools,
+        middleware=middleware,
         system_prompt=system_prompt,
         subagents=DATA_ANALYST_SUBAGENTS,  # Enable specialized subagents
         interrupt_on=interrupt_on,          # Enable HITL if configured
