@@ -763,6 +763,30 @@ function HomePageInner() {
     }
   }, [fetchAssistant, selectedModel, config]);
 
+  const persistThreadModelSelection = useCallback(async (langgraphThreadId: string, modelId: string | null) => {
+    if (!config || !session?.access_token) return;
+
+    try {
+      await fetch(`${config.deploymentUrl}/api/threads/${langgraphThreadId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ model_id: modelId }),
+      });
+    } catch (error) {
+      console.error("Failed to persist thread model:", error);
+    }
+  }, [config, session?.access_token]);
+
+  const handleModelSelect = useCallback((id: string) => {
+    setSelectedModel(id);
+    if (threadId) {
+      void persistThreadModelSelection(threadId, id);
+    }
+  }, [threadId, persistThreadModelSelection]);
+
   const handleNewThread = () => {
     if (!user) {
       router.push("/login");
@@ -848,7 +872,7 @@ function HomePageInner() {
           }}
           topBarProps={{
             currentModelId: selectedModel || undefined,
-            onModelSelect: (id: string) => setSelectedModel(id),
+            onModelSelect: handleModelSelect,
             mode: uiMode,
           }}
         >

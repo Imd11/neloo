@@ -167,6 +167,8 @@ export function useChat({
   // Track failed saves so we can retry in the background.
   const pendingSaveMessagesRef = useRef<Map<string, { threadId: string; message: Message }>>(new Map());
   const isFlushingPendingSavesRef = useRef(false);
+  // Ref to hold the latest messages snapshot for saving before history rehydrate
+  const messagesSnapshotRef = useRef<Message[]>([]);
 
   // Track whether we've generated a title for this thread.
   // Also keep the first user message so we can generate a title once the thread record exists.
@@ -176,6 +178,18 @@ export function useChat({
   useEffect(() => {
     currentThreadIdRef.current = threadId;
   }, [threadId]);
+
+  const currentCreateMode = useMemo(() => {
+    if (fortuneMode || threadMode === "fortune") return "fortune";
+    if (webDevMode || threadMode === "web-dev") return "web-dev";
+    return "default";
+  }, [fortuneMode, threadMode, webDevMode]);
+
+  const currentBaseModelId = useMemo(() => {
+    const rawId = activeAssistant?.graph_id || activeAssistant?.assistant_id || null;
+    if (!rawId) return null;
+    return rawId.replace(/-(web-dev|fortune)$/, "");
+  }, [activeAssistant?.assistant_id, activeAssistant?.graph_id]);
 
   const generateTitleForThread = useCallback(
     async (currentThreadId: string, userMessage: string) => {
@@ -209,138 +223,6 @@ export function useChat({
       }
     },
     [config?.deploymentUrl, session?.access_token, onHistoryRevalidate]
-  );
-
-  // If the URL contains a threadId but the user isn't logged in, clear it.
-  // This prevents unauthenticated users from accessing globally addressable threads.
-  useEffect(() => {
-    if (!threadId) return;
-    if (session?.access_token) return;
-    setThreadId(null);
-  }, [threadId, session?.access_token, setThreadId]);
-
-  // Create/verify the thread record in the DB when threadId is set.
-  // This is also our ownership gate: if the thread exists but belongs to another user, the backend returns 403.
-  useEffect(() => {
-    if (!threadId || !session || !config) return;
-
-    // Skip if already created/verified for this threadId
-    if (createdThreadsRef.current.has(threadId)) return;
-    if (creatingThreadsRef.current.has(threadId)) return;
-
-    creatingThreadsRef.current.add(threadId);
-
-    // Create thread in database
-    const createThread = async () => {
-      try {
-        const response = await fetch(`${config.deploymentUrl}/api/threads`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            langgraph_thread_id: threadId,
-            title: "New Task",
-            mode: webDevMode ? "web-dev" : "default",
-          }),
-        });
-
-        if (response.ok) {
-          const threadData = await response.json();
-          console.log(`[useChat] Created thread record for: ${threadId.slice(0, 8)}... mode=${threadData.mode}`);
-          createdThreadsRef.current.add(threadId);
-
-          // Update thread mode from server response
-          setThreadMode(threadData.mode || "default");
-
-          onHistoryRevalidate?.();
-
-          // If we already sent the first message before the DB record existed,
-          // generate a title now that creation/verification succeeded.
-          const pendingFirstMessage = pendingFirstMessageRef.current;
-          if (pendingFirstMessage) {
-            pendingFirstMessageRef.current = null;
-            await generateTitleForThread(threadId, pendingFirstMessage);
-          }
-          return;
-        } else {
-          const errorText = await response.text();
-          // If the thread belongs to another user, clear it immediately to prevent data leakage.
-          if (response.status === 403) {
-            console.warn("[useChat] Thread ownership mismatch, clearing threadId");
-            pendingFirstMessageRef.current = null;
-            setThreadId(null);
-            toast.error("无权限访问该对话", {
-              description: "该对话不属于当前账号，已为你切换到新对话。",
-            });
-            return;
-          }
-          console.error("[useChat] Failed to create thread:", errorText);
-        }
-      } catch (error) {
-        console.error("[useChat] Thread creation error:", error);
-      } finally {
-        creatingThreadsRef.current.delete(threadId);
-      }
-    };
-
-    createThread();
-  }, [threadId, session, config, onHistoryRevalidate, setThreadId, generateTitleForThread, webDevMode]);
-
-  // Note: Thread mode is now fetched as part of the createThread flow above.
-  // The POST /api/threads endpoint returns the thread data (including mode) for both
-  // new and existing threads, so we don't need a separate GET request.
-
-  // Reset mode and historyUnavailable when threadId changes
-  useEffect(() => {
-    if (!threadId) {
-      setThreadMode("default");
-      setWebDevMode(false);  // Reset to default for new threads
-    }
-    // Reset historyUnavailable flag when switching to a different thread
-    setHistoryUnavailable(false);
-  }, [threadId]);
-
-  const recoverRuntimeThread = useCallback(
-    async (currentThreadId: string): Promise<boolean> => {
-      if (!config?.deploymentUrl || !session?.access_token) return false;
-      if (recoveringThreadsRef.current.has(currentThreadId)) return false;
-
-      recoveringThreadsRef.current.add(currentThreadId);
-
-      try {
-        const mode = (threadMode === "web-dev" || webDevMode) ? "web-dev" : "default";
-        const response = await fetch(`${config.deploymentUrl}/api/threads`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            langgraph_thread_id: currentThreadId,
-            title: "New Task",
-            mode,
-          }),
-        });
-
-        if (!response.ok) {
-          const detail = await response.text().catch(() => "");
-          console.error(`[useChat] Runtime recover failed: ${response.status} ${detail}`);
-          return false;
-        }
-
-        createdThreadsRef.current.add(currentThreadId);
-        console.log(`[useChat] Runtime recover succeeded for thread: ${currentThreadId.slice(0, 8)}...`);
-        return true;
-      } catch (error) {
-        console.error("[useChat] Runtime recover error:", error);
-        return false;
-      } finally {
-        recoveringThreadsRef.current.delete(currentThreadId);
-      }
-    },
-    [config?.deploymentUrl, session?.access_token, threadMode, webDevMode]
   );
 
   const persistMessage = useCallback(
@@ -402,6 +284,162 @@ export function useChat({
       return { attempted: tasks.length, failed };
     },
     [accessToken, deploymentUrl, persistMessage]
+  );
+
+  const persistUnsavedHumanMessages = useCallback(
+    async (targetThreadId: string): Promise<{ attempted: number; failed: number }> => {
+      const humanMessages = messagesSnapshotRef.current.filter((message) => message.type === "human");
+      if (humanMessages.length === 0) {
+        return { attempted: 0, failed: 0 };
+      }
+      return persistUnsavedMessages(targetThreadId, humanMessages);
+    },
+    [persistUnsavedMessages]
+  );
+
+  // If the URL contains a threadId but the user isn't logged in, clear it.
+  // This prevents unauthenticated users from accessing globally addressable threads.
+  useEffect(() => {
+    if (!threadId) return;
+    if (session?.access_token) return;
+    setThreadId(null);
+  }, [threadId, session?.access_token, setThreadId]);
+
+  // Create/verify the thread record in the DB when threadId is set.
+  // This is also our ownership gate: if the thread exists but belongs to another user, the backend returns 403.
+  useEffect(() => {
+    if (!threadId || !session || !config) return;
+
+    // Skip if already created/verified for this threadId
+    if (createdThreadsRef.current.has(threadId)) return;
+    if (creatingThreadsRef.current.has(threadId)) return;
+
+    creatingThreadsRef.current.add(threadId);
+
+    // Create thread in database
+    const createThread = async () => {
+      try {
+        const response = await fetch(`${config.deploymentUrl}/api/threads`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            langgraph_thread_id: threadId,
+            title: "New Task",
+            mode: currentCreateMode,
+            model_id: currentBaseModelId,
+          }),
+        });
+
+        if (response.ok) {
+          const threadData = await response.json();
+          console.log(`[useChat] Created thread record for: ${threadId.slice(0, 8)}... mode=${threadData.mode}`);
+          createdThreadsRef.current.add(threadId);
+
+          // Update thread mode from server response
+          setThreadMode(threadData.mode || "default");
+
+          onHistoryRevalidate?.();
+          void persistUnsavedHumanMessages(threadId);
+
+          // If we already sent the first message before the DB record existed,
+          // generate a title now that creation/verification succeeded.
+          const pendingFirstMessage = pendingFirstMessageRef.current;
+          if (pendingFirstMessage) {
+            pendingFirstMessageRef.current = null;
+            await generateTitleForThread(threadId, pendingFirstMessage);
+          }
+          return;
+        } else {
+          const errorText = await response.text();
+          // If the thread belongs to another user, clear it immediately to prevent data leakage.
+          if (response.status === 403) {
+            console.warn("[useChat] Thread ownership mismatch, clearing threadId");
+            pendingFirstMessageRef.current = null;
+            setThreadId(null);
+            toast.error("无权限访问该对话", {
+              description: "该对话不属于当前账号，已为你切换到新对话。",
+            });
+            return;
+          }
+          console.error("[useChat] Failed to create thread:", errorText);
+        }
+      } catch (error) {
+        console.error("[useChat] Thread creation error:", error);
+      } finally {
+        creatingThreadsRef.current.delete(threadId);
+      }
+    };
+
+    createThread();
+  }, [
+    threadId,
+    session,
+    config,
+    onHistoryRevalidate,
+    setThreadId,
+    generateTitleForThread,
+    currentCreateMode,
+    currentBaseModelId,
+    persistUnsavedHumanMessages,
+  ]);
+
+  // Note: Thread mode is now fetched as part of the createThread flow above.
+  // The POST /api/threads endpoint returns the thread data (including mode) for both
+  // new and existing threads, so we don't need a separate GET request.
+
+  // Reset mode and historyUnavailable when threadId changes
+  useEffect(() => {
+    if (!threadId) {
+      setThreadMode("default");
+      setWebDevMode(false);  // Reset to default for new threads
+    }
+    // Reset historyUnavailable flag when switching to a different thread
+    setHistoryUnavailable(false);
+  }, [threadId]);
+
+  const recoverRuntimeThread = useCallback(
+    async (currentThreadId: string): Promise<boolean> => {
+      if (!config?.deploymentUrl || !session?.access_token) return false;
+      if (recoveringThreadsRef.current.has(currentThreadId)) return false;
+
+      recoveringThreadsRef.current.add(currentThreadId);
+
+      try {
+        const response = await fetch(`${config.deploymentUrl}/api/threads`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            langgraph_thread_id: currentThreadId,
+            title: "New Task",
+            mode: currentCreateMode,
+            model_id: currentBaseModelId,
+          }),
+        });
+
+        if (!response.ok) {
+          const detail = await response.text().catch(() => "");
+          console.error(`[useChat] Runtime recover failed: ${response.status} ${detail}`);
+          return false;
+        }
+
+        createdThreadsRef.current.add(currentThreadId);
+        void persistUnsavedHumanMessages(currentThreadId);
+        console.log(`[useChat] Runtime recover succeeded for thread: ${currentThreadId.slice(0, 8)}...`);
+        return true;
+      } catch (error) {
+        console.error("[useChat] Runtime recover error:", error);
+        return false;
+      } finally {
+        recoveringThreadsRef.current.delete(currentThreadId);
+      }
+    },
+    [config?.deploymentUrl, session?.access_token, currentCreateMode, currentBaseModelId, persistUnsavedHumanMessages]
   );
 
   const flushPendingSaveQueue = useCallback(async () => {
@@ -515,9 +553,6 @@ export function useChat({
     console.log(`[useChat] Using default graph: ${baseId}`);
     return baseId;
   }, [activeAssistant?.graph_id, activeAssistant?.assistant_id, isWebDevModeActive, isFortuneModeActive]);
-
-  // Ref to hold the latest messages snapshot for saving before history rehydrate
-  const messagesSnapshotRef = useRef<Message[]>([]);
 
   // Best-effort retry loop for transient persistence failures.
   useEffect(() => {
@@ -643,8 +678,12 @@ export function useChat({
     const currentMessages = stream.messages ?? [];
     if (currentMessages.length > 0) {
       messagesSnapshotRef.current = [...currentMessages];
+      const currentThreadId = currentThreadIdRef.current;
+      if (currentThreadId && createdThreadsRef.current.has(currentThreadId)) {
+        void persistUnsavedHumanMessages(currentThreadId);
+      }
     }
-  }, [stream.messages]);
+  }, [stream.messages, persistUnsavedHumanMessages]);
 
   const runSingleStep = useCallback(
     (
