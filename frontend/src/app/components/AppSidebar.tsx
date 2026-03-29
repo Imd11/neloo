@@ -307,7 +307,7 @@ export function AppSidebar({
               >
                 <img
                   src="/meloo-logo.png"
-                  alt="Meloo"
+                  alt="Neloo"
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -342,7 +342,7 @@ export function AppSidebar({
               className="font-semibold text-foreground text-sm"
               style={{ fontFamily: "'Nunito', sans-serif" }}
             >
-              Meloo
+              Neloo
             </span>
             <Button
               variant="ghost"

@@ -26,14 +26,14 @@ export default function TermsPage() {
 
                 <div className="prose prose-neutral dark:prose-invert max-w-none">
                     <p className="text-muted-foreground leading-relaxed mb-8">
-                        欢迎使用 Meloo（以下简称"本服务"）。请在使用本服务前仔细阅读以下服务条款。
+                        欢迎使用 Neloo（以下简称"本服务"）。请在使用本服务前仔细阅读以下服务条款。
                         使用本服务即表示您同意接受这些条款的约束。
                     </p>
 
                     <section className="mb-8">
                         <h2 className="text-xl font-semibold text-foreground mb-4">1. 服务说明</h2>
                         <p className="text-muted-foreground mb-4">
-                            Meloo 是一款 AI 驱动的数据分析助手，提供以下功能：
+                            Neloo 是一款 AI 驱动的数据分析助手，提供以下功能：
                         </p>
                         <ul className="list-disc list-inside text-muted-foreground space-y-2 ml-4">
                             <li>数据文件上传和分析</li>

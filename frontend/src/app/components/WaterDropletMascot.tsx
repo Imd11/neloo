@@ -68,7 +68,7 @@ export function WaterDropletMascot() {
             >
                 <img
                     src="/meloo-mascot.png"
-                    alt="Meloo"
+                    alt="Neloo"
                     className="w-full h-full object-contain"
                 />
             </motion.div>

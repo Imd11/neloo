@@ -610,7 +610,7 @@ function LoginComponent() {
   return (
     <div className="flex h-screen items-center justify-center">
       <div className="text-center space-y-4">
-        <h1 className="text-2xl font-bold">Welcome to Meloo</h1>
+        <h1 className="text-2xl font-bold">Welcome to Neloo</h1>
         <p className="text-muted-foreground">Please sign in to continue</p>
         <Button onClick={() => router.push("/login")}>Sign In</Button>
       </div>

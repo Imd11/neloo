@@ -66,10 +66,10 @@ def _get_sandbox_executor():
 
 
 # =============================================================================
-# Meloo - General Purpose AI Assistant System Prompt
+# Neloo - General Purpose AI Assistant System Prompt
 # =============================================================================
 
-GENERAL_ASSISTANT_PROMPT = """You are Meloo, a powerful AI assistant capable of solving complex tasks through reasoning and tool use.
+GENERAL_ASSISTANT_PROMPT = """You are Neloo, a powerful AI assistant capable of solving complex tasks through reasoning and tool use.
 
 ## Core Capabilities
 

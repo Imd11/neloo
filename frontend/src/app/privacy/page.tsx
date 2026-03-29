@@ -26,13 +26,13 @@ export default function PrivacyPage() {
 
                 <div className="prose prose-neutral dark:prose-invert max-w-none">
                     <p className="text-muted-foreground leading-relaxed mb-8">
-                        感谢您使用 Meloo（以下简称"我们"或"本服务"）。我们非常重视您的隐私和数据安全。
+                        感谢您使用 Neloo（以下简称"我们"或"本服务"）。我们非常重视您的隐私和数据安全。
                         本隐私政策旨在帮助您了解我们如何收集、使用、存储和保护您的信息。
                     </p>
 
                     <section className="mb-8">
                         <h2 className="text-xl font-semibold text-foreground mb-4">1. 我们收集的信息</h2>
-                        <p className="text-muted-foreground mb-4">当您使用 Meloo 时，我们可能会收集以下类型的信息：</p>
+                        <p className="text-muted-foreground mb-4">当您使用 Neloo 时，我们可能会收集以下类型的信息：</p>
                         <ul className="list-disc list-inside text-muted-foreground space-y-2 ml-4">
                             <li><strong>账户信息：</strong>您的邮箱地址、用户名和个人资料信息</li>
                             <li><strong>上传的文件：</strong>您通过本地上传或 Google Drive 导入的数据文件（如 CSV、Excel、PDF 等）</li>
