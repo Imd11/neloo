@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useSidebar } from "@/app/context/SidebarContext";
 import { cn } from "@/lib/utils";
-import { CHAT_MODELS, IMAGE_MODELS, LIGHT_LOGOS, type ModelInfo } from "@/lib/models";
+import { CHAT_MODELS, IMAGE_MODELS, LIGHT_LOGOS } from "@/lib/models";
 
 interface TopBarProps {
     hideUserActions?: boolean;
@@ -21,7 +21,7 @@ interface TopBarProps {
 }
 
 export function TopBar({ hideUserActions = false, currentModelId, onModelSelect, mode }: TopBarProps) {
-    const { toggle, collapsed, isMobile } = useSidebar();
+    const { toggle } = useSidebar();
     const [searchQuery, setSearchQuery] = useState("");
     const pathname = usePathname();
 
