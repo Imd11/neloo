@@ -1,3 +1,4 @@
+import { useEffect, useMemo } from "react";
 import useSWRInfinite from "swr/infinite";
 import type { Thread } from "@langchain/langgraph-sdk";
 import { getConfig } from "@/lib/config";
@@ -15,15 +16,67 @@ export interface ThreadItem {
 
 const DEFAULT_PAGE_SIZE = 20;
 const THREADS_FETCH_TIMEOUT_MS = 10000;
+const THREADS_CACHE_PREFIX = "neloo:threads-cache";
+
+function buildThreadsCacheKey(
+  userId: string | undefined,
+  status: Thread["status"] | undefined,
+  pageSize: number
+) {
+  if (!userId) return null;
+  return `${THREADS_CACHE_PREFIX}:${userId}:${status ?? "all"}:${pageSize}`;
+}
+
+function readThreadsCache(cacheKey: string | null): ThreadItem[] {
+  if (!cacheKey || typeof window === "undefined") return [];
+
+  try {
+    const raw = window.localStorage.getItem(cacheKey);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.map((item: any): ThreadItem => ({
+      ...item,
+      updatedAt: new Date(item.updatedAt),
+    }));
+  } catch (error) {
+    console.warn("[useThreads] Failed to read local cache:", error);
+    return [];
+  }
+}
+
+function writeThreadsCache(cacheKey: string | null, items: ThreadItem[]) {
+  if (!cacheKey || typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(
+      cacheKey,
+      JSON.stringify(
+        items.map((item) => ({
+          ...item,
+          updatedAt: item.updatedAt.toISOString(),
+        }))
+      )
+    );
+  } catch (error) {
+    console.warn("[useThreads] Failed to write local cache:", error);
+  }
+}
 
 export function useThreads(props: {
   status?: Thread["status"];
   limit?: number;
 }) {
   const pageSize = props.limit || DEFAULT_PAGE_SIZE;
-  const { session } = useAuth();
+  const { session, user } = useAuth();
+  const cacheKey = useMemo(
+    () => buildThreadsCacheKey(user?.id, props?.status, pageSize),
+    [user?.id, props?.status, pageSize]
+  );
+  const cachedThreads = useMemo(() => readThreadsCache(cacheKey), [cacheKey]);
 
-  return useSWRInfinite(
+  const swr = useSWRInfinite(
     (pageIndex: number, previousPageData: ThreadItem[] | null) => {
       const config = getConfig();
 
@@ -59,6 +112,11 @@ export function useThreads(props: {
       status?: Thread["status"];
       accessToken: string | null;
     }) => {
+      const fallbackPage = cachedThreads.slice(
+        pageIndex * pageSize,
+        (pageIndex + 1) * pageSize
+      );
+
       if (!accessToken) {
         // Not authenticated: do not show any history.
         return [];
@@ -81,8 +139,7 @@ export function useThreads(props: {
         });
 
         if (!resp.ok) {
-          // If auth fails or backend is unavailable, return empty list rather than leaking global history.
-          return [];
+          return fallbackPage;
         }
 
         const data = await resp.json();
@@ -104,14 +161,23 @@ export function useThreads(props: {
         } else {
           console.error("[useThreads] Failed to fetch threads:", error);
         }
-        return [];
+        return fallbackPage;
       } finally {
         clearTimeout(timeoutId);
       }
     },
     {
+      fallbackData: cachedThreads.length > 0 ? [cachedThreads.slice(0, pageSize)] : undefined,
       revalidateFirstPage: true,
       revalidateOnFocus: true,
     }
   );
+
+  useEffect(() => {
+    const flattened = swr.data?.flat() ?? [];
+    if (flattened.length === 0) return;
+    writeThreadsCache(cacheKey, flattened);
+  }, [cacheKey, swr.data]);
+
+  return swr;
 }
