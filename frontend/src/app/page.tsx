@@ -1,14 +1,14 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, Suspense, useMemo, useRef } from "react";
+import React, { useState, useEffect, useCallback, Suspense, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { getConfig, StandaloneConfig } from "@/lib/config";
-import { Assistant, Message } from "@langchain/langgraph-sdk";
-import { ClientProvider, useClient } from "@/providers/ClientProvider";
+import { Assistant } from "@langchain/langgraph-sdk";
+import { useClient } from "@/providers/ClientProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { ChatProvider, useChatContext } from "@/providers/ChatProvider";
-import { AgentProvider, useAgentContext } from "@/providers/AgentProvider";
+import { AgentProvider } from "@/providers/AgentProvider";
 import { ChatInterface } from "@/app/components/ChatInterface";
 import { FilePanel } from "@/app/components/FilePanel";
 import { MainLayout } from "./components/layout/MainLayout";
@@ -20,13 +20,12 @@ import {
   ResizablePanel,
   ResizableHandle,
 } from "@/components/ui/resizable";
-import { cn } from "@/lib/utils";
 import type { Artifact } from "@/lib/artifactParser";
 import { parseArtifacts, getStreamingArtifact } from "@/lib/artifactParser";
 import { extractStringFromMessageContent } from "@/app/utils/utils";
 import { Button } from "@/components/ui/button";
 import { RotatingHeadline } from "@/app/components/RotatingHeadline";
-import { PromptInput, FilePreviewItem } from "@/app/components/PromptInput";
+import { PromptInput } from "@/app/components/PromptInput";
 import { TemplatePromptInput } from "@/app/components/TemplatePromptInput";
 import { FeatureButtons } from "@/app/components/FeatureButtons";
 import { FeatureTemplateGrid } from "@/app/components/FeatureTemplateGrid";
@@ -36,12 +35,15 @@ import { Feature, Template } from "@/data/featureTemplates";
 import { ImageExperience } from "@/app/components/image/ImageExperience";
 import { ResumeExperience } from "@/app/components/resume/ResumeExperience";
 import SlidesExperience from "@/app/components/slides/SlidesExperience";
+import PresetGrid from "@/app/components/slides/slidecraft/components/PresetGrid";
+import { PRESETS, getPresetById } from "@/app/components/slides/slidecraft/data/presets";
+import type { StyleDimensions } from "@/app/components/slides/slidecraft/types";
 import { TranslatePanel } from "@/app/components/TranslatePanel";
-import { motion, AnimatePresence } from "framer-motion";
 import { useGoogleDrivePicker } from "@/app/hooks/useGoogleDrivePicker";
 import { useDataFileUpload } from "@/app/hooks/useDataFileUpload";
 import { WaterDropletMascot } from "@/app/components/WaterDropletMascot";
 import { toast } from "sonner";
+import { getFortuneTemplatePrefix } from '@/data/fortuneTemplatePrefix';
 
 interface LandingViewProps {
   onPromptSubmit: (value: string, hiddenPrefix?: string) => void;
@@ -51,18 +53,14 @@ interface LandingViewProps {
   enableWebDevMode: () => void;
   setActiveFeatureId: (featureId: string | null) => void;
   onEnterResumeEditMode?: (file: File | null, prompt: string, skipUpload: boolean) => void;
-  onEnterSlidesEditMode?: (file: File | null, prompt: string) => void;
+  onEnterSlidesEditMode?: (file: File | null, prompt: string, presetId?: string, style?: StyleDimensions) => void;
 }
 
 function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFortuneMode, enableWebDevMode, setActiveFeatureId, onEnterResumeEditMode, onEnterSlidesEditMode }: LandingViewProps) {
-  const router = useRouter();
-
   // Track selected fortune template ID for prefix injection
   const [selectedFortuneTemplateId, setSelectedFortuneTemplateId] = useState<number | null>(null);
   const [selectedTemplateName, setSelectedTemplateName] = useState<string | null>(null);
-
-  // Import fortune template prefix helper
-  const { getFortuneTemplatePrefix } = require('@/data/fortuneTemplatePrefix');
+  const [selectedSlidesPresetId, setSelectedSlidesPresetId] = useState<string | null>(null);
 
   // File upload state - use proper upload hook
   const { session } = useAuth();
@@ -123,7 +121,8 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
     } else if (selectedFeature?.id === 'slides') {
       // Slides mode - use the first file from fileUpload (already uploaded to Supabase)
       const firstFile = fileUpload.files.length > 0 ? fileUpload.files[0].file : null;
-      onEnterSlidesEditMode?.(firstFile, userInput);
+      const preset = selectedSlidesPresetId ? getPresetById(selectedSlidesPresetId) : undefined;
+      onEnterSlidesEditMode?.(firstFile, userInput, preset?.id, preset?.dimensions);
       fileUpload.clearFiles(); // Clear after use
     } else if (selectedFeature?.id === 'web-dev') {
       // Enable web-dev mode graph
@@ -156,6 +155,11 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
       // For fortune templates, save the template ID for prefix injection
       setSelectedFortuneTemplateId(template.id);
       console.log(`[Fortune] Selected template: ${template.title} (ID: ${template.id})`);
+    } else if (selectedFeature?.id === 'slides') {
+      const presetId = String((template as any).id);
+      const preset = PRESETS.find((item) => item.id === presetId);
+      setSelectedSlidesPresetId(presetId);
+      setSelectedTemplateName(preset?.nameZh || preset?.name || template.title);
     } else {
       // For text/chat features, we ideally start a new thread with this template
       console.log("Selected template:", template);
@@ -223,7 +227,16 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
         )}
 
         {/* 4. Feature Template Grid (Expandable) - skip for resume which has its own grid */}
-        {selectedFeature?.id !== 'resume' && (
+        {selectedFeature?.id === 'slides' ? (
+          <PresetGrid
+            selectedPresetId={selectedSlidesPresetId}
+            onSelectPreset={(presetId) => {
+              const preset = getPresetById(presetId);
+              setSelectedSlidesPresetId(presetId);
+              setSelectedTemplateName(preset?.nameZh || preset?.name || null);
+            }}
+          />
+        ) : selectedFeature?.id !== 'resume' && (
           <FeatureTemplateGrid
             feature={selectedFeature}
             onSelectTemplate={handleSelectTemplate}
@@ -309,11 +322,15 @@ function ChatWithFilePanel({
   const [slidesEditMode, setSlidesEditMode] = useState(false);
   const [slidesFile, setSlidesFile] = useState<File | null>(null);
   const [slidesPrompt, setSlidesPrompt] = useState('');
+  const [slidesPresetId, setSlidesPresetId] = useState<string | undefined>(undefined);
+  const [slidesStyle, setSlidesStyle] = useState<StyleDimensions | undefined>(undefined);
 
   // Handler for entering slides edit mode
-  const handleEnterSlidesEditMode = useCallback((file: File | null, prompt: string) => {
+  const handleEnterSlidesEditMode = useCallback((file: File | null, prompt: string, presetId?: string, style?: StyleDimensions) => {
     setSlidesFile(file);
     setSlidesPrompt(prompt);
+    setSlidesPresetId(presetId);
+    setSlidesStyle(style);
     setSlidesEditMode(true);
   }, []);
 
@@ -524,6 +541,8 @@ function ChatWithFilePanel({
             setSlidesEditMode(false);
             setSlidesFile(null);
             setSlidesPrompt('');
+            setSlidesPresetId(undefined);
+            setSlidesStyle(undefined);
             setSelectedFeature(null);
             setActiveFeatureId(null);
             void setThreadIdQuery(null);
@@ -532,6 +551,8 @@ function ChatWithFilePanel({
           presentationId={threadType === "slides" ? threadId || undefined : undefined}
           initialFile={slidesFile}
           initialPrompt={threadType === "slides" ? undefined : slidesPrompt}
+          initialPresetId={threadType === "slides" ? undefined : slidesPresetId}
+          initialStyle={threadType === "slides" ? undefined : slidesStyle}
         />
       </div>
     );

@@ -33,6 +33,8 @@ interface SlidesExperienceProps {
     onPresentationCreated?: (presentation: PresentationData) => void;
     initialFile?: File | null;
     initialPrompt?: string;
+    initialPresetId?: string;
+    initialStyle?: StyleDimensions;
 }
 
 const SlidesExperience: React.FC<SlidesExperienceProps> = ({
@@ -43,6 +45,8 @@ const SlidesExperience: React.FC<SlidesExperienceProps> = ({
     onPresentationCreated,
     initialFile,
     initialPrompt,
+    initialPresetId,
+    initialStyle,
 }) => {
     const { setCollapsed, setHideTopBar } = useSidebar();
     const { session, user } = useAuth();
@@ -53,11 +57,13 @@ const SlidesExperience: React.FC<SlidesExperienceProps> = ({
     const [attachments, setAttachments] = useState<Attachment[]>(propAttachments);
     const [isPreparingAttachments, setIsPreparingAttachments] = useState(Boolean(initialFile) && propAttachments.length === 0);
     const [isLoadingPresentation, setIsLoadingPresentation] = useState(false);
-    const [view, setView] = useState<SlideCraftView>('HOME');
+    const [view, setView] = useState<SlideCraftView>(
+        initialPrompt && initialPresetId ? 'OUTLINE' : 'HOME'
+    );
     const [slides, setSlides] = useState<Slide[]>([]);
     const [presentationId] = useState(initialPresentationId || crypto.randomUUID());
-    const [style, setStyle] = useState<StyleDimensions | undefined>(undefined);
-    const [presetId, setPresetId] = useState<string | undefined>(undefined);
+    const [style, setStyle] = useState<StyleDimensions | undefined>(initialStyle);
+    const [presetId, setPresetId] = useState<string | undefined>(initialPresetId);
     const [history, setHistory] = useState<PresentationData[]>([]);
 
     useEffect(() => {

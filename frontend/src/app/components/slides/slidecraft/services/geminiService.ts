@@ -1,5 +1,6 @@
 import { Slide, Attachment, StyleDimensions } from '../types';
 import { buildStyleInstructions } from '../data/styleInstructions';
+import { buildPresetPromptContext } from '../data/presets';
 
 // DeepSeek API 配置（文本生成）
 const DEEPSEEK_CHAT_URL = 'https://api.deepseek.com/v1/chat/completions';
@@ -107,6 +108,7 @@ export async function generateOutlineStream(
     signal?: AbortSignal,
     presetId?: string
 ): Promise<string> {
+    const presetContext = buildPresetPromptContext(presetId);
     const attachmentSummary = attachments.length > 0
         ? `\n\nAttached files (names only; file contents are not sent in the DeepSeek text-only path):\n${attachments
             .map(att => `- ${att.name} (${att.mimeType || 'unknown'})`)
@@ -114,7 +116,10 @@ export async function generateOutlineStream(
         : '';
     const messages: any[] = [
         { role: 'system', content: buildOutlineSystemPrompt(style, presetId) },
-        { role: 'user', content: `Create a presentation about: ${topic || 'the provided content'}.${attachmentSummary}` },
+        {
+            role: 'user',
+            content: `Create a presentation about: ${topic || 'the provided content'}.${attachmentSummary}${presetContext ? `\n\n${presetContext}\n\nUse this preset faithfully in the deck's narrative, visual direction, layout choice, and information density.` : ''}`,
+        },
     ];
 
     const requestBody = {
@@ -189,6 +194,7 @@ export async function generateSingleSlide(
     presetId?: string
 ): Promise<Slide | null> {
     const styleBlock = style ? buildStyleInstructions(style, presetId) : '';
+    const presetContext = buildPresetPromptContext(presetId);
     const context = existingSlides.map((s, i) => `Slide ${i + 1}: ${s.title}`).join('\n');
 
     const response = await fetch(DEEPSEEK_CHAT_URL, {
@@ -210,7 +216,7 @@ Return ONLY JSON. No markdown.`
                 },
                 {
                     role: 'user',
-                    content: `Topic: ${topic}\n\nExisting outline:\n${context}\n\nGenerate a new slide for position ${insertIndex + 1}.`
+                    content: `Topic: ${topic}\n\nExisting outline:\n${context}\n\nGenerate a new slide for position ${insertIndex + 1}.${presetContext ? `\n\n${presetContext}` : ''}`
                 }
             ],
             temperature: 0.7,
@@ -242,11 +248,14 @@ export async function generateSlideImage(
     presetId?: string
 ): Promise<string> {
     const styleBlock = style ? buildStyleInstructions(style, presetId) : '';
+    const presetContext = buildPresetPromptContext(presetId);
     const layoutGuidance = getLayoutGuidance(slide.layout, slide.slideType);
 
     const prompt = `Create a stunning, high-quality 16:9 presentation slide image.
 
 ${BAOYU_IMAGE_BASE_PROMPT}
+
+${presetContext ? `## Selected Preset\n${presetContext}` : ''}
 
 ## Slide Content
 Slide Type:

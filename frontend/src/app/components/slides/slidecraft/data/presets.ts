@@ -176,3 +176,19 @@ export function recommendPreset(topic: string): string {
 export function getPresetById(id: string): StylePreset | undefined {
     return PRESETS.find(p => p.id === id);
 }
+
+export function buildPresetPromptContext(id?: string): string {
+    if (!id) return '';
+
+    const preset = getPresetById(id);
+    if (!preset) return '';
+
+    return `Selected preset:
+- Name: ${preset.name} (${preset.nameZh})
+- Description: ${preset.description}
+- Feel: ${preset.feel}
+- Texture: ${preset.dimensions.texture}
+- Mood: ${preset.dimensions.mood}
+- Typography: ${preset.dimensions.typography}
+- Density: ${preset.dimensions.density}`;
+}
