@@ -275,6 +275,7 @@ function ChatWithFilePanel({
   onOpenFilePanel,
   onCloseFilePanel,
   threadId,
+  threadType,
   onModeChange,
 }: {
   assistant: Assistant | null;
@@ -282,9 +283,11 @@ function ChatWithFilePanel({
   onOpenFilePanel: () => void;
   onCloseFilePanel: () => void;
   threadId: string | null;
+  threadType?: "chat" | "image" | "slides" | null;
   onModeChange?: (mode: "chat" | "image" | "resume" | "slides") => void;
 }) {
   const router = useRouter();
+  const [, setThreadIdQuery] = useQueryState("threadId");
   const { messages, isLoading, isThreadLoading, webDevMode, sendMessage, setFortuneMode, enableWebDevMode, setActiveFeatureId } = useChatContext();
   const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
 
@@ -513,7 +516,7 @@ function ChatWithFilePanel({
     );
   }
 
-  if (showLandingView && slidesEditMode) {
+  if ((showLandingView && slidesEditMode) || threadType === "slides") {
     return (
       <div className="flex-1 overflow-hidden">
         <SlidesExperience
@@ -523,10 +526,12 @@ function ChatWithFilePanel({
             setSlidesPrompt('');
             setSelectedFeature(null);
             setActiveFeatureId(null);
+            void setThreadIdQuery(null);
             onModeChange?.("chat");
           }}
+          presentationId={threadType === "slides" ? threadId || undefined : undefined}
           initialFile={slidesFile}
-          initialPrompt={slidesPrompt}
+          initialPrompt={threadType === "slides" ? undefined : slidesPrompt}
         />
       </div>
     );
@@ -644,6 +649,7 @@ function HomePageInner() {
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [uiMode, setUiMode] = useState<"chat" | "image" | "resume" | "slides">("chat");
+  const [threadType, setThreadType] = useState<"chat" | "image" | "slides" | null>(null);
 
   // Load config
   useEffect(() => {
@@ -676,6 +682,10 @@ function HomePageInner() {
           if (thread.model_id) {
             setSelectedModel(thread.model_id);
           }
+          setThreadType(thread.type || "chat");
+          if (thread.type === "slides") {
+            setUiMode("slides");
+          }
         }
       } catch (error) {
         console.error("Failed to load thread model:", error);
@@ -690,6 +700,7 @@ function HomePageInner() {
     if (!threadId) {
       // New thread - reset model to null (will use default)
       setSelectedModel(null);
+      setThreadType(null);
     }
   }, [threadId]);
 
@@ -793,6 +804,8 @@ function HomePageInner() {
       return;
     }
     setThreadId(null);
+    setThreadType(null);
+    setUiMode("chat");
   };
 
   const handleSearch = () => {
@@ -887,6 +900,7 @@ function HomePageInner() {
                 onOpenFilePanel={() => setFilePanel("1")}
                 onCloseFilePanel={() => setFilePanel(null)}
                 threadId={threadId}
+                threadType={threadType}
                 onModeChange={setUiMode}
               />
             </ChatProvider>

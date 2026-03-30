@@ -1,12 +1,28 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSidebar } from '@/app/context/SidebarContext';
-import type { Slide, Attachment, SlidesViewState, PresentationData } from '@/app/slides/types/slides';
-import OutlineEditor from '@/app/components/slides/OutlineEditor';
-import SlideShow from '@/app/components/slides/SlideShow';
-import SlidesChatPanel from '@/app/components/slides/SlidesChatPanel';
-import { MessageSquare, X } from 'lucide-react';
+import { useQueryState } from 'nuqs';
+import { getConfig } from '@/lib/config';
+import { useAuth } from '@/providers/AuthProvider';
+import { useThreads } from '@/app/hooks/useThreads';
+import Home from '@/app/components/slides/slidecraft/components/Home';
+import OutlineEditor from '@/app/components/slides/slidecraft/components/OutlineEditor';
+import SlideShow from '@/app/components/slides/slidecraft/components/SlideShow';
+import {
+    deletePresentation,
+    getAllPresentations,
+    getPresentation,
+    savePresentation,
+} from '@/app/slides/lib/slidesPersistence';
+import type {
+    Attachment,
+    PresentationData,
+    Slide,
+    StyleDimensions,
+} from '@/app/components/slides/slidecraft/types';
+
+type SlideCraftView = 'HOME' | 'OUTLINE' | 'SLIDESHOW';
 
 interface SlidesExperienceProps {
     topic?: string;
@@ -15,7 +31,6 @@ interface SlidesExperienceProps {
     userId?: string;
     onExit: () => void;
     onPresentationCreated?: (presentation: PresentationData) => void;
-    // New props for file-based input
     initialFile?: File | null;
     initialPrompt?: string;
 }
@@ -24,54 +39,28 @@ const SlidesExperience: React.FC<SlidesExperienceProps> = ({
     topic: propTopic,
     attachments: propAttachments = [],
     presentationId: initialPresentationId,
-    userId,
     onExit,
     onPresentationCreated,
     initialFile,
-    initialPrompt
+    initialPrompt,
 }) => {
     const { setCollapsed, setHideTopBar } = useSidebar();
-
-    // Convert initialFile to attachment if provided
-    const [topic, setTopic] = React.useState(propTopic || initialPrompt || '');
-    const [attachments, setAttachments] = React.useState<Attachment[]>(propAttachments);
-    const [isProcessingFile, setIsProcessingFile] = React.useState(false);
-
-    // Convert initial file to base64 attachment on mount
-    React.useEffect(() => {
-        if (initialFile && attachments.length === 0) {
-            setIsProcessingFile(true);
-            const reader = new FileReader();
-            reader.onload = () => {
-                const base64 = (reader.result as string).split(',')[1] || '';
-                setAttachments([{
-                    name: initialFile.name,
-                    mimeType: initialFile.type || 'application/octet-stream',
-                    data: base64
-                }]);
-                setIsProcessingFile(false);
-            };
-            reader.onerror = () => {
-                console.error('Failed to read file');
-                setIsProcessingFile(false);
-            };
-            reader.readAsDataURL(initialFile);
-        }
-    }, [initialFile]);
-
-    // View state
-    const [viewState, setViewState] = useState<SlidesViewState>('GENERATING');
+    const { session, user } = useAuth();
+    const threads = useThreads({ limit: 20 });
+    const [, setThreadId] = useQueryState('threadId');
+    const config = getConfig();
+    const [topic, setTopic] = useState(propTopic || initialPrompt || '');
+    const [attachments, setAttachments] = useState<Attachment[]>(propAttachments);
+    const [isPreparingAttachments, setIsPreparingAttachments] = useState(Boolean(initialFile) && propAttachments.length === 0);
+    const [isLoadingPresentation, setIsLoadingPresentation] = useState(false);
+    const [view, setView] = useState<SlideCraftView>('HOME');
     const [slides, setSlides] = useState<Slide[]>([]);
-    const [presentationId, setPresentationId] = useState<string>(
-        initialPresentationId || crypto.randomUUID()
-    );
+    const [presentationId] = useState(initialPresentationId || crypto.randomUUID());
+    const [style, setStyle] = useState<StyleDimensions | undefined>(undefined);
+    const [presetId, setPresetId] = useState<string | undefined>(undefined);
+    const [history, setHistory] = useState<PresentationData[]>([]);
 
-    // AI chat panel state
-    const [showAIPanel, setShowAIPanel] = useState(true);
-    const [aiMessages, setAIMessages] = useState<string[]>([]);
-
-    // Collapse sidebar when entering slides experience
-    React.useEffect(() => {
+    useEffect(() => {
         setCollapsed(true);
         setHideTopBar(true);
 
@@ -80,105 +69,317 @@ const SlidesExperience: React.FC<SlidesExperienceProps> = ({
         };
     }, [setCollapsed, setHideTopBar]);
 
-    const handleStreamUpdate = useCallback((text: string) => {
-        // Update AI panel with streaming content
-        setAIMessages(prev => {
-            const newMessages = [...prev];
-            if (newMessages.length === 0 || !newMessages[newMessages.length - 1].startsWith('生成大纲中...')) {
-                newMessages.push(`生成大纲中...\n${text.substring(0, 200)}...`);
-            } else {
-                newMessages[newMessages.length - 1] = `生成大纲中...\n${text.substring(0, 200)}...`;
+    useEffect(() => {
+        if (!user?.id || !session?.access_token) {
+            setHistory([]);
+            return;
+        }
+
+        let cancelled = false;
+
+        const loadHistory = async () => {
+            try {
+                const presentations = await getAllPresentations(user.id, session.access_token);
+                if (!cancelled) {
+                    setHistory(
+                        presentations.map((item) => ({
+                            id: item.id,
+                            topic: item.topic,
+                            slides: item.slides as unknown as Slide[],
+                            createdAt: new Date(item.created_at || item.updated_at || Date.now()).getTime(),
+                            style: undefined,
+                            presetId: undefined,
+                        }))
+                    );
+                }
+            } catch (error) {
+                console.error('[SlidesExperience] Failed to load PPT history:', error);
             }
-            return newMessages;
-        });
-    }, []);
-
-    const handleGenerateSlides = useCallback((generatedSlides: Slide[]) => {
-        setSlides(generatedSlides);
-        setViewState('SLIDESHOW');
-        setAIMessages(prev => [...prev, `✓ 大纲生成完成，共 ${generatedSlides.length} 张幻灯片`]);
-
-        // Create presentation data
-        const presentation: PresentationData = {
-            id: presentationId,
-            user_id: userId,
-            topic,
-            title: topic,
-            slides: generatedSlides,
-            attachments
         };
 
-        onPresentationCreated?.(presentation);
-    }, [presentationId, userId, topic, attachments, onPresentationCreated]);
+        void loadHistory();
 
-    const handleSlidesUpdate = useCallback((updatedSlides: Slide[]) => {
-        setSlides(updatedSlides);
-    }, []);
+        return () => {
+            cancelled = true;
+        };
+    }, [user?.id, session?.access_token]);
 
-    const handleBack = useCallback(() => {
-        if (viewState === 'SLIDESHOW') {
-            setViewState('OUTLINE');
-        } else {
-            onExit();
+    useEffect(() => {
+        if (!initialPresentationId || initialPrompt) {
+            return;
         }
-    }, [viewState, onExit]);
+
+        let cancelled = false;
+        setIsLoadingPresentation(true);
+
+        const loadPresentation = async () => {
+            try {
+                const presentation = await getPresentation(initialPresentationId, session?.access_token);
+                if (!presentation || cancelled) {
+                    return;
+                }
+
+                setTopic(presentation.topic);
+                setAttachments((presentation.attachments as Attachment[]) || []);
+                setSlides((presentation.slides as unknown as Slide[]) || []);
+                setView(((presentation.slides?.length || 0) > 0 ? 'SLIDESHOW' : 'HOME'));
+            } catch (error) {
+                console.error('[SlidesExperience] Failed to load PPT presentation:', error);
+            } finally {
+                if (!cancelled) {
+                    setIsLoadingPresentation(false);
+                }
+            }
+        };
+
+        void loadPresentation();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [initialPresentationId, initialPrompt, session?.access_token]);
+
+    useEffect(() => {
+        if (!initialFile || attachments.length > 0) {
+            setIsPreparingAttachments(false);
+            return;
+        }
+
+        let cancelled = false;
+        const reader = new FileReader();
+
+        reader.onload = () => {
+            if (cancelled) {
+                return;
+            }
+
+            const base64 = (reader.result as string)?.split(',')[1] || '';
+            setAttachments([
+                {
+                    name: initialFile.name,
+                    mimeType: initialFile.type || 'application/octet-stream',
+                    data: base64,
+                },
+            ]);
+            setIsPreparingAttachments(false);
+        };
+
+        reader.onerror = () => {
+            if (!cancelled) {
+                setIsPreparingAttachments(false);
+            }
+        };
+
+        reader.readAsDataURL(initialFile);
+
+        return () => {
+            cancelled = true;
+        };
+    }, [initialFile, attachments.length]);
+
+    const handleGenerateSlides = (generatedSlides: Slide[]) => {
+        setSlides(generatedSlides);
+        setView('SLIDESHOW');
+
+        const presentation = {
+            id: presentationId,
+            topic,
+            slides: generatedSlides,
+            createdAt: Date.now(),
+            style,
+            presetId,
+        };
+
+        setHistory((prev) => {
+            const withoutCurrent = prev.filter((item) => item.id !== presentation.id);
+            return [presentation, ...withoutCurrent];
+        });
+
+        onPresentationCreated?.(presentation);
+        void persistPresentation(presentation, generatedSlides);
+    };
+
+    const handleSlidesUpdate = (updatedSlides: Slide[]) => {
+        setSlides(updatedSlides);
+        setHistory((prev) =>
+            prev.map((item) =>
+                item.id === presentationId
+                    ? { ...item, slides: updatedSlides, topic, style, presetId }
+                    : item
+            )
+        );
+        void persistPresentation(
+            {
+                id: presentationId,
+                topic,
+                slides: updatedSlides,
+                createdAt: Date.now(),
+                style,
+                presetId,
+            },
+            updatedSlides
+        );
+    };
+
+    const presentation: PresentationData = {
+        id: presentationId,
+        topic,
+        slides,
+        createdAt: Date.now(),
+        style,
+        presetId,
+    };
+
+    const handleHomeSubmit = (
+        nextTopic: string,
+        nextAttachments: Attachment[],
+        nextStyle: StyleDimensions,
+        nextPresetId?: string
+    ) => {
+        setTopic(nextTopic);
+        setAttachments(nextAttachments);
+        setStyle(nextStyle);
+        setPresetId(nextPresetId);
+        setView('OUTLINE');
+        void ensureSlidesThread(nextTopic);
+    };
+
+    const ensureSlidesThread = async (threadTitle: string) => {
+        if (!config?.deploymentUrl || !session?.access_token) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`${config.deploymentUrl}/api/threads`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({
+                    langgraph_thread_id: presentationId,
+                    title: threadTitle.slice(0, 30) + (threadTitle.length > 30 ? '...' : ''),
+                    type: 'slides',
+                }),
+            });
+
+            if (response.ok) {
+                await setThreadId(presentationId);
+                threads.mutate?.();
+            }
+        } catch (error) {
+            console.error('[SlidesExperience] Failed to create slides thread:', error);
+        }
+    };
+
+    const persistPresentation = async (
+        presentation: PresentationData,
+        currentSlides: Slide[]
+    ) => {
+        if (!user?.id) {
+            return;
+        }
+
+        try {
+            await savePresentation(
+                {
+                    id: presentation.id,
+                    user_id: user.id,
+                    title: presentation.topic,
+                    topic: presentation.topic,
+                    slides: currentSlides as any,
+                    attachments,
+                },
+                session?.access_token
+            );
+        } catch (error) {
+            console.error('[SlidesExperience] Failed to persist presentation:', error);
+        }
+    };
+
+    if (view === 'SLIDESHOW') {
+        return (
+            <div className="fixed inset-0 z-50 overflow-hidden bg-zinc-950">
+                <SlideShow
+                    presentation={presentation}
+                    style={style}
+                    onBack={() => setView('OUTLINE')}
+                    onSlidesUpdate={handleSlidesUpdate}
+                />
+            </div>
+        );
+    }
+
+    if (isPreparingAttachments) {
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950 text-white">
+                <div className="text-sm text-zinc-400">正在准备 PPT 附件...</div>
+            </div>
+        );
+    }
+
+    if (isLoadingPresentation) {
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950 text-white">
+                <div className="text-sm text-zinc-400">正在加载 PPT...</div>
+            </div>
+        );
+    }
+
+    if (view === 'HOME') {
+        return (
+            <div className="fixed inset-0 z-50 overflow-y-auto bg-zinc-950 text-white">
+                <Home
+                    onSubmit={handleHomeSubmit}
+                    history={history}
+                    onLoadHistory={(loadedPresentation) => {
+                        void setThreadId(loadedPresentation.id);
+                        setTopic(loadedPresentation.topic);
+                        setSlides(loadedPresentation.slides);
+                        setStyle(loadedPresentation.style);
+                        setPresetId(loadedPresentation.presetId);
+                        setView('SLIDESHOW');
+                    }}
+                    onDeleteHistory={(id) => {
+                        void (async () => {
+                            try {
+                                await deletePresentation(id, session?.access_token);
+                                if (config?.deploymentUrl && session?.access_token) {
+                                    await fetch(`${config.deploymentUrl}/api/threads/${encodeURIComponent(id)}`, {
+                                        method: 'DELETE',
+                                        headers: {
+                                            Authorization: `Bearer ${session.access_token}`,
+                                        },
+                                    });
+                                }
+                                setHistory((prev) => prev.filter((item) => item.id !== id));
+                                threads.mutate?.();
+                            } catch (error) {
+                                console.error('[SlidesExperience] Failed to delete presentation:', error);
+                            }
+                        })();
+                    }}
+                    initialTopic={topic}
+                    initialAttachments={attachments}
+                    onBack={() => {
+                        void setThreadId(null);
+                        onExit();
+                    }}
+                />
+            </div>
+        );
+    }
 
     return (
-        <div className="fixed inset-0 z-50 flex bg-black">
-            {/* Main Content Area */}
-            <div className={`flex-1 flex flex-col ${showAIPanel ? 'mr-80' : ''} transition-all duration-300`}>
-                {viewState === 'GENERATING' || viewState === 'OUTLINE' ? (
-                    <OutlineEditor
-                        topic={topic}
-                        initialAttachments={attachments}
-                        onBack={onExit}
-                        onGenerateSlides={handleGenerateSlides}
-                        onStreamUpdate={handleStreamUpdate}
-                        showAIPanel={showAIPanel}
-                    />
-                ) : (
-                    <SlideShow
-                        slides={slides}
-                        onBack={handleBack}
-                        topic={topic}
-                        presentationId={presentationId}
-                        userId={userId}
-                        onSlidesUpdate={handleSlidesUpdate}
-                    />
-                )}
-            </div>
-
-            {/* AI Chat Panel Toggle */}
-            {!showAIPanel && (
-                <button
-                    onClick={() => setShowAIPanel(true)}
-                    className="fixed right-4 top-4 z-60 p-3 bg-purple-600 hover:bg-purple-500 rounded-full shadow-lg transition"
-                >
-                    <MessageSquare size={20} className="text-white" />
-                </button>
-            )}
-
-            {/* AI Chat Panel */}
-            {showAIPanel && (
-                <div className="fixed right-0 top-0 bottom-0 w-80 border-l border-zinc-800 flex flex-col z-50">
-                    {/* Close Button */}
-                    <button
-                        onClick={() => setShowAIPanel(false)}
-                        className="absolute top-4 right-4 z-10 p-1.5 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition"
-                    >
-                        <X size={18} />
-                    </button>
-
-                    {/* Chat Panel */}
-                    <SlidesChatPanel
-                        slides={slides}
-                        onSlidesChange={handleSlidesUpdate}
-                        topic={topic}
-                        streamingContent={aiMessages[aiMessages.length - 1]}
-                        isGenerating={viewState === 'GENERATING'}
-                    />
-                </div>
-            )}
+        <div className="fixed inset-0 z-50 overflow-hidden bg-zinc-950 text-white">
+            <OutlineEditor
+                topic={topic}
+                attachments={attachments}
+                style={style}
+                presetId={presetId}
+                onBack={onExit}
+                onGenerateSlides={handleGenerateSlides}
+            />
         </div>
     );
 };
