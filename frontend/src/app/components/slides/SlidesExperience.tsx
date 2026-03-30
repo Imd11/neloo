@@ -305,7 +305,7 @@ const SlidesExperience: React.FC<SlidesExperienceProps> = ({
 
     if (view === 'SLIDESHOW') {
         return (
-            <div className="fixed inset-0 z-50 overflow-hidden bg-zinc-950">
+            <div className="h-full w-full overflow-hidden bg-zinc-950">
                 <SlideShow
                     presentation={presentation}
                     style={style}
@@ -318,7 +318,7 @@ const SlidesExperience: React.FC<SlidesExperienceProps> = ({
 
     if (isPreparingAttachments) {
         return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950 text-white">
+            <div className="flex h-full w-full items-center justify-center bg-zinc-950 text-white">
                 <div className="text-sm text-zinc-400">正在准备 PPT 附件...</div>
             </div>
         );
@@ -326,7 +326,7 @@ const SlidesExperience: React.FC<SlidesExperienceProps> = ({
 
     if (isLoadingPresentation) {
         return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950 text-white">
+            <div className="flex h-full w-full items-center justify-center bg-zinc-950 text-white">
                 <div className="text-sm text-zinc-400">正在加载 PPT...</div>
             </div>
         );
@@ -334,7 +334,7 @@ const SlidesExperience: React.FC<SlidesExperienceProps> = ({
 
     if (view === 'HOME') {
         return (
-            <div className="fixed inset-0 z-50 overflow-y-auto bg-zinc-950 text-white">
+            <div className="h-full w-full overflow-y-auto bg-zinc-950 text-white">
                 <Home
                     onSubmit={handleHomeSubmit}
                     history={history}
@@ -377,7 +377,7 @@ const SlidesExperience: React.FC<SlidesExperienceProps> = ({
     }
 
     return (
-        <div className="fixed inset-0 z-50 overflow-hidden bg-zinc-950 text-white">
+        <div className="h-full w-full overflow-hidden bg-zinc-950 text-white">
             <OutlineEditor
                 topic={topic}
                 attachments={attachments}
