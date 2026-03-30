@@ -27,9 +27,13 @@ export function FeatureButtons({
         return null;
     }
 
+    const visibleFeatures = features.filter(
+        (feature) => !["web-dev", "resume"].includes(feature.id)
+    );
+
     const rows: Feature[][] = [];
-    for (let index = 0; index < features.length; index += 6) {
-        rows.push(features.slice(index, index + 6));
+    for (let index = 0; index < visibleFeatures.length; index += 6) {
+        rows.push(visibleFeatures.slice(index, index + 6));
     }
 
     return (
