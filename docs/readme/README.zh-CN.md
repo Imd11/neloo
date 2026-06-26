@@ -93,6 +93,17 @@ yarn next dev --turbopack --port 3001
 
 以 `backend/.env.example` 和 `frontend/.env.example` 为准，不要提交真实 `.env` 文件。
 
+完整配置步骤，包括 Supabase、Railway、E2B、首页模型、LLM API Key、生图 Key 和生产部署变量，请看 [配置指南](../configuration.md)。
+
+仓库中的 `neloo-configurator/` 是给外部 AI 编程工具使用的配置向导，不是 Neloo 运行时加载的技能。Codex/Copilot/Cursor 类工具可通过 `.agents/skills/neloo-configurator/` 发现它，Claude Code 可通过 `.claude/skills/neloo-configurator/` 发现它。
+
+手动配置从复制环境变量模板开始：
+
+```bash
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env.local
+```
+
 ### 后端配置
 
 | 类型 | 变量 | 说明 |

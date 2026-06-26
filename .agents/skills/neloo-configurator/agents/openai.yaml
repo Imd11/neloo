@@ -1,0 +1,4 @@
+interface:
+  display_name: "Neloo Configurator"
+  short_description: "Configure Neloo environment variables"
+  default_prompt: "Use $neloo-configurator to set up Neloo environment variables."

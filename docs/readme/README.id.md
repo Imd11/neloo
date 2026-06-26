@@ -93,6 +93,17 @@ yarn next dev --turbopack --port 3001
 
 Gunakan `backend/.env.example` dan `frontend/.env.example` sebagai template. Jangan commit file `.env` asli.
 
+Lihat [panduan konfigurasi lengkap](../configuration.md) untuk Supabase, Railway, E2B, model chat, key image generation, dan variabel production.
+
+`neloo-configurator/` adalah asisten konfigurasi untuk tool coding AI eksternal. Direktori ini tidak dimuat oleh runtime agent Neloo. Tool seperti Codex/Copilot/Cursor dapat menemukannya lewat `.agents/skills/neloo-configurator/`, dan Claude Code lewat `.claude/skills/neloo-configurator/`.
+
+Konfigurasi manual dimulai dengan:
+
+```bash
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env.local
+```
+
 ### Backend
 
 | Area | Variabel | Catatan |

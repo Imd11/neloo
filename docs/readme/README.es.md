@@ -93,6 +93,17 @@ yarn next dev --turbopack --port 3001
 
 Usa `backend/.env.example` y `frontend/.env.example` como plantillas. No subas archivos `.env` reales.
 
+Consulta [la guía completa de configuración](../configuration.md) para Supabase, Railway, E2B, modelos de chat, claves de imagen y variables de producción.
+
+`neloo-configurator/` es un asistente de configuración para herramientas externas de programación con IA. No lo carga el agente Neloo en runtime. Herramientas tipo Codex/Copilot/Cursor pueden descubrirlo mediante `.agents/skills/neloo-configurator/`, y Claude Code mediante `.claude/skills/neloo-configurator/`.
+
+La configuración manual empieza con:
+
+```bash
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env.local
+```
+
 ### Backend
 
 | Área | Variables | Notas |

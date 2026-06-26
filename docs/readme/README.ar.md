@@ -93,6 +93,17 @@ yarn next dev --turbopack --port 3001
 
 استخدم `backend/.env.example` و `frontend/.env.example` كقوالب. لا ترفع ملفات `.env` الحقيقية إلى Git.
 
+راجع [دليل الإعداد الكامل](../configuration.md) لتفاصيل Supabase و Railway و E2B ونماذج المحادثة ومفاتيح الصور ومتغيرات الإنتاج.
+
+`neloo-configurator/` مساعد إعداد لأدوات البرمجة الخارجية المدعومة بالذكاء الاصطناعي. لا يقوم وكيل Neloo بتحميله أثناء التشغيل. يمكن لأدوات مثل Codex/Copilot/Cursor اكتشافه عبر `.agents/skills/neloo-configurator/`، ويمكن لـ Claude Code اكتشافه عبر `.claude/skills/neloo-configurator/`.
+
+يبدأ الإعداد اليدوي من:
+
+```bash
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env.local
+```
+
 ### متغيرات الخلفية
 
 | المجال | المتغيرات | ملاحظات |
