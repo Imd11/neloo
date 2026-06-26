@@ -176,4 +176,4 @@ gitleaks detect --source . --verbose
 
 ## الرخصة
 
-MIT License.
+MIT License. راجع [LICENSE](../../LICENSE).

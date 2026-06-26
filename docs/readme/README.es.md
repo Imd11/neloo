@@ -176,4 +176,4 @@ Si el historial contiene secretos, publica desde un historial limpio o desde un 
 
 ## Licencia
 
-MIT License.
+MIT License. Consulta [LICENSE](../../LICENSE).

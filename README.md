@@ -258,4 +258,4 @@ References:
 
 ## License
 
-MIT License. See the repository license file when present.
+MIT License. See [LICENSE](./LICENSE).

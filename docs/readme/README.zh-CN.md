@@ -204,4 +204,4 @@ gitleaks detect --source . --verbose
 
 ## 许可证
 
-MIT License。若仓库包含独立 LICENSE 文件，以该文件为准。
+MIT License。详见 [LICENSE](../../LICENSE)。

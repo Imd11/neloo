@@ -176,4 +176,4 @@ Se o histórico do Git contiver segredos, publique a partir de um histórico lim
 
 ## Licença
 
-MIT License.
+MIT License. Veja [LICENSE](../../LICENSE).

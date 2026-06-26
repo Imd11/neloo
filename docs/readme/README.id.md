@@ -176,4 +176,4 @@ Jika histori Git mengandung secret, publish dari histori bersih atau repo baru s
 
 ## Lisensi
 
-MIT License.
+MIT License. Lihat [LICENSE](../../LICENSE).
