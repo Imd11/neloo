@@ -563,7 +563,6 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
 
 export default function ImagePage() {
     const router = useRouter();
-    const { user } = useAuth();
     const [searchOpen, setSearchOpen] = useState(false);
     const [libraryOpen, setLibraryOpen] = useState(false);
 
@@ -572,18 +571,10 @@ export default function ImagePage() {
     };
 
     const handleSearch = () => {
-        if (!user) {
-            router.push("/login");
-            return;
-        }
         setSearchOpen(true);
     };
 
     const handleLibrary = () => {
-        if (!user) {
-            router.push("/login");
-            return;
-        }
         setLibraryOpen(true);
     };
 

@@ -1210,29 +1210,41 @@ AVAILABLE_MODELS = {
 
 def get_available_models() -> list[dict]:
     """
-    Get list of available models based on configured API keys.
+    Get the full model registry for frontend display.
 
-    Returns list of model info dicts with id, display_name, and available status.
+    The `available` flag tells the UI whether the required API key is configured.
     """
-    available = []
+    models = []
     for model_id, config in AVAILABLE_MODELS.items():
-        api_key = os.environ.get(config["env_key"])
-        if api_key:
-            available.append({
-                "id": model_id,
-                "display_name": config["display_name"],
-                "available": True,
-            })
-    return available
+        models.append({
+            "id": model_id,
+            "display_name": config["display_name"],
+            "available": bool(os.environ.get(config["env_key"])),
+        })
+    return models
 
 
 def get_default_model_id() -> str | None:
     """
     Get the default model ID based on available API keys.
-    Priority: DeepSeek > Qwen > MiniMax
+    Priority: DeepSeek > Qwen > MiniMax > OpenRouter > other configured models
     """
     # Priority order
-    priority = ["deepseek-chat", "qwen-plus", "minimax-m1"]
+    priority = [
+        "deepseek-chat",
+        "deepseek-reasoner",
+        "qwen-plus",
+        "qwen3-max",
+        "minimax-m2",
+        "claude-opus-or",
+        "glm-4.7",
+        "claude-opus-right",
+        "claude-sonnet-right",
+        "gemini-3-pro",
+        "gpt-5",
+        "llama-4-maverick",
+        "llama-3.3-70b",
+    ]
     for model_id in priority:
         config = AVAILABLE_MODELS.get(model_id)
         if config and os.environ.get(config["env_key"]):
@@ -1407,66 +1419,79 @@ def _build_model_graphs() -> dict:
     return graphs
 
 
-# Build all available model graphs
-_MODEL_GRAPHS = _build_model_graphs()
+def _env_flag(name: str, default: bool = False) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+# Building every configured model graph is expensive during local startup.
+# Keep local dev focused on the default assistant unless explicitly requested.
+BUILD_ALL_MODEL_GRAPHS = _env_flag("NELOO_BUILD_ALL_MODEL_GRAPHS")
+BUILD_VARIANT_GRAPHS = _env_flag("NELOO_BUILD_VARIANT_GRAPHS", BUILD_ALL_MODEL_GRAPHS)
+
+# Build all available model graphs only when requested.
+_MODEL_GRAPHS = _build_model_graphs() if BUILD_ALL_MODEL_GRAPHS else {}
 
 # Default graph (for backwards compatibility with LangGraph Server)
-# Uses the default model based on priority
+# Uses the default model based on priority.
 graph = _MODEL_GRAPHS.get(get_default_model_id()) or build_graph()
 
-# Data Analyst mode variants (for when baseId is "data_analyst")
-# These use the default model but with different modes
-graph_data_analyst_webdev = build_graph(mode="web-dev")
-graph_data_analyst_fortune = build_graph(mode="fortune")
+# Data Analyst mode variants (for when baseId is "data_analyst").
+# In fast local dev mode, alias variants to the default graph so LangGraph can
+# load every configured graph id without paying the full build cost.
+graph_data_analyst_webdev = build_graph(mode="web-dev") if BUILD_VARIANT_GRAPHS else graph
+graph_data_analyst_fortune = build_graph(mode="fortune") if BUILD_VARIANT_GRAPHS else graph
 
 # Export individual graphs for LangGraph Server multi-assistant setup
 # Default mode graphs
-graph_deepseek_chat = _MODEL_GRAPHS.get("deepseek-chat")
-graph_deepseek_reasoner = _MODEL_GRAPHS.get("deepseek-reasoner")
-graph_qwen_plus = _MODEL_GRAPHS.get("qwen-plus")
-graph_qwen3_max = _MODEL_GRAPHS.get("qwen3-max")
-graph_minimax_m2 = _MODEL_GRAPHS.get("minimax-m2")
-graph_claude_opus_or = _MODEL_GRAPHS.get("claude-opus-or")
-graph_glm_4_7 = _MODEL_GRAPHS.get("glm-4.7")
+graph_deepseek_chat = _MODEL_GRAPHS.get("deepseek-chat") or graph
+graph_deepseek_reasoner = _MODEL_GRAPHS.get("deepseek-reasoner") or graph
+graph_qwen_plus = _MODEL_GRAPHS.get("qwen-plus") or graph
+graph_qwen3_max = _MODEL_GRAPHS.get("qwen3-max") or graph
+graph_minimax_m2 = _MODEL_GRAPHS.get("minimax-m2") or graph
+graph_claude_opus_or = _MODEL_GRAPHS.get("claude-opus-or") or graph
+graph_glm_4_7 = _MODEL_GRAPHS.get("glm-4.7") or graph
 
 # Right Code Claude models (third-party API)
-graph_claude_opus_right = _MODEL_GRAPHS.get("claude-opus-right")
-graph_claude_opus_right_thinking = _MODEL_GRAPHS.get("claude-opus-right-thinking")
-graph_claude_sonnet_right = _MODEL_GRAPHS.get("claude-sonnet-right")
-graph_claude_sonnet_right_thinking = _MODEL_GRAPHS.get("claude-sonnet-right-thinking")
+graph_claude_opus_right = _MODEL_GRAPHS.get("claude-opus-right") or graph
+graph_claude_opus_right_thinking = _MODEL_GRAPHS.get("claude-opus-right-thinking") or graph
+graph_claude_sonnet_right = _MODEL_GRAPHS.get("claude-sonnet-right") or graph
+graph_claude_sonnet_right_thinking = _MODEL_GRAPHS.get("claude-sonnet-right-thinking") or graph
 
 # Tu-zi models (third-party API)
-graph_gemini_3_pro = _MODEL_GRAPHS.get("gemini-3-pro")
-graph_gpt_5 = _MODEL_GRAPHS.get("gpt-5")
-graph_gpt_5_thinking = _MODEL_GRAPHS.get("gpt-5-thinking")
-graph_claude_opus_tuzi = _MODEL_GRAPHS.get("claude-opus-tuzi")
+graph_gemini_3_pro = _MODEL_GRAPHS.get("gemini-3-pro") or graph
+graph_gpt_5 = _MODEL_GRAPHS.get("gpt-5") or graph
+graph_gpt_5_thinking = _MODEL_GRAPHS.get("gpt-5-thinking") or graph
+graph_claude_opus_tuzi = _MODEL_GRAPHS.get("claude-opus-tuzi") or graph
 
 # Web-dev mode graphs (with artifact output support)
-graph_deepseek_chat_webdev = _MODEL_GRAPHS.get("deepseek-chat-web-dev")
-graph_deepseek_reasoner_webdev = _MODEL_GRAPHS.get("deepseek-reasoner-web-dev")
-graph_qwen_plus_webdev = _MODEL_GRAPHS.get("qwen-plus-web-dev")
-graph_qwen3_max_webdev = _MODEL_GRAPHS.get("qwen3-max-web-dev")
-graph_minimax_m2_webdev = _MODEL_GRAPHS.get("minimax-m2-web-dev")
-graph_claude_opus_or_webdev = _MODEL_GRAPHS.get("claude-opus-or-web-dev")
-graph_glm_4_7_webdev = _MODEL_GRAPHS.get("glm-4.7-web-dev")
+graph_deepseek_chat_webdev = _MODEL_GRAPHS.get("deepseek-chat-web-dev") or graph_data_analyst_webdev
+graph_deepseek_reasoner_webdev = _MODEL_GRAPHS.get("deepseek-reasoner-web-dev") or graph_data_analyst_webdev
+graph_qwen_plus_webdev = _MODEL_GRAPHS.get("qwen-plus-web-dev") or graph_data_analyst_webdev
+graph_qwen3_max_webdev = _MODEL_GRAPHS.get("qwen3-max-web-dev") or graph_data_analyst_webdev
+graph_minimax_m2_webdev = _MODEL_GRAPHS.get("minimax-m2-web-dev") or graph_data_analyst_webdev
+graph_claude_opus_or_webdev = _MODEL_GRAPHS.get("claude-opus-or-web-dev") or graph_data_analyst_webdev
+graph_glm_4_7_webdev = _MODEL_GRAPHS.get("glm-4.7-web-dev") or graph_data_analyst_webdev
 
 # Right Code Claude web-dev mode graphs
-graph_claude_opus_right_webdev = _MODEL_GRAPHS.get("claude-opus-right-web-dev")
-graph_claude_opus_right_thinking_webdev = _MODEL_GRAPHS.get("claude-opus-right-thinking-web-dev")
-graph_claude_sonnet_right_webdev = _MODEL_GRAPHS.get("claude-sonnet-right-web-dev")
-graph_claude_sonnet_right_thinking_webdev = _MODEL_GRAPHS.get("claude-sonnet-right-thinking-web-dev")
+graph_claude_opus_right_webdev = _MODEL_GRAPHS.get("claude-opus-right-web-dev") or graph_data_analyst_webdev
+graph_claude_opus_right_thinking_webdev = _MODEL_GRAPHS.get("claude-opus-right-thinking-web-dev") or graph_data_analyst_webdev
+graph_claude_sonnet_right_webdev = _MODEL_GRAPHS.get("claude-sonnet-right-web-dev") or graph_data_analyst_webdev
+graph_claude_sonnet_right_thinking_webdev = _MODEL_GRAPHS.get("claude-sonnet-right-thinking-web-dev") or graph_data_analyst_webdev
 
 # Tu-zi web-dev mode graphs
-graph_gemini_3_pro_webdev = _MODEL_GRAPHS.get("gemini-3-pro-web-dev")
-graph_gpt_5_webdev = _MODEL_GRAPHS.get("gpt-5-web-dev")
-graph_gpt_5_thinking_webdev = _MODEL_GRAPHS.get("gpt-5-thinking-web-dev")
-graph_claude_opus_tuzi_webdev = _MODEL_GRAPHS.get("claude-opus-tuzi-web-dev")
+graph_gemini_3_pro_webdev = _MODEL_GRAPHS.get("gemini-3-pro-web-dev") or graph_data_analyst_webdev
+graph_gpt_5_webdev = _MODEL_GRAPHS.get("gpt-5-web-dev") or graph_data_analyst_webdev
+graph_gpt_5_thinking_webdev = _MODEL_GRAPHS.get("gpt-5-thinking-web-dev") or graph_data_analyst_webdev
+graph_claude_opus_tuzi_webdev = _MODEL_GRAPHS.get("claude-opus-tuzi-web-dev") or graph_data_analyst_webdev
 
 # OpenRouter Llama models
-graph_llama_4_maverick = _MODEL_GRAPHS.get("llama-4-maverick")
-graph_llama_4_maverick_webdev = _MODEL_GRAPHS.get("llama-4-maverick-web-dev")
-graph_llama_3_3_70b = _MODEL_GRAPHS.get("llama-3.3-70b")
-graph_llama_3_3_70b_webdev = _MODEL_GRAPHS.get("llama-3.3-70b-web-dev")
+graph_llama_4_maverick = _MODEL_GRAPHS.get("llama-4-maverick") or graph
+graph_llama_4_maverick_webdev = _MODEL_GRAPHS.get("llama-4-maverick-web-dev") or graph_data_analyst_webdev
+graph_llama_3_3_70b = _MODEL_GRAPHS.get("llama-3.3-70b") or graph
+graph_llama_3_3_70b_webdev = _MODEL_GRAPHS.get("llama-3.3-70b-web-dev") or graph_data_analyst_webdev
 
 
 # =============================================================================

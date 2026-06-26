@@ -2,18 +2,11 @@
 
 import { useCallback, useRef, useState } from "react";
 
-// Google Drive Picker configuration
-// User provided credentials from Google Cloud Console
-const GOOGLE_CLIENT_ID = "915451460673-qps29619met3l50g5uk4mqia9rr38dc8.apps.googleusercontent.com";
-const GOOGLE_API_KEY = "AIzaSyCprwzCG6Q9wACIzS9TiCPVTRxWSON1A7s";
+// Google Drive Picker configuration. These browser-side values must be
+// restricted in Google Cloud Console by HTTP referrer and OAuth origins.
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim();
+const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY?.trim();
 const SCOPES = "https://www.googleapis.com/auth/drive.readonly";
-
-interface GoogleDriveFile {
-    id: string;
-    name: string;
-    mimeType: string;
-    url?: string;
-}
 
 interface UseGoogleDrivePickerResult {
     openPicker: () => void;
@@ -71,6 +64,10 @@ export function useGoogleDrivePicker(
     // Initialize Google Identity Services
     const initGis = useCallback(async () => {
         if (gisInited.current) return;
+
+        if (!GOOGLE_CLIENT_ID) {
+            throw new Error("Missing NEXT_PUBLIC_GOOGLE_CLIENT_ID");
+        }
 
         await loadScript("https://accounts.google.com/gsi/client");
 
@@ -134,6 +131,11 @@ export function useGoogleDrivePicker(
 
     // Create and show picker
     const createPicker = useCallback((accessToken: string) => {
+        if (!GOOGLE_API_KEY) {
+            setError("Google Drive API key 未配置");
+            return;
+        }
+
         const view = new window.google.picker.DocsView()
             .setIncludeFolders(true)
             .setSelectFolderEnabled(false);

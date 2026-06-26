@@ -11,7 +11,7 @@
 
 ### 方法 1：在 Supabase Dashboard 中执行（推荐）
 
-1. 访问 Supabase Dashboard: https://supabase.com/dashboard/project/urqxxxncpjtumwozqtly
+1. 访问 Supabase Dashboard: `https://supabase.com/dashboard/project/YOUR_SUPABASE_PROJECT_REF`
 2. 登录你的账号
 3. 在左侧菜单中选择 **SQL Editor**
 4. 点击 **New query** 创建新查询
@@ -26,9 +26,9 @@
 ```bash
 # 连接到数据库
 PGPASSWORD="your_database_password" psql \
-  -h aws-1-ap-south-1.pooler.supabase.com \
+  -h aws-1-YOUR_REGION.pooler.supabase.com \
   -p 5432 \
-  -U postgres.urqxxxncpjtumwozqtly \
+  -U postgres.YOUR_SUPABASE_PROJECT_REF \
   -d postgres \
   -f supabase_fix_upload_sessions.sql
 ```

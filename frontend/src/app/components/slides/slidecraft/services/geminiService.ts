@@ -4,12 +4,15 @@ import { buildPresetPromptContext } from '../data/presets';
 
 // DeepSeek API 配置（文本生成）
 const DEEPSEEK_CHAT_URL = 'https://api.deepseek.com/v1/chat/completions';
-const DEEPSEEK_API_KEY = 'sk-0472bbc337b747eab9cf7e1bd703a012';
+const DEEPSEEK_API_KEY = process.env.NEXT_PUBLIC_DEEPSEEK_API_KEY?.trim();
 const DEEPSEEK_CHAT_MODEL = 'deepseek-chat';
 
 const IMAGE_API_URL = 'https://api.tu-zi.com/v1/images/generations';
 const IMAGE_MODEL = 'gemini-2.5-flash-image-preview-nt';
-const TUZI_IMAGE_API_KEY = 'sk-owanaNMiGg9GF8bbrtCMLz5R8fGmHQi5DifqjyNslbbnN2u6';
+const TUZI_IMAGE_API_KEY = (
+    process.env.NEXT_PUBLIC_TUZI_IMAGE_API_KEY ||
+    process.env.NEXT_PUBLIC_TUZI_API_KEY
+)?.trim();
 const BAOYU_OUTLINE_RULES = `## Content & Deck Rules
 - Respect reader attention: each slide communicates ONE main idea
 - Prioritize clarity over comprehensiveness
@@ -55,6 +58,13 @@ You are "The Architect" - a master visual storyteller creating presentation slid
 - Do not invent placeholder text or unspecified numbers
 - Keep wording direct and confident, without AI-sounding filler
 - Use the same language and punctuation style as the provided slide content`;
+
+function getRequiredPublicEnv(value: string | undefined, name: string): string {
+    if (!value) {
+        throw new Error(`Missing ${name}`);
+    }
+    return value;
+}
 function buildOutlineSystemPrompt(style?: StyleDimensions, presetId?: string): string {
     const styleBlock = style ? buildStyleInstructions(style, presetId) : '';
 
@@ -108,6 +118,7 @@ export async function generateOutlineStream(
     signal?: AbortSignal,
     presetId?: string
 ): Promise<string> {
+    const deepseekApiKey = getRequiredPublicEnv(DEEPSEEK_API_KEY, 'NEXT_PUBLIC_DEEPSEEK_API_KEY');
     const presetContext = buildPresetPromptContext(presetId);
     const attachmentSummary = attachments.length > 0
         ? `\n\nAttached files (names only; file contents are not sent in the DeepSeek text-only path):\n${attachments
@@ -147,7 +158,7 @@ export async function generateOutlineStream(
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+            'Authorization': `Bearer ${deepseekApiKey}`,
         },
         body: JSON.stringify(requestBody),
         signal,
@@ -193,6 +204,7 @@ export async function generateSingleSlide(
     style?: StyleDimensions,
     presetId?: string
 ): Promise<Slide | null> {
+    const deepseekApiKey = getRequiredPublicEnv(DEEPSEEK_API_KEY, 'NEXT_PUBLIC_DEEPSEEK_API_KEY');
     const styleBlock = style ? buildStyleInstructions(style, presetId) : '';
     const presetContext = buildPresetPromptContext(presetId);
     const context = existingSlides.map((s, i) => `Slide ${i + 1}: ${s.title}`).join('\n');
@@ -201,7 +213,7 @@ export async function generateSingleSlide(
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+            'Authorization': `Bearer ${deepseekApiKey}`,
         },
         body: JSON.stringify({
             model: DEEPSEEK_CHAT_MODEL,
@@ -247,6 +259,10 @@ export async function generateSlideImage(
     signal?: AbortSignal,
     presetId?: string
 ): Promise<string> {
+    const imageApiKey = getRequiredPublicEnv(
+        TUZI_IMAGE_API_KEY,
+        'NEXT_PUBLIC_TUZI_IMAGE_API_KEY or NEXT_PUBLIC_TUZI_API_KEY'
+    );
     const styleBlock = style ? buildStyleInstructions(style, presetId) : '';
     const presetContext = buildPresetPromptContext(presetId);
     const layoutGuidance = getLayoutGuidance(slide.layout, slide.slideType);
@@ -293,7 +309,7 @@ ${styleBlock}
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${TUZI_IMAGE_API_KEY}`,
+            'Authorization': `Bearer ${imageApiKey}`,
         },
         body: JSON.stringify({
             model: IMAGE_MODEL,

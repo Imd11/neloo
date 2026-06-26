@@ -2,7 +2,7 @@ import { Slide, Attachment } from "../types/slides";
 
 // Tu-Zi API 配置（文本生成）
 const TUZI_CHAT_URL = 'https://api.tu-zi.com/v1/chat/completions';
-const TUZI_API_KEY = process.env.NEXT_PUBLIC_TUZI_API_KEY || 'sk-owanaNMiGg9GF8bbrtCMLz5R8fGmHQi5DifqjyNslbbnN2u6';
+const TUZI_API_KEY = process.env.NEXT_PUBLIC_TUZI_API_KEY?.trim();
 const TUZI_CHAT_MODEL = 'gemini-3-flash-preview';
 
 // 图片生成 API 配置
@@ -29,12 +29,21 @@ Limit the output to a maximum of 12 slides unless requested otherwise.
 IMPORTANT: Your response must be a valid JSON array only. Do not include any markdown code blocks or extra text.
 `;
 
+function getTuziApiKey(): string {
+    if (!TUZI_API_KEY) {
+        throw new Error("Missing NEXT_PUBLIC_TUZI_API_KEY");
+    }
+    return TUZI_API_KEY;
+}
+
 export const generateOutlineStream = async (
     topic: string,
     attachments: Attachment[] = [],
     onChunk: (text: string) => void
 ): Promise<string> => {
     try {
+        const apiKey = getTuziApiKey();
+
         // 构建多模态消息内容（OpenAI 格式）
         const userContent: any[] = [];
 
@@ -60,7 +69,7 @@ export const generateOutlineStream = async (
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${TUZI_API_KEY}`
+                'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
                 model: TUZI_CHAT_MODEL,
@@ -103,7 +112,7 @@ export const generateOutlineStream = async (
                             fullText += content;
                             onChunk(fullText);
                         }
-                    } catch (e) {
+                    } catch {
                         // 忽略解析错误
                     }
                 }
@@ -124,6 +133,8 @@ export const generateSingleSlide = async (
     insertIndex: number = -1
 ): Promise<Omit<Slide, 'id'>> => {
     try {
+        const apiKey = getTuziApiKey();
+
         // 构建上下文
         let contextOutline = "";
 
@@ -158,7 +169,7 @@ Return a JSON object with keys: title, content, visualDescription
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${TUZI_API_KEY}`
+                'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
                 model: TUZI_CHAT_MODEL,
@@ -189,6 +200,8 @@ Return a JSON object with keys: title, content, visualDescription
 
 export const generateSlideImage = async (slide: Slide): Promise<string> => {
     try {
+        const apiKey = getTuziApiKey();
+
         const prompt = `
       Create a high-quality, 16:9 aspect ratio background image for a presentation slide.
       
@@ -208,7 +221,7 @@ export const generateSlideImage = async (slide: Slide): Promise<string> => {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${TUZI_API_KEY}`
+                'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
                 model: IMAGE_MODEL,

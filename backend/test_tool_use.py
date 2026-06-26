@@ -2,8 +2,13 @@
 """测试代理 API 是否支持 Tool Use"""
 
 import os
-os.environ["ANTHROPIC_API_KEY"] = "sk-owanaNMiGg9GF8bbrtCMLz5R8fGmHQi5DifqjyNslbbnN2u6"
-os.environ["ANTHROPIC_BASE_URL"] = "https://api.tu-zi.com"
+import sys
+
+if not os.environ.get("ANTHROPIC_API_KEY"):
+    print("Please set ANTHROPIC_API_KEY before running this test.")
+    sys.exit(1)
+
+os.environ.setdefault("ANTHROPIC_BASE_URL", "https://api.anthropic.com")
 
 print("=" * 60)
 print("测试: 检查代理 API 是否支持 Tool Use")

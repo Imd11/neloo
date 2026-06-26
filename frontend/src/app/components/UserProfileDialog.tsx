@@ -11,7 +11,6 @@ import {
     Crown,
     Zap,
     Clock,
-    LogOut,
 } from "lucide-react";
 import {
     Dialog,
@@ -51,7 +50,7 @@ export function UserProfileDialog({
     open,
     onOpenChange,
 }: UserProfileDialogProps) {
-    const { user, signOut, updateDisplayName } = useAuth();
+    const { user, updateDisplayName } = useAuth();
     const [activeTab, setActiveTab] = useState("account");
     const [isEditingName, setIsEditingName] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -142,23 +141,13 @@ export function UserProfileDialog({
                                 <span className="text-sm text-foreground">{email}</span>
                             </div>
                             <div className="flex items-center justify-between py-3 border-b border-border">
-                                <span className="text-sm text-muted-foreground">注册时间</span>
-                                <span className="text-sm text-foreground">2024年1月15日</span>
-                            </div>
-                            <div className="flex items-center justify-between py-3 border-b border-border">
                                 <span className="text-sm text-muted-foreground">账户状态</span>
                                 <span className="text-sm text-green-500 flex items-center gap-1">
                                     <span className="w-2 h-2 rounded-full bg-green-500" />
-                                    已验证
+                                    本地访客
                                 </span>
                             </div>
                         </div>
-
-                        {/* Logout Button */}
-                        <Button variant="outline" className="w-full gap-2 mt-4" onClick={() => signOut()}>
-                            <LogOut className="w-4 h-4" />
-                            退出登录
-                        </Button>
                     </div>
                 );
 

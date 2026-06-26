@@ -113,14 +113,19 @@ export function ModelSelector({
         {models.map((model) => (
           <DropdownMenuItem
             key={model.id}
+            disabled={!model.available}
             onClick={() => onModelChange(model.id)}
             className={
-              model.id === selectedModel
-                ? "bg-accent font-medium"
-                : ""
+              [
+                model.id === selectedModel ? "bg-accent font-medium" : "",
+                !model.available ? "opacity-50 cursor-not-allowed" : "",
+              ].filter(Boolean).join(" ")
             }
           >
             <span className="flex-1">{model.display_name}</span>
+            {!model.available && (
+              <span className="text-xs text-muted-foreground ml-2">未配置</span>
+            )}
             {model.id === defaultModel && (
               <span className="text-xs text-muted-foreground ml-2">default</span>
             )}

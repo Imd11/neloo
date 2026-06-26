@@ -1466,9 +1466,10 @@ class ModelsResponse(BaseModel):
 @app.get("/api/models", response_model=ModelsResponse)
 async def get_available_models():
     """
-    Get list of available language models.
+    Get list of registered language models.
 
-    Returns models that have their API keys configured.
+    Returns every registered model. The `available` flag indicates whether
+    the required API key is configured.
     Frontend uses this to populate the model selector dropdown.
     """
     from ..agent.graph import get_available_models as get_models, get_default_model_id

@@ -3,16 +3,51 @@
 import React, {
   createContext,
   useContext,
-  useEffect,
+  useMemo,
   useState,
   useCallback,
 } from "react";
-import { User, Session, AuthChangeEvent } from "@supabase/supabase-js";
-import { getSupabaseClient } from "@/lib/supabase/client";
+import type { Session, User } from "@supabase/supabase-js";
+
+const ANONYMOUS_ACCESS_TOKEN = "anonymous";
+const ANONYMOUS_USER_ID = "default";
+
+function createAnonymousUser(displayName = "Guest"): User {
+  const now = new Date(0).toISOString();
+
+  return {
+    id: ANONYMOUS_USER_ID,
+    aud: "authenticated",
+    role: "authenticated",
+    email: "guest@local",
+    email_confirmed_at: now,
+    phone: "",
+    confirmed_at: now,
+    last_sign_in_at: now,
+    app_metadata: {},
+    user_metadata: { display_name: displayName },
+    identities: [],
+    factors: [],
+    created_at: now,
+    updated_at: now,
+    is_anonymous: true,
+  } as User;
+}
+
+function createAnonymousSession(user: User): Session {
+  return {
+    access_token: ANONYMOUS_ACCESS_TOKEN,
+    refresh_token: ANONYMOUS_ACCESS_TOKEN,
+    expires_in: 60 * 60 * 24 * 365,
+    expires_at: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 365,
+    token_type: "bearer",
+    user,
+  } as Session;
+}
 
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
+  user: User;
+  session: Session;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
@@ -23,167 +58,27 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [displayName, setDisplayName] = useState("Guest");
 
-  const supabase = getSupabaseClient();
+  const user = useMemo(() => createAnonymousUser(displayName), [displayName]);
+  const session = useMemo(() => createAnonymousSession(user), [user]);
 
-  // Ensure user has a profile in user_profiles table (for agent store creator names)
-  const ensureUserProfile = useCallback(async (user: User) => {
-    try {
-      const displayName =
-        (user.user_metadata?.display_name as string) ||
-        user.email?.split('@')[0] ||
-        "User";
+  const noAuthResult = useCallback(async () => ({ error: null }), []);
 
-      await supabase
-        .from("user_profiles")
-        .upsert(
-          {
-            id: user.id,
-            display_name: displayName
-          },
-          { onConflict: "id" }
-        );
-    } catch (error) {
-      // Silently fail - table may not exist yet, or RLS may block
-      console.warn("Could not sync user profile:", error);
-    }
-  }, [supabase]);
-
-  useEffect(() => {
-    // Get initial session
-    const getSession = async () => {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        setSession(session);
-        setUser(session?.user ?? null);
-
-        // Ensure user profile exists on initial load
-        if (session?.user) {
-          ensureUserProfile(session.user);
-        }
-      } catch (error) {
-        console.error("Error getting session:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    getSession();
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-
-      // Ensure user profile exists on sign in
-      if (event === "SIGNED_IN" && session?.user) {
-        ensureUserProfile(session.user);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [supabase, ensureUserProfile]);
-
-  const signIn = useCallback(
-    async (email: string, password: string) => {
-      try {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) {
-          return { error };
-        }
-        return { error: null };
-      } catch (error) {
-        return { error: error as Error };
-      }
-    },
-    [supabase]
-  );
-
-  const signUp = useCallback(
-    async (email: string, password: string) => {
-      try {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
-          },
-        });
-        if (error) {
-          return { error };
-        }
-        return { error: null };
-      } catch (error) {
-        return { error: error as Error };
-      }
-    },
-    [supabase]
-  );
-
-  const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
-  }, [supabase]);
-
-  // Update user display name in both Supabase user_metadata AND user_profiles table
-  const updateDisplayName = useCallback(async (displayName: string) => {
-    try {
-      // 1. Update Auth user_metadata
-      const { error, data } = await supabase.auth.updateUser({
-        data: { display_name: displayName }
-      });
-      if (error) {
-        return { error };
-      }
-
-      // 2. Sync to user_profiles table (for agent store creator names)
-      if (data.user) {
-        const { error: profileError } = await supabase
-          .from("user_profiles")
-          .upsert(
-            {
-              id: data.user.id,
-              display_name: displayName
-            },
-            { onConflict: "id" }
-          );
-
-        if (profileError) {
-          console.warn("Could not sync profile to user_profiles:", profileError);
-          // Don't fail the whole operation - Auth update succeeded
-        }
-
-        // Update local user state with new metadata
-        setUser(data.user);
-      }
-
-      return { error: null };
-    } catch (error) {
-      return { error: error as Error };
-    }
-  }, [supabase]);
+  const updateDisplayName = useCallback(async (nextDisplayName: string) => {
+    setDisplayName(nextDisplayName.trim() || "Guest");
+    return { error: null };
+  }, []);
 
   return (
     <AuthContext.Provider
       value={{
         user,
         session,
-        loading,
-        signIn,
-        signUp,
-        signOut,
+        loading: false,
+        signIn: noAuthResult,
+        signUp: noAuthResult,
+        signOut: async () => {},
         updateDisplayName,
       }}
     >
@@ -199,4 +94,3 @@ export function useAuth() {
   }
   return context;
 }
-

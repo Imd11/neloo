@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { ChevronDown, Bell, User, Check, Search, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useSidebar } from "@/app/context/SidebarContext";
 import { cn } from "@/lib/utils";
-import { CHAT_MODELS, IMAGE_MODELS, LIGHT_LOGOS } from "@/lib/models";
+import { getConfig } from "@/lib/config";
+import { CHAT_MODEL_BY_ID, CHAT_MODELS, IMAGE_MODELS, LIGHT_LOGOS, type ModelInfo } from "@/lib/models";
 
 interface TopBarProps {
     hideUserActions?: boolean;
@@ -23,18 +24,64 @@ interface TopBarProps {
 export function TopBar({ hideUserActions = false, currentModelId, onModelSelect, mode }: TopBarProps) {
     const { toggle } = useSidebar();
     const [searchQuery, setSearchQuery] = useState("");
+    const [backendModels, setBackendModels] = useState<ModelInfo[]>([]);
     const pathname = usePathname();
 
     const isImagePage = mode ? mode === "image" : pathname === "/image";
 
+    useEffect(() => {
+        if (isImagePage) return;
+
+        const apiUrl = getConfig()?.deploymentUrl;
+        if (!apiUrl) return;
+
+        let cancelled = false;
+
+        async function fetchModels() {
+            try {
+                const response = await fetch(`${apiUrl}/api/models`);
+                if (!response.ok) return;
+
+                const data = await response.json();
+                const fetchedModels: ModelInfo[] = (data.models || []).map((model: {
+                    id: string;
+                    display_name: string;
+                    available: boolean;
+                }) => {
+                    const localModel = CHAT_MODEL_BY_ID[model.id];
+                    return {
+                        id: model.id,
+                        name: model.display_name || localModel?.name || model.id,
+                        logo: localModel?.logo || "/logos/openai.png",
+                        provider: localModel?.provider || "Model",
+                        available: model.available,
+                    };
+                });
+
+                if (!cancelled && fetchedModels.length > 0) {
+                    setBackendModels(fetchedModels);
+                }
+            } catch (error) {
+                console.error("Failed to fetch backend models:", error);
+            }
+        }
+
+        void fetchModels();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isImagePage]);
+
     // Select model list based on current page
-    const models = isImagePage ? IMAGE_MODELS : CHAT_MODELS;
+    const models = isImagePage ? IMAGE_MODELS : (backendModels.length > 0 ? backendModels : CHAT_MODELS);
 
     // Derived state from props or default
     const currentModel = models.find(m => m.id === currentModelId) || models[0];
 
     const filteredModels = models.filter((model) =>
-        model.name.toLowerCase().includes(searchQuery.toLowerCase())
+        model.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        model.provider.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     return (
@@ -88,7 +135,9 @@ export function TopBar({ hideUserActions = false, currentModelId, onModelSelect,
                             {filteredModels.map((model) => (
                                 <DropdownMenuItem
                                     key={model.id}
+                                    disabled={model.available === false}
                                     onClick={() => {
+                                        if (model.available === false) return;
                                         if (onModelSelect) {
                                             onModelSelect(model.id);
                                         }
@@ -97,6 +146,7 @@ export function TopBar({ hideUserActions = false, currentModelId, onModelSelect,
                                     className={cn(
                                         "flex items-center gap-2 cursor-pointer rounded-md py-2.5",
                                         "text-foreground hover:bg-muted focus:bg-muted",
+                                        model.available === false && "opacity-50 cursor-not-allowed",
                                         currentModel.id === model.id && "bg-accent"
                                     )}
                                 >
@@ -110,6 +160,9 @@ export function TopBar({ hideUserActions = false, currentModelId, onModelSelect,
                                         <span className="text-sm font-medium leading-none">{model.name}</span>
                                         <span className="text-xs text-muted-foreground mt-0.5">{model.provider}</span>
                                     </div>
+                                    {model.available === false && (
+                                        <span className="text-xs text-muted-foreground flex-shrink-0">未配置</span>
+                                    )}
                                     {currentModel.id === model.id && (
                                         <Check className="w-4 h-4 text-foreground flex-shrink-0" />
                                     )}

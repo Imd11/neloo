@@ -1,9 +1,9 @@
 /*
- * 登录页专用CSS - 100%复制自 GitHub: Imd11/hello-world-project/src/index.css
+ * 登录页专用CSS
  * 这些变量只在登录页生效，不影响主应用
  */
 
-/* Light Mode - 100%复制自GitHub原始 */
+/* Light Mode */
 .login-page {
   --background: 220 25% 97%;
   --foreground: 220 25% 10%;

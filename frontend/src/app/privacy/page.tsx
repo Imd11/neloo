@@ -127,8 +127,8 @@ export default function PrivacyPage() {
                         </p>
                         <p className="text-muted-foreground mt-4">
                             <strong>邮箱：</strong>{" "}
-                            <a href="mailto:jinhang.yang11@gmail.com" className="text-primary hover:underline">
-                                jinhang.yang11@gmail.com
+                            <a href="mailto:support@example.com" className="text-primary hover:underline">
+                                support@example.com
                             </a>
                         </p>
                     </section>

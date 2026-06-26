@@ -23,7 +23,6 @@ import {
 import type { Artifact } from "@/lib/artifactParser";
 import { parseArtifacts, getStreamingArtifact } from "@/lib/artifactParser";
 import { extractStringFromMessageContent } from "@/app/utils/utils";
-import { Button } from "@/components/ui/button";
 import { RotatingHeadline } from "@/app/components/RotatingHeadline";
 import { PromptInput } from "@/app/components/PromptInput";
 import { TemplatePromptInput } from "@/app/components/TemplatePromptInput";
@@ -625,29 +624,9 @@ function ChatWithFilePanel({
 }
 
 
-// Mock Login Component until authentic auth flow is integrated (or use real redirect)
-function LoginComponent() {
-  const router = useRouter();
-  useEffect(() => {
-    // In a real app we might redirect automatically:
-    // router.push("/login");
-  }, [router]);
-
-  return (
-    <div className="flex h-screen items-center justify-center">
-      <div className="text-center space-y-4">
-        <h1 className="text-2xl font-bold">Welcome to Neloo</h1>
-        <p className="text-muted-foreground">Please sign in to continue</p>
-        <Button onClick={() => router.push("/login")}>Sign In</Button>
-      </div>
-    </div>
-  );
-}
-
 function HomePageInner() {
   const client = useClient();
-  const router = useRouter();
-  const { user, session, loading: authLoading } = useAuth();
+  const { session, loading: authLoading } = useAuth();
   const [threadId, setThreadId] = useQueryState("threadId");
   const [filePanel, setFilePanel] = useQueryState("files");
 
@@ -820,28 +799,16 @@ function HomePageInner() {
   }, [threadId, persistThreadModelSelection]);
 
   const handleNewThread = () => {
-    if (!user) {
-      router.push("/login");
-      return;
-    }
     setThreadId(null);
     setThreadType(null);
     setUiMode("chat");
   };
 
   const handleSearch = () => {
-    if (!user) {
-      router.push("/login");
-      return;
-    }
     setSearchOpen(true);
   };
 
   const handleLibrary = () => {
-    if (!user) {
-      router.push("/login");
-      return;
-    }
     setLibraryOpen(true);
   };
 
@@ -860,11 +827,6 @@ function HomePageInner() {
         <WaterDropletMascot />
       </div>
     );
-  }
-
-  // Not Logged In
-  if (!session) {
-    return <LoginComponent />;
   }
 
   // No Config

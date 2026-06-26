@@ -80,14 +80,9 @@ export default function SharePage() {
                         <MessageSquare className="h-5 w-5 text-primary" />
                         <span>Neloo</span>
                     </Link>
-                    <div className="flex items-center gap-2">
-                        <Button variant="ghost" asChild>
-                            <Link href="/login">登录</Link>
-                        </Button>
-                        <Button asChild>
-                            <Link href="/login">注册</Link>
-                        </Button>
-                    </div>
+                    <Button asChild>
+                        <Link href="/">进入应用</Link>
+                    </Button>
                 </header>
                 <div className="flex flex-1 items-center justify-center">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -105,14 +100,9 @@ export default function SharePage() {
                         <MessageSquare className="h-5 w-5 text-primary" />
                         <span>Neloo</span>
                     </Link>
-                    <div className="flex items-center gap-2">
-                        <Button variant="ghost" asChild>
-                            <Link href="/login">登录</Link>
-                        </Button>
-                        <Button asChild>
-                            <Link href="/login">注册</Link>
-                        </Button>
-                    </div>
+                    <Button asChild>
+                        <Link href="/">进入应用</Link>
+                    </Button>
                 </header>
                 <div className="flex flex-1 flex-col items-center justify-center gap-4">
                     <div className="text-center">
@@ -136,14 +126,9 @@ export default function SharePage() {
                     <MessageSquare className="h-5 w-5 text-primary" />
                     <span>Neloo</span>
                 </Link>
-                <div className="flex items-center gap-2">
-                    <Button variant="ghost" asChild>
-                        <Link href="/login">登录</Link>
-                    </Button>
-                    <Button asChild>
-                        <Link href="/login">注册</Link>
-                    </Button>
-                </div>
+                <Button asChild>
+                    <Link href="/">进入应用</Link>
+                </Button>
             </header>
 
             {/* Content */}

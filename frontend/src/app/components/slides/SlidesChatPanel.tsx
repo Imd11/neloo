@@ -6,7 +6,7 @@ import type { Slide } from '@/app/slides/types/slides';
 
 // Tu-Zi API configuration
 const TUZI_CHAT_URL = 'https://api.tu-zi.com/v1/chat/completions';
-const TUZI_API_KEY = process.env.NEXT_PUBLIC_TUZI_API_KEY || 'sk-owanaNMiGg9GF8bbrtCMLz5R8fGmHQi5DifqjyNslbbnN2u6';
+const TUZI_API_KEY = process.env.NEXT_PUBLIC_TUZI_API_KEY?.trim();
 const TUZI_CHAT_MODEL = 'gemini-3-flash-preview';
 
 interface SlidesChatPanelProps {
@@ -100,6 +100,10 @@ export function SlidesChatPanel({
         ]);
 
         try {
+            if (!TUZI_API_KEY) {
+                throw new Error('Missing NEXT_PUBLIC_TUZI_API_KEY');
+            }
+
             // Build API messages
             const apiMessages = [
                 { role: 'system', content: SYSTEM_PROMPT },

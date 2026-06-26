@@ -30,7 +30,6 @@ import { getPagePreset } from './lib/pageSize';
 import { MainLayout } from '@/app/components/layout/MainLayout';
 import { PromptInput } from '@/app/components/PromptInput';
 import { useSidebar } from '@/app/context/SidebarContext';
-import { useAuth } from '@/providers/AuthProvider';
 import { SearchDialog } from '@/app/components/SearchDialog';
 import { LibraryDialog } from '@/app/components/LibraryDialog';
 import { features } from '@/data/featureTemplates';
@@ -678,7 +677,6 @@ export function ResumePageContent({ onExit }: { onExit?: () => void } = {}) {
 // Default export with MainLayout wrapper
 export default function ResumePage() {
     const router = useRouter();
-    const { user } = useAuth();
     const [searchOpen, setSearchOpen] = useState(false);
     const [libraryOpen, setLibraryOpen] = useState(false);
 
@@ -687,18 +685,10 @@ export default function ResumePage() {
     };
 
     const handleSearch = () => {
-        if (!user) {
-            router.push("/login");
-            return;
-        }
         setSearchOpen(true);
     };
 
     const handleLibrary = () => {
-        if (!user) {
-            router.push("/login");
-            return;
-        }
         setLibraryOpen(true);
     };
 
