@@ -103,7 +103,7 @@ export function TopBar({ hideUserActions = false, currentModelId, onModelSelect,
                     <DropdownMenuTrigger asChild>
                         <Button
                             variant="ghost"
-                            className="gap-2 text-foreground font-medium hover:bg-muted/50 px-2"
+                            className="gap-2 text-foreground font-medium px-2 transition-none duration-0 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:shadow-none data-[state=open]:bg-muted/50"
                         >
                             <span className={cn(
                                 "w-5 h-5 rounded-full flex items-center justify-center overflow-hidden",

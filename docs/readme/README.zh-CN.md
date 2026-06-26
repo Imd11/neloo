@@ -18,6 +18,37 @@ Neloo 是一个通用 AI 智能体工作台，由 Next.js 前端和 LangGraph / 
 - 包含演示文稿、图像、翻译和简历相关工作流。
 - 本地开发默认可使用匿名访客模式，不强制登录。
 
+## 集成关系图
+
+Neloo 位于多个可选平台集成的中心。部署时只需要配置你实际启用的服务。
+
+```mermaid
+flowchart TB
+    M["mElOO<br/>通用 AI 智能体"]
+
+    V["Vercel<br/>Next.js 前端托管"]
+    R["Railway<br/>后端托管 / Postgres"]
+    S["Supabase<br/>数据库 / 认证 / 存储"]
+    E["E2B<br/>云端沙箱运行环境"]
+    L["模型服务商<br/>OpenAI / Claude / DeepSeek / Gemini / Qwen"]
+    T["工具 API<br/>Tavily / Composio / Google APIs"]
+    U["用户<br/>Web 浏览器"]
+
+    M <--> V
+    M <--> R
+    M <--> S
+    M <--> E
+    M <--> L
+    M <--> T
+    V <--> U
+    R <--> E
+
+    classDef center fill:#111827,color:#ffffff,stroke:#111827,stroke-width:2px;
+    classDef platform fill:#f8fafc,color:#0f172a,stroke:#94a3b8,stroke-width:1.5px;
+    class M center;
+    class V,R,S,E,L,T,U platform;
+```
+
 ## 快速开始
 
 ### 后端

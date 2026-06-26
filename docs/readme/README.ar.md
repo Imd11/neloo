@@ -18,6 +18,37 @@ Neloo مساحة عمل لوكيل ذكاء اصطناعي عام. يستخدم 
 - سير عمل للعروض، الصور، الترجمة، والسير الذاتية.
 - وضع محلي مجهول للتطوير بدون تسجيل دخول إلزامي.
 
+## خريطة التكاملات
+
+يقع Neloo في مركز عدة تكاملات اختيارية. اضبط فقط الخدمات التي تحتاجها في النشر الخاص بك.
+
+```mermaid
+flowchart TB
+    M["mElOO<br/>وكيل ذكاء اصطناعي عام"]
+
+    V["Vercel<br/>استضافة واجهة Next.js"]
+    R["Railway<br/>استضافة الخلفية / Postgres"]
+    S["Supabase<br/>قاعدة بيانات / مصادقة / تخزين"]
+    E["E2B<br/>تشغيل Sandbox سحابي"]
+    L["مزودو النماذج<br/>OpenAI / Claude / DeepSeek / Gemini / Qwen"]
+    T["واجهات أدوات API<br/>Tavily / Composio / Google APIs"]
+    U["المستخدمون<br/>متصفح الويب"]
+
+    M <--> V
+    M <--> R
+    M <--> S
+    M <--> E
+    M <--> L
+    M <--> T
+    V <--> U
+    R <--> E
+
+    classDef center fill:#111827,color:#ffffff,stroke:#111827,stroke-width:2px;
+    classDef platform fill:#f8fafc,color:#0f172a,stroke:#94a3b8,stroke-width:1.5px;
+    class M center;
+    class V,R,S,E,L,T,U platform;
+```
+
 ## البدء السريع
 
 ### الخلفية

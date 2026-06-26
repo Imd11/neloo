@@ -18,6 +18,37 @@ Proyek ini awalnya berfokus pada analisis data, jadi beberapa graph ID internal 
 - Workflow presentasi, gambar, terjemahan, dan resume.
 - Mode lokal anonim untuk pengembangan tanpa login wajib.
 
+## Peta Integrasi
+
+Neloo berada di pusat beberapa integrasi platform opsional. Konfigurasikan hanya layanan yang dibutuhkan untuk deployment kamu.
+
+```mermaid
+flowchart TB
+    M["mElOO<br/>Agen AI Serbaguna"]
+
+    V["Vercel<br/>Hosting Frontend Next.js"]
+    R["Railway<br/>Hosting Backend / Postgres"]
+    S["Supabase<br/>Database / Auth / Storage"]
+    E["E2B<br/>Runtime Sandbox Cloud"]
+    L["Provider Model<br/>OpenAI / Claude / DeepSeek / Gemini / Qwen"]
+    T["Tool APIs<br/>Tavily / Composio / Google APIs"]
+    U["Pengguna<br/>Web Browser"]
+
+    M <--> V
+    M <--> R
+    M <--> S
+    M <--> E
+    M <--> L
+    M <--> T
+    V <--> U
+    R <--> E
+
+    classDef center fill:#111827,color:#ffffff,stroke:#111827,stroke-width:2px;
+    classDef platform fill:#f8fafc,color:#0f172a,stroke:#94a3b8,stroke-width:1.5px;
+    class M center;
+    class V,R,S,E,L,T,U platform;
+```
+
 ## Quick Start
 
 ### Backend

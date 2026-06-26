@@ -18,6 +18,37 @@ El proyecto comenzó como una herramienta de análisis de datos, por eso algunos
 - Flujos para presentaciones, imágenes, traducción y currículos.
 - Modo local anónimo para desarrollo sin inicio de sesión obligatorio.
 
+## Mapa de Integraciones
+
+Neloo se ubica en el centro de varias integraciones opcionales. Configura solo los servicios que necesites para tu despliegue.
+
+```mermaid
+flowchart TB
+    M["mElOO<br/>Agente de IA de Propósito General"]
+
+    V["Vercel<br/>Hosting del Frontend Next.js"]
+    R["Railway<br/>Hosting del Backend / Postgres"]
+    S["Supabase<br/>Base de Datos / Auth / Storage"]
+    E["E2B<br/>Runtime de Sandbox en la Nube"]
+    L["Proveedores de Modelos<br/>OpenAI / Claude / DeepSeek / Gemini / Qwen"]
+    T["Tool APIs<br/>Tavily / Composio / Google APIs"]
+    U["Usuarios<br/>Navegador Web"]
+
+    M <--> V
+    M <--> R
+    M <--> S
+    M <--> E
+    M <--> L
+    M <--> T
+    V <--> U
+    R <--> E
+
+    classDef center fill:#111827,color:#ffffff,stroke:#111827,stroke-width:2px;
+    classDef platform fill:#f8fafc,color:#0f172a,stroke:#94a3b8,stroke-width:1.5px;
+    class M center;
+    class V,R,S,E,L,T,U platform;
+```
+
 ## Inicio rápido
 
 ### Backend

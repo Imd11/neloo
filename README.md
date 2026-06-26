@@ -20,6 +20,37 @@ The project started with a data-analysis focus, so a few internal graph IDs stil
 
 ## Architecture
 
+### Integration Map
+
+Neloo sits at the center of several optional platform integrations. Configure only the services you need for your deployment.
+
+```mermaid
+flowchart TB
+    M["mElOO<br/>General-Purpose AI Agent"]
+
+    V["Vercel<br/>Next.js Frontend Hosting"]
+    R["Railway<br/>Backend Hosting / Postgres"]
+    S["Supabase<br/>Database / Auth / Storage"]
+    E["E2B<br/>Cloud Sandbox Runtime"]
+    L["Model Providers<br/>OpenAI / Claude / DeepSeek / Gemini / Qwen"]
+    T["Tool APIs<br/>Tavily / Composio / Google APIs"]
+    U["Users<br/>Web Browser"]
+
+    M <--> V
+    M <--> R
+    M <--> S
+    M <--> E
+    M <--> L
+    M <--> T
+    V <--> U
+    R <--> E
+
+    classDef center fill:#111827,color:#ffffff,stroke:#111827,stroke-width:2px;
+    classDef platform fill:#f8fafc,color:#0f172a,stroke:#94a3b8,stroke-width:1.5px;
+    class M center;
+    class V,R,S,E,L,T,U platform;
+```
+
 ```text
 neloo/
 ├── backend/                 # Python backend, LangGraph app, API routes

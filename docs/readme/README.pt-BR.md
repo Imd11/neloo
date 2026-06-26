@@ -18,6 +18,37 @@ O projeto começou com foco em análise de dados, por isso alguns IDs internos d
 - Workflows de apresentações, imagens, tradução e currículos.
 - Modo local anônimo para desenvolvimento sem login obrigatório.
 
+## Mapa de Integrações
+
+Neloo fica no centro de várias integrações opcionais. Configure apenas os serviços necessários para o seu deploy.
+
+```mermaid
+flowchart TB
+    M["mElOO<br/>Agente de IA de Propósito Geral"]
+
+    V["Vercel<br/>Hospedagem do Frontend Next.js"]
+    R["Railway<br/>Hospedagem do Backend / Postgres"]
+    S["Supabase<br/>Banco de Dados / Auth / Storage"]
+    E["E2B<br/>Runtime de Sandbox na Nuvem"]
+    L["Provedores de Modelo<br/>OpenAI / Claude / DeepSeek / Gemini / Qwen"]
+    T["Tool APIs<br/>Tavily / Composio / Google APIs"]
+    U["Usuários<br/>Navegador Web"]
+
+    M <--> V
+    M <--> R
+    M <--> S
+    M <--> E
+    M <--> L
+    M <--> T
+    V <--> U
+    R <--> E
+
+    classDef center fill:#111827,color:#ffffff,stroke:#111827,stroke-width:2px;
+    classDef platform fill:#f8fafc,color:#0f172a,stroke:#94a3b8,stroke-width:1.5px;
+    class M center;
+    class V,R,S,E,L,T,U platform;
+```
+
 ## Início Rápido
 
 ### Backend
