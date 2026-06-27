@@ -42,8 +42,8 @@ Production equivalents:
 | `LANGGRAPH_API_URL` | Backend | Optional | Public/internal | LangGraph API URL. |
 | `LANGGRAPH_INTERNAL_URL` | Backend | Optional | Internal | Internal LangGraph calls. |
 | `LANGGRAPH_DEFAULT_GRAPH_ID` | Backend | Recommended | Public | Default graph ID. Current default is `data_analyst`. |
-| `NELOO_BUILD_ALL_MODEL_GRAPHS` | Backend | Optional | Public config | Eagerly builds every configured canonical and legacy model graph when `true`. |
-| `NELOO_BUILD_VARIANT_GRAPHS` | Backend | Optional | Public config | Eagerly builds `-web-dev` and `-fortune` variants when `true`. |
+| `NELOO_BUILD_ALL_MODEL_GRAPHS` | Backend | Optional | Public config | `false` keeps startup lighter while still exposing public selector graph IDs; `true` eagerly builds every configured canonical and hidden legacy model graph. |
+| `NELOO_BUILD_VARIANT_GRAPHS` | Backend | Optional | Public config | `true` builds real `-web-dev` and `-fortune` variants; `false` aliases variant graph IDs to the base graph. |
 | `ENABLE_HITL` | Backend | Optional | Public | Human-in-the-loop toggles. |
 
 ## Frontend Variables
@@ -57,7 +57,7 @@ Production equivalents:
 
 ## Chat Model Provider Variables
 
-These are backend secrets. Configure them in `backend/.env` locally or Railway in production. The top-left model selector reads `/api/models`, and the backend marks each model available if the corresponding key is present.
+These are backend secrets. Configure them in `backend/.env` locally or Railway in production. The top-left model selector reads `/api/models`, and the backend marks each model available only when a complete backend chat model provider configuration is present: the provider's key, required base URL, and required model variable.
 
 | UI model | Model ID | Key variable | Base URL variable | Model variable | Security |
 | --- | --- | --- | --- | --- | --- |
@@ -73,6 +73,10 @@ These are backend secrets. Configure them in `backend/.env` locally or Railway i
 | Custom Anthropic-compatible | `custom-anthropic` | `CUSTOM_ANTHROPIC_API_KEY` | `CUSTOM_ANTHROPIC_BASE_URL` | `CUSTOM_ANTHROPIC_MODEL` | Secret |
 
 Legacy `NEWAPI_*`, `TUZI_*`, and old graph IDs such as `deepseek-chat`, `qwen3-max`, and `gpt-5-thinking` remain supported for existing deployments, but new setup flows should guide users to the canonical entries above.
+
+Old graph IDs are hidden from the selector but kept so existing LangGraph graph IDs and older stored thread values do not crash. The thread API normalizes old stored `model_id` values to the canonical public ID for display and future updates. If users need the old exact model choice, guide them to set the canonical provider's model variable, for example `DEEPSEEK_MODEL=deepseek-reasoner`, `QWEN_MODEL=qwen3-max`, or `OPENAI_MODEL=gpt-5-thinking`.
+
+`NEWAPI_BASE_URL` remains a legacy compatibility variable for old direct graph IDs. It does not count as a complete canonical public provider route by itself; use `OPENAI_API_KEY`, `TUZI_API_KEY` + `TUZI_BASE_URL`, or `CUSTOM_OPENAI_*` for the public selector.
 
 ## Image Generation Variables
 

@@ -83,8 +83,8 @@ Configure these in `backend/.env` for local development or in Railway for produc
 | `LANGGRAPH_API_URL` | Optional | LangGraph API URL. Usually the same as the backend URL. |
 | `LANGGRAPH_INTERNAL_URL` | Optional | Internal LangGraph URL for server-to-server calls. |
 | `LANGGRAPH_DEFAULT_GRAPH_ID` | Recommended | Default assistant graph. Keep `data_analyst` unless you change graph IDs. |
-| `NELOO_BUILD_ALL_MODEL_GRAPHS` | Optional | Set `true` to eagerly build every configured canonical and legacy model graph. |
-| `NELOO_BUILD_VARIANT_GRAPHS` | Optional | Set `true` to eagerly build `-web-dev` and `-fortune` graph variants per model. |
+| `NELOO_BUILD_ALL_MODEL_GRAPHS` | Optional | When `false`, Neloo still registers public model graph exports and builds configured public provider graphs as needed during startup. Set `true` only to eagerly build every configured canonical and hidden legacy model graph. |
+| `NELOO_BUILD_VARIANT_GRAPHS` | Optional | Set `true` to build real `-web-dev` and `-fortune` graph variants. When `false`, variant graph IDs fall back to the base graph. |
 | `ENABLE_HITL` | Optional | Enables human-in-the-loop behavior when supported. |
 
 ## Frontend Service Variables
@@ -104,22 +104,26 @@ The model selector in the top-left of the app is controlled by the backend model
 
 Put chat model keys and base URLs in `backend/.env` locally or Railway environment variables in production. Do not put chat model provider secrets in frontend `NEXT_PUBLIC_*` variables.
 
+A complete backend chat model provider configuration means the backend can build that provider: the API key must be present, and providers with `requires_base_url` or `requires_model_env` in `backend/src/agent/graph.py` also need the matching required base URL or model variable. Values shown in `.env.example` are examples; in Railway or another host you must set the same variables explicitly.
+
 | UI model | Key variable | Base URL variable | Model variable | Notes |
 | --- | --- | --- | --- | --- |
 | DeepSeek | `DEEPSEEK_API_KEY` | None | `DEEPSEEK_MODEL` | Default: `deepseek-chat`. Use `deepseek-reasoner` if you prefer the reasoning model. |
-| Qwen | `QWEN_API_KEY` | `QWEN_BASE_URL` | `QWEN_MODEL` | Default URL: `https://dashscope.aliyuncs.com/compatible-mode/v1`; default model: `qwen-plus`. |
-| MiniMax | `MINIMAX_API_KEY` | `MINIMAX_ANTHROPIC_BASE_URL` | `MINIMAX_MODEL` | Requires an Anthropic-compatible MiniMax endpoint. |
+| Qwen | `QWEN_API_KEY` | `QWEN_BASE_URL` | `QWEN_MODEL` | `QWEN_BASE_URL` must be set, commonly `https://dashscope.aliyuncs.com/compatible-mode/v1`; default model: `qwen-plus`. |
+| MiniMax | `MINIMAX_API_KEY` | `MINIMAX_ANTHROPIC_BASE_URL` | `MINIMAX_MODEL` | Requires `MINIMAX_ANTHROPIC_BASE_URL` for an Anthropic-compatible MiniMax endpoint. |
 | Claude | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` | `ANTHROPIC_MODEL` | Native Anthropic. Legacy `NEWAPI_API_KEY` + `NEWAPI_ANTHROPIC_BASE_URL` and `TUZI_ANTHROPIC_API_KEY` + `TUZI_ANTHROPIC_BASE_URL` are still accepted. |
 | OpenAI | `OPENAI_API_KEY` | `OPENAI_BASE_URL` | `OPENAI_MODEL` | `OPENAI_BASE_URL` is optional for native OpenAI. Legacy `TUZI_API_KEY` + `TUZI_BASE_URL` is still accepted. |
-| Gemini | `GEMINI_API_KEY` | `GEMINI_BASE_URL` | `GEMINI_MODEL` | Uses an OpenAI-compatible Gemini endpoint. Fill the base URL for your provider or gateway. Legacy `TUZI_API_KEY` + `TUZI_BASE_URL` is still accepted. |
-| GLM | `ZHIPU_API_KEY` | `ZHIPU_BASE_URL` | `ZHIPU_MODEL` | Uses a Zhipu OpenAI-compatible endpoint. |
-| OpenRouter | `OPENROUTER_API_KEY` | `OPENROUTER_BASE_URL` | `OPENROUTER_MODEL` | Default URL: `https://openrouter.ai/api/v1`; default model: `meta-llama/llama-4-maverick`. |
-| Custom OpenAI-compatible | `CUSTOM_OPENAI_API_KEY` | `CUSTOM_OPENAI_BASE_URL` | `CUSTOM_OPENAI_MODEL` | For self-hosted or third-party OpenAI-compatible gateways. |
-| Custom Anthropic-compatible | `CUSTOM_ANTHROPIC_API_KEY` | `CUSTOM_ANTHROPIC_BASE_URL` | `CUSTOM_ANTHROPIC_MODEL` | For self-hosted or third-party Anthropic-compatible gateways. |
+| Gemini | `GEMINI_API_KEY` | `GEMINI_BASE_URL` | `GEMINI_MODEL` | `GEMINI_BASE_URL` is required unless routing through legacy `TUZI_API_KEY` + `TUZI_BASE_URL`. |
+| GLM | `ZHIPU_API_KEY` | `ZHIPU_BASE_URL` | `ZHIPU_MODEL` | Requires `ZHIPU_BASE_URL` for a Zhipu OpenAI-compatible endpoint. |
+| OpenRouter | `OPENROUTER_API_KEY` | `OPENROUTER_BASE_URL` | `OPENROUTER_MODEL` | `OPENROUTER_BASE_URL` must be set, commonly `https://openrouter.ai/api/v1`; default model: `meta-llama/llama-4-maverick`. |
+| Custom OpenAI-compatible | `CUSTOM_OPENAI_API_KEY` | `CUSTOM_OPENAI_BASE_URL` | `CUSTOM_OPENAI_MODEL` | Both base URL and model are required for self-hosted or third-party OpenAI-compatible gateways. |
+| Custom Anthropic-compatible | `CUSTOM_ANTHROPIC_API_KEY` | `CUSTOM_ANTHROPIC_BASE_URL` | `CUSTOM_ANTHROPIC_MODEL` | Both base URL and model are required for self-hosted or third-party Anthropic-compatible gateways. |
 
-The old graph IDs such as `deepseek-chat`, `qwen3-max`, `gpt-5-thinking`, and `claude-opus-right` are kept as hidden compatibility aliases for existing threads and deployments. New users should configure the canonical provider entries above.
+Old graph IDs such as `deepseek-chat`, `qwen3-max`, `gpt-5-thinking`, and `claude-opus-right` are hidden from the selector but kept so existing LangGraph graph IDs and older stored thread values do not crash. The thread API normalizes old stored `model_id` values to the canonical public ID for display and future updates. If you need the old exact model choice, set the canonical provider's model variable, for example `DEEPSEEK_MODEL=deepseek-reasoner`, `QWEN_MODEL=qwen3-max`, or `OPENAI_MODEL=gpt-5-thinking`.
 
-If you configure multiple providers and want each selector option to use its own graph instance, set `NELOO_BUILD_ALL_MODEL_GRAPHS=true` in `backend/.env` or Railway. When it is `false`, Neloo keeps startup faster and only builds public configured graphs plus the default graph.
+`NEWAPI_BASE_URL` remains a legacy compatibility variable for old direct graph IDs. It does not make the canonical `OpenAI` selector entry available by itself; use `OPENAI_API_KEY`, `TUZI_API_KEY` + `TUZI_BASE_URL`, or `CUSTOM_OPENAI_*` for the public selector.
+
+You normally do not need `NELOO_BUILD_ALL_MODEL_GRAPHS=true` for the selector. Public configured provider graph exports are registered by default. Use `NELOO_BUILD_ALL_MODEL_GRAPHS=true` only when you intentionally want all configured canonical and hidden legacy graph IDs built eagerly at import time.
 
 ## Image Generation Configuration
 

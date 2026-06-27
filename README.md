@@ -150,6 +150,8 @@ cp frontend/.env.example frontend/.env.local
 | Storage signing | `FILE_SECRET_KEY`, `IMAGE_SECRET_KEY`, `FILE_USE_LOCAL_STORAGE`, `IMAGE_USE_LOCAL_STORAGE` | Use stable random secrets in production. |
 | Integrations | `TAVILY_API_KEY`, `COMPOSIO_API_KEY`, `LANGSMITH_API_KEY`, `LANGSMITH_TRACING_V2`, `LANGSMITH_PROJECT` | Optional feature-specific services. |
 
+For providers with a required base URL or custom model variable, the API key alone is not enough; see [docs/configuration.md](./docs/configuration.md) for the complete provider combinations.
+
 ### Frontend
 
 | Area | Variables | Notes |
