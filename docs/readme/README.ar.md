@@ -110,7 +110,8 @@ cp frontend/.env.example frontend/.env.local
 | --- | --- | --- |
 | الخادم | `PORT`, `API_BASE_URL`, `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS` | عناوين النشر و CORS. |
 | LangGraph | `LANGGRAPH_API_URL`, `LANGGRAPH_INTERNAL_URL`, `LANGGRAPH_DEFAULT_GRAPH_ID` | المعرف الافتراضي الحالي هو `data_analyst`. |
-| النماذج | `DEEPSEEK_API_KEY`, `QWEN_API_KEY`, `MINIMAX_API_KEY`, `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `ZHIPU_API_KEY`, `NEWAPI_API_KEY`, `TUZI_API_KEY` | اضبط واحداً أو أكثر. |
+| النماذج | `DEEPSEEK_API_KEY`, `QWEN_API_KEY`, `MINIMAX_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `ZHIPU_API_KEY`, `OPENROUTER_API_KEY`, `CUSTOM_OPENAI_API_KEY`, `CUSTOM_ANTHROPIC_API_KEY` | اضبط واحداً أو أكثر؛ يعرض المحدد مدخلاً واحداً لكل مزود. |
+| اسم النموذج والعنوان | متغيرات `*_MODEL` و `*_BASE_URL` مثل `QWEN_MODEL`, `QWEN_BASE_URL`, `OPENAI_MODEL`, `GEMINI_BASE_URL` | اختر النموذج الدقيق وعنوان البوابة. تبقى متغيرات `NEWAPI_*` و `TUZI_*` مدعومة. |
 | Sandbox | `SANDBOX_MODE`, `E2B_API_KEY` | استخدم `local` فقط مع مدخلات موثوقة. للإنتاج استخدم `e2b` أو `docker`. |
 | Supabase | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_JWT_SECRET`, `SUPABASE_DB_HOST`, `SUPABASE_DB_PASSWORD` | مفتاح service role سرّ خاص بالخلفية فقط. |
 | الاستمرارية | `DATABASE_URL` | مطلوب لحفظ checkpoints وسجل المحادثات. |

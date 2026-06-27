@@ -40,6 +40,7 @@ from ..storage import save_image_base64, get_image_url
 from ..runtime_context import user_id_ctx as _user_id_ctx, thread_id_ctx as _thread_id_ctx
 from ..sandbox import get_executor, get_e2b_backend_factory
 from .integration_tools import INTEGRATION_TOOLS
+from ..model_ids import PUBLIC_MODEL_IDS, public_model_id
 from .persistence_middleware import MessagePersistenceMiddleware
 
 # Document generation tools (each in separate file)
@@ -1069,6 +1070,114 @@ MODEL_PROFILES = {
 # Each model entry defines how to initialize it with init_chat_model
 # Keys: model_id (used in API), display_name, model_name, provider, env_key, base_url_env, profile_key
 AVAILABLE_MODELS = {
+    # Public canonical model slots. These are the only chat models shown in the
+    # top-left selector; users choose the concrete model with *_MODEL env vars.
+    "deepseek": {
+        "display_name": "DeepSeek",
+        "model_name": "deepseek-chat",
+        "model_env": "DEEPSEEK_MODEL",
+        "provider": "deepseek",
+        "env_key": "DEEPSEEK_API_KEY",
+        "base_url_env": None,
+        "profile_key": "deepseek",
+    },
+    "qwen": {
+        "display_name": "Qwen",
+        "model_name": "qwen-plus",
+        "model_env": "QWEN_MODEL",
+        "provider": "openai",
+        "env_key": "QWEN_API_KEY",
+        "base_url_env": "QWEN_BASE_URL",
+        "requires_base_url": True,
+        "profile_key": "qwen",
+    },
+    "minimax": {
+        "display_name": "MiniMax",
+        "model_name": "MiniMax-M2.1",
+        "model_env": "MINIMAX_MODEL",
+        "provider": "anthropic",
+        "env_key": "MINIMAX_API_KEY",
+        "base_url_env": "MINIMAX_ANTHROPIC_BASE_URL",
+        "requires_base_url": True,
+        "profile_key": "minimax",
+    },
+    "anthropic": {
+        "display_name": "Claude",
+        "model_name": "claude-sonnet-4-5-20250929",
+        "model_env": "ANTHROPIC_MODEL",
+        "provider": "anthropic",
+        "credentials": [
+            {"env_key": "ANTHROPIC_API_KEY", "base_url_env": "ANTHROPIC_BASE_URL"},
+            {"env_key": "NEWAPI_API_KEY", "base_url_env": "NEWAPI_ANTHROPIC_BASE_URL", "requires_base_url": True},
+            {"env_key": "TUZI_ANTHROPIC_API_KEY", "base_url_env": "TUZI_ANTHROPIC_BASE_URL", "requires_base_url": True},
+        ],
+        "profile_key": "anthropic",
+    },
+    "openai": {
+        "display_name": "OpenAI",
+        "model_name": "gpt-5",
+        "model_env": "OPENAI_MODEL",
+        "provider": "openai",
+        "credentials": [
+            {"env_key": "OPENAI_API_KEY", "base_url_env": "OPENAI_BASE_URL"},
+            {"env_key": "TUZI_API_KEY", "base_url_env": "TUZI_BASE_URL", "requires_base_url": True},
+        ],
+        "profile_key": "openai",
+    },
+    "gemini": {
+        "display_name": "Gemini",
+        "model_name": "gemini-3-pro-preview",
+        "model_env": "GEMINI_MODEL",
+        "provider": "openai",
+        "credentials": [
+            {"env_key": "GEMINI_API_KEY", "base_url_env": "GEMINI_BASE_URL", "requires_base_url": True},
+            {"env_key": "TUZI_API_KEY", "base_url_env": "TUZI_BASE_URL", "requires_base_url": True},
+        ],
+        "profile_key": "google",
+    },
+    "zhipu": {
+        "display_name": "GLM",
+        "model_name": "glm-4.7",
+        "model_env": "ZHIPU_MODEL",
+        "provider": "openai",
+        "env_key": "ZHIPU_API_KEY",
+        "base_url_env": "ZHIPU_BASE_URL",
+        "requires_base_url": True,
+        "profile_key": "zhipu",
+    },
+    "openrouter": {
+        "display_name": "OpenRouter",
+        "model_name": "meta-llama/llama-4-maverick",
+        "model_env": "OPENROUTER_MODEL",
+        "provider": "openai",
+        "env_key": "OPENROUTER_API_KEY",
+        "base_url_env": "OPENROUTER_BASE_URL",
+        "requires_base_url": True,
+        "profile_key": "openrouter",
+    },
+    "custom-openai": {
+        "display_name": "Custom OpenAI-compatible",
+        "model_env": "CUSTOM_OPENAI_MODEL",
+        "provider": "openai",
+        "env_key": "CUSTOM_OPENAI_API_KEY",
+        "base_url_env": "CUSTOM_OPENAI_BASE_URL",
+        "requires_base_url": True,
+        "requires_model_env": True,
+        "profile_key": "openai",
+    },
+    "custom-anthropic": {
+        "display_name": "Custom Anthropic-compatible",
+        "model_env": "CUSTOM_ANTHROPIC_MODEL",
+        "provider": "anthropic",
+        "env_key": "CUSTOM_ANTHROPIC_API_KEY",
+        "base_url_env": "CUSTOM_ANTHROPIC_BASE_URL",
+        "requires_base_url": True,
+        "requires_model_env": True,
+        "profile_key": "anthropic",
+    },
+
+    # Hidden legacy IDs. They are intentionally kept for existing deployments,
+    # stored thread model_id values, and historical LangGraph graph IDs.
     "deepseek-chat": {
         "display_name": "DeepSeek V3.2",
         "model_name": "deepseek-chat",
@@ -1208,18 +1317,79 @@ AVAILABLE_MODELS = {
 }
 
 
+def _env_names(value) -> list[str]:
+    if not value:
+        return []
+    if isinstance(value, str):
+        return [value]
+    return list(value)
+
+
+def _env_first(value) -> str | None:
+    for name in _env_names(value):
+        env_value = os.environ.get(name)
+        if env_value:
+            return env_value
+    return None
+
+
+def _resolve_model_name(config: dict) -> str | None:
+    model_name = _env_first(config.get("model_env")) or config.get("model_name")
+    if config.get("requires_model_env") and not _env_first(config.get("model_env")):
+        return None
+    return model_name
+
+
+def _resolve_credentials(config: dict) -> tuple[str | None, str | None, str | None]:
+    credential_options = config.get("credentials")
+    if credential_options:
+        for option in credential_options:
+            api_key = os.environ.get(option["env_key"])
+            if not api_key:
+                continue
+            base_url = _env_first(option.get("base_url_env"))
+            if option.get("requires_base_url") and not base_url:
+                continue
+            return api_key, base_url, option["env_key"]
+        return None, None, None
+
+    api_key = _env_first(config.get("env_key"))
+    if not api_key:
+        return None, None, None
+
+    base_url = _env_first(config.get("base_url_env"))
+    if config.get("requires_base_url") and not base_url:
+        return None, None, None
+
+    env_key = _env_names(config.get("env_key"))[0] if _env_names(config.get("env_key")) else None
+    return api_key, base_url, env_key
+
+
+def _is_model_configured(config: dict) -> bool:
+    model_name = _resolve_model_name(config)
+    api_key, _base_url, _env_key = _resolve_credentials(config)
+    return bool(model_name and api_key)
+
+
+def _credential_env_label(config: dict) -> str:
+    if config.get("credentials"):
+        return ", ".join(option["env_key"] for option in config["credentials"])
+    return ", ".join(_env_names(config.get("env_key")))
+
+
 def get_available_models() -> list[dict]:
     """
-    Get the full model registry for frontend display.
+    Get the public model registry for frontend display.
 
     The `available` flag tells the UI whether the required API key is configured.
     """
     models = []
-    for model_id, config in AVAILABLE_MODELS.items():
+    for model_id in PUBLIC_MODEL_IDS:
+        config = AVAILABLE_MODELS[model_id]
         models.append({
             "id": model_id,
             "display_name": config["display_name"],
-            "available": bool(os.environ.get(config["env_key"])),
+            "available": _is_model_configured(config),
         })
     return models
 
@@ -1227,27 +1397,11 @@ def get_available_models() -> list[dict]:
 def get_default_model_id() -> str | None:
     """
     Get the default model ID based on available API keys.
-    Priority: DeepSeek > Qwen > MiniMax > OpenRouter > other configured models
+    Priority follows the public model selector order.
     """
-    # Priority order
-    priority = [
-        "deepseek-chat",
-        "deepseek-reasoner",
-        "qwen-plus",
-        "qwen3-max",
-        "minimax-m2",
-        "claude-opus-or",
-        "glm-4.7",
-        "claude-opus-right",
-        "claude-sonnet-right",
-        "gemini-3-pro",
-        "gpt-5",
-        "llama-4-maverick",
-        "llama-3.3-70b",
-    ]
-    for model_id in priority:
+    for model_id in PUBLIC_MODEL_IDS:
         config = AVAILABLE_MODELS.get(model_id)
-        if config and os.environ.get(config["env_key"]):
+        if config and _is_model_configured(config):
             return model_id
     return None
 
@@ -1257,7 +1411,7 @@ def get_model(model_id: str | None = None):
     Initialize the language model.
 
     Args:
-        model_id: Specific model to use (e.g., "deepseek-chat", "qwen-plus").
+        model_id: Specific model to use (e.g., "deepseek", "qwen").
                   If None, uses default based on available API keys.
 
     IMPORTANT: Sets model.profile for SummarizationMiddleware to work correctly.
@@ -1273,18 +1427,30 @@ def get_model(model_id: str | None = None):
     if not model_id:
         raise ValueError(
             "No API key found. Set one of: "
-            "DEEPSEEK_API_KEY, QWEN_API_KEY, MINIMAX_API_KEY"
+            "DEEPSEEK_API_KEY, QWEN_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY"
         )
 
     # Get model configuration
     config = AVAILABLE_MODELS.get(model_id)
     if not config:
+        normalized_model_id = public_model_id(model_id)
+        config = AVAILABLE_MODELS.get(normalized_model_id)
+        model_id = normalized_model_id or model_id
+
+    if not config:
         raise ValueError(f"Unknown model: {model_id}. Available: {list(AVAILABLE_MODELS.keys())}")
 
     # Check API key is available
-    api_key = os.environ.get(config["env_key"])
+    api_key, base_url, _used_env_key = _resolve_credentials(config)
     if not api_key:
-        raise ValueError(f"API key not configured for {model_id}. Set {config['env_key']}")
+        raise ValueError(
+            f"API key not configured for {model_id}. Set one of: {_credential_env_label(config)}"
+        )
+
+    model_name = _resolve_model_name(config)
+    if not model_name:
+        model_env_names = ", ".join(_env_names(config.get("model_env")))
+        raise ValueError(f"Model name not configured for {model_id}. Set {model_env_names}")
 
     # Build init_chat_model kwargs
     kwargs = {
@@ -1295,13 +1461,11 @@ def get_model(model_id: str | None = None):
     }
 
     # Add base_url if configured
-    if config["base_url_env"]:
-        base_url = os.environ.get(config["base_url_env"])
-        if base_url:
-            kwargs["base_url"] = base_url
+    if base_url:
+        kwargs["base_url"] = base_url
 
     # Initialize model
-    model = init_chat_model(config["model_name"], **kwargs)
+    model = init_chat_model(model_name, **kwargs)
 
     # CRITICAL: Set profile for SummarizationMiddleware
     model.profile = MODEL_PROFILES[config["profile_key"]]
@@ -1398,8 +1562,7 @@ def _build_model_graphs() -> dict:
     graphs = {}
     for model_id in AVAILABLE_MODELS.keys():
         config = AVAILABLE_MODELS[model_id]
-        api_key = os.environ.get(config["env_key"])
-        if api_key:
+        if _is_model_configured(config):
             try:
                 # Build default mode graph
                 graphs[model_id] = build_graph(model_id, mode="default")
@@ -1444,54 +1607,118 @@ graph = _MODEL_GRAPHS.get(get_default_model_id()) or build_graph()
 graph_data_analyst_webdev = build_graph(mode="web-dev") if BUILD_VARIANT_GRAPHS else graph
 graph_data_analyst_fortune = build_graph(mode="fortune") if BUILD_VARIANT_GRAPHS else graph
 
+def _graph_or_default(model_id: str):
+    if model_id in _MODEL_GRAPHS:
+        return _MODEL_GRAPHS[model_id]
+    if model_id == get_default_model_id():
+        return graph
+    if model_id in PUBLIC_MODEL_IDS and _is_model_configured(AVAILABLE_MODELS[model_id]):
+        try:
+            return build_graph(model_id)
+        except Exception as e:
+            print(f"[graph.py] Failed to build public graph for {model_id}: {e}")
+    return graph
+
+
+def _graph_variant_or_default(model_id: str, suffix: str, fallback):
+    graph_id = f"{model_id}{suffix}"
+    if graph_id in _MODEL_GRAPHS:
+        return _MODEL_GRAPHS[graph_id]
+    if (
+        BUILD_VARIANT_GRAPHS
+        and model_id in PUBLIC_MODEL_IDS
+        and _is_model_configured(AVAILABLE_MODELS[model_id])
+    ):
+        mode = suffix.removeprefix("-")
+        try:
+            return build_graph(model_id, mode=mode)
+        except Exception as e:
+            print(f"[graph.py] Failed to build public graph for {graph_id}: {e}")
+    return fallback
+
+
+# Public canonical model graphs
+graph_deepseek = _graph_or_default("deepseek")
+graph_qwen = _graph_or_default("qwen")
+graph_minimax = _graph_or_default("minimax")
+graph_anthropic = _graph_or_default("anthropic")
+graph_openai = _graph_or_default("openai")
+graph_gemini = _graph_or_default("gemini")
+graph_zhipu = _graph_or_default("zhipu")
+graph_openrouter = _graph_or_default("openrouter")
+graph_custom_openai = _graph_or_default("custom-openai")
+graph_custom_anthropic = _graph_or_default("custom-anthropic")
+
+graph_deepseek_webdev = _graph_variant_or_default("deepseek", "-web-dev", graph_data_analyst_webdev)
+graph_qwen_webdev = _graph_variant_or_default("qwen", "-web-dev", graph_data_analyst_webdev)
+graph_minimax_webdev = _graph_variant_or_default("minimax", "-web-dev", graph_data_analyst_webdev)
+graph_anthropic_webdev = _graph_variant_or_default("anthropic", "-web-dev", graph_data_analyst_webdev)
+graph_openai_webdev = _graph_variant_or_default("openai", "-web-dev", graph_data_analyst_webdev)
+graph_gemini_webdev = _graph_variant_or_default("gemini", "-web-dev", graph_data_analyst_webdev)
+graph_zhipu_webdev = _graph_variant_or_default("zhipu", "-web-dev", graph_data_analyst_webdev)
+graph_openrouter_webdev = _graph_variant_or_default("openrouter", "-web-dev", graph_data_analyst_webdev)
+graph_custom_openai_webdev = _graph_variant_or_default("custom-openai", "-web-dev", graph_data_analyst_webdev)
+graph_custom_anthropic_webdev = _graph_variant_or_default("custom-anthropic", "-web-dev", graph_data_analyst_webdev)
+
+graph_deepseek_fortune = _graph_variant_or_default("deepseek", "-fortune", graph_data_analyst_fortune)
+graph_qwen_fortune = _graph_variant_or_default("qwen", "-fortune", graph_data_analyst_fortune)
+graph_minimax_fortune = _graph_variant_or_default("minimax", "-fortune", graph_data_analyst_fortune)
+graph_anthropic_fortune = _graph_variant_or_default("anthropic", "-fortune", graph_data_analyst_fortune)
+graph_openai_fortune = _graph_variant_or_default("openai", "-fortune", graph_data_analyst_fortune)
+graph_gemini_fortune = _graph_variant_or_default("gemini", "-fortune", graph_data_analyst_fortune)
+graph_zhipu_fortune = _graph_variant_or_default("zhipu", "-fortune", graph_data_analyst_fortune)
+graph_openrouter_fortune = _graph_variant_or_default("openrouter", "-fortune", graph_data_analyst_fortune)
+graph_custom_openai_fortune = _graph_variant_or_default("custom-openai", "-fortune", graph_data_analyst_fortune)
+graph_custom_anthropic_fortune = _graph_variant_or_default("custom-anthropic", "-fortune", graph_data_analyst_fortune)
+
 # Export individual graphs for LangGraph Server multi-assistant setup
 # Default mode graphs
-graph_deepseek_chat = _MODEL_GRAPHS.get("deepseek-chat") or graph
-graph_deepseek_reasoner = _MODEL_GRAPHS.get("deepseek-reasoner") or graph
-graph_qwen_plus = _MODEL_GRAPHS.get("qwen-plus") or graph
-graph_qwen3_max = _MODEL_GRAPHS.get("qwen3-max") or graph
-graph_minimax_m2 = _MODEL_GRAPHS.get("minimax-m2") or graph
-graph_claude_opus_or = _MODEL_GRAPHS.get("claude-opus-or") or graph
-graph_glm_4_7 = _MODEL_GRAPHS.get("glm-4.7") or graph
+graph_deepseek_chat = _MODEL_GRAPHS.get("deepseek-chat") or graph_deepseek
+graph_deepseek_reasoner = _MODEL_GRAPHS.get("deepseek-reasoner") or graph_deepseek
+graph_qwen_plus = _MODEL_GRAPHS.get("qwen-plus") or graph_qwen
+graph_qwen3_max = _MODEL_GRAPHS.get("qwen3-max") or graph_qwen
+graph_minimax_m2 = _MODEL_GRAPHS.get("minimax-m2") or graph_minimax
+graph_claude_opus_or = _MODEL_GRAPHS.get("claude-opus-or") or graph_openrouter
+graph_glm_4_7 = _MODEL_GRAPHS.get("glm-4.7") or graph_zhipu
 
 # Right Code Claude models (third-party API)
-graph_claude_opus_right = _MODEL_GRAPHS.get("claude-opus-right") or graph
-graph_claude_opus_right_thinking = _MODEL_GRAPHS.get("claude-opus-right-thinking") or graph
-graph_claude_sonnet_right = _MODEL_GRAPHS.get("claude-sonnet-right") or graph
-graph_claude_sonnet_right_thinking = _MODEL_GRAPHS.get("claude-sonnet-right-thinking") or graph
+graph_claude_opus_right = _MODEL_GRAPHS.get("claude-opus-right") or graph_anthropic
+graph_claude_opus_right_thinking = _MODEL_GRAPHS.get("claude-opus-right-thinking") or graph_anthropic
+graph_claude_sonnet_right = _MODEL_GRAPHS.get("claude-sonnet-right") or graph_anthropic
+graph_claude_sonnet_right_thinking = _MODEL_GRAPHS.get("claude-sonnet-right-thinking") or graph_anthropic
 
 # Tu-zi models (third-party API)
-graph_gemini_3_pro = _MODEL_GRAPHS.get("gemini-3-pro") or graph
-graph_gpt_5 = _MODEL_GRAPHS.get("gpt-5") or graph
-graph_gpt_5_thinking = _MODEL_GRAPHS.get("gpt-5-thinking") or graph
-graph_claude_opus_tuzi = _MODEL_GRAPHS.get("claude-opus-tuzi") or graph
+graph_gemini_3_pro = _MODEL_GRAPHS.get("gemini-3-pro") or graph_gemini
+graph_gpt_5 = _MODEL_GRAPHS.get("gpt-5") or graph_openai
+graph_gpt_5_thinking = _MODEL_GRAPHS.get("gpt-5-thinking") or graph_openai
+graph_claude_opus_tuzi = _MODEL_GRAPHS.get("claude-opus-tuzi") or graph_anthropic
 
 # Web-dev mode graphs (with artifact output support)
-graph_deepseek_chat_webdev = _MODEL_GRAPHS.get("deepseek-chat-web-dev") or graph_data_analyst_webdev
-graph_deepseek_reasoner_webdev = _MODEL_GRAPHS.get("deepseek-reasoner-web-dev") or graph_data_analyst_webdev
-graph_qwen_plus_webdev = _MODEL_GRAPHS.get("qwen-plus-web-dev") or graph_data_analyst_webdev
-graph_qwen3_max_webdev = _MODEL_GRAPHS.get("qwen3-max-web-dev") or graph_data_analyst_webdev
-graph_minimax_m2_webdev = _MODEL_GRAPHS.get("minimax-m2-web-dev") or graph_data_analyst_webdev
-graph_claude_opus_or_webdev = _MODEL_GRAPHS.get("claude-opus-or-web-dev") or graph_data_analyst_webdev
-graph_glm_4_7_webdev = _MODEL_GRAPHS.get("glm-4.7-web-dev") or graph_data_analyst_webdev
+graph_deepseek_chat_webdev = _MODEL_GRAPHS.get("deepseek-chat-web-dev") or graph_deepseek_webdev
+graph_deepseek_reasoner_webdev = _MODEL_GRAPHS.get("deepseek-reasoner-web-dev") or graph_deepseek_webdev
+graph_qwen_plus_webdev = _MODEL_GRAPHS.get("qwen-plus-web-dev") or graph_qwen_webdev
+graph_qwen3_max_webdev = _MODEL_GRAPHS.get("qwen3-max-web-dev") or graph_qwen_webdev
+graph_minimax_m2_webdev = _MODEL_GRAPHS.get("minimax-m2-web-dev") or graph_minimax_webdev
+graph_claude_opus_or_webdev = _MODEL_GRAPHS.get("claude-opus-or-web-dev") or graph_openrouter_webdev
+graph_glm_4_7_webdev = _MODEL_GRAPHS.get("glm-4.7-web-dev") or graph_zhipu_webdev
 
 # Right Code Claude web-dev mode graphs
-graph_claude_opus_right_webdev = _MODEL_GRAPHS.get("claude-opus-right-web-dev") or graph_data_analyst_webdev
-graph_claude_opus_right_thinking_webdev = _MODEL_GRAPHS.get("claude-opus-right-thinking-web-dev") or graph_data_analyst_webdev
-graph_claude_sonnet_right_webdev = _MODEL_GRAPHS.get("claude-sonnet-right-web-dev") or graph_data_analyst_webdev
-graph_claude_sonnet_right_thinking_webdev = _MODEL_GRAPHS.get("claude-sonnet-right-thinking-web-dev") or graph_data_analyst_webdev
+graph_claude_opus_right_webdev = _MODEL_GRAPHS.get("claude-opus-right-web-dev") or graph_anthropic_webdev
+graph_claude_opus_right_thinking_webdev = _MODEL_GRAPHS.get("claude-opus-right-thinking-web-dev") or graph_anthropic_webdev
+graph_claude_sonnet_right_webdev = _MODEL_GRAPHS.get("claude-sonnet-right-web-dev") or graph_anthropic_webdev
+graph_claude_sonnet_right_thinking_webdev = _MODEL_GRAPHS.get("claude-sonnet-right-thinking-web-dev") or graph_anthropic_webdev
 
 # Tu-zi web-dev mode graphs
-graph_gemini_3_pro_webdev = _MODEL_GRAPHS.get("gemini-3-pro-web-dev") or graph_data_analyst_webdev
-graph_gpt_5_webdev = _MODEL_GRAPHS.get("gpt-5-web-dev") or graph_data_analyst_webdev
-graph_gpt_5_thinking_webdev = _MODEL_GRAPHS.get("gpt-5-thinking-web-dev") or graph_data_analyst_webdev
-graph_claude_opus_tuzi_webdev = _MODEL_GRAPHS.get("claude-opus-tuzi-web-dev") or graph_data_analyst_webdev
+graph_gemini_3_pro_webdev = _MODEL_GRAPHS.get("gemini-3-pro-web-dev") or graph_gemini_webdev
+graph_gpt_5_webdev = _MODEL_GRAPHS.get("gpt-5-web-dev") or graph_openai_webdev
+graph_gpt_5_thinking_webdev = _MODEL_GRAPHS.get("gpt-5-thinking-web-dev") or graph_openai_webdev
+graph_claude_opus_tuzi_webdev = _MODEL_GRAPHS.get("claude-opus-tuzi-web-dev") or graph_anthropic_webdev
 
 # OpenRouter Llama models
-graph_llama_4_maverick = _MODEL_GRAPHS.get("llama-4-maverick") or graph
-graph_llama_4_maverick_webdev = _MODEL_GRAPHS.get("llama-4-maverick-web-dev") or graph_data_analyst_webdev
-graph_llama_3_3_70b = _MODEL_GRAPHS.get("llama-3.3-70b") or graph
-graph_llama_3_3_70b_webdev = _MODEL_GRAPHS.get("llama-3.3-70b-web-dev") or graph_data_analyst_webdev
+graph_llama_4_maverick = _MODEL_GRAPHS.get("llama-4-maverick") or graph_openrouter
+graph_llama_4_maverick_webdev = _MODEL_GRAPHS.get("llama-4-maverick-web-dev") or graph_openrouter_webdev
+graph_llama_3_3_70b = _MODEL_GRAPHS.get("llama-3.3-70b") or graph_openrouter
+graph_llama_3_3_70b_webdev = _MODEL_GRAPHS.get("llama-3.3-70b-web-dev") or graph_openrouter_webdev
 
 
 # =============================================================================

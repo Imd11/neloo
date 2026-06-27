@@ -110,7 +110,8 @@ cp frontend/.env.example frontend/.env.local
 | --- | --- | --- |
 | Servidor | `PORT`, `API_BASE_URL`, `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS` | URLs de deploy e CORS. |
 | LangGraph | `LANGGRAPH_API_URL`, `LANGGRAPH_INTERNAL_URL`, `LANGGRAPH_DEFAULT_GRAPH_ID` | O graph padrão ainda é `data_analyst`. |
-| Modelos | `DEEPSEEK_API_KEY`, `QWEN_API_KEY`, `MINIMAX_API_KEY`, `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `ZHIPU_API_KEY`, `NEWAPI_API_KEY`, `TUZI_API_KEY` | Configure um ou mais. |
+| Modelos | `DEEPSEEK_API_KEY`, `QWEN_API_KEY`, `MINIMAX_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `ZHIPU_API_KEY`, `OPENROUTER_API_KEY`, `CUSTOM_OPENAI_API_KEY`, `CUSTOM_ANTHROPIC_API_KEY` | Configure um ou mais; o seletor mostra uma entrada por provedor. |
+| Modelo e endpoint | Variáveis `*_MODEL` e `*_BASE_URL`, por exemplo `QWEN_MODEL`, `QWEN_BASE_URL`, `OPENAI_MODEL`, `GEMINI_BASE_URL` | Escolha o modelo exato e a URL do gateway. `NEWAPI_*` e `TUZI_*` continuam compatíveis. |
 | Sandbox | `SANDBOX_MODE`, `E2B_API_KEY` | Use `local` apenas com entradas confiáveis. Em produção prefira `e2b` ou `docker`. |
 | Supabase | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_JWT_SECRET`, `SUPABASE_DB_HOST`, `SUPABASE_DB_PASSWORD` | Service role key é segredo apenas do backend. |
 | Persistência | `DATABASE_URL` | Necessário para checkpoints e histórico persistentes. |

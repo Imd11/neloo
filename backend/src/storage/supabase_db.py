@@ -735,7 +735,7 @@ async def update_thread_model_id(
 
     Args:
         langgraph_thread_id: The LangGraph thread ID
-        model_id: Model ID to use for this thread (e.g., "deepseek-r1", "qwen-plus")
+        model_id: Model ID to use for this thread (e.g., "deepseek", "qwen")
                   Pass None to reset to default model.
 
     Returns:

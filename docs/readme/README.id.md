@@ -110,7 +110,8 @@ cp frontend/.env.example frontend/.env.local
 | --- | --- | --- |
 | Server | `PORT`, `API_BASE_URL`, `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS` | URL deployment dan CORS. |
 | LangGraph | `LANGGRAPH_API_URL`, `LANGGRAPH_INTERNAL_URL`, `LANGGRAPH_DEFAULT_GRAPH_ID` | Graph default masih `data_analyst`. |
-| Model | `DEEPSEEK_API_KEY`, `QWEN_API_KEY`, `MINIMAX_API_KEY`, `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `ZHIPU_API_KEY`, `NEWAPI_API_KEY`, `TUZI_API_KEY` | Set satu atau lebih. |
+| Model | `DEEPSEEK_API_KEY`, `QWEN_API_KEY`, `MINIMAX_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `ZHIPU_API_KEY`, `OPENROUTER_API_KEY`, `CUSTOM_OPENAI_API_KEY`, `CUSTOM_ANTHROPIC_API_KEY` | Set satu atau lebih; selector menampilkan satu entri per provider. |
+| Nama model dan endpoint | Variabel `*_MODEL` dan `*_BASE_URL`, misalnya `QWEN_MODEL`, `QWEN_BASE_URL`, `OPENAI_MODEL`, `GEMINI_BASE_URL` | Pilih model dan gateway. `NEWAPI_*` dan `TUZI_*` tetap didukung. |
 | Sandbox | `SANDBOX_MODE`, `E2B_API_KEY` | `local` hanya untuk input tepercaya. Produksi sebaiknya `e2b` atau `docker`. |
 | Supabase | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_JWT_SECRET`, `SUPABASE_DB_HOST`, `SUPABASE_DB_PASSWORD` | Service role key hanya untuk backend. |
 | Persistensi | `DATABASE_URL` | Dibutuhkan untuk checkpoint dan riwayat yang tahan restart. |

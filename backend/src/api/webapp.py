@@ -40,6 +40,7 @@ from .auth import (
     get_user_id as auth_get_user_id,
 )
 from ..runtime_context import user_id_ctx, thread_id_ctx
+from ..model_ids import public_model_id
 
 # Import image storage
 from ..storage import get_image, get_image_storage
@@ -124,7 +125,10 @@ def _resolve_runtime_graph_id(mode: Optional[str] = None, model_id: Optional[str
 
     Default graph can be configured with LANGGRAPH_DEFAULT_GRAPH_ID.
     """
-    base_graph_id = (model_id or os.environ.get("LANGGRAPH_DEFAULT_GRAPH_ID") or "data_analyst").strip() or "data_analyst"
+    normalized_model_id = public_model_id(model_id)
+    base_graph_id = (
+        normalized_model_id or os.environ.get("LANGGRAPH_DEFAULT_GRAPH_ID") or "data_analyst"
+    ).strip() or "data_analyst"
     normalized_mode = (mode or "").strip().lower()
     if normalized_mode in {"web-dev", "web_dev", "webdev"} and not base_graph_id.endswith("-web-dev"):
         return f"{base_graph_id}-web-dev"
@@ -2216,15 +2220,17 @@ async def create_thread_api(
         raise HTTPException(status_code=503, detail="Database not configured")
 
     try:
+        model_id_to_store = public_model_id(data.model_id)
+
         # If the thread already exists, only the owner can reuse it.
         existing = await get_thread_by_langgraph_id(data.langgraph_thread_id)
         if existing:
             if existing.get("user_id") != user_id:
                 raise HTTPException(status_code=403, detail="Not authorized")
             thread_record = existing
-            if data.model_id is not None and thread_record.get("model_id") != data.model_id:
+            if data.model_id is not None and thread_record.get("model_id") != model_id_to_store:
                 from ..storage.supabase_db import update_thread_model_id
-                success = await update_thread_model_id(data.langgraph_thread_id, data.model_id)
+                success = await update_thread_model_id(data.langgraph_thread_id, model_id_to_store)
                 if success:
                     refreshed_record = await get_thread_by_langgraph_id(data.langgraph_thread_id)
                     if refreshed_record:
@@ -2235,7 +2241,7 @@ async def create_thread_api(
                 langgraph_thread_id=data.langgraph_thread_id,
                 title=data.title,
                 mode=data.mode,
-                model_id=data.model_id,
+                model_id=model_id_to_store,
             )
 
         if not thread_record:
@@ -2257,7 +2263,7 @@ async def create_thread_api(
             title=thread_record["title"],
             langgraph_thread_id=thread_record["langgraph_thread_id"],
             mode=thread_record.get("mode", "default"),
-            model_id=thread_record.get("model_id"),
+            model_id=public_model_id(thread_record.get("model_id")),
             created_at=thread_record["created_at"],
             updated_at=thread_record["updated_at"],
         )
@@ -2304,7 +2310,7 @@ async def list_threads_api(
                 title=t["title"],
                 langgraph_thread_id=t["langgraph_thread_id"],
                 mode=t.get("mode", "default"),
-                model_id=t.get("model_id"),
+                model_id=public_model_id(t.get("model_id")),
                 created_at=t["created_at"],
                 updated_at=t["updated_at"],
             ))
@@ -2354,7 +2360,7 @@ async def get_thread_api(
             title=thread_record["title"],
             langgraph_thread_id=thread_record["langgraph_thread_id"],
             mode=thread_record.get("mode", "default"),
-            model_id=thread_record.get("model_id"),
+            model_id=public_model_id(thread_record.get("model_id")),
             created_at=thread_record["created_at"],
             updated_at=thread_record["updated_at"],
         )
@@ -2406,7 +2412,7 @@ async def update_thread_api(
         # Update model_id if provided (for per-thread model preference)
         if data.model_id is not None:
             from ..storage.supabase_db import update_thread_model_id
-            success = await update_thread_model_id(langgraph_thread_id, data.model_id)
+            success = await update_thread_model_id(langgraph_thread_id, public_model_id(data.model_id))
             if not success:
                 raise HTTPException(status_code=500, detail="Failed to update thread model")
 
@@ -2419,7 +2425,7 @@ async def update_thread_api(
             title=updated_record["title"],
             langgraph_thread_id=updated_record["langgraph_thread_id"],
             mode=updated_record.get("mode", "default"),
-            model_id=updated_record.get("model_id"),
+            model_id=public_model_id(updated_record.get("model_id")),
             created_at=updated_record["created_at"],
             updated_at=updated_record["updated_at"],
         )

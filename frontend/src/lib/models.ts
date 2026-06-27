@@ -11,36 +11,16 @@ export interface ModelInfo {
 
 // Chat models available for conversations and scheduled tasks
 export const CHAT_MODELS: ModelInfo[] = [
-    // DeepSeek
-    { id: "deepseek-chat", name: "DeepSeek V3.2", logo: "/logos/deepseek.png", provider: "DeepSeek" },
-    { id: "deepseek-reasoner", name: "DeepSeek V3.2 (思考)", logo: "/logos/deepseek.png", provider: "DeepSeek" },
-
-    // Qwen
-    { id: "qwen-plus", name: "Qwen Plus", logo: "/logos/qwen.png", provider: "Alibaba Cloud" },
-    { id: "qwen3-max", name: "Qwen3 Max", logo: "/logos/qwen.png", provider: "Alibaba Cloud" },
-
-    // MiniMax
-    { id: "minimax-m2", name: "MiniMax M2.1", logo: "/logos/minimax.png", provider: "MiniMax" },
-
-    // Claude / Anthropic-compatible gateways
-    { id: "claude-opus-or", name: "Claude Opus 4.5 (OR)", logo: "/logos/claude.png", provider: "Anthropic" },
-    { id: "claude-opus-right", name: "Claude Opus 4.5", logo: "/logos/claude.png", provider: "Anthropic" },
-    { id: "claude-opus-right-thinking", name: "Claude Opus 4.5 thinking", logo: "/logos/claude.png", provider: "Anthropic" },
-    { id: "claude-sonnet-right", name: "Claude Sonnet 4.5", logo: "/logos/claude.png", provider: "Anthropic" },
-    { id: "claude-sonnet-right-thinking", name: "Claude Sonnet 4.5 thinking", logo: "/logos/claude.png", provider: "Anthropic" },
-    { id: "claude-opus-tuzi", name: "Claude Opus 4.5 thinking(tuzi)", logo: "/logos/claude.png", provider: "Anthropic" },
-
-    // GLM
-    { id: "glm-4.7", name: "GLM-4.7", logo: "/logos/glm.png", provider: "Zhipu AI" },
-
-    // Google / OpenAI-compatible gateways
-    { id: "gemini-3-pro", name: "Gemini-3 pro", logo: "/logos/gemini.png", provider: "Google" },
-    { id: "gpt-5", name: "GPT-5", logo: "/logos/openai.png", provider: "OpenAI" },
-    { id: "gpt-5-thinking", name: "GPT-5 thinking", logo: "/logos/openai.png", provider: "OpenAI" },
-
-    // Llama (OpenRouter)
-    { id: "llama-4-maverick", name: "Llama 4 Maverick", logo: "/logos/llama.png", provider: "Meta" },
-    { id: "llama-3.3-70b", name: "Llama 3.3", logo: "/logos/llama.png", provider: "Meta" },
+    { id: "deepseek", name: "DeepSeek", logo: "/logos/deepseek.png", provider: "DeepSeek" },
+    { id: "qwen", name: "Qwen", logo: "/logos/qwen.png", provider: "Alibaba Cloud" },
+    { id: "minimax", name: "MiniMax", logo: "/logos/minimax.png", provider: "MiniMax" },
+    { id: "anthropic", name: "Claude", logo: "/logos/claude.png", provider: "Anthropic" },
+    { id: "openai", name: "OpenAI", logo: "/logos/openai.png", provider: "OpenAI" },
+    { id: "gemini", name: "Gemini", logo: "/logos/gemini.png", provider: "Google" },
+    { id: "zhipu", name: "GLM", logo: "/logos/glm.png", provider: "Zhipu AI" },
+    { id: "openrouter", name: "OpenRouter", logo: "/logos/llama.png", provider: "OpenRouter" },
+    { id: "custom-openai", name: "Custom OpenAI", logo: "/logos/openai.png", provider: "Custom" },
+    { id: "custom-anthropic", name: "Custom Claude", logo: "/logos/claude.png", provider: "Custom" },
 ];
 
 export const CHAT_MODEL_BY_ID = Object.fromEntries(

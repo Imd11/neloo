@@ -142,8 +142,8 @@ cp frontend/.env.example frontend/.env.local
 | --- | --- | --- |
 | Server | `PORT`, `API_BASE_URL`, `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS` | Required for deployment URLs and browser access. |
 | LangGraph | `LANGGRAPH_API_URL`, `LANGGRAPH_INTERNAL_URL`, `LANGGRAPH_DEFAULT_GRAPH_ID` | Default graph ID is currently `data_analyst`. |
-| Model providers | `DEEPSEEK_API_KEY`, `QWEN_API_KEY`, `MINIMAX_API_KEY`, `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `ZHIPU_API_KEY`, `NEWAPI_API_KEY`, `TUZI_API_KEY` | Configure one or more. Matching models appear in the UI. |
-| Provider base URLs | `QWEN_BASE_URL`, `MINIMAX_BASE_URL`, `MINIMAX_ANTHROPIC_BASE_URL`, `ANTHROPIC_BASE_URL`, `OPENROUTER_BASE_URL`, `ZHIPU_BASE_URL`, `NEWAPI_BASE_URL`, `NEWAPI_ANTHROPIC_BASE_URL`, `TUZI_BASE_URL`, `TUZI_ANTHROPIC_BASE_URL` | Required for OpenAI-compatible or Anthropic-compatible gateways. |
+| Model providers | `DEEPSEEK_API_KEY`, `QWEN_API_KEY`, `MINIMAX_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `ZHIPU_API_KEY`, `OPENROUTER_API_KEY`, `CUSTOM_OPENAI_API_KEY`, `CUSTOM_ANTHROPIC_API_KEY` | Configure one or more. The selector shows one canonical entry per provider. |
+| Model names and base URLs | `*_MODEL`, `*_BASE_URL` variables such as `QWEN_MODEL`, `QWEN_BASE_URL`, `OPENAI_MODEL`, `GEMINI_BASE_URL`, `CUSTOM_OPENAI_MODEL` | Use these to choose the exact model and endpoint. Legacy `NEWAPI_*` and `TUZI_*` variables remain supported for existing deployments. |
 | Sandbox | `SANDBOX_MODE`, `E2B_API_KEY` | Use `local` only for trusted local development. Use `e2b` or `docker` for stronger isolation. |
 | Supabase | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_JWT_SECRET`, `SUPABASE_DB_HOST`, `SUPABASE_DB_PASSWORD` | Service role keys are server-only secrets. |
 | Persistence | `DATABASE_URL` | Railway Postgres normally provides this automatically. Required for durable LangGraph checkpoints. |

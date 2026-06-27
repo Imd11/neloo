@@ -42,6 +42,8 @@ Production equivalents:
 | `LANGGRAPH_API_URL` | Backend | Optional | Public/internal | LangGraph API URL. |
 | `LANGGRAPH_INTERNAL_URL` | Backend | Optional | Internal | Internal LangGraph calls. |
 | `LANGGRAPH_DEFAULT_GRAPH_ID` | Backend | Recommended | Public | Default graph ID. Current default is `data_analyst`. |
+| `NELOO_BUILD_ALL_MODEL_GRAPHS` | Backend | Optional | Public config | Eagerly builds every configured canonical and legacy model graph when `true`. |
+| `NELOO_BUILD_VARIANT_GRAPHS` | Backend | Optional | Public config | Eagerly builds `-web-dev` and `-fortune` variants when `true`. |
 | `ENABLE_HITL` | Backend | Optional | Public | Human-in-the-loop toggles. |
 
 ## Frontend Variables
@@ -57,20 +59,20 @@ Production equivalents:
 
 These are backend secrets. Configure them in `backend/.env` locally or Railway in production. The top-left model selector reads `/api/models`, and the backend marks each model available if the corresponding key is present.
 
-| UI models | Model IDs | Key variable | Base URL variable | Default / expected URL | Security |
+| UI model | Model ID | Key variable | Base URL variable | Model variable | Security |
 | --- | --- | --- | --- | --- | --- |
-| DeepSeek V3.2, DeepSeek V3.2 thinking | `deepseek-chat`, `deepseek-reasoner` | `DEEPSEEK_API_KEY` | None | Native DeepSeek provider | Secret |
-| Qwen Plus, Qwen3 Max | `qwen-plus`, `qwen3-max` | `QWEN_API_KEY` | `QWEN_BASE_URL` | `https://dashscope.aliyuncs.com/compatible-mode/v1` | Secret |
-| MiniMax M2.1 | `minimax-m2` | `MINIMAX_API_KEY` | `MINIMAX_ANTHROPIC_BASE_URL` | Anthropic-compatible MiniMax endpoint | Secret |
-| Claude Opus via OpenRouter | `claude-opus-or` | `OPENROUTER_API_KEY` | `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | Secret |
-| Llama via OpenRouter | `llama-4-maverick`, `llama-3.3-70b` | `OPENROUTER_API_KEY` | `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | Secret |
-| GLM-4.7 | `glm-4.7` | `ZHIPU_API_KEY` | `ZHIPU_BASE_URL` | Zhipu OpenAI-compatible endpoint | Secret |
-| Claude via NewAPI / Right Code | `claude-opus-right`, `claude-sonnet-right` | `NEWAPI_API_KEY` | `NEWAPI_BASE_URL` | OpenAI-compatible gateway URL | Secret |
-| Claude thinking via NewAPI / Right Code | `claude-opus-right-thinking`, `claude-sonnet-right-thinking` | `NEWAPI_API_KEY` | `NEWAPI_ANTHROPIC_BASE_URL` | Anthropic-compatible gateway URL | Secret |
-| Gemini / GPT through Tu-Zi | `gemini-3-pro`, `gpt-5`, `gpt-5-thinking` | `TUZI_API_KEY` | `TUZI_BASE_URL` | `https://api.tu-zi.com/v1` | Secret |
-| Claude thinking through Tu-Zi | `claude-opus-tuzi` | `TUZI_ANTHROPIC_API_KEY` | `TUZI_ANTHROPIC_BASE_URL` | Tu-Zi Anthropic-compatible URL | Secret |
-| OpenAI direct / embeddings | Fallbacks, RAG | `OPENAI_API_KEY` | None | Native OpenAI provider | Secret |
-| Anthropic direct | Fallbacks | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` | `https://api.anthropic.com` | Secret |
+| DeepSeek | `deepseek` | `DEEPSEEK_API_KEY` | None | `DEEPSEEK_MODEL` | Secret |
+| Qwen | `qwen` | `QWEN_API_KEY` | `QWEN_BASE_URL` | `QWEN_MODEL` | Secret |
+| MiniMax | `minimax` | `MINIMAX_API_KEY` | `MINIMAX_ANTHROPIC_BASE_URL` | `MINIMAX_MODEL` | Secret |
+| Claude | `anthropic` | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` | `ANTHROPIC_MODEL` | Secret |
+| OpenAI | `openai` | `OPENAI_API_KEY` | `OPENAI_BASE_URL` | `OPENAI_MODEL` | Secret |
+| Gemini | `gemini` | `GEMINI_API_KEY` | `GEMINI_BASE_URL` | `GEMINI_MODEL` | Secret |
+| GLM | `zhipu` | `ZHIPU_API_KEY` | `ZHIPU_BASE_URL` | `ZHIPU_MODEL` | Secret |
+| OpenRouter | `openrouter` | `OPENROUTER_API_KEY` | `OPENROUTER_BASE_URL` | `OPENROUTER_MODEL` | Secret |
+| Custom OpenAI-compatible | `custom-openai` | `CUSTOM_OPENAI_API_KEY` | `CUSTOM_OPENAI_BASE_URL` | `CUSTOM_OPENAI_MODEL` | Secret |
+| Custom Anthropic-compatible | `custom-anthropic` | `CUSTOM_ANTHROPIC_API_KEY` | `CUSTOM_ANTHROPIC_BASE_URL` | `CUSTOM_ANTHROPIC_MODEL` | Secret |
+
+Legacy `NEWAPI_*`, `TUZI_*`, and old graph IDs such as `deepseek-chat`, `qwen3-max`, and `gpt-5-thinking` remain supported for existing deployments, but new setup flows should guide users to the canonical entries above.
 
 ## Image Generation Variables
 
