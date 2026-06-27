@@ -6,6 +6,29 @@ import {
   parseEnvContent,
 } from "./check-env.mjs";
 
+function reportFor(backendValues, frontendValues = {}) {
+  return analyzeEnvironment({
+    backend: {
+      exists: true,
+      values: {
+        SANDBOX_MODE: "local",
+        ...backendValues,
+      },
+    },
+    frontend: {
+      exists: true,
+      values: {
+        NEXT_PUBLIC_API_URL: "http://localhost:2024",
+        ...frontendValues,
+      },
+    },
+  });
+}
+
+function hasCode(report, code) {
+  return report.items.some((item) => item.code === code);
+}
+
 test("parseEnvContent ignores comments and unquotes values", () => {
   const parsed = parseEnvContent(`
 # comment
@@ -36,6 +59,57 @@ test("analyzeEnvironment reports missing model key and frontend API URL", () => 
   assert.equal(report.ok, false);
   assert.equal(report.items.some((item) => item.code === "missing-chat-model-key"), true);
   assert.equal(report.items.some((item) => item.code === "missing-next-public-api-url"), true);
+});
+
+test("analyzeEnvironment rejects Gemini key without required base URL", () => {
+  const report = reportFor({ GEMINI_API_KEY: "key" });
+
+  assert.equal(report.ok, false);
+  assert.equal(hasCode(report, "missing-complete-chat-model-config"), true);
+  assert.match(formatReport(report), /Gemini/);
+  assert.match(formatReport(report), /GEMINI_BASE_URL/);
+});
+
+test("analyzeEnvironment rejects custom OpenAI key without base URL and model", () => {
+  const report = reportFor({ CUSTOM_OPENAI_API_KEY: "key" });
+
+  assert.equal(report.ok, false);
+  assert.equal(hasCode(report, "missing-complete-chat-model-config"), true);
+  assert.match(formatReport(report), /Custom OpenAI-compatible/);
+  assert.match(formatReport(report), /CUSTOM_OPENAI_BASE_URL/);
+  assert.match(formatReport(report), /CUSTOM_OPENAI_MODEL/);
+});
+
+test("analyzeEnvironment accepts complete custom OpenAI config", () => {
+  const report = reportFor({
+    CUSTOM_OPENAI_API_KEY: "key",
+    CUSTOM_OPENAI_BASE_URL: "https://example.test/v1",
+    CUSTOM_OPENAI_MODEL: "my-model",
+  });
+
+  assert.equal(report.ok, true);
+  assert.equal(hasCode(report, "missing-complete-chat-model-config"), false);
+});
+
+test("analyzeEnvironment accepts Tu-Zi gateway as a complete OpenAI-compatible provider", () => {
+  const report = reportFor({
+    TUZI_API_KEY: "key",
+    TUZI_BASE_URL: "https://api.tu-zi.com/v1",
+  });
+
+  assert.equal(report.ok, true);
+  assert.equal(hasCode(report, "missing-complete-chat-model-config"), false);
+});
+
+test("analyzeEnvironment warns about incomplete extra provider when one provider is usable", () => {
+  const report = reportFor({
+    DEEPSEEK_API_KEY: "key",
+    GEMINI_API_KEY: "gemini-key",
+  });
+
+  assert.equal(report.ok, true);
+  assert.equal(hasCode(report, "incomplete-chat-model-config"), true);
+  assert.match(formatReport(report), /GEMINI_BASE_URL/);
 });
 
 test("analyzeEnvironment rejects server secrets in frontend env", () => {

@@ -19,6 +19,79 @@ export const CHAT_MODEL_KEYS = [
   "TUZI_ANTHROPIC_API_KEY",
 ];
 
+export const CHAT_MODEL_CONFIGS = [
+  {
+    id: "deepseek",
+    label: "DeepSeek",
+    credentials: [{ key: "DEEPSEEK_API_KEY" }],
+  },
+  {
+    id: "qwen",
+    label: "Qwen",
+    credentials: [{ key: "QWEN_API_KEY", required: ["QWEN_BASE_URL"] }],
+  },
+  {
+    id: "minimax",
+    label: "MiniMax",
+    credentials: [{ key: "MINIMAX_API_KEY", required: ["MINIMAX_ANTHROPIC_BASE_URL"] }],
+  },
+  {
+    id: "anthropic",
+    label: "Claude",
+    credentials: [
+      { key: "ANTHROPIC_API_KEY" },
+      { key: "NEWAPI_API_KEY", required: ["NEWAPI_ANTHROPIC_BASE_URL"] },
+      { key: "TUZI_ANTHROPIC_API_KEY", required: ["TUZI_ANTHROPIC_BASE_URL"] },
+    ],
+  },
+  {
+    id: "openai",
+    label: "OpenAI",
+    credentials: [
+      { key: "OPENAI_API_KEY" },
+      { key: "TUZI_API_KEY", required: ["TUZI_BASE_URL"] },
+    ],
+  },
+  {
+    id: "gemini",
+    label: "Gemini",
+    credentials: [
+      { key: "GEMINI_API_KEY", required: ["GEMINI_BASE_URL"] },
+      { key: "TUZI_API_KEY", required: ["TUZI_BASE_URL"] },
+    ],
+  },
+  {
+    id: "zhipu",
+    label: "GLM",
+    credentials: [{ key: "ZHIPU_API_KEY", required: ["ZHIPU_BASE_URL"] }],
+  },
+  {
+    id: "openrouter",
+    label: "OpenRouter",
+    credentials: [{ key: "OPENROUTER_API_KEY", required: ["OPENROUTER_BASE_URL"] }],
+  },
+  {
+    id: "custom-openai",
+    label: "Custom OpenAI-compatible",
+    credentials: [
+      {
+        key: "CUSTOM_OPENAI_API_KEY",
+        required: ["CUSTOM_OPENAI_BASE_URL", "CUSTOM_OPENAI_MODEL"],
+      },
+    ],
+  },
+  {
+    id: "custom-anthropic",
+    label: "Custom Anthropic-compatible",
+    credentials: [
+      {
+        key: "CUSTOM_ANTHROPIC_API_KEY",
+        required: ["CUSTOM_ANTHROPIC_BASE_URL", "CUSTOM_ANTHROPIC_MODEL"],
+      },
+    ],
+  },
+];
+
 export const SERVER_ONLY_KEYS = [
   ...CHAT_MODEL_KEYS,
   "SUPABASE_SERVICE_KEY",
@@ -80,6 +153,62 @@ export function hasValue(values, key) {
   return Boolean(values[key] && values[key].trim());
 }
 
+function missingRequired(values, credential) {
+  return (credential.required || []).filter((key) => !hasValue(values, key));
+}
+
+function describeCredential(credential) {
+  const required = credential.required && credential.required.length > 0
+    ? ` plus ${credential.required.join(" + ")}`
+    : "";
+  return `${credential.key}${required}`;
+}
+
+export function evaluateChatModelConfigs(values) {
+  const complete = [];
+  const incomplete = [];
+
+  for (const config of CHAT_MODEL_CONFIGS) {
+    let configComplete = false;
+
+    for (const credential of config.credentials) {
+      if (!hasValue(values, credential.key)) continue;
+
+      const missing = missingRequired(values, credential);
+      if (missing.length === 0) {
+        configComplete = true;
+        complete.push({
+          id: config.id,
+          label: config.label,
+          credential: credential.key,
+        });
+      } else {
+        incomplete.push({
+          id: config.id,
+          label: config.label,
+          credential: credential.key,
+          missing,
+          expected: describeCredential(credential),
+        });
+      }
+    }
+
+    if (configComplete) {
+      for (let i = incomplete.length - 1; i >= 0; i -= 1) {
+        if (incomplete[i].id === config.id) incomplete.splice(i, 1);
+      }
+    }
+  }
+
+  return { complete, incomplete };
+}
+
+function formatIncompleteChatModels(incomplete) {
+  return incomplete
+    .map((item) => `${item.label} (${item.credential}) missing ${item.missing.join(", ")}`)
+    .join("; ");
+}
+
 function add(report, level, code, message, file = "") {
   report.items.push({ level, code, message, file });
 }
@@ -100,8 +229,20 @@ export function analyzeEnvironment({ backend, frontend }) {
     add(report, "error", "missing-next-public-api-url", "NEXT_PUBLIC_API_URL is required so the browser can reach the backend.", "frontend/.env.local");
   }
 
-  if (backend.exists && !CHAT_MODEL_KEYS.some((key) => hasValue(backendValues, key))) {
-    add(report, "error", "missing-chat-model-key", `Set at least one backend chat model key: ${CHAT_MODEL_KEYS.join(", ")}.`, "backend/.env");
+  if (backend.exists) {
+    const hasAnyChatKey = CHAT_MODEL_KEYS.some((key) => hasValue(backendValues, key));
+    const chatModelStatus = evaluateChatModelConfigs(backendValues);
+
+    if (!hasAnyChatKey) {
+      add(report, "error", "missing-chat-model-key", `Set at least one backend chat model key: ${CHAT_MODEL_KEYS.join(", ")}.`, "backend/.env");
+    } else if (chatModelStatus.complete.length === 0) {
+      const details = chatModelStatus.incomplete.length > 0
+        ? ` Incomplete provider config: ${formatIncompleteChatModels(chatModelStatus.incomplete)}.`
+        : "";
+      add(report, "error", "missing-complete-chat-model-config", `Set at least one complete backend chat model provider configuration.${details}`, "backend/.env");
+    } else if (chatModelStatus.incomplete.length > 0) {
+      add(report, "warning", "incomplete-chat-model-config", `Some configured model providers will not appear as available: ${formatIncompleteChatModels(chatModelStatus.incomplete)}.`, "backend/.env");
+    }
   }
 
   if (backend.exists) {
