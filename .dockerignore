@@ -1,0 +1,32 @@
+.git
+.gitignore
+
+# Local secrets and deployment state
+.env
+.env.*
+**/.env
+**/.env.*
+.vercel
+**/.vercel
+
+# Node artifacts
+node_modules
+**/node_modules
+.next
+**/.next
+frontend-old
+
+# Python artifacts
+__pycache__
+**/__pycache__
+.pytest_cache
+**/.pytest_cache
+.mypy_cache
+**/.mypy_cache
+.ruff_cache
+**/.ruff_cache
+*.pyc
+
+# Logs and OS files
+*.log
+.DS_Store

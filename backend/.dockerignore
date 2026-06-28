@@ -29,6 +29,8 @@ pytest_cache/
 docs/
 
 # Local files
+.env
+.env.*
 .env.local
 .env.development
 *.log

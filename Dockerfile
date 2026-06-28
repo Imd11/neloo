@@ -41,4 +41,4 @@ ENV PORT=8000
 EXPOSE 8000
 
 # 启动命令 - 使用当前环境兼容的 LangGraph CLI 入口，并关闭热重载
-CMD ["python", "-m", "langgraph_cli", "dev", "--config", "langgraph.production.json", "--no-reload", "--port", "8000", "--host", "0.0.0.0", "--allow-blocking"]
+CMD ["sh", "-c", "exec python -m langgraph_cli dev --config langgraph.production.json --no-reload --port ${PORT:-8000} --host 0.0.0.0 --allow-blocking"]
