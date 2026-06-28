@@ -26,6 +26,7 @@ pytest_cache/
 
 # Docs
 *.md
+!README.md
 docs/
 
 # Local files
