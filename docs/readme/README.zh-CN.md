@@ -158,6 +158,7 @@ E2B_API_KEY=your-e2b-api-key
 ```
 
 E2B 模板配置位于 `e2b.toml`、`e2b.Dockerfile` 和 `e2b-template/data-analyst-sandbox/`。
+该目录暂时保留历史名称 `data-analyst-sandbox`，用于兼容现有 E2B 模板配置。
 
 ## Railway / Vercel
 
