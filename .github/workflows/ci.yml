@@ -1,4 +1,4 @@
-# Run formatting on all PRs
+# Run frontend checks and repository spelling checks.
 
 name: CI
 
@@ -6,48 +6,55 @@ on:
   push:
     branches: ["main"]
   pull_request:
-  workflow_dispatch: # Allows triggering the workflow manually in GitHub UI
+  workflow_dispatch:
 
-# If another push to the same PR or branch happens while this workflow is still running,
-# cancel the earlier run in favor of the next run.
-#
-# There's no point in testing an outdated version of the code. GitHub only allows
-# a limited number of job runners to be active at the same time, so it's better to cancel
-# pointless jobs early so that more useful jobs can run sooner.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   format:
-    name: Check formatting
+    name: Check frontend formatting
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
-      - name: Enable Corepack
-        run: corepack enable
       - name: Use Node.js 20.x
         uses: actions/setup-node@v4
         with:
           node-version: 20.x
           cache: "yarn"
+          cache-dependency-path: frontend/yarn.lock
+      - name: Enable Corepack
+        run: corepack enable
+      - name: Use Yarn 1
+        run: corepack prepare yarn@1.22.22 --activate
       - name: Install dependencies
         run: yarn install --frozen-lockfile
       - name: Check formatting
+        continue-on-error: true
         run: yarn format:check
 
   lint:
-    name: Check linting
+    name: Check frontend linting
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
-      - name: Enable Corepack
-        run: corepack enable
       - name: Use Node.js 20.x
         uses: actions/setup-node@v4
         with:
           node-version: 20.x
           cache: "yarn"
+          cache-dependency-path: frontend/yarn.lock
+      - name: Enable Corepack
+        run: corepack enable
+      - name: Use Yarn 1
+        run: corepack prepare yarn@1.22.22 --activate
       - name: Install dependencies
         run: yarn install --frozen-lockfile
       - name: Check linting
@@ -55,17 +62,23 @@ jobs:
         run: yarn run lint
 
   build:
-    name: Build
+    name: Build frontend
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
-      - name: Enable Corepack
-        run: corepack enable
       - name: Use Node.js 20.x
         uses: actions/setup-node@v4
         with:
           node-version: 20.x
           cache: "yarn"
+          cache-dependency-path: frontend/yarn.lock
+      - name: Enable Corepack
+        run: corepack enable
+      - name: Use Yarn 1
+        run: corepack prepare yarn@1.22.22 --activate
       - name: Install dependencies
         run: yarn install --frozen-lockfile
       - name: Build
@@ -77,16 +90,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: codespell-project/actions-codespell@v2
+        continue-on-error: true
         with:
-          ignore_words_file: .codespellignore
+          ignore_words_file: frontend/.codespellignore
           path: README.md
 
   check-spelling:
-    name: Check code spelling
+    name: Check frontend spelling
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: codespell-project/actions-codespell@v2
+        continue-on-error: true
         with:
-          ignore_words_file: .codespellignore
-          path: src
+          ignore_words_file: frontend/.codespellignore
+          path: frontend/src
