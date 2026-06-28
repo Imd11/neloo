@@ -13,6 +13,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  docker-railway-readiness:
+    name: Check Docker/Railway readiness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+      - name: Check Docker/Railway release readiness
+        run: node scripts/check-docker-release-readiness.mjs
+      - name: Build root backend image
+        run: docker build -f Dockerfile -t neloo-backend-root .
+      - name: Build backend service image
+        run: docker build -f backend/Dockerfile -t neloo-backend-service backend
+
   format:
     name: Check frontend formatting
     runs-on: ubuntu-latest

@@ -53,6 +53,9 @@ if (fs.existsSync(ciPath)) {
   requireSnippet(ci, "corepack prepare yarn@1.22.22 --activate");
   requireSnippet(ci, "yarn install --frozen-lockfile");
   requireSnippet(ci, "yarn build");
+  requireSnippet(ci, "node scripts/check-docker-release-readiness.mjs");
+  requireSnippet(ci, "docker build -f Dockerfile -t neloo-backend-root .");
+  requireSnippet(ci, "docker build -f backend/Dockerfile -t neloo-backend-service backend");
   requireSnippet(ci, "path: README.md");
   requireSnippet(ci, "path: frontend/src");
   requireSnippet(ci, "ignore_words_file: frontend/.codespellignore");
