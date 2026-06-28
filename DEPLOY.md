@@ -40,7 +40,7 @@ Railway backend (LangGraph + FastAPI)
 3. Use the repository root as the deployment root if you want Railway to use the root `Dockerfile`.
 4. If you choose `backend/` as the Railway root directory, Railway uses `backend/Dockerfile` and `backend/railway.toml` instead.
 
-The root `Dockerfile` starts LangGraph with `backend/langgraph.production.json`, which requires `DATABASE_URL` for durable checkpoints and store.
+Railway injects `PORT` automatically; you usually do not need to set it manually. The root `Dockerfile` starts LangGraph with `backend/langgraph.production.json`, which requires `DATABASE_URL` for durable checkpoints and store. The `backend/` root deployment path starts `backend/start.py`; it can boot without `DATABASE_URL`, but thread history will not persist across restarts until you configure Postgres.
 
 ### 2. Add Postgres
 
@@ -86,6 +86,26 @@ curl https://your-backend.up.railway.app/health
 ```
 
 The backend should return a healthy response. If startup fails, check `DATABASE_URL`, model provider variables, `E2B_API_KEY`, and Railway build logs first.
+
+### 5. Verify Docker Locally
+
+The repository includes `.dockerignore` files so local `.env`, `.env.local`, `.vercel`, `.next`, and dependency artifacts are not copied into Docker build contexts. Keep secrets in environment variables, not in committed files or images.
+
+Build both documented Railway backend paths before changing deployment files:
+
+```bash
+docker build -f Dockerfile -t neloo-backend-root .
+docker build -f backend/Dockerfile -t neloo-backend-service backend
+```
+
+You can smoke-test the `backend/` service image without Postgres:
+
+```bash
+docker run --rm -e PORT=8000 -p 8000:8000 neloo-backend-service
+curl http://localhost:8000/health
+```
+
+Runtime smoke testing for the root image needs a valid `DATABASE_URL` because it uses `backend/langgraph.production.json`.
 
 ## Frontend On Vercel
 

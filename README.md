@@ -151,7 +151,7 @@ Codex/Copilot/Cursor-style tools can discover the same assistant through `.agent
 
 - [Configuration guide](./docs/configuration.md): environment variables, provider keys, Supabase, Railway, E2B, and production profiles.
 - [Architecture](./ARCHITECTURE.md): main components and data flow.
-- [Deployment guide](./DEPLOY.md): Railway, Vercel, Postgres, and E2B deployment path.
+- [Deployment guide](./DEPLOY.md): Railway, Vercel, Postgres, E2B, Docker/Railway verification, and secret-safe Docker build contexts.
 - [Legacy notes](./docs/legacy/README.md): archived historical implementation notes and one-off migration aids.
 
 Manual configuration starts with:
