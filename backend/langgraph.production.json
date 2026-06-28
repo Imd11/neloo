@@ -75,5 +75,13 @@
   "http": {
     "app": "src.api.webapp:app"
   },
+  "checkpointer": {
+    "type": "postgres",
+    "uri": "${DATABASE_URL}"
+  },
+  "store": {
+    "type": "postgres",
+    "uri": "${DATABASE_URL}"
+  },
   "env": ".env"
 }

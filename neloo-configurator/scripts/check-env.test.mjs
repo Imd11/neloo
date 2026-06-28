@@ -112,6 +112,52 @@ test("analyzeEnvironment warns about incomplete extra provider when one provider
   assert.match(formatReport(report), /GEMINI_BASE_URL/);
 });
 
+test("local profile warns but does not fail without DATABASE_URL", () => {
+  const report = analyzeEnvironment({
+    profile: "local-minimal",
+    backend: {
+      exists: true,
+      values: {
+        DEEPSEEK_API_KEY: "key",
+        SANDBOX_MODE: "local",
+      },
+    },
+    frontend: {
+      exists: true,
+      values: {
+        NEXT_PUBLIC_API_URL: "http://localhost:2024",
+      },
+    },
+  });
+
+  assert.equal(report.ok, true);
+  assert.equal(hasCode(report, "missing-production-database-url"), false);
+  assert.equal(hasCode(report, "no-persistent-database"), true);
+});
+
+test("production profile fails without DATABASE_URL", () => {
+  const report = analyzeEnvironment({
+    profile: "production-railway-vercel",
+    backend: {
+      exists: true,
+      values: {
+        DEEPSEEK_API_KEY: "key",
+        SANDBOX_MODE: "e2b",
+        E2B_API_KEY: "e2b-key",
+      },
+    },
+    frontend: {
+      exists: true,
+      values: {
+        NEXT_PUBLIC_API_URL: "https://example.vercel.app",
+      },
+    },
+  });
+
+  assert.equal(report.ok, false);
+  assert.equal(hasCode(report, "missing-production-database-url"), true);
+});
+
 test("analyzeEnvironment rejects server secrets in frontend env", () => {
   const report = analyzeEnvironment({
     backend: { exists: true, values: { DEEPSEEK_API_KEY: "backend-key", SANDBOX_MODE: "local" } },
@@ -125,6 +171,33 @@ test("analyzeEnvironment rejects server secrets in frontend env", () => {
   });
   assert.equal(report.ok, false);
   assert.equal(report.items.some((item) => item.code === "server-secret-in-frontend"), true);
+});
+
+test("allowed browser-side provider keys warn instead of fail", () => {
+  const report = reportFor(
+    { DEEPSEEK_API_KEY: "backend-key" },
+    {
+      NEXT_PUBLIC_DEEPSEEK_API_KEY: "browser-key",
+      NEXT_PUBLIC_QWEN_API_KEY: "browser-qwen-key",
+      NEXT_PUBLIC_TUZI_API_KEY: "browser-tuzi-key",
+    }
+  );
+
+  assert.equal(report.ok, true);
+  assert.equal(hasCode(report, "server-secret-in-frontend"), false);
+  assert.equal(hasCode(report, "public-api-key"), true);
+});
+
+test("public-prefixed server-only secrets still fail", () => {
+  const report = reportFor(
+    { DEEPSEEK_API_KEY: "backend-key" },
+    {
+      NEXT_PUBLIC_SUPABASE_SERVICE_KEY: "service-secret",
+    }
+  );
+
+  assert.equal(report.ok, false);
+  assert.equal(hasCode(report, "server-secret-in-frontend"), true);
 });
 
 test("analyzeEnvironment passes local minimal config with warnings only", () => {

@@ -1,248 +1,162 @@
-# 部署指南
+# Neloo Deployment Guide
 
-本文档介绍如何将 Data Analyst Agent 部署到云端。
+This guide describes a standard production deployment with Railway for the backend, Vercel for the frontend, Supabase or Railway Postgres for persistence, and E2B for cloud sandbox execution.
 
-## 架构概览
+For the complete environment variable matrix, see `docs/configuration.md`.
 
+## Target Architecture
+
+```text
+User browser
+  |
+  v
+Vercel frontend (Next.js)
+  |
+  v
+Railway backend (LangGraph + FastAPI)
+  |--------> LLM providers
+  |--------> E2B sandbox
+  |--------> Postgres checkpoints/store
+  |--------> Supabase storage/database, if enabled
 ```
-┌─────────────────────────────────────────────────┐
-│                    你的域名                      │
-├─────────────────────────────────────────────────┤
-│  yourdomain.com     │  api.yourdomain.com       │
-│      (Vercel)       │      (Railway)            │
-│      前端 Next.js    │      后端 LangGraph       │
-├─────────────────────────────────────────────────┤
-│                   外部服务                       │
-│  Supabase (存储)  │  E2B (沙箱)  │  DeepSeek   │
-└─────────────────────────────────────────────────┘
+
+## Required Accounts
+
+| Service | Purpose |
+| --- | --- |
+| GitHub | Source repository connected to Railway and Vercel. |
+| Railway | Backend hosting and optional Postgres database. |
+| Vercel | Frontend hosting. |
+| E2B | Cloud sandbox for production code execution. |
+| Supabase | Optional storage, browser client, migrations, and Postgres. |
+| Model provider | At least one configured chat model provider. |
+
+## Backend On Railway
+
+### 1. Create The Service
+
+1. Push the repository to GitHub.
+2. In Railway, create a new project from the GitHub repository.
+3. Use the repository root as the deployment root if you want Railway to use the root `Dockerfile`.
+4. If you choose `backend/` as the Railway root directory, Railway uses `backend/Dockerfile` and `backend/railway.toml` instead.
+
+The root `Dockerfile` starts LangGraph with `backend/langgraph.production.json`, which requires `DATABASE_URL` for durable checkpoints and store.
+
+### 2. Add Postgres
+
+Use either Railway Postgres or Supabase Postgres. Railway Postgres usually injects `DATABASE_URL` automatically. If you use Supabase, set `DATABASE_URL` manually from the Supabase connection string.
+
+### 3. Configure Backend Variables
+
+Minimum production backend variables:
+
+```env
+API_BASE_URL=https://your-backend.up.railway.app
+FRONTEND_URL=https://your-frontend.vercel.app
+CORS_ALLOWED_ORIGINS=https://your-frontend.vercel.app
+DATABASE_URL=postgresql://...
+SANDBOX_MODE=e2b
+E2B_API_KEY=your-e2b-api-key
+FILE_SECRET_KEY=replace-with-a-random-secret
+IMAGE_SECRET_KEY=replace-with-a-random-secret
+DEEPSEEK_API_KEY=your-model-key
 ```
 
----
+Add the provider-specific base URL and model variables needed by your selected model. For example, Qwen requires `QWEN_API_KEY` and `QWEN_BASE_URL`.
 
-## 准备工作
+Optional backend variables:
 
-### 1. 获取必要的 API Keys
+```env
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_KEY=your-service-role-key
+SUPABASE_JWT_SECRET=your-jwt-secret
+TAVILY_API_KEY=your-tavily-key
+COMPOSIO_API_KEY=your-composio-key
+LANGSMITH_API_KEY=your-langsmith-key
+LANGSMITH_TRACING_V2=true
+LANGSMITH_PROJECT=neloo-production
+```
 
-| 服务 | 用途 | 获取地址 |
-|------|------|---------|
-| E2B | 代码执行沙箱 | https://e2b.dev |
-| DeepSeek | AI 模型 | https://platform.deepseek.com |
-| Supabase | 文件存储 | https://supabase.com |
-| Tavily | 网页搜索 | https://tavily.com |
+### 4. Verify Backend
 
-### 2. 将代码推送到 GitHub
+After deployment, verify:
 
 ```bash
-# 在项目根目录
-cd /path/to/data-analyst
-
-# 初始化 Git (如果还没有)
-git init
-
-# 添加所有文件
-git add .
-
-# 提交
-git commit -m "Initial commit for deployment"
-
-# 创建 GitHub 仓库并推送
-# 方法1: 使用 GitHub CLI
-gh repo create data-analyst --private --source=. --push
-
-# 方法2: 手动创建仓库后
-git remote add origin https://github.com/YOUR_USERNAME/data-analyst.git
-git push -u origin main
+curl https://your-backend.up.railway.app/health
 ```
 
----
+The backend should return a healthy response. If startup fails, check `DATABASE_URL`, model provider variables, `E2B_API_KEY`, and Railway build logs first.
 
-## 第一步：部署后端到 Railway
+## Frontend On Vercel
 
-### 1.1 创建 Railway 账号
+### 1. Import The Project
 
-1. 访问 https://railway.app
-2. 使用 GitHub 账号登录
+1. In Vercel, import the same GitHub repository.
+2. Set the root directory to `frontend`.
+3. Use Yarn 1.x. The canonical lockfile is `frontend/yarn.lock`.
 
-### 1.2 创建新项目
+### 2. Configure Frontend Variables
 
-1. 点击 "New Project"
-2. 选择 "Deploy from GitHub repo"
-3. 选择你的 `data-analyst` 仓库
-4. **重要**: 设置 Root Directory 为 `backend`
-
-### 1.3 配置环境变量
-
-在 Railway 项目设置中添加以下环境变量:
+Minimum frontend variables:
 
 ```env
-# 模型 API
-ANTHROPIC_API_KEY=sk-xxx
-ANTHROPIC_BASE_URL=https://api.tu-zi.com
-DEEPSEEK_API_KEY=sk-xxx
-
-# 沙箱执行 (必须使用 e2b)
-SANDBOX_MODE=e2b
-E2B_API_KEY=e2b_xxx
-
-# 网页搜索
-TAVILY_API_KEY=tvly-xxx
-
-# 文件存储
-SUPABASE_URL=https://xxx.supabase.co
-SUPABASE_SERVICE_KEY=eyJxxx
-
-# 其他
-API_BASE_URL=https://你的railway域名.up.railway.app
-IMAGE_SECRET_KEY=your-secret-key-here
-```
-
-### 1.4 部署
-
-Railway 会自动检测 Dockerfile 并开始构建。等待部署完成后，你会获得一个 URL，例如:
-```
-https://data-analyst-backend-production.up.railway.app
-```
-
-### 1.5 配置自定义域名 (可选)
-
-1. 在 Railway 项目设置中找到 "Domains"
-2. 点击 "Add Custom Domain"
-3. 输入 `api.yourdomain.com`
-4. 按照提示在你的 DNS 添加 CNAME 记录
-
----
-
-## 第二步：部署前端到 Vercel
-
-### 2.1 创建 Vercel 账号
-
-1. 访问 https://vercel.com
-2. 使用 GitHub 账号登录
-
-### 2.2 导入项目
-
-1. 点击 "Add New" → "Project"
-2. 选择你的 `data-analyst` 仓库
-3. **重要**: 设置 Root Directory 为 `frontend`
-4. Framework Preset 会自动检测为 "Next.js"
-
-### 2.3 配置环境变量
-
-在 Vercel 项目设置中添加:
-
-```env
-NEXT_PUBLIC_API_URL=https://api.yourdomain.com
+NEXT_PUBLIC_API_URL=https://your-backend.up.railway.app
 NEXT_PUBLIC_ASSISTANT_ID=data_analyst
 ```
 
-> 注意: `NEXT_PUBLIC_API_URL` 是后端的地址，如果还没有配置自定义域名，
-> 使用 Railway 提供的默认地址，如 `https://xxx.up.railway.app`
+`data_analyst` is the historical graph ID used by the backend for compatibility. It is not the product name.
 
-### 2.4 部署
+Optional frontend variables:
 
-点击 "Deploy" 开始部署。完成后你会获得一个 URL，例如:
-```
-https://data-analyst-frontend.vercel.app
-```
-
-### 2.5 配置自定义域名
-
-1. 在 Vercel 项目设置中找到 "Domains"
-2. 点击 "Add"
-3. 输入 `yourdomain.com`
-4. 按照提示配置 DNS:
-
-| 类型 | 名称 | 值 |
-|------|------|-----|
-| CNAME | @ | cname.vercel-dns.com |
-| CNAME | www | cname.vercel-dns.com |
-
----
-
-## 第三步：配置域名 DNS
-
-假设你的域名是 `yourdomain.com`，在域名管理面板添加:
-
-| 类型 | 名称 | 值 | 说明 |
-|------|------|-----|------|
-| CNAME | @ | cname.vercel-dns.com | 主域名指向前端 |
-| CNAME | www | cname.vercel-dns.com | www 指向前端 |
-| CNAME | api | xxx.up.railway.app | API 子域名指向后端 |
-
-> 注意: Railway 的 CNAME 值需要在 Railway 控制台查看
-
----
-
-## 第四步：验证部署
-
-### 4.1 测试后端
-
-```bash
-# 测试健康检查
-curl https://api.yourdomain.com/ok
-
-# 应该返回: {"status": "ok"}
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-google-client-id
+NEXT_PUBLIC_GOOGLE_API_KEY=your-google-browser-key
+NEXT_PUBLIC_IMAGE_API_URL=https://api.tu-zi.com
+NANOBANANA_IMAGE_API_KEY=your-server-side-image-key
 ```
 
-### 4.2 测试前端
+Do not place unrestricted provider keys in `NEXT_PUBLIC_*` variables for production. Values with the `NEXT_PUBLIC_` prefix are bundled into browser JavaScript.
 
-1. 访问 https://yourdomain.com
-2. 应该看到配置页面
-3. 如果已设置环境变量，会自动连接到后端
+### 3. Verify Frontend
 
-### 4.3 测试完整流程
+Open the Vercel URL and check:
 
-1. 在前端上传一个 CSV 文件
-2. 输入一个数据分析请求
-3. 确认 AI 能够执行代码并返回结果
+- The app loads without a login requirement.
+- The model selector can reach the backend.
+- At least one configured model appears as available.
+- Sending a message streams a response.
+- File/image features work only after their corresponding variables are configured.
 
----
+## Supabase Setup
 
-## 费用估算
+Supabase is optional but recommended if you need storage, database-backed workflows, or browser Supabase features.
 
-| 服务 | 费用 |
-|------|------|
-| Vercel | 免费 (Hobby 计划) |
-| Railway | ~$5-10/月 |
-| E2B | 按执行时间计费，~$0.01/分钟 |
-| Supabase | 免费 (已有账号) |
-| 域名 | 已有 |
+1. Create a Supabase project.
+2. Configure backend service variables such as `SUPABASE_URL` and `SUPABASE_SERVICE_KEY`.
+3. Configure frontend public variables such as `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` if browser features use Supabase.
+4. Run relevant migrations from `backend/supabase/migrations/` and `supabase/migrations/`.
+5. Enable Row Level Security policies before exposing browser Supabase features publicly.
 
-**预估总费用: $5-15/月**
+## E2B Setup
 
----
+For production, set:
 
-## 常见问题
+```env
+SANDBOX_MODE=e2b
+E2B_API_KEY=your-e2b-api-key
+```
 
-### Q: 后端启动失败？
-检查环境变量是否正确配置，特别是:
-- `E2B_API_KEY` 是否有效
-- `SANDBOX_MODE` 是否设置为 `e2b`
+Local `SANDBOX_MODE=local` executes code on the developer machine and should not be used for untrusted users.
 
-### Q: 前端无法连接后端？
-1. 确认 `NEXT_PUBLIC_API_URL` 配置正确
-2. 确认后端 CORS 设置允许前端域名
-3. 检查浏览器控制台错误信息
+## Deployment Checklist
 
-### Q: 代码执行超时？
-E2B 默认超时 5 分钟，对于复杂分析可能需要调整 `timeout` 参数。
-
----
-
-## 更新部署
-
-### 后端更新
-推送代码到 GitHub 后，Railway 会自动重新部署。
-
-### 前端更新
-推送代码到 GitHub 后，Vercel 会自动重新部署。
-
----
-
-## 回滚
-
-### Railway
-在 Railway 控制台的 "Deployments" 中选择之前的部署版本点击 "Redeploy"。
-
-### Vercel
-在 Vercel 控制台的 "Deployments" 中选择之前的部署版本点击 "Promote to Production"。
+- Backend service has `DATABASE_URL`.
+- Backend service has at least one complete model provider configuration.
+- Backend service has `SANDBOX_MODE=e2b` and `E2B_API_KEY` for production.
+- `CORS_ALLOWED_ORIGINS` includes the Vercel frontend URL.
+- Frontend has `NEXT_PUBLIC_API_URL` pointing at Railway.
+- Frontend uses Yarn 1.x and `frontend/yarn.lock`.
+- No real `.env` files or secrets are committed.
+- Browser-exposed `NEXT_PUBLIC_*` keys are public, restricted, or proxied through server routes.

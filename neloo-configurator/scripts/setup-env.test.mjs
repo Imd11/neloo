@@ -31,9 +31,34 @@ test("setupEnvironment creates env files from templates and applies local profil
   const frontend = fs.readFileSync(path.join(root, "frontend/.env.local"), "utf8");
 
   assert.match(result.messages.join("\n"), /Profile: local-minimal/);
+  assert.match(
+    result.messages.join("\n"),
+    /node neloo-configurator\/scripts\/check-env\.mjs --profile local-minimal/
+  );
+  assert.match(result.messages.join("\n"), /langgraph dev --host 127\.0\.0\.1 --port 2024/);
+  assert.match(result.messages.join("\n"), /cd frontend && yarn dev/);
   assert.match(backend, /^PORT=2024/m);
   assert.match(backend, /^SANDBOX_MODE=local/m);
   assert.match(frontend, /^NEXT_PUBLIC_API_URL=http:\/\/localhost:2024/m);
+});
+
+test("setupEnvironment gives production-specific next steps", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "neloo-config-test-"));
+  fs.mkdirSync(path.join(root, "backend"), { recursive: true });
+  fs.mkdirSync(path.join(root, "frontend"), { recursive: true });
+  fs.writeFileSync(path.join(root, "backend/.env.example"), "SANDBOX_MODE=\nDATABASE_URL=\nE2B_API_KEY=\n");
+  fs.writeFileSync(path.join(root, "frontend/.env.example"), "NEXT_PUBLIC_API_URL=\nNEXT_PUBLIC_ASSISTANT_ID=\n");
+
+  const result = setupEnvironment({ root, profile: "production-railway-vercel" });
+  const output = result.messages.join("\n");
+
+  assert.match(output, /Profile: production-railway-vercel/);
+  assert.match(
+    output,
+    /node neloo-configurator\/scripts\/check-env\.mjs --profile production-railway-vercel/
+  );
+  assert.match(output, /Railway\/Vercel dashboards/);
+  assert.match(output, /DATABASE_URL/);
 });
 
 test("setupEnvironment dry-run does not create files", () => {

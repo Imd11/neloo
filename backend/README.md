@@ -1,266 +1,93 @@
-# Data Analyst Agent
+# Neloo Backend
 
-基于 LangChain 1.0 / LangGraph 的数据分析智能体，专为统计学和经济学实证分析设计。
+This directory contains the LangGraph and FastAPI backend for Neloo, a general-purpose AI agent workspace. The backend owns chat model routing, tool execution, sandbox access, file/image storage, thread persistence, and API routes used by the frontend.
 
-## 功能特性
+The built-in LangGraph assistant ID is still `data_analyst` for compatibility with existing stored threads and deployments. Treat it as an internal graph identifier, not the product name.
 
-- **探索性数据分析 (EDA)**: 数据清洗、描述统计、可视化
-- **统计分析**: 假设检验、相关分析、回归分析
-- **计量经济学方法**: OLS、面板数据、DID、工具变量
-- **LaTeX 表格输出**: 生成学术论文格式的回归表格
-- **安全代码执行**: E2B 云端沙箱 / 本地 Docker / 开发模式
+## Quick Start
 
-## 快速开始
-
-### 1. 安装依赖
+From the repository root:
 
 ```bash
-cd apps/data-analyst
-
-# 创建虚拟环境
+cd backend
+cp .env.example .env
 python -m venv .venv
-source .venv/bin/activate  # Linux/Mac
-# .venv\Scripts\activate   # Windows
-
-# 安装依赖
+source .venv/bin/activate
 pip install -e .
 ```
 
-### 2. 配置环境变量
+Edit `backend/.env` and configure at least one complete chat model provider. For the smallest trusted local setup:
+
+```env
+SANDBOX_MODE=local
+DEEPSEEK_API_KEY=your-deepseek-api-key
+```
+
+Then start the backend:
 
 ```bash
-# 复制示例配置
-cp .env.example .env
-
-# 编辑 .env 文件，填入你的 API keys
+langgraph dev --host 127.0.0.1 --port 2024
 ```
 
-**必需的环境变量**（至少设置一个 LLM API）:
+The local API is available at `http://localhost:2024`.
 
-```bash
-# LLM API (选择一个)
-DEEPSEEK_API_KEY="your-deepseek-api-key"      # 推荐，性价比高
-ANTHROPIC_API_KEY="your-anthropic-api-key"    # Claude 模型
-OPENAI_API_KEY="your-openai-api-key"          # GPT 模型
+## Local vs Production Persistence
 
-# 沙箱模式
-SANDBOX_MODE="local"    # 开发测试用
-# SANDBOX_MODE="e2b"    # 生产环境推荐
+`langgraph.json` is the default local development config and does not require `DATABASE_URL`.
 
-# E2B (生产环境需要)
-E2B_API_KEY="your-e2b-api-key"
+`langgraph.production.json` enables Postgres-backed LangGraph checkpoints and store. Use it for Railway or other production deployments and set:
 
-# 可选：Web 搜索
-TAVILY_API_KEY="your-tavily-api-key"
+```env
+DATABASE_URL=postgresql://...
 ```
 
-### 3. 本地测试
+## Configuration
 
-```bash
-# 快速测试（使用本地执行模式）
-export SANDBOX_MODE=local
-python run_test.py
+Use `backend/.env.example` as the template for local development. Production deployments usually configure the same values in Railway or another backend host.
 
-# 完整测试
-python tests/test_agent.py
-```
+Common backend configuration areas:
 
-### 4. 启动 LangGraph 服务器
+- Server URLs and CORS: `API_BASE_URL`, `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS`
+- Chat models: provider keys, `*_BASE_URL`, and `*_MODEL` variables
+- Sandbox execution: `SANDBOX_MODE`, `E2B_API_KEY`
+- Supabase and database persistence: `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `DATABASE_URL`
+- Storage signing: `FILE_SECRET_KEY`, `IMAGE_SECRET_KEY`
+- Optional integrations: `TAVILY_API_KEY`, `COMPOSIO_API_KEY`, `LANGSMITH_API_KEY`
 
-```bash
-# 使用 LangGraph CLI 启动服务器
-langgraph dev
+For the complete variable matrix, see [`../docs/configuration.md`](../docs/configuration.md).
 
-# 或指定端口
-langgraph dev --port 2024
-```
+## Project Structure
 
-服务器启动后，可以访问:
-- API: http://localhost:2024
-- LangGraph Studio: http://localhost:2024/studio (如果可用)
-
-### 5. 连接前端
-
-在 `agent-chat-app/apps/web` 目录下启动前端:
-
-```bash
-cd ../web
-pnpm dev
-```
-
-然后在浏览器中:
-1. 打开 http://localhost:3000
-2. 设置 Deployment URL: `http://localhost:2024`
-3. 设置 Assistant ID: `data_analyst`
-
-## 项目结构
-
-```
-apps/data-analyst/
+```text
+backend/
 ├── src/
-│   ├── agent/           # 智能体核心
-│   │   ├── __init__.py
-│   │   └── graph.py     # LangGraph 图定义
-│   ├── sandbox/         # 沙箱执行器
-│   │   ├── __init__.py
-│   │   └── executor.py  # E2B/本地/Docker 执行器
-│   └── tools/           # 工具定义
-│       ├── __init__.py
-│       ├── search.py    # Web 搜索工具
-│       └── code_execution.py  # 代码执行工具
-├── tests/
-│   └── test_agent.py    # 测试脚本
-├── langgraph.json       # LangGraph 配置
-├── pyproject.toml       # Python 项目配置
-├── .env.example         # 环境变量示例
-├── run_test.py          # 快速测试脚本
-└── README.md
+│   ├── agent/          # LangGraph graph, prompts, model registry, middleware
+│   ├── api/            # FastAPI routes consumed by the frontend
+│   ├── sandbox/        # Local, Docker, and E2B code execution backends
+│   ├── storage/        # File, image, Supabase, and database helpers
+│   └── tools/          # Agent tools for search, code, documents, and integrations
+├── supabase/           # Backend-specific Supabase migrations
+├── tests/              # Backend tests
+├── langgraph.json      # LangGraph graph and HTTP app configuration
+├── pyproject.toml      # Python package metadata and dependencies
+└── .env.example        # Backend environment template
 ```
 
-## 沙箱模式说明
+## Sandbox Modes
 
-| 模式 | 设置 | 适用场景 | 安全性 |
-|-----|-----|---------|-------|
-| **E2B** | `SANDBOX_MODE=e2b` | 生产环境 | 高 |
-| **Local** | `SANDBOX_MODE=local` | 开发测试 | 无隔离 |
-| **Docker** | `SANDBOX_MODE=docker` | 自托管生产 | 高 |
+| Mode | Use case | Isolation |
+| --- | --- | --- |
+| `local` | Trusted local development | None |
+| `docker` | Local container execution | Container isolation |
+| `e2b`, `e2b-sync`, `e2b-async` | Cloud sandbox execution | E2B-managed isolation |
 
-### E2B 云端沙箱（推荐）
+Use `local` only with trusted prompts and files. For production, prefer E2B or another isolated execution mode.
+
+## Development Checks
 
 ```bash
-# 注册 E2B 获取 API key: https://e2b.dev
-export E2B_API_KEY="your-key"
-export SANDBOX_MODE="e2b"
+python -m py_compile src/model_ids.py src/agent/graph.py src/api/webapp.py src/storage/supabase_db.py
+python -m pytest tests
 ```
 
-特点:
-- 安全隔离的云端执行环境
-- 预装数据科学包
-- 按需计费（100小时/月免费）
-
-### 本地执行（仅开发）
-
-```bash
-export SANDBOX_MODE="local"
-```
-
-**警告**: 无安全隔离，仅用于开发测试！
-
-### Docker 执行（自托管）
-
-```bash
-export SANDBOX_MODE="docker"
-# 需要安装 Docker
-```
-
-特点:
-- 本地隔离执行
-- 适合数据敏感场景
-- 需要自己管理 Docker
-
-## API 使用
-
-### Python SDK
-
-```python
-from src.agent.graph import invoke, stream
-
-# 同步调用
-result = invoke("分析这组数据的相关性: [1,2,3], [4,5,6]", thread_id="my-session")
-
-# 流式调用
-for event in stream("运行 OLS 回归分析", thread_id="my-session"):
-    print(event)
-```
-
-### HTTP API
-
-启动服务器后，可以通过 HTTP 调用:
-
-```bash
-# 发送消息
-curl -X POST http://localhost:2024/threads/my-thread/runs \
-  -H "Content-Type: application/json" \
-  -d '{
-    "assistant_id": "data_analyst",
-    "input": {
-      "messages": [{"role": "user", "content": "计算 1+1"}]
-    }
-  }'
-```
-
-## 示例查询
-
-### 基础统计
-
-```
-计算 [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] 的均值、中位数和标准差
-```
-
-### OLS 回归
-
-```
-生成 100 个观测值的模拟数据，包含自变量 X1, X2 和因变量 Y，
-然后运行 OLS 回归并生成 LaTeX 格式的结果表格
-```
-
-### 面板数据分析
-
-```
-创建一个包含 10 个个体、5 个时期的面板数据集，
-分别运行固定效应和随机效应模型，并进行 Hausman 检验
-```
-
-### DID 分析
-
-```
-设计一个 DID 分析：
-- 100 个处理组观测值，100 个对照组观测值
-- 2 个时期（处理前后）
-- 估计处理效应并报告结果
-```
-
-## 故障排除
-
-### 常见问题
-
-1. **ModuleNotFoundError: No module named 'src'**
-   ```bash
-   # 确保在 data-analyst 目录下运行
-   cd apps/data-analyst
-   pip install -e .
-   ```
-
-2. **E2B API Error**
-   ```bash
-   # 检查 API key 是否正确
-   echo $E2B_API_KEY
-
-   # 切换到本地模式测试
-   export SANDBOX_MODE=local
-   ```
-
-3. **LangGraph 服务器无法启动**
-   ```bash
-   # 检查 langgraph.json 配置
-   cat langgraph.json
-
-   # 确保图定义正确
-   python -c "from src.agent.graph import graph; print(graph)"
-   ```
-
-4. **前端无法连接**
-   - 确保后端运行在正确端口 (默认 2024)
-   - 检查 CORS 设置
-   - 确认 Assistant ID 为 `data_analyst`
-
-## 下一步
-
-1. **添加更多工具**: 文件上传、数据库连接等
-2. **优化提示词**: 针对具体分析任务优化
-3. **部署到云端**: AWS/Vercel 部署指南
-4. **集成 Deep Agents**: 添加规划和子代理功能
-
-## 许可证
-
-MIT License
+Some tests require optional services or environment variables. Configure them through `backend/.env` when needed.

@@ -74,6 +74,8 @@ Jalankan:
 langgraph dev --host 127.0.0.1 --port 2024
 ```
 
+`backend/langgraph.json` default ditujukan untuk development lokal dan tidak memerlukan `DATABASE_URL`. Riwayat lokal dapat bersifat sementara jika persistence production tidak dikonfigurasi.
+
 ### Frontend
 
 ```bash
@@ -82,6 +84,8 @@ cp .env.example .env.local
 yarn install
 yarn dev
 ```
+
+Gunakan Yarn 1.x untuk frontend; `frontend/yarn.lock` adalah lockfile kanonis repositori.
 
 Buka [http://localhost:3000](http://localhost:3000). Jika port dipakai:
 
@@ -114,7 +118,7 @@ cp frontend/.env.example frontend/.env.local
 | Nama model dan endpoint | Variabel `*_MODEL` dan `*_BASE_URL`, misalnya `QWEN_MODEL`, `QWEN_BASE_URL`, `OPENAI_MODEL`, `GEMINI_BASE_URL` | Pilih model dan gateway. `NEWAPI_*` dan `TUZI_*` tetap didukung. |
 | Sandbox | `SANDBOX_MODE`, `E2B_API_KEY` | `local` hanya untuk input tepercaya. Produksi sebaiknya `e2b` atau `docker`. |
 | Supabase | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_JWT_SECRET`, `SUPABASE_DB_HOST`, `SUPABASE_DB_PASSWORD` | Service role key hanya untuk backend. |
-| Persistensi | `DATABASE_URL` | Dibutuhkan untuk checkpoint dan riwayat yang tahan restart. |
+| Persistensi | `DATABASE_URL` | Tidak diperlukan oleh `backend/langgraph.json` lokal. Wajib untuk persistence production dengan `backend/langgraph.production.json`. |
 | Integrasi | `TAVILY_API_KEY`, `COMPOSIO_API_KEY`, `LANGSMITH_API_KEY` | Layanan opsional. |
 
 ### Frontend
@@ -158,7 +162,7 @@ Deployment yang disarankan:
 
 - Backend di Railway atau platform container lain.
 - Frontend di Vercel.
-- Database memakai Railway Postgres atau Supabase Postgres lewat `DATABASE_URL`.
+- Persistence production memakai `backend/langgraph.production.json` dan Railway Postgres atau Supabase Postgres lewat `DATABASE_URL`.
 - Storage memakai Supabase Storage atau disk lokal untuk development.
 
 ## Keamanan Sebelum Open Source

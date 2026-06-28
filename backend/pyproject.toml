@@ -1,7 +1,7 @@
 [project]
-name = "data-analyst-agent"
+name = "neloo-backend"
 version = "0.1.0"
-description = "Data Analysis Deep Agent with LangChain 1.0"
+description = "General-purpose AI agent backend for Neloo with LangGraph and Deep Agents"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

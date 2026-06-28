@@ -173,10 +173,12 @@ export function setupEnvironment({ root, profile, dryRun = false, force = false 
   messages.push(`Profile: ${profile}`);
   messages.push(`Backend values ${dryRun ? "would change" : "changed"}: ${backendUpdate.changed.length ? backendUpdate.changed.join(", ") : "none"}`);
   messages.push(`Frontend values ${dryRun ? "would change" : "changed"}: ${frontendUpdate.changed.length ? frontendUpdate.changed.join(", ") : "none"}`);
-  messages.push("Next: add at least one backend chat model key, then run `node neloo-configurator/scripts/check-env.mjs`.");
+  messages.push(`Next: add at least one backend chat model key, then run \`node neloo-configurator/scripts/check-env.mjs --profile ${profile}\`.`);
 
   if (profile === "production-railway-vercel") {
     messages.push("Production reminder: fill API_BASE_URL, FRONTEND_URL, CORS_ALLOWED_ORIGINS, DATABASE_URL, E2B_API_KEY, FILE_SECRET_KEY, IMAGE_SECRET_KEY, and provider keys in Railway/Vercel dashboards.");
+  } else {
+    messages.push("Local start: run `cd backend && langgraph dev --host 127.0.0.1 --port 2024`, then `cd frontend && yarn dev`.");
   }
 
   return { profile, dryRun, force, messages };

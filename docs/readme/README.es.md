@@ -74,6 +74,8 @@ Ejecuta:
 langgraph dev --host 127.0.0.1 --port 2024
 ```
 
+El `backend/langgraph.json` por defecto está orientado al desarrollo local y no requiere `DATABASE_URL`. El historial local puede ser efímero si no configuras persistencia de producción.
+
 ### Frontend
 
 ```bash
@@ -82,6 +84,8 @@ cp .env.example .env.local
 yarn install
 yarn dev
 ```
+
+Usa Yarn 1.x para el frontend; `frontend/yarn.lock` es el lockfile canónico del repositorio.
 
 Abre [http://localhost:3000](http://localhost:3000). Si el puerto está ocupado:
 
@@ -114,7 +118,7 @@ cp frontend/.env.example frontend/.env.local
 | Modelo y endpoint | Variables `*_MODEL` y `*_BASE_URL`, por ejemplo `QWEN_MODEL`, `QWEN_BASE_URL`, `OPENAI_MODEL`, `GEMINI_BASE_URL` | Elige el modelo exacto y la URL del gateway. `NEWAPI_*` y `TUZI_*` siguen siendo compatibles. |
 | Sandbox | `SANDBOX_MODE`, `E2B_API_KEY` | Usa `local` solo con entradas confiables. En producción usa `e2b` o `docker`. |
 | Supabase | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_JWT_SECRET`, `SUPABASE_DB_HOST`, `SUPABASE_DB_PASSWORD` | La service role key es solo para backend. |
-| Persistencia | `DATABASE_URL` | Necesaria para checkpoints duraderos e historial. |
+| Persistencia | `DATABASE_URL` | No es necesaria para el `backend/langgraph.json` local. Es obligatoria para persistencia de producción con `backend/langgraph.production.json`. |
 | Integraciones | `TAVILY_API_KEY`, `COMPOSIO_API_KEY`, `LANGSMITH_API_KEY` | Servicios opcionales. |
 
 ### Frontend
@@ -158,7 +162,7 @@ Despliegue recomendado:
 
 - Backend en Railway u otra plataforma de contenedores.
 - Frontend en Vercel.
-- Base de datos con Railway Postgres o Supabase Postgres mediante `DATABASE_URL`.
+- Persistencia de producción con `backend/langgraph.production.json` y Railway Postgres o Supabase Postgres mediante `DATABASE_URL`.
 - Storage con Supabase Storage o disco local para desarrollo.
 
 ## Seguridad antes de publicar

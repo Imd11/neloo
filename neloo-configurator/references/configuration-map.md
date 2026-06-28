@@ -18,6 +18,10 @@ Production equivalents:
 | Railway backend service | `backend/.env` |
 | Vercel frontend project | `frontend/.env.local` |
 
+Local development uses `backend/langgraph.json`, which does not require `DATABASE_URL`. Production persistence uses `backend/langgraph.production.json` and requires `DATABASE_URL`.
+
+The frontend uses Yarn 1.x. `frontend/yarn.lock` is the canonical dependency lockfile; do not generate or commit `frontend/package-lock.json`.
+
 ## Required Minimal Local Setup
 
 | Variable | Location | Required when | Notes |
@@ -29,6 +33,7 @@ Production equivalents:
 | `CORS_ALLOWED_ORIGINS` | `backend/.env` | Recommended | Include every frontend origin. |
 | `SANDBOX_MODE` | `backend/.env` | Always | Use `local` for trusted local development. |
 | One chat model key | `backend/.env` | Always for chat | At least one key from the chat model provider table. |
+| `DATABASE_URL` | `backend/.env` | Production persistence only | Not required by the default local `backend/langgraph.json`; required by `backend/langgraph.production.json`. |
 
 ## Backend Server Variables
 
@@ -105,7 +110,7 @@ Old graph IDs are hidden from the selector but kept so existing LangGraph graph 
 
 | Variable | Location | Required when | Security | Feature |
 | --- | --- | --- | --- | --- |
-| `DATABASE_URL` | Backend | Production thread/checkpoint persistence | Secret | Postgres connection string, often injected by Railway. |
+| `DATABASE_URL` | Backend | Production persistence with `backend/langgraph.production.json` | Secret | Postgres connection string, often injected by Railway. Local-minimal diagnostics warn when absent; production diagnostics fail when absent. |
 | `FILE_SECRET_KEY` | Backend | Production file links | Secret | Signs file URLs. Replace default `change-me` value. |
 | `IMAGE_SECRET_KEY` | Backend | Production image links | Secret | Signs image URLs. Replace default `change-me` value. |
 | `FILE_USE_LOCAL_STORAGE` | Backend | Storage selection | Public config | `true` forces local file storage. |

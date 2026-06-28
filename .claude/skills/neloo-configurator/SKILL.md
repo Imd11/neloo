@@ -5,7 +5,7 @@ description: Discovery wrapper for configuring the Neloo open-source project env
 
 # Neloo Configurator Wrapper
 
-This is a discovery wrapper for Claude Code tools that scan `.claude/skills`.
+This is a discovery wrapper for Claude Code tools that scan `.claude/skills`. It points to the Neloo environment setup assistant; it is not a runtime skill loaded by the Neloo app.
 
 Use the canonical skill at:
 

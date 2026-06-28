@@ -1,5 +1,5 @@
 # ============================================================================
-# Data Analyst Backend - Dockerfile (Root Level)
+# Neloo Backend - Dockerfile (Root Level)
 # ============================================================================
 # 用于部署到 Railway 或其他容器平台
 # ============================================================================
@@ -16,9 +16,8 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# 复制依赖文件和 README
-COPY backend/pyproject.toml ./
-COPY backend/README.md ./
+# 复制后端代码和配置，确保 pip install . 能看到 src 包。
+COPY backend/ .
 
 # 安装 Python 依赖
 RUN pip install --no-cache-dir --upgrade pip && \
@@ -29,9 +28,6 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # 安装 Playwright Chromium 浏览器（用于 /api/resume/pdf 矢量 PDF 导出）
 # 注意：仅安装 Python 包不包含浏览器二进制，必须额外执行 install。
 RUN python -m playwright install chromium --with-deps
-
-# 复制应用代码
-COPY backend/ .
 
 # 创建数据目录
 RUN mkdir -p /app/data
@@ -45,4 +41,4 @@ ENV PORT=8000
 EXPOSE 8000
 
 # 启动命令 - 使用当前环境兼容的 LangGraph CLI 入口，并关闭热重载
-CMD ["python", "-m", "langgraph_cli", "dev", "--no-reload", "--port", "8000", "--host", "0.0.0.0", "--allow-blocking"]
+CMD ["python", "-m", "langgraph_cli", "dev", "--config", "langgraph.production.json", "--no-reload", "--port", "8000", "--host", "0.0.0.0", "--allow-blocking"]

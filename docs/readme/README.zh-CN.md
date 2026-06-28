@@ -74,6 +74,8 @@ DEEPSEEK_API_KEY=your-key
 langgraph dev --host 127.0.0.1 --port 2024
 ```
 
+默认的 `backend/langgraph.json` 面向本地开发，不需要 `DATABASE_URL`。如果没有配置生产持久化，本地会话历史可能是临时的。
+
 ### 前端
 
 ```bash
@@ -82,6 +84,8 @@ cp .env.example .env.local
 yarn install
 yarn dev
 ```
+
+前端请使用 Yarn 1.x；仓库中的 `frontend/yarn.lock` 是标准锁文件。
 
 默认访问 [http://localhost:3000](http://localhost:3000)。如果 `3000` 被占用，可以运行：
 
@@ -114,7 +118,7 @@ cp frontend/.env.example frontend/.env.local
 | 模型名称和地址 | `*_MODEL`, `*_BASE_URL`，例如 `QWEN_MODEL`, `QWEN_BASE_URL`, `OPENAI_MODEL`, `GEMINI_BASE_URL`, `CUSTOM_OPENAI_MODEL` | 用于选择具体模型和网关地址；旧的 `NEWAPI_*`、`TUZI_*` 仍兼容。 |
 | 沙箱 | `SANDBOX_MODE`, `E2B_API_KEY` | 本地可信开发可用 `local`，生产建议 `e2b` 或 `docker`。 |
 | Supabase | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_JWT_SECRET`, `SUPABASE_DB_HOST`, `SUPABASE_DB_PASSWORD` | service role key 只能放在后端。 |
-| 持久化 | `DATABASE_URL` | Railway Postgres 通常自动提供；用于 LangGraph checkpoint 和历史会话。 |
+| 持久化 | `DATABASE_URL` | 默认本地 `backend/langgraph.json` 不需要；使用 `backend/langgraph.production.json` 做生产持久化时必须配置。 |
 | 文件/图片签名 | `FILE_SECRET_KEY`, `IMAGE_SECRET_KEY`, `FILE_USE_LOCAL_STORAGE`, `IMAGE_USE_LOCAL_STORAGE` | 生产环境要使用稳定随机密钥。 |
 | 集成 | `TAVILY_API_KEY`, `COMPOSIO_API_KEY`, `LANGSMITH_API_KEY` | 可选能力。 |
 
@@ -161,7 +165,7 @@ E2B 模板配置位于 `e2b.toml`、`e2b.Dockerfile` 和 `e2b-template/data-anal
 
 - 后端部署到 Railway 或其它容器平台。
 - 前端部署到 Vercel。
-- 数据库使用 Railway Postgres 或 Supabase Postgres，并通过 `DATABASE_URL` 连接。
+- 生产持久化使用 `backend/langgraph.production.json`，数据库通过 Railway Postgres 或 Supabase Postgres 的 `DATABASE_URL` 连接。
 - 文件存储使用 Supabase Storage；本地开发可用本地磁盘。
 
 Railway 后端通常需要：

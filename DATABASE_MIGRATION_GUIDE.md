@@ -15,7 +15,7 @@
 2. 登录你的账号
 3. 在左侧菜单中选择 **SQL Editor**
 4. 点击 **New query** 创建新查询
-5. 复制 `supabase_fix_upload_sessions.sql` 文件的完整内容
+5. 复制 `docs/legacy/supabase_fix_upload_sessions.sql` 文件的完整内容
 6. 粘贴到 SQL Editor 中
 7. 点击 **Run** 按钮执行迁移
 
@@ -30,7 +30,7 @@ PGPASSWORD="your_database_password" psql \
   -p 5432 \
   -U postgres.YOUR_SUPABASE_PROJECT_REF \
   -d postgres \
-  -f supabase_fix_upload_sessions.sql
+  -f docs/legacy/supabase_fix_upload_sessions.sql
 ```
 
 ## 迁移步骤说明

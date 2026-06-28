@@ -75,7 +75,7 @@ neloo/
 
 - Python 3.11+
 - Node.js 20+
-- Yarn 1.x or npm
+- Yarn 1.x for the frontend. `frontend/yarn.lock` is the canonical lockfile.
 - A model provider key, for example DeepSeek, Qwen, OpenRouter, Anthropic, OpenAI, MiniMax, Zhipu, NewAPI, or Tu-Zi
 - Optional: Supabase project for persistence and storage
 - Optional: E2B account for cloud sandbox execution
@@ -106,6 +106,8 @@ Then run:
 langgraph dev --host 127.0.0.1 --port 2024
 ```
 
+The default `backend/langgraph.json` is local-development oriented and does not require `DATABASE_URL`. Thread history may be ephemeral unless you configure production persistence.
+
 ### 2. Frontend
 
 ```bash
@@ -127,7 +129,30 @@ Use `backend/.env.example` and `frontend/.env.example` as the canonical template
 
 For a complete step-by-step setup guide, including Supabase, Railway, E2B, chat model providers, image generation keys, and production deployment variables, see [docs/configuration.md](./docs/configuration.md).
 
-Neloo also includes `neloo-configurator/`, a setup assistant for external AI coding tools. It is not loaded by the Neloo runtime agent. Codex/Copilot/Cursor-style tools can discover it through `.agents/skills/neloo-configurator/`, and Claude Code can discover it through `.claude/skills/neloo-configurator/`.
+Neloo also includes `neloo-configurator/`, a setup assistant for environment configuration. It is not loaded by the Neloo runtime agent.
+
+You can run it directly without any AI tool:
+
+```bash
+node neloo-configurator/scripts/setup-env.mjs --profile local-minimal
+node neloo-configurator/scripts/check-env.mjs --profile local-minimal
+```
+
+For production-oriented checks:
+
+```bash
+node neloo-configurator/scripts/setup-env.mjs --profile production-railway-vercel
+node neloo-configurator/scripts/check-env.mjs --profile production-railway-vercel
+```
+
+Codex/Copilot/Cursor-style tools can discover the same assistant through `.agents/skills/neloo-configurator/`, and Claude Code can discover it through `.claude/skills/neloo-configurator/`.
+
+## Documentation Map
+
+- [Configuration guide](./docs/configuration.md): environment variables, provider keys, Supabase, Railway, E2B, and production profiles.
+- [Architecture](./ARCHITECTURE.md): main components and data flow.
+- [Deployment guide](./DEPLOY.md): Railway, Vercel, Postgres, and E2B deployment path.
+- [Legacy notes](./docs/legacy/README.md): archived historical implementation notes and one-off migration aids.
 
 Manual configuration starts with:
 
@@ -146,7 +171,7 @@ cp frontend/.env.example frontend/.env.local
 | Model names and base URLs | `*_MODEL`, `*_BASE_URL` variables such as `QWEN_MODEL`, `QWEN_BASE_URL`, `OPENAI_MODEL`, `GEMINI_BASE_URL`, `CUSTOM_OPENAI_MODEL` | Use these to choose the exact model and endpoint. Legacy `NEWAPI_*` and `TUZI_*` variables remain supported for existing deployments. |
 | Sandbox | `SANDBOX_MODE`, `E2B_API_KEY` | Use `local` only for trusted local development. Use `e2b` or `docker` for stronger isolation. |
 | Supabase | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_JWT_SECRET`, `SUPABASE_DB_HOST`, `SUPABASE_DB_PASSWORD` | Service role keys are server-only secrets. |
-| Persistence | `DATABASE_URL` | Railway Postgres normally provides this automatically. Required for durable LangGraph checkpoints. |
+| Persistence | `DATABASE_URL` | Not required for the default local `backend/langgraph.json`. Required for durable production checkpoints with `backend/langgraph.production.json`. |
 | Storage signing | `FILE_SECRET_KEY`, `IMAGE_SECRET_KEY`, `FILE_USE_LOCAL_STORAGE`, `IMAGE_USE_LOCAL_STORAGE` | Use stable random secrets in production. |
 | Integrations | `TAVILY_API_KEY`, `COMPOSIO_API_KEY`, `LANGSMITH_API_KEY`, `LANGSMITH_TRACING_V2`, `LANGSMITH_PROJECT` | Optional feature-specific services. |
 
@@ -190,7 +215,7 @@ The optional template configuration lives in `e2b.toml`, `e2b.Dockerfile`, and `
 
 Recommended deployment split:
 
-- Backend: Railway or another container platform using `backend/Dockerfile` or the root `Dockerfile`.
+- Backend: Railway or another container platform using `backend/Dockerfile` or the root `Dockerfile`. For Railway or another persistent deployment, use `backend/langgraph.production.json` and set `DATABASE_URL` to a Postgres connection string.
 - Frontend: Vercel using `vercel.json` or `frontend/vercel.json`.
 - Database/checkpoints: Railway Postgres or Supabase Postgres through `DATABASE_URL`.
 - Object storage: Supabase Storage or local disk for development.

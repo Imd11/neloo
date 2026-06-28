@@ -120,6 +120,13 @@ const PUBLIC_FRONTEND_KEYS = [
   "NEXT_PUBLIC_BACKEND_URL",
 ];
 
+const ALLOWED_PUBLIC_PROVIDER_KEYS = new Set([
+  "NEXT_PUBLIC_TUZI_API_KEY",
+  "NEXT_PUBLIC_TUZI_IMAGE_API_KEY",
+  "NEXT_PUBLIC_DEEPSEEK_API_KEY",
+  "NEXT_PUBLIC_QWEN_API_KEY",
+]);
+
 export function parseEnvContent(content) {
   const values = {};
   for (const rawLine of content.split(/\r?\n/)) {
@@ -213,7 +220,7 @@ function add(report, level, code, message, file = "") {
   report.items.push({ level, code, message, file });
 }
 
-export function analyzeEnvironment({ backend, frontend }) {
+export function analyzeEnvironment({ backend, frontend, profile = "local-minimal" }) {
   const report = { ok: true, items: [] };
   const backendValues = backend.values || {};
   const frontendValues = frontend.values || {};
@@ -264,14 +271,21 @@ export function analyzeEnvironment({ backend, frontend }) {
       add(report, "warning", "partial-backend-supabase", "Backend Supabase storage/database usually needs both SUPABASE_URL and SUPABASE_SERVICE_KEY.", "backend/.env");
     }
 
-    if (!hasValue(backendValues, "DATABASE_URL") && !hasValue(backendValues, "SUPABASE_DB_PASSWORD")) {
-      add(report, "warning", "no-persistent-database", "No DATABASE_URL or SUPABASE_DB_PASSWORD found. Thread history may not persist after backend restarts.", "backend/.env");
+    const isProductionProfile = profile === "production-railway-vercel";
+    if (isProductionProfile && !hasValue(backendValues, "DATABASE_URL")) {
+      add(report, "error", "missing-production-database-url", "DATABASE_URL is required for production persistence with backend/langgraph.production.json.", "backend/.env");
+    } else if (!hasValue(backendValues, "DATABASE_URL") && !hasValue(backendValues, "SUPABASE_DB_PASSWORD")) {
+      add(report, "warning", "no-persistent-database", "No DATABASE_URL or SUPABASE_DB_PASSWORD found. Local development can run, but thread history may not persist after backend restarts.", "backend/.env");
     }
   }
 
   if (frontend.exists) {
     for (const key of SERVER_ONLY_KEYS) {
-      if (hasValue(frontendValues, key) || hasValue(frontendValues, `NEXT_PUBLIC_${key}`)) {
+      const publicKey = `NEXT_PUBLIC_${key}`;
+      if (
+        hasValue(frontendValues, key) ||
+        (hasValue(frontendValues, publicKey) && !ALLOWED_PUBLIC_PROVIDER_KEYS.has(publicKey))
+      ) {
         add(report, "error", "server-secret-in-frontend", `${key} is a server-side secret and must not be placed in frontend/.env.local.`, "frontend/.env.local");
       }
     }
@@ -307,11 +321,13 @@ export function formatReport(report) {
 }
 
 function parseArgs(argv) {
-  const args = { root: process.cwd(), json: false };
+  const args = { root: process.cwd(), json: false, profile: "local-minimal" };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === "--root") {
       args.root = argv[++i] || args.root;
+    } else if (arg === "--profile") {
+      args.profile = argv[++i] || args.profile;
     } else if (arg === "--json") {
       args.json = true;
     }
@@ -319,15 +335,15 @@ function parseArgs(argv) {
   return args;
 }
 
-export function checkRoot(root) {
+export function checkRoot(root, profile = "local-minimal") {
   const backend = readEnvFile(path.join(root, "backend/.env"));
   const frontend = readEnvFile(path.join(root, "frontend/.env.local"));
-  return analyzeEnvironment({ backend, frontend });
+  return analyzeEnvironment({ backend, frontend, profile });
 }
 
 function main() {
   const args = parseArgs(process.argv.slice(2));
-  const report = checkRoot(path.resolve(args.root));
+  const report = checkRoot(path.resolve(args.root), args.profile);
   if (args.json) {
     console.log(JSON.stringify(report, null, 2));
   } else {

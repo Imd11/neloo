@@ -16,6 +16,7 @@ Never commit real `.env` files or provider keys.
 ### Local Minimal Setup
 
 Use this when you only want to run the app locally with chat and local code execution.
+The default `backend/langgraph.json` does not require `DATABASE_URL`; local thread history may be ephemeral.
 
 `backend/.env`:
 
@@ -38,7 +39,7 @@ NEXT_PUBLIC_ASSISTANT_ID=data_analyst
 
 ### Production Setup
 
-Use this when deploying the backend to Railway and the frontend to Vercel.
+Use this when deploying the backend to Railway and the frontend to Vercel. Production persistence uses `backend/langgraph.production.json` and requires `DATABASE_URL`.
 
 Railway backend variables:
 
@@ -65,7 +66,7 @@ NEXT_PUBLIC_ASSISTANT_ID=data_analyst
 
 | File or platform | Used by | Put these values here |
 | --- | --- | --- |
-| `backend/.env` | Local backend | Server URLs, model keys, model base URLs, Supabase service key, E2B key, database URL, storage secrets, Tavily, Composio, LangSmith |
+| `backend/.env` | Local backend | Server URLs, model keys, model base URLs, optional Supabase service key, optional database URL, storage secrets, Tavily, Composio, LangSmith |
 | `frontend/.env.local` | Local frontend | Public backend URL, public Supabase anon key, Google browser keys, client-side image/slides keys |
 | Railway service variables | Production backend | Same values as `backend/.env` |
 | Vercel project variables | Production frontend and Next.js API routes | Same values as `frontend/.env.local`, plus server-side Next.js variables such as `NANOBANANA_IMAGE_API_KEY` |
@@ -149,7 +150,7 @@ Some slides workflows currently call providers from the browser:
 | `NEXT_PUBLIC_DEEPSEEK_API_KEY` | `frontend/.env.local` or Vercel | Used by some slidecraft flows. |
 | `NEXT_PUBLIC_QWEN_API_KEY` | `frontend/.env.local` or Vercel | Used by some resume parsing flows. |
 
-Every `NEXT_PUBLIC_*` value is exposed in the browser bundle. Use restricted keys for local development only, or move these calls behind backend proxy routes before production use.
+Every `NEXT_PUBLIC_*` value is exposed in the browser bundle. For production, do not place unrestricted provider keys in `NEXT_PUBLIC_*`; use restricted keys or move the provider call behind a server route.
 
 ## Supabase Configuration
 
@@ -180,7 +181,9 @@ Security rules:
 
 ## Database Persistence
 
-LangGraph checkpoints and history use Postgres when configured.
+The default local `backend/langgraph.json` does not require Postgres. Without a database, local checkpoints and history may be ephemeral.
+
+Production persistence uses `backend/langgraph.production.json` and requires Postgres.
 
 Preferred production variable:
 

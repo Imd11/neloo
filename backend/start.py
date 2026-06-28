@@ -12,7 +12,7 @@ Without this, thread history is lost on every restart.
 # Immediate output to confirm start.py is running
 import sys
 print("=" * 60, flush=True)
-print("[START.PY] Starting Data Analyst Backend...", flush=True)
+print("[START.PY] Starting Neloo Backend...", flush=True)
 print(f"[START.PY] Python version: {sys.version}", flush=True)
 print("=" * 60, flush=True)
 
@@ -173,7 +173,7 @@ app = RuntimeContextASGIMiddleware(app)
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
 
-    print(f"🚀 Starting Data Analyst Agent on port {port}")
+    print(f"🚀 Starting Neloo Backend on port {port}")
     print(f"   - LangGraph Agent: /data_analyst/*")
     print(f"   - File API: /files/*")
     print(f"   - Image API: /images/*")

@@ -74,6 +74,8 @@ DEEPSEEK_API_KEY=your-key
 langgraph dev --host 127.0.0.1 --port 2024
 ```
 
+ملف `backend/langgraph.json` الافتراضي مخصص للتطوير المحلي ولا يتطلب `DATABASE_URL`. قد يكون سجل الجلسات المحلي مؤقتاً إذا لم تضبط استمرارية الإنتاج.
+
 ### الواجهة الأمامية
 
 ```bash
@@ -82,6 +84,8 @@ cp .env.example .env.local
 yarn install
 yarn dev
 ```
+
+استخدم Yarn 1.x للواجهة الأمامية؛ `frontend/yarn.lock` هو ملف القفل المعتمد في المستودع.
 
 افتح [http://localhost:3000](http://localhost:3000). إذا كان المنفذ مشغولاً:
 
@@ -114,7 +118,7 @@ cp frontend/.env.example frontend/.env.local
 | اسم النموذج والعنوان | متغيرات `*_MODEL` و `*_BASE_URL` مثل `QWEN_MODEL`, `QWEN_BASE_URL`, `OPENAI_MODEL`, `GEMINI_BASE_URL` | اختر النموذج الدقيق وعنوان البوابة. تبقى متغيرات `NEWAPI_*` و `TUZI_*` مدعومة. |
 | Sandbox | `SANDBOX_MODE`, `E2B_API_KEY` | استخدم `local` فقط مع مدخلات موثوقة. للإنتاج استخدم `e2b` أو `docker`. |
 | Supabase | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_JWT_SECRET`, `SUPABASE_DB_HOST`, `SUPABASE_DB_PASSWORD` | مفتاح service role سرّ خاص بالخلفية فقط. |
-| الاستمرارية | `DATABASE_URL` | مطلوب لحفظ checkpoints وسجل المحادثات. |
+| الاستمرارية | `DATABASE_URL` | غير مطلوب في `backend/langgraph.json` المحلي. مطلوب لاستمرارية الإنتاج مع `backend/langgraph.production.json`. |
 | التكاملات | `TAVILY_API_KEY`, `COMPOSIO_API_KEY`, `LANGSMITH_API_KEY` | خدمات اختيارية. |
 
 ### متغيرات الواجهة
@@ -158,7 +162,7 @@ E2B_API_KEY=your-e2b-api-key
 
 - الخلفية على Railway أو أي منصة حاويات.
 - الواجهة على Vercel.
-- قاعدة البيانات عبر Railway Postgres أو Supabase Postgres باستخدام `DATABASE_URL`.
+- استمرارية الإنتاج تستخدم `backend/langgraph.production.json` مع Railway Postgres أو Supabase Postgres عبر `DATABASE_URL`.
 - التخزين عبر Supabase Storage أو القرص المحلي للتطوير.
 
 ## الأمان قبل النشر المفتوح

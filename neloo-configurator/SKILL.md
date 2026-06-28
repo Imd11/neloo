@@ -45,14 +45,14 @@ Local minimal setup:
 
 ```bash
 node neloo-configurator/scripts/setup-env.mjs --profile local-minimal
-node neloo-configurator/scripts/check-env.mjs
+node neloo-configurator/scripts/check-env.mjs --profile local-minimal
 ```
 
 Production-oriented setup:
 
 ```bash
 node neloo-configurator/scripts/setup-env.mjs --profile production-railway-vercel
-node neloo-configurator/scripts/check-env.mjs
+node neloo-configurator/scripts/check-env.mjs --profile production-railway-vercel
 ```
 
 Dry run:

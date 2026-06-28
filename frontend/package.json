@@ -1,8 +1,8 @@
 {
-  "name": "data-analyst-frontend",
+  "name": "neloo-frontend",
   "version": "0.1.0",
   "private": true,
-  "description": "Data Analyst Agent - Frontend UI with SubAgent, HITL, and KaTeX support",
+  "description": "Neloo frontend workspace for a general-purpose AI agent",
   "type": "module",
   "scripts": {
     "dev": "next dev --turbopack --port 3000",
