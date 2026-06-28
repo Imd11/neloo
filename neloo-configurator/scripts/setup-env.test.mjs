@@ -19,7 +19,7 @@ test("updateEnvContent overwrites values when force is true", () => {
   assert.deepEqual(result.changed, ["A"]);
 });
 
-test("setupEnvironment creates env files from templates and applies local profile", () => {
+test("setupEnvironment creates env files and prints concrete local next steps", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "neloo-config-test-"));
   fs.mkdirSync(path.join(root, "backend"), { recursive: true });
   fs.mkdirSync(path.join(root, "frontend"), { recursive: true });
@@ -29,14 +29,18 @@ test("setupEnvironment creates env files from templates and applies local profil
   const result = setupEnvironment({ root, profile: "local-minimal" });
   const backend = fs.readFileSync(path.join(root, "backend/.env"), "utf8");
   const frontend = fs.readFileSync(path.join(root, "frontend/.env.local"), "utf8");
+  const output = result.messages.join("\n");
 
-  assert.match(result.messages.join("\n"), /Profile: local-minimal/);
+  assert.match(output, /Profile: local-minimal/);
+  assert.match(output, /Next steps:/);
+  assert.match(output, /1\. Add at least one backend chat model key in backend\/\.env\./);
   assert.match(
-    result.messages.join("\n"),
-    /node neloo-configurator\/scripts\/check-env\.mjs --profile local-minimal/
+    output,
+    /2\. Run `node neloo-configurator\/scripts\/check-env\.mjs --profile local-minimal`\./
   );
-  assert.match(result.messages.join("\n"), /langgraph dev --host 127\.0\.0\.1 --port 2024/);
-  assert.match(result.messages.join("\n"), /cd frontend && yarn dev/);
+  assert.match(output, /3\. Start backend and frontend only after check-env errors are resolved\./);
+  assert.match(output, /Backend: `cd backend && langgraph dev --host 127\.0\.0\.1 --port 2024`/);
+  assert.match(output, /Frontend: `cd frontend && yarn dev`/);
   assert.match(backend, /^PORT=2024/m);
   assert.match(backend, /^SANDBOX_MODE=local/m);
   assert.match(frontend, /^NEXT_PUBLIC_API_URL=http:\/\/localhost:2024/m);
@@ -53,12 +57,14 @@ test("setupEnvironment gives production-specific next steps", () => {
   const output = result.messages.join("\n");
 
   assert.match(output, /Profile: production-railway-vercel/);
+  assert.match(output, /Next steps:/);
   assert.match(
     output,
     /node neloo-configurator\/scripts\/check-env\.mjs --profile production-railway-vercel/
   );
   assert.match(output, /Railway\/Vercel dashboards/);
   assert.match(output, /DATABASE_URL/);
+  assert.doesNotMatch(output, /langgraph dev --host 127\.0\.0\.1 --port 2024/);
 });
 
 test("setupEnvironment dry-run does not create files", () => {
