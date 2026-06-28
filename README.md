@@ -209,7 +209,7 @@ SANDBOX_MODE=e2b
 E2B_API_KEY=your-e2b-api-key
 ```
 
-The optional template configuration lives in `e2b.toml`, `e2b.Dockerfile`, and `e2b-template/data-analyst-sandbox/`.
+The optional template configuration lives in `e2b.toml`, `e2b.Dockerfile`, and `e2b-template/data-analyst-sandbox/`. The E2B template directory currently keeps its historical `data-analyst-sandbox` name for compatibility with existing E2B template configuration.
 
 ## Railway and Vercel
 
