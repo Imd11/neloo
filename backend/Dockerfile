@@ -37,8 +37,8 @@ RUN apt-get update && apt-get install -y \
     fonts-noto-cjk \
     && rm -rf /var/lib/apt/lists/*
 
-# 复制依赖文件
-COPY pyproject.toml ./
+# 复制后端代码和配置，确保 pip install . 能看到 src 包。
+COPY . .
 
 # 安装 Python 依赖 (包括 playwright)
 RUN pip install --no-cache-dir --upgrade pip && \
@@ -47,9 +47,6 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # 安装 Playwright Chromium 浏览器
 # 注意: 必须在 pip install 之后执行，确保 playwright 包已安装
 RUN python -m playwright install chromium --with-deps
-
-# 复制应用代码
-COPY . .
 
 # 创建数据目录
 RUN mkdir -p /app/data
