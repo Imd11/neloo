@@ -3,6 +3,7 @@ import { Plus, Mic, ArrowUp, X, FolderOpen, FileText, Image, Music, Table, File,
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Feature, Template } from "@/data/featureTemplates";
+import { useLanguage } from "@/providers/LanguageProvider";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -42,7 +43,7 @@ interface PromptInputProps {
 }
 
 export function PromptInput({
-    placeholder = "描述你想要创建的内容...",
+    placeholder = "",
     initialValue = "",
     onSubmit,
     className,
@@ -57,6 +58,7 @@ export function PromptInput({
     resumeFile,
     selectedTemplateName,
 }: PromptInputProps) {
+    const { t } = useLanguage();
     const [value, setValue] = useState(initialValue);
     const [isFocused, setIsFocused] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -104,11 +106,11 @@ export function PromptInput({
         }
         // Images
         if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext) || mimeType?.startsWith('image/')) {
-            return { Icon: Image, color: 'green', label: '图片' };
+            return { Icon: Image, color: 'green', label: t("chat.file_type_image") };
         }
         // Audio
         if (['mp3', 'wav', 'm4a', 'ogg', 'flac'].includes(ext) || mimeType?.startsWith('audio/')) {
-            return { Icon: Music, color: 'purple', label: '音频' };
+            return { Icon: Music, color: 'purple', label: t("chat.file_type_audio") };
         }
         // Data files
         if (['csv', 'xlsx', 'xls', 'parquet'].includes(ext)) {
@@ -119,7 +121,7 @@ export function PromptInput({
             return { Icon: FileText, color: 'gray', label: 'TXT' };
         }
         // Default
-        return { Icon: File, color: 'gray', label: '文件' };
+        return { Icon: File, color: 'gray', label: t("chat.file_type_file") };
     };
 
     // Check if there are any files (new format or legacy)
@@ -185,14 +187,14 @@ export function PromptInput({
                                     </span>
                                     <span className="text-[10px] text-muted-foreground leading-tight">
                                         {formatFileSize(file.size)}
-                                        {file.status === 'uploading' && ' · 上传中'}
+                                        {file.status === 'uploading' && t("chat.uploading")}
                                     </span>
                                 </div>
                                 <button
                                     onClick={() => onRemoveFile?.(file.id)}
                                     type="button"
                                     className="flex items-center justify-center w-4 h-4 rounded-full shrink-0 cursor-pointer transition-all duration-150 hover:bg-foreground/10 hover:scale-110"
-                                    aria-label="移除文件"
+                                    aria-label={t("chat.remove_file")}
                                 >
                                     <X className="w-2.5 h-2.5 text-muted-foreground" />
                                 </button>
@@ -228,7 +230,7 @@ export function PromptInput({
                                     onClick={() => onRemoveFile?.('')}
                                     type="button"
                                     className="flex items-center justify-center w-4 h-4 rounded-full shrink-0 cursor-pointer transition-all duration-150 hover:bg-foreground/10 hover:scale-110"
-                                    aria-label="移除文件"
+                                    aria-label={t("chat.remove_file")}
                                 >
                                     <X className="w-2.5 h-2.5 text-muted-foreground" />
                                 </button>
@@ -249,7 +251,7 @@ export function PromptInput({
                 disabled={disabled}
                 placeholder={selectedFeature?.placeholder || placeholder}
                 rows={2}
-                aria-label="提示词输入"
+                aria-label={t("chat.prompt_input")}
                 className="w-full resize-none bg-transparent text-foreground placeholder:text-muted-foreground text-base leading-6 outline-none ring-0 focus:ring-0 focus:outline-none border-none px-5 pt-4 pb-1 max-h-[160px] overflow-y-auto disabled:opacity-50 disabled:cursor-not-allowed"
             />
 
@@ -277,13 +279,13 @@ export function PromptInput({
                                             <path d="M57.3 20.25L32.8 61.5l2.9 5.35L58.2 26.35l29.1 0-27-46.1z" fill="#00ac47" />
                                             <path d="M.15 61.5l27-46.1 29.15 0-27 46.1z" fill="#ffba00" />
                                         </svg>
-                                        从 Google Drive 文件中添加
+                                        {t("chat.add_from_google_drive")}
                                     </DropdownMenuItem>
                                 )}
                                 {onLibraryClick && (
                                     <DropdownMenuItem onClick={onLibraryClick}>
                                         <FolderOpen className="w-4 h-4 mr-2" />
-                                        从库中选择
+                                        {t("chat.choose_from_library")}
                                     </DropdownMenuItem>
                                 )}
                                 {(onGoogleDriveClick || onLibraryClick) && onUploadClick && (
@@ -294,7 +296,7 @@ export function PromptInput({
                                         <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                             <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
                                         </svg>
-                                        从本地文件中添加
+                                        {t("chat.add_local_file")}
                                     </DropdownMenuItem>
                                 )}
                             </DropdownMenuContent>
@@ -321,7 +323,7 @@ export function PromptInput({
                                 onClick={onClearFeature}
                                 type="button"
                                 className="relative z-10 flex items-center justify-center w-4 h-4 rounded-full cursor-pointer transition-all duration-150 hover:bg-current/45 hover:scale-125 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                aria-label="清除已选功能"
+                                aria-label={t("chat.clear_selected_feature")}
                             >
                                 <X className="w-2.5 h-2.5" />
                             </button>

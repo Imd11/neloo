@@ -62,7 +62,7 @@ export function SearchDialog({
 
     const results: SearchResult[] = [];
 
-    // Always show "新建对话" option at the top
+    // Always show "new chat" option at the top
     results.push({ id: "new", title: t("search.new_chat"), type: "new" });
 
     // Filter history based on query

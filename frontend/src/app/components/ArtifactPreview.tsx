@@ -26,6 +26,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Artifact, ArtifactType } from "@/lib/artifactParser";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 interface ArtifactPreviewProps {
   artifact: Artifact;
@@ -141,6 +142,7 @@ export function ArtifactPreview({
   onClose,
   className,
 }: ArtifactPreviewProps) {
+  const { t } = useLanguage();
   // Default to preview mode when complete, code mode when streaming
   const [viewMode, setViewMode] = useState<ViewMode>(
     isStreaming ? "code" : "preview"
@@ -227,7 +229,7 @@ export function ArtifactPreview({
             <Code2 className="h-4 w-4 text-primary" />
           )}
           <span className="text-sm font-medium truncate max-w-[150px]">
-            {artifact.title || (isStreaming ? "生成中..." : "预览")}
+            {artifact.title || (isStreaming ? t("chat.preview_generating") : t("chat.preview_tab"))}
           </span>
         </div>
 
@@ -242,7 +244,7 @@ export function ArtifactPreview({
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            代码
+            {t("chat.preview_code_tab")}
           </button>
           <TooltipProvider delayDuration={0}>
             <Tooltip>
@@ -257,12 +259,12 @@ export function ArtifactPreview({
                     isStreaming && "opacity-50 cursor-not-allowed"
                   )}
                 >
-                  预览
+                  {t("chat.preview_tab")}
                 </button>
               </TooltipTrigger>
               {isStreaming && (
                 <TooltipContent side="bottom">
-                  预览将在生成完成后可用
+                  {t("chat.preview_not_ready")}
                 </TooltipContent>
               )}
             </Tooltip>
@@ -277,7 +279,7 @@ export function ArtifactPreview({
             size="icon"
             onClick={handleCopy}
             className="h-7 w-7"
-            title="复制代码"
+            title={t("chat.preview_copy_code")}
           >
             {copied ? (
               <Check className="h-3.5 w-3.5 text-green-500" />
@@ -293,7 +295,7 @@ export function ArtifactPreview({
               size="icon"
               onClick={handleRefresh}
               className="h-7 w-7"
-              title="刷新预览"
+              title={t("chat.preview_refresh")}
             >
               <RefreshCw className="h-3.5 w-3.5" />
             </Button>
@@ -306,7 +308,7 @@ export function ArtifactPreview({
               size="icon"
               onClick={handleOpenInNewTab}
               className="h-7 w-7"
-              title="在新标签页打开"
+              title={t("chat.preview_open_new_tab")}
             >
               <ExternalLink className="h-3.5 w-3.5" />
             </Button>
@@ -318,11 +320,11 @@ export function ArtifactPreview({
               variant="ghost"
               size="sm"
               className="h-7 px-2 gap-1 text-xs"
-              title="部署 (即将推出)"
+              title={t("chat.preview_deploy_tooltip")}
               disabled
             >
               <Upload className="h-3.5 w-3.5" />
-              部署
+              {t("chat.preview_deploy")}
             </Button>
           )}
 
@@ -350,7 +352,7 @@ export function ArtifactPreview({
               ref={codeRef}
               className="flex-1 p-4 text-sm font-mono bg-zinc-900 text-zinc-100 overflow-auto whitespace-pre-wrap break-words"
             >
-              {artifact.code || "// 等待代码..."}
+              {artifact.code || t("chat.preview_waiting")}
             </pre>
             {/* Type badge */}
             <div className="px-4 py-2 border-t bg-muted/30 flex items-center gap-2 text-xs text-muted-foreground">

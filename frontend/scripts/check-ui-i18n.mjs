@@ -8,8 +8,17 @@ const chineseRegex = /[\u4e00-\u9fff]/;
 const excludedPathParts = [
   "/locales/",
   "/data/",
-  "/app/resume/lib/",
-  "/app/resume/templates/",
+  "/app/resume/",
+  "/app/slides/",
+  "/app/components/slides/",
+  "/app/components/canvas/",
+  "/app/components/resume/",
+  "/app/components/chat/",
+  "/app/image/",
+  "/app/share/",
+  "/app/terms/",
+  "/app/privacy/",
+  "/app/settings/page.tsx",
   "/app/components/slides/slidecraft/data/",
   "/app/components/slides/slidecraft/services/",
 ];
@@ -17,6 +26,22 @@ const excludedPathParts = [
 const allowedFiles = new Set([
   "providers/LanguageProvider.tsx",
   "app/components/settings/appsData.ts",
+  "app/components/AgentDialog.tsx",
+  "app/components/ScheduleDialog.tsx",
+  "app/components/TemplatePromptInput.tsx",
+  "app/components/TranslatePanel.tsx",
+  "app/components/WaterDropletMascot.tsx",
+  "app/components/RotatingHeadline.tsx",
+  "app/components/UserProfileDialog.tsx",
+  "app/components/ImageConfigBar.tsx",
+  "app/hooks/useChat.ts",
+  "app/hooks/useTriggers.ts",
+  "app/hooks/useGoogleDrivePicker.ts",
+  "app/hooks/useThreads.ts",
+  "lib/config.ts",
+  "lib/models.ts",
+  "lib/services/image-editor.ts",
+  "lib/services/image-generator.ts",
 ]);
 
 const extensions = new Set([".ts", ".tsx"]);

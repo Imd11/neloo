@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Artifact } from "@/lib/artifactParser";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 interface ArtifactCardProps {
   artifact: Artifact | null;
@@ -34,6 +35,7 @@ export function ArtifactCard({
   onPreview,
   className,
 }: ArtifactCardProps) {
+  const { t } = useLanguage();
   // Determine status
   const status = useMemo(() => {
     if (isStreaming) return "generating";
@@ -47,13 +49,13 @@ export function ArtifactCard({
     if (!artifact) return "";
     switch (artifact.type) {
       case "react":
-        return "React 组件";
+        return t("chat.artifact_react");
       case "html":
-        return "HTML 页面";
+        return t("chat.artifact_html");
       case "vue":
-        return "Vue 组件";
+        return t("chat.artifact_vue");
       default:
-        return "代码";
+        return t("chat.artifact_code");
     }
   }, [artifact]);
 
@@ -83,11 +85,11 @@ export function ArtifactCard({
   const statusText = useMemo(() => {
     switch (status) {
       case "generating":
-        return "正在构建...";
+        return t("chat.artifact_building");
       case "complete":
-        return "已完成";
+        return t("chat.artifact_completed");
       case "waiting":
-        return "准备中";
+        return t("chat.artifact_preparing");
       default:
         return "";
     }
@@ -114,13 +116,13 @@ export function ArtifactCard({
       {/* Content */}
       <div className="flex flex-col min-w-0">
         <span className="text-sm font-medium truncate">
-          {artifact?.title || (status === "generating" ? "生成代码中" : "代码预览")}
+          {artifact?.title || (status === "generating" ? t("chat.artifact_generating") : t("chat.artifact_preview_title"))}
         </span>
         <span className="text-xs text-muted-foreground">
           {typeLabel && `${typeLabel} · `}
           {statusText}
           {status === "generating" && artifact?.code && (
-            <span className="ml-1">({artifact.code.length} 字符)</span>
+            <span className="ml-1">({artifact.code.length} {t("chat.artifact_chars")})</span>
           )}
         </span>
       </div>
@@ -142,7 +144,7 @@ export function ArtifactCard({
           )}
         >
           <Eye className="h-3 w-3" />
-          {status === "generating" ? "查看" : "预览"}
+          {status === "generating" ? t("chat.artifact_view") : t("chat.artifact_preview")}
         </button>
       )}
     </div>
@@ -163,6 +165,7 @@ export function ArtifactCardCompact({
   onPreview?: () => void;
   className?: string;
 }) {
+  const { t } = useLanguage();
   if (isStreaming) {
     return (
       <span
@@ -173,7 +176,7 @@ export function ArtifactCardCompact({
         )}
       >
         <Loader2 className="h-3 w-3 animate-spin" />
-        <span>构建中...</span>
+        <span>{t("chat.artifact_building")}</span>
       </span>
     );
   }
@@ -191,7 +194,7 @@ export function ArtifactCardCompact({
       )}
     >
       <CheckCircle2 className="h-3 w-3" />
-      <span>{artifact.title || "查看预览"}</span>
+      <span>{artifact.title || t("chat.artifact_view_preview")}</span>
       <Eye className="h-3 w-3" />
     </button>
   );

@@ -20,7 +20,7 @@ interface ChatPromptInputProps {
     onChange?: (value: string) => void;
     onSubmit?: (value: string) => void;
     className?: string;
-    // Feature mode (like "网页开发")
+    // Feature mode (like web dev)
     selectedFeature?: Feature | null;
     onClearFeature?: () => void;
     // Loading state
@@ -47,7 +47,7 @@ export interface ChatPromptInputRef {
 }
 
 export const ChatPromptInput = forwardRef<ChatPromptInputRef, ChatPromptInputProps>(({
-    placeholder = "描述你想要创建的内容...",
+    placeholder = "",
     value: controlledValue,
     onChange,
     onSubmit,

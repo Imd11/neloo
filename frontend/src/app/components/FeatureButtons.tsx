@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import { features, Feature } from "@/data/featureTemplates";
 
-// 使用emoji作为图标，更生动有趣
+// Use emoji as icons for a more lively look
 const featureEmojis: Record<string, string> = {
     "image": "🖼️",
     "web-dev": "🌐",
@@ -22,7 +22,7 @@ export function FeatureButtons({
     selectedFeature,
     onSelectFeature,
 }: FeatureButtonsProps) {
-    // 如果已选中功能，不渲染任何内容
+    // If a feature is already selected, render nothing
     if (selectedFeature) {
         return null;
     }

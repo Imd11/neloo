@@ -66,6 +66,7 @@ import { toast } from "sonner";
 import { useQueryState } from "nuqs";
 import { getConfig } from "@/lib/config";
 import { useAuth } from "@/providers/AuthProvider";
+import { useLanguage } from "@/providers/LanguageProvider";
 import { formatFilesForMessage, getAcceptAttribute } from "@/lib/data-file-utils";
 import { useDataFileUpload } from "@/app/hooks/useDataFileUpload";
 import { DataFileUpload } from "@/app/components/DataFileUpload";
@@ -175,6 +176,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
   const config = getConfig();
   const apiUrl = config?.deploymentUrl || "";
   const { session } = useAuth();
+  const { t } = useLanguage();
   const [threadId] = useQueryState("threadId");
 
   const fileUpload = useDataFileUpload({
@@ -372,8 +374,8 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
     if (editingMessageIndex === null || !editingMessageContent.trim()) return;
 
     editMessageAndRerun(editingMessageIndex, editingMessageContent.trim());
-    toast.info("正在重新生成回复...", {
-      description: "历史消息已从编辑点重新开始",
+    toast.info(t("chat.regenerating"), {
+      description: t("chat.regenerated_from_edit"),
     });
 
     // Clear editing state
@@ -391,8 +393,8 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
     if (isLoading || !messages || messages.length === 0) return;
 
     regenerateLastResponse();
-    toast.info("正在重新生成回复...", {
-      description: "旧的 AI 回复已被替换",
+    toast.info(t("chat.regenerating"), {
+      description: t("chat.regenerated_replaced"),
     });
   }, [isLoading, messages, regenerateLastResponse]);
 
@@ -470,18 +472,18 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
     if (isLoading || !messages || messages.length === 0) return;
 
     try {
-      toast.info("正在创建新分支...", {
-        description: "将从该位置重新生成",
+      toast.info(t("chat.creating_branch"), {
+        description: t("chat.branch_will_regenerate"),
       });
 
       await forkAndRegenerate(targetAiMessageId);
 
-      toast.success("已创建新分支", {
-        description: "请发送消息以触发 AI 重新生成",
+      toast.success(t("chat.branch_created"), {
+        description: t("chat.branch_send_to_trigger"),
       });
     } catch (error) {
-      toast.error("创建分支失败", {
-        description: error instanceof Error ? error.message : "请稍后重试",
+      toast.error(t("chat.branch_failed"), {
+        description: error instanceof Error ? error.message : t("sidebar.try_again_later"),
       });
     }
   }, [isLoading, messages, forkAndRegenerate]);
@@ -490,7 +492,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
   // targetAiMessageId: if provided, shares up to that AI message
   const handleShare = useCallback(async (targetAiMessageId?: string) => {
     if (!threadId || !config) {
-      toast.error("无法分享", { description: "请先开始对话" });
+      toast.error(t("sidebar.share_failed"), { description: t("chat.share_no_conversation") });
       return;
     }
 
@@ -515,7 +517,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
-        throw new Error(error.detail || "创建分享链接失败");
+        throw new Error(error.detail || t("sidebar.share_create_failed"));
       }
 
       const data = await response.json();
@@ -526,15 +528,15 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
       // Copy to clipboard
       await navigator.clipboard.writeText(shareUrl);
 
-      toast.success("链接已复制到剪贴板", {
+      toast.success(t("chat.share_link_copied"), {
         description: targetAiMessageId
-          ? "任何人都可以通过此链接查看这轮对话"
-          : "任何人都可以通过此链接查看完整对话",
+          ? t("chat.share_single_message")
+          : t("chat.share_full_conversation"),
       });
     } catch (error) {
       console.error("Failed to create share link:", error);
-      toast.error("分享失败", {
-        description: error instanceof Error ? error.message : "请稍后重试",
+      toast.error(t("sidebar.share_failed"), {
+        description: error instanceof Error ? error.message : t("sidebar.try_again_later"),
       });
     }
   }, [threadId, config, session?.access_token]);
@@ -1045,7 +1047,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                                   const isStreaming = isLoading && isLastGroup && (idx === group.items.length - 1) && item.isStreaming === true;
                                   // Pass isLast=false always if there are subsequent groups (Tasks), effectively connecting deeply
                                   // Actually ThinkingBlock handles its own line logic, we might need a prop to Force the line to continue
-                                  // But ThinkingBlock line is usually "bottom-0" if not last. 
+                                  // But ThinkingBlock line is usually "bottom-0" if not last.
                                   return (
                                     <ThinkingBlock
                                       key={`global-think-${idx}`}
@@ -1262,7 +1264,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent side="top">
-                                    {footerCopied ? "已复制" : "复制"}
+                                    {footerCopied ? t("chat.copied") : t("chat.copy")}
                                   </TooltipContent>
                                 </Tooltip>
 
@@ -1277,7 +1279,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                                       <RefreshCw className="h-3.5 w-3.5" />
                                     </Button>
                                   </TooltipTrigger>
-                                  <TooltipContent side="top">重新生成</TooltipContent>
+                                  <TooltipContent side="top">{t("chat.regenerate")}</TooltipContent>
                                 </Tooltip>
 
                                 <Tooltip>
@@ -1291,7 +1293,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                                       <Share2 className="h-3.5 w-3.5" />
                                     </Button>
                                   </TooltipTrigger>
-                                  <TooltipContent side="top">分享对话</TooltipContent>
+                                  <TooltipContent side="top">{t("chat.share")}</TooltipContent>
                                 </Tooltip>
                               </div>
                             </TooltipProvider>
@@ -1300,7 +1302,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                               <div className="mt-4">
                                 <div className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
                                   <span>💡</span>
-                                  <span>你可能想继续问：</span>
+                                  <span>{t("chat.follow_up_suggestions")}</span>
                                 </div>
                                 <div className="flex flex-col gap-1">
                                   {suggestedQuestions.map((question, index) => (
@@ -1352,7 +1354,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                 className="pointer-events-auto h-9 gap-2 rounded-full shadow-sm"
               >
                 <ArrowDown className="h-4 w-4" />
-                回到底部
+                {t("chat.scroll_to_bottom")}
               </Button>
             </div>
           )}
@@ -1611,25 +1613,25 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                         </DropdownMenuTrigger>
                       </TooltipTrigger>
                       <TooltipContent side="top">
-                        添加文件
+                        {t("chat.add_file")}
                       </TooltipContent>
                       <DropdownMenuContent align="start" className="w-56">
                         <DropdownMenuItem onClick={() => googleDrivePicker.openPicker()} disabled={googleDrivePicker.isLoading}>
                           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12.01 1.485c-2.082 0-3.754.02-3.743.047.01.02 1.708 3.001 3.774 6.62l3.76 6.574h3.76c2.081 0 3.753-.02 3.742-.047-.005-.02-1.708-3.001-3.775-6.62l-3.76-6.574zm-4.76 1.73a789.828 789.861 0 0 0-3.63 6.319L0 15.868l1.89 3.298 1.885 3.297 3.62-6.335 3.618-6.33-1.88-3.287C8.1 4.704 7.255 3.22 7.25 3.214zm2.259 12.653-.203.348c-.114.198-.96 1.672-1.88 3.287a423.93 423.948 0 0 1-1.698 2.97c-.01.026 3.24.042 7.222.042h7.244l1.796-3.157c.992-1.734 1.85-3.23 1.906-3.323l.104-.167h-7.249z" />
                           </svg>
-                          <span>从 Google Drive 添加</span>
+                          <span>{t("chat.add_from_google_drive")}</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setLibraryDialogOpen(true)}>
                           <FolderOpen className="h-4 w-4" />
-                          <span>从库中选择</span>
+                          <span>{t("chat.choose_from_library")}</span>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => fileUpload.inputRef.current?.click()}>
                           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
                           </svg>
-                          <span>从本地文件添加</span>
+                          <span>{t("chat.add_local_file")}</span>
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -1644,7 +1646,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                     size="icon-sm"
                     onClick={onOpenFilePanel}
                     className="shrink-0 text-muted-foreground hover:text-foreground"
-                    title="查看文件"
+                    title={t("chat.view_files")}
                   >
                     <FolderOpen className="h-5 w-5" />
                   </Button>
@@ -1652,20 +1654,20 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
 
                 {/* Feature Mode Tags - shown when a feature is active (locked after sending) */}
                 {activeFeatureId && (() => {
-                  const featureConfig: Record<string, { label: string; color: string }> = {
-                    'image': { label: 'AI 生图', color: 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-400' },
-                    'web-dev': { label: '网页开发', color: 'bg-blue-500/15 text-blue-600 dark:text-blue-400' },
-                    'fortune': { label: '五行算命', color: 'bg-orange-500/15 text-orange-600 dark:text-orange-400' },
-                    'slides': { label: '制作幻灯片', color: 'bg-purple-500/15 text-purple-600 dark:text-purple-400' },
-                    'resume': { label: '制作简历', color: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' },
-                    'prompt-optimize': { label: '提示词优化', color: 'bg-violet-500/15 text-violet-600 dark:text-violet-400' },
-                    'deai': { label: '去AI化', color: 'bg-rose-500/15 text-rose-600 dark:text-rose-400' },
+                  const featureConfig: Record<string, { labelKey: string; color: string }> = {
+                    'image': { labelKey: 'chat.feature_image', color: 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-400' },
+                    'web-dev': { labelKey: 'chat.feature_web_dev', color: 'bg-blue-500/15 text-blue-600 dark:text-blue-400' },
+                    'fortune': { labelKey: 'chat.feature_fortune', color: 'bg-orange-500/15 text-orange-600 dark:text-orange-400' },
+                    'slides': { labelKey: 'chat.feature_slides', color: 'bg-purple-500/15 text-purple-600 dark:text-purple-400' },
+                    'resume': { labelKey: 'chat.feature_resume', color: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' },
+                    'prompt-optimize': { labelKey: 'chat.feature_prompt_optimize', color: 'bg-violet-500/15 text-violet-600 dark:text-violet-400' },
+                    'deai': { labelKey: 'chat.feature_deai', color: 'bg-rose-500/15 text-rose-600 dark:text-rose-400' },
                   };
                   const config = featureConfig[activeFeatureId];
                   if (!config) return null;
                   return (
                     <div className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium shrink-0", config.color)}>
-                      <span>{config.label}</span>
+                      <span>{t(config.labelKey)}</span>
                     </div>
                   );
                 })()}
@@ -1705,8 +1707,8 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
                     isLoading
                       ? "Running..."
                       : webDevMode
-                        ? "描述你想要开发的网页..."
-                        : "继续对话..."
+                        ? t("chat.webdev_placeholder")
+                        : t("chat.continue_placeholder")
                   }
                   disabled={isLoading}
                   className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground text-base leading-5 outline-none min-w-0"

@@ -2,6 +2,7 @@ import { TemplateCard } from "./TemplateCard";
 import { Feature } from "@/data/featureTemplates";
 import { Template } from "@/data/featureTemplates"; // Fixed import path
 import { motion, AnimatePresence } from "framer-motion";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 interface FeatureTemplateGridProps {
     feature: Feature | null;
@@ -12,6 +13,7 @@ export function FeatureTemplateGrid({
     feature,
     onSelectTemplate,
 }: FeatureTemplateGridProps) {
+    const { t } = useLanguage();
     if (!feature) return null;
 
     return (
@@ -25,7 +27,7 @@ export function FeatureTemplateGrid({
                 className="w-full max-w-4xl mx-auto px-4"
             >
                 <h3 className="text-sm font-medium text-muted-foreground mb-4">
-                    选择模板
+                    {t("chat.select_template")}
                 </h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                     {feature.templates.map((template) => (

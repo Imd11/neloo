@@ -110,7 +110,7 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
       // Get the prefix (hidden from user, sent to backend)
       const prefix = selectedFortuneTemplateId
         ? getFortuneTemplatePrefix(selectedFortuneTemplateId)
-        : getFortuneTemplatePrefix(1); // Default to 八字全解
+        : getFortuneTemplatePrefix(1); // Default to bazi full analysis
 
       // Send user input for display, prefix as hidden for backend
       onPromptSubmit(userInput, prefix);
@@ -177,7 +177,7 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
 
         {/* 2. Input Area */}
         <div className="w-full max-w-3xl mx-auto">
-          {/* 根据 fortune 模式切换输入组件 */}
+          {/* Switch input component based on fortune mode */}
           {selectedFeature?.id === 'fortune' ? (
             <TemplatePromptInput
               placeholder={t("chat.default_placeholder")}
