@@ -52,14 +52,7 @@ import { useThreads } from "@/app/hooks/useThreads";
 import { getConfig } from "@/lib/config";
 import { toast } from "sonner";
 import { format } from "date-fns";
-
-// Define nav items - "search" has special behavior
-const navItems = [
-  { icon: MessageSquarePlus, label: "新建对话", path: "/", action: "new" },
-  { icon: Search, label: "搜索", path: null, action: "search" },
-  { icon: Bot, label: "智能体", path: null, action: "agent" },
-  { icon: FolderOpen, label: "库", path: null, action: "library" },
-];
+import { useLanguage } from "@/providers/LanguageProvider";
 
 export interface AppSidebarProps {
   onNewThread?: () => void;
@@ -88,6 +81,15 @@ export function AppSidebar({
   const { user, session } = useAuth();
   const { setActiveAgent } = useAgentContext();
   const config = getConfig();
+  const { t } = useLanguage();
+
+  // Define nav items - "search" has special behavior
+  const navItems: { icon: typeof MessageSquarePlus; label: string; path: string | null; action: string }[] = [
+    { icon: MessageSquarePlus, label: t("sidebar.new_chat"), path: "/", action: "new" },
+    { icon: Search, label: t("sidebar.search"), path: null, action: "search" },
+    { icon: Bot, label: t("sidebar.agents"), path: null, action: "agent" },
+    { icon: FolderOpen, label: t("sidebar.library"), path: null, action: "library" },
+  ];
 
   const [logoHovered, setLogoHovered] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -154,7 +156,7 @@ export function AppSidebar({
   };
 
   const handleRename = async (threadId: string, currentTitle: string) => {
-    const newTitle = prompt("请输入新标题", currentTitle);
+    const newTitle = prompt(t("sidebar.rename_prompt"), currentTitle);
     if (!newTitle || !newTitle.trim()) return;
 
     if (!config?.deploymentUrl || !session?.access_token) return;
@@ -175,9 +177,9 @@ export function AppSidebar({
       if (!resp.ok) throw new Error("Failed to update title");
 
       await threads.mutate();
-      toast.success("已重命名");
+      toast.success(t("sidebar.rename_success"));
     } catch (e) {
-      toast.error("重命名失败");
+      toast.error(t("sidebar.rename_failed"));
     }
   };
 
@@ -203,9 +205,9 @@ export function AppSidebar({
       await threads.mutate();
       // If the deleted thread was active (checked via URL or prop), we might want to redirect.
       // For now, just deleting from list is enough.
-      toast.success("已删除");
+      toast.success(t("sidebar.delete_success"));
     } catch (e) {
-      toast.error("删除失败");
+      toast.error(t("sidebar.delete_failed"));
     } finally {
       setDeleteDialogOpen(false);
       setItemToDelete(null);
@@ -215,7 +217,7 @@ export function AppSidebar({
   // Handle share entire thread - opens dialog with share link
   const handleShareThread = async (threadId: string) => {
     if (!config?.deploymentUrl || !session?.access_token) {
-      toast.error("无法分享", { description: "请先登录" });
+      toast.error(t("sidebar.share_failed"), { description: t("sidebar.share_login_required") });
       return;
     }
 
@@ -238,7 +240,7 @@ export function AppSidebar({
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
-        throw new Error(error.detail || "创建分享链接失败");
+        throw new Error(error.detail || t("sidebar.share_create_failed"));
       }
 
       const data = await response.json();
@@ -250,8 +252,8 @@ export function AppSidebar({
     } catch (error) {
       console.error("Failed to share thread:", error);
       setShareDialogOpen(false);
-      toast.error("分享失败", {
-        description: error instanceof Error ? error.message : "请稍后重试",
+      toast.error(t("sidebar.share_failed"), {
+        description: error instanceof Error ? error.message : t("sidebar.try_again_later"),
       });
     } finally {
       setShareLoading(false);
@@ -261,7 +263,7 @@ export function AppSidebar({
   // Icon column width
   const iconColWidth = "w-12";
 
-  const handleNavClick = (item: typeof navItems[0]) => {
+  const handleNavClick = (item: (typeof navItems)[number]) => {
     if (item.action === "new") {
       onNewThread?.();
       if (pathname !== "/") router.push("/");
@@ -326,7 +328,7 @@ export function AppSidebar({
                     </div>
                   </TooltipTrigger>
                   <TooltipContent side="right">
-                    <p>打开边栏</p>
+                    <p>{t("sidebar.open_sidebar")}</p>
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -450,7 +452,7 @@ export function AppSidebar({
           )}
         >
           <div className="text-xs text-sidebar-muted uppercase tracking-wider px-2 mb-2">
-            历史任务
+            {t("sidebar.history")}
           </div>
           <div className="flex-1 overflow-y-auto space-y-0.5">
             {threads.isLoading && !threads.data && (
@@ -508,22 +510,22 @@ export function AppSidebar({
                       <DropdownMenuContent side="right" align="start" className="w-32">
                         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleShareThread(item.id); }}>
                           <Share2 className="w-4 h-4 mr-2" />
-                          分享
+                          {t("sidebar.share")}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handlePin(item.id); }}>
                           <Pin className="w-4 h-4 mr-2" />
-                          {isPinned ? "取消置顶" : "置顶"}
+                          {isPinned ? t("sidebar.unpin") : t("sidebar.pin")}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleRename(item.id, item.title); }}>
                           <Pencil className="w-4 h-4 mr-2" />
-                          重命名
+                          {t("sidebar.rename")}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={(e) => { e.stopPropagation(); handleDeleteClick(item); }}
                           className="text-destructive focus:text-destructive"
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
-                          删除
+                          {t("sidebar.delete")}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -575,7 +577,7 @@ export function AppSidebar({
                 </TooltipTrigger>
                 {collapsed && (
                   <TooltipContent side="right">
-                    <p>设置</p>
+                    <p>{t("sidebar.settings")}</p>
                   </TooltipContent>
                 )}
               </Tooltip>
@@ -586,7 +588,7 @@ export function AppSidebar({
                   collapsed ? "opacity-0" : "opacity-100"
                 )}
               >
-                设置
+                {t("sidebar.settings")}
               </span>
             </div>
           </div>
@@ -618,7 +620,7 @@ export function AppSidebar({
                 </TooltipTrigger>
                 {collapsed && (
                   <TooltipContent side="right">
-                    <p>分享</p>
+                    <p>{t("sidebar.share")}</p>
                   </TooltipContent>
                 )}
               </Tooltip>
@@ -629,7 +631,7 @@ export function AppSidebar({
                   collapsed ? "opacity-0" : "opacity-100"
                 )}
               >
-                分享
+                {t("sidebar.share")}
               </span>
             </div>
           </div>
@@ -709,15 +711,15 @@ export function AppSidebar({
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>确认删除</AlertDialogTitle>
+            <AlertDialogTitle>{t("sidebar.delete_title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              确定要删除「{itemToDelete?.title}」吗？此操作无法撤销。
+              {t("sidebar.delete_description", { title: itemToDelete?.title ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              删除
+              {t("sidebar.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -727,9 +729,9 @@ export function AppSidebar({
       <AlertDialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>分享对话</AlertDialogTitle>
+            <AlertDialogTitle>{t("sidebar.share_title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              任何人都可以通过此链接查看整个对话
+              {t("sidebar.share_description")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="my-4">
@@ -750,16 +752,16 @@ export function AppSidebar({
                   size="sm"
                   onClick={async () => {
                     await navigator.clipboard.writeText(shareUrl);
-                    toast.success("已复制到剪贴板");
+                    toast.success(t("sidebar.copied"));
                   }}
                 >
-                  复制
+                  {t("sidebar.copy")}
                 </Button>
               </div>
             ) : null}
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel>关闭</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.close")}</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
