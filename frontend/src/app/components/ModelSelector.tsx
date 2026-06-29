@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { getConfig } from "@/lib/config";
 import { useAuth } from "@/providers/AuthProvider";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 interface ModelInfo {
   id: string;
@@ -34,6 +35,7 @@ export function ModelSelector({
   const config = getConfig();
   const apiUrl = config?.deploymentUrl || "";
   const { session } = useAuth();
+  const { t } = useLanguage();
 
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [defaultModel, setDefaultModel] = useState<string | null>(null);
@@ -88,7 +90,7 @@ export function ModelSelector({
     return (
       <Button variant="ghost" size="sm" disabled className="gap-2">
         <Bot className="h-4 w-4" />
-        <span className="text-sm text-muted-foreground">No models available</span>
+        <span className="text-sm text-muted-foreground">{t("model_selector.no_models")}</span>
       </Button>
     );
   }
@@ -108,7 +110,7 @@ export function ModelSelector({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-48">
-        <DropdownMenuLabel>Select Model</DropdownMenuLabel>
+        <DropdownMenuLabel>{t("model_selector.select_model")}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {models.map((model) => (
           <DropdownMenuItem
@@ -124,7 +126,7 @@ export function ModelSelector({
           >
             <span className="flex-1">{model.display_name}</span>
             {!model.available && (
-              <span className="text-xs text-muted-foreground ml-2">未配置</span>
+              <span className="text-xs text-muted-foreground ml-2">{t("model_selector.not_configured")}</span>
             )}
             {model.id === defaultModel && (
               <span className="text-xs text-muted-foreground ml-2">default</span>

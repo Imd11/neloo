@@ -12,6 +12,7 @@ import { useSidebar } from "@/app/context/SidebarContext";
 import { cn } from "@/lib/utils";
 import { getConfig } from "@/lib/config";
 import { CHAT_MODEL_BY_ID, CHAT_MODELS, IMAGE_MODELS, LIGHT_LOGOS, type ModelInfo } from "@/lib/models";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 interface TopBarProps {
     hideUserActions?: boolean;
@@ -23,6 +24,7 @@ interface TopBarProps {
 
 export function TopBar({ hideUserActions = false, currentModelId, onModelSelect, mode }: TopBarProps) {
     const { toggle } = useSidebar();
+    const { t } = useLanguage();
     const [searchQuery, setSearchQuery] = useState("");
     const [backendModels, setBackendModels] = useState<ModelInfo[]>([]);
     const pathname = usePathname();
@@ -124,7 +126,7 @@ export function TopBar({ hideUserActions = false, currentModelId, onModelSelect,
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                             <input
                                 type="text"
-                                placeholder="搜索模型..."
+                                placeholder={t("model_selector.search_placeholder")}
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full pl-9 pr-3 py-1.5 text-sm bg-muted/50 border-none rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
@@ -161,7 +163,7 @@ export function TopBar({ hideUserActions = false, currentModelId, onModelSelect,
                                         <span className="text-xs text-muted-foreground mt-0.5">{model.provider}</span>
                                     </div>
                                     {model.available === false && (
-                                        <span className="text-xs text-muted-foreground flex-shrink-0">未配置</span>
+                                        <span className="text-xs text-muted-foreground flex-shrink-0">{t("model_selector.not_configured")}</span>
                                     )}
                                     {currentModel.id === model.id && (
                                         <Check className="w-4 h-4 text-foreground flex-shrink-0" />
@@ -185,7 +187,7 @@ export function TopBar({ hideUserActions = false, currentModelId, onModelSelect,
                             size="sm"
                             className="text-muted-foreground hover:text-foreground text-sm font-normal"
                         >
-                            额度
+                            {t("model_selector.quota")}
                         </Button>
                     </div>
                     <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
