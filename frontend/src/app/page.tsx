@@ -43,6 +43,7 @@ import { useDataFileUpload } from "@/app/hooks/useDataFileUpload";
 import { WaterDropletMascot } from "@/app/components/WaterDropletMascot";
 import { toast } from "sonner";
 import { getFortuneTemplatePrefix } from '@/data/fortuneTemplatePrefix';
+import { useLanguage } from "@/providers/LanguageProvider";
 
 interface LandingViewProps {
   onPromptSubmit: (value: string, hiddenPrefix?: string) => void;
@@ -56,6 +57,7 @@ interface LandingViewProps {
 }
 
 function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFortuneMode, enableWebDevMode, setActiveFeatureId, onEnterResumeEditMode, onEnterSlidesEditMode }: LandingViewProps) {
+  const { t } = useLanguage();
   // Track selected fortune template ID for prefix injection
   const [selectedFortuneTemplateId, setSelectedFortuneTemplateId] = useState<number | null>(null);
   const [selectedTemplateName, setSelectedTemplateName] = useState<string | null>(null);
@@ -76,8 +78,8 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
   // Unified file handling - all modes now use fileUpload hook
   const handleGoogleDriveFile = useCallback((file: File) => {
     fileUpload.addFiles([file]);
-    toast.success(`已添加文件: ${file.name}`);
-  }, [fileUpload]);
+    toast.success(t("chat.uploaded_file", { name: file.name }));
+  }, [fileUpload, t]);
   const googleDrivePicker = useGoogleDrivePicker(handleGoogleDriveFile);
 
   // Handle local file selection - unified for all modes
@@ -178,14 +180,14 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
           {/* 根据 fortune 模式切换输入组件 */}
           {selectedFeature?.id === 'fortune' ? (
             <TemplatePromptInput
-              placeholder="描述你想要创建的内容..."
+              placeholder={t("chat.default_placeholder")}
               selectedFeature={selectedFeature}
               onClearFeature={() => onSelectFeature(null)}
               onSubmit={handlePromptSubmit}
             />
           ) : (
             <PromptInput
-              placeholder="描述你想要创建的内容..."
+              placeholder={t("chat.default_placeholder")}
               selectedFeature={selectedFeature}
               onClearFeature={() => { onSelectFeature(null); setSelectedTemplateName(null); }}
               onSubmit={handlePromptSubmit}
@@ -220,7 +222,7 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
               onClick={() => onEnterResumeEditMode?.(null, '', true)}
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              跳过，手动填写简历 →
+              {t("chat.resume_skip")}
             </button>
           </div>
         )}

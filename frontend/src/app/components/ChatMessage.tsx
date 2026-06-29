@@ -38,6 +38,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { TypingIndicator } from "@/app/components/ui/TypingIndicator";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 interface ChatMessageProps {
   message: Message;
@@ -101,6 +102,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
   }) => {
     const [copied, setCopied] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
+    const { t } = useLanguage();
     const isUser = message.type === "human";
     const rawMessageContent = extractStringFromMessageContent(message);
 
@@ -349,7 +351,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="top">
-                {copied ? "已复制" : "复制"}
+                {copied ? t("chat.copied") : t("chat.copy")}
               </TooltipContent>
             </Tooltip>
 
@@ -366,7 +368,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="top">编辑</TooltipContent>
+                <TooltipContent side="top">{t("common.edit")}</TooltipContent>
               </Tooltip>
             )}
 
@@ -383,7 +385,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                     <RefreshCw className="h-3.5 w-3.5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="top">重新生成</TooltipContent>
+                <TooltipContent side="top">{t("chat.regenerate")}</TooltipContent>
               </Tooltip>
             )}
 
@@ -400,7 +402,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                     <Share2 className="h-3.5 w-3.5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="top">分享对话</TooltipContent>
+                <TooltipContent side="top">{t("chat.share")}</TooltipContent>
               </Tooltip>
             )}
           </div>
@@ -514,7 +516,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
             <div className="mt-4">
               <div className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
                 <span>💡</span>
-                <span>你可能想继续问：</span>
+                <span>{t("chat.follow_up_suggestions")}</span>
               </div>
               <div className="flex flex-col gap-1">
                 {suggestedQuestions.map((question, index) => (

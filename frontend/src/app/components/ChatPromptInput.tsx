@@ -12,6 +12,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 interface ChatPromptInputProps {
     placeholder?: string;
@@ -65,6 +66,7 @@ export const ChatPromptInput = forwardRef<ChatPromptInputRef, ChatPromptInputPro
     onEnableWebDevMode,
     onGoogleDriveClick,
 }, ref) => {
+    const { t } = useLanguage();
     const [internalValue, setInternalValue] = useState("");
     const [isFocused, setIsFocused] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -109,7 +111,7 @@ export const ChatPromptInput = forwardRef<ChatPromptInputRef, ChatPromptInputPro
 
     // Determine placeholder based on mode
     const effectivePlaceholder = selectedFeature?.placeholder
-        || (webDevMode ? "描述你想要开发的网页..." : placeholder);
+        || (webDevMode ? t("chat.webdev_placeholder") : placeholder ?? t("chat.default_placeholder"));
 
     return (
         <div
@@ -133,13 +135,13 @@ export const ChatPromptInput = forwardRef<ChatPromptInputRef, ChatPromptInputPro
                         "hover:before:opacity-100",
                         "bg-blue-500/15 text-blue-600 dark:text-blue-400"
                     )}>
-                        <span className="relative z-10">网页开发</span>
+                        <span className="relative z-10">{t("chat.webdev_mode")}</span>
                         {!isModeLocked && (
                             <button
                                 type="button"
                                 onClick={onClearFeature}
                                 className="relative z-10 flex items-center justify-center w-4 h-4 rounded-full cursor-pointer transition-all duration-150 hover:bg-current/45 hover:scale-125 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                aria-label="清除已选功能"
+                                aria-label={t("chat.clear_selected_feature")}
                             >
                                 <X className="w-2.5 h-2.5" />
                             </button>
@@ -167,7 +169,7 @@ export const ChatPromptInput = forwardRef<ChatPromptInputRef, ChatPromptInputPro
                             onClick={onClearFeature}
                             type="button"
                             className="relative z-10 flex items-center justify-center w-4 h-4 rounded-full cursor-pointer transition-all duration-150 hover:bg-current/45 hover:scale-125 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                            aria-label="清除已选功能"
+                            aria-label={t("chat.clear_selected_feature")}
                         >
                             <X className="w-2.5 h-2.5" />
                         </button>
@@ -212,13 +214,13 @@ export const ChatPromptInput = forwardRef<ChatPromptInputRef, ChatPromptInputPro
                                         <path d="M57.3 20.25L32.8 61.5l2.9 5.35L58.2 26.35l29.1 0-27-46.1z" fill="#00ac47" />
                                         <path d="M.15 61.5l27-46.1 29.15 0-27 46.1z" fill="#ffba00" />
                                     </svg>
-                                    从 Google Drive 文件中添加
+                                    {t("chat.add_from_google_drive")}
                                 </DropdownMenuItem>
                             )}
                             {onLibraryClick && (
                                 <DropdownMenuItem onClick={onLibraryClick}>
                                     <FolderOpen className="w-4 h-4 mr-2" />
-                                    从库中选择
+                                    {t("chat.choose_from_library")}
                                 </DropdownMenuItem>
                             )}
                             <DropdownMenuSeparator />
@@ -227,7 +229,7 @@ export const ChatPromptInput = forwardRef<ChatPromptInputRef, ChatPromptInputPro
                                     <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                         <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
                                     </svg>
-                                    从本地文件中添加
+                                    {t("chat.add_local_file")}
                                 </DropdownMenuItem>
                             )}
                         </DropdownMenuContent>

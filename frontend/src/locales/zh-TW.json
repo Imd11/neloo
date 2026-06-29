@@ -152,7 +152,8 @@
         "copy": "複製",
         "copied": "已複製",
         "regenerate": "重新生成",
-        "share": "分享對話"
+        "share": "分享對話",
+        "resume_skip": "跳過，手動填寫履歷 →"
     },
     "thinking": {
         "thinking": "正在思考",

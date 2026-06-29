@@ -152,7 +152,8 @@
         "copy": "Copy",
         "copied": "Copied",
         "regenerate": "Regenerate",
-        "share": "Share"
+        "share": "Share",
+        "resume_skip": "Skip and fill resume manually →"
     },
     "thinking": {
         "thinking": "Thinking",

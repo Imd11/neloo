@@ -152,7 +152,8 @@
         "copy": "コピー",
         "copied": "コピーしました",
         "regenerate": "再生成",
-        "share": "共有"
+        "share": "共有",
+        "resume_skip": "スキップして履歴書を手動入力 →"
     },
     "thinking": {
         "thinking": "思考中",

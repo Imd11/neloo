@@ -15,6 +15,7 @@ import { Message } from "@langchain/langgraph-sdk";
 import { cn } from "@/lib/utils";
 import type { TodoItem } from "@/app/types/types";
 import { extractStringFromMessageContent } from "@/app/utils/utils";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 interface HierarchicalTaskViewProps {
     messages: Message[];
@@ -123,7 +124,7 @@ function TodoNodeRow({
 
 /**
  * Main Hierarchical Task View Component - Manus Style
- * 
+ *
  * Renders todo nodes as the main axis with children indented below.
  * Uses pure text characters for connection lines (│, ✓, ○).
  */
@@ -139,6 +140,7 @@ export function HierarchicalTaskView({
     onSuggestionClick
 }: HierarchicalTaskViewProps) {
     const [copied, setCopied] = useState(false);
+    const { t } = useLanguage();
 
     // Build event-anchor timeline (write_todos = anchor signal)
     const timeline = useMemo(() => buildEventTimeline(messages), [messages]);
@@ -221,7 +223,7 @@ export function HierarchicalTaskView({
                     <button
                         onClick={handleCopy}
                         className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                        title="复制"
+                        title={t("chat.copy")}
                     >
                         {copied ? <Check size={14} /> : <Copy size={14} />}
                     </button>
@@ -229,7 +231,7 @@ export function HierarchicalTaskView({
                         <button
                             onClick={onRegenerate}
                             className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                            title="重新生成"
+                            title={t("chat.regenerate")}
                         >
                             <RefreshCw size={14} />
                         </button>
@@ -238,7 +240,7 @@ export function HierarchicalTaskView({
                         <button
                             onClick={onShare}
                             className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                            title="分享"
+                            title={t("chat.share")}
                         >
                             <Share size={14} />
                         </button>
@@ -251,7 +253,7 @@ export function HierarchicalTaskView({
                 <div className="mt-4">
                     <div className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
                         <span>💡</span>
-                        <span>你可能想继续问：</span>
+                        <span>{t("chat.follow_up_suggestions")}</span>
                     </div>
                     <div className="flex flex-col gap-1">
                         {suggestedQuestions.map((question, index) => (
