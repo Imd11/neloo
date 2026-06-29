@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import type { ThreadItem } from "@/app/hooks/useThreads";
 import { useThreads } from "@/app/hooks/useThreads";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 interface SearchDialogProps {
   open: boolean;
@@ -40,6 +41,7 @@ export function SearchDialog({
 }: SearchDialogProps) {
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const { t } = useLanguage();
 
   const threads = useThreads({ limit: 100 });
 
@@ -61,7 +63,7 @@ export function SearchDialog({
     const results: SearchResult[] = [];
 
     // Always show "新建对话" option at the top
-    results.push({ id: "new", title: "新建对话", type: "new" });
+    results.push({ id: "new", title: t("search.new_chat"), type: "new" });
 
     // Filter history based on query
     const filtered = flattened.filter(item =>
@@ -147,7 +149,7 @@ export function SearchDialog({
     // Then group history
     const historyItems = filteredResults.filter(r => r.type === "history");
     if (historyItems.length > 0) {
-      groups.push({ label: "更早的", items: historyItems });
+      groups.push({ label: t("search.earlier"), items: historyItems });
     }
 
     return groups;
@@ -161,7 +163,7 @@ export function SearchDialog({
           <Search className="w-5 h-5 text-muted-foreground flex-shrink-0" />
           <input
             type="text"
-            placeholder="搜索聊天..."
+            placeholder={t("search.placeholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="flex-1 px-3 py-4 text-base bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none"
@@ -255,7 +257,7 @@ export function SearchDialog({
               {/* Empty state */}
               {filteredResults.length === 1 && filteredResults[0].type === "new" && query && (
                 <div className="px-4 py-6 text-center text-sm text-muted-foreground">
-                  未找到匹配的聊天记录
+                  {t("search.no_results")}
                 </div>
               )}
             </div>

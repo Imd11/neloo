@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { getConfig } from "@/lib/config";
 import { useAuth } from "@/providers/AuthProvider";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 interface UploadedFile {
   id: string;
@@ -68,6 +69,7 @@ export function LibraryDialog({
   const config = getConfig();
   const apiUrl = config?.deploymentUrl || "";
   const { session } = useAuth();
+  const { t } = useLanguage();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [files, setFiles] = useState<UploadedFile[]>([]);
@@ -188,8 +190,8 @@ export function LibraryDialog({
 
       const ok = window.confirm(
         usageCount > 0
-          ? `此文件被 ${usageCount} 个对话使用，确认全局删除？`
-          : "确认全局删除该文件？"
+          ? t("files.confirm_delete_used", { count: usageCount })
+          : t("files.confirm_delete")
       );
       if (!ok) return;
 
@@ -238,7 +240,7 @@ export function LibraryDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FolderOpen className="h-5 w-5" />
-            {mode === "select" ? "从库中选择文件" : "文件库"}
+            {mode === "select" ? t("files.library_select_title") : t("files.library_title")}
           </DialogTitle>
         </DialogHeader>
 
@@ -246,7 +248,7 @@ export function LibraryDialog({
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="搜索文件..."
+            placeholder={t("files.search_placeholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -263,10 +265,10 @@ export function LibraryDialog({
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <FileText className="mb-2 h-12 w-12 text-gray-300" />
               <p className="text-sm text-muted-foreground">
-                {searchQuery ? "未找到匹配的文件" : "暂无文件"}
+                {searchQuery ? t("files.no_results") : t("files.empty")}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                上传文件后，它们将显示在这里
+                {t("files.empty_hint")}
               </p>
             </div>
           ) : (
@@ -316,7 +318,7 @@ export function LibraryDialog({
                     <button
                       onClick={() => handleDownload(file)}
                       className="p-1.5 rounded hover:bg-muted"
-                      title="下载"
+                      title={t("files.download")}
                       disabled={isDownloading === file.id}
                     >
                       {isDownloading === file.id ? (
@@ -329,7 +331,7 @@ export function LibraryDialog({
                       onClick={() => handleDelete(file)}
                       disabled={isDeleting === file.id}
                       className="p-1.5 rounded hover:bg-destructive/10"
-                      title="删除"
+                      title={t("files.delete")}
                     >
                       {isDeleting === file.id ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -347,9 +349,9 @@ export function LibraryDialog({
         {/* Footer */}
         <div className="flex items-center justify-between border-t pt-4">
           <div className="text-sm text-muted-foreground">
-            {files.length} 个文件
+            {t("files.file_count", { count: files.length })}
             {mode === "select" && selectedFiles.size > 0 && (
-              <span className="ml-2">· 已选择 {selectedFiles.size} 个</span>
+              <span className="ml-2">· {t("files.selected_count", { count: selectedFiles.size })}</span>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -358,7 +360,7 @@ export function LibraryDialog({
               variant="outline"
               onClick={() => onOpenChange(false)}
             >
-              {mode === "select" ? "取消" : "关闭"}
+              {mode === "select" ? t("common.cancel") : t("common.close")}
             </Button>
             {mode === "select" && (
               <Button
@@ -370,7 +372,7 @@ export function LibraryDialog({
                 }}
                 disabled={selectedFiles.size === 0}
               >
-                使用选中的文件
+                {t("files.use_selected")}
               </Button>
             )}
           </div>

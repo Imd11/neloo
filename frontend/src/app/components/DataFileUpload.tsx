@@ -15,6 +15,7 @@ import {
   formatFileSize,
   getFileTypeLabel,
 } from "@/lib/data-file-utils";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 interface DataFileUploadProps {
   files: DataFile[];
@@ -43,6 +44,7 @@ export function DataFileUpload({
   onTriggerGoogleDrive,
   disabled = false,
 }: DataFileUploadProps) {
+  const { t } = useLanguage();
   const isProcessing = isUploading || isImporting;
 
   return (
@@ -72,13 +74,13 @@ export function DataFileUpload({
                 <path d="M57.3 20.25L32.8 61.5l2.9 5.35L58.2 26.35l29.1 0-27-46.1z" fill="#00ac47" />
                 <path d="M.15 61.5l27-46.1 29.15 0-27 46.1z" fill="#ffba00" />
               </svg>
-              <span>从 Google Drive 文件中添加</span>
+              <span>{t("chat.add_from_google_drive")}</span>
             </DropdownMenuItem>
           )}
           {onTriggerLibrary && (
             <DropdownMenuItem onClick={onTriggerLibrary}>
               <FolderOpen className="h-4 w-4 mr-2" />
-              <span>从库中选择</span>
+              <span>{t("chat.choose_from_library")}</span>
             </DropdownMenuItem>
           )}
           <DropdownMenuSeparator />
@@ -86,7 +88,7 @@ export function DataFileUpload({
             <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
             </svg>
-            <span>从本地文件中添加</span>
+            <span>{t("chat.add_local_file")}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

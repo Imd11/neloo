@@ -8,6 +8,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useQueryState } from "nuqs";
 import { toast } from "sonner";
 import { useCallback, useRef, useState } from "react";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 interface MessageAttachmentsProps {
   attachments: ParsedAttachment[];
@@ -29,6 +30,7 @@ export function MessageAttachments({
   const config = getConfig();
   const apiUrl = config?.deploymentUrl || "";
   const { session } = useAuth();
+  const { t } = useLanguage();
   const [threadId] = useQueryState("threadId");
   const [downloading, setDownloading] = useState<string | null>(null);
   const threadFilesCache = useRef<{ threadId: string; files: DatabaseFile[] } | null>(null);
@@ -59,11 +61,11 @@ export function MessageAttachments({
   const downloadFile = useCallback(
     async (attachment: ParsedAttachment) => {
       if (!session?.access_token) {
-        toast.error("请先登录后再下载");
+        toast.error(t("files.login_required"));
         return;
       }
       if (!apiUrl || !threadId) {
-        toast.error("当前对话未就绪");
+        toast.error(t("files.thread_not_ready"));
         return;
       }
 
@@ -71,7 +73,7 @@ export function MessageAttachments({
       try {
         const threadFiles = await fetchThreadFiles();
         if (!threadFiles || threadFiles.length === 0) {
-          toast.message("文件正在关联中", { description: "请稍后再试。" });
+          toast.message(t("files.file_associating"), { description: t("files.try_again") });
           return;
         }
 
@@ -82,7 +84,7 @@ export function MessageAttachments({
           threadFiles.find((f) => normalize(f.filename) === target);
 
         if (!match?.id) {
-          toast.message("文件正在关联中", { description: "请稍后再试。" });
+          toast.message(t("files.file_associating"), { description: t("files.try_again") });
           return;
         }
 
@@ -94,7 +96,7 @@ export function MessageAttachments({
 
         const resp = await fetch(url, { headers: getAuthHeaders() });
         if (!resp.ok) {
-          toast.error("下载失败");
+          toast.error(t("files.download_failed"));
           return;
         }
         const blob = await resp.blob();
@@ -107,12 +109,12 @@ export function MessageAttachments({
         document.body.removeChild(a);
         URL.revokeObjectURL(blobUrl);
       } catch (e) {
-        toast.error("下载失败", { description: e instanceof Error ? e.message : String(e) });
+        toast.error(t("files.download_failed"), { description: e instanceof Error ? e.message : String(e) });
       } finally {
         setDownloading(null);
       }
     },
-    [apiUrl, fetchThreadFiles, getAuthHeaders, session?.access_token, threadId]
+    [apiUrl, fetchThreadFiles, getAuthHeaders, session?.access_token, threadId, t]
   );
 
   if (!hasAttachments) {

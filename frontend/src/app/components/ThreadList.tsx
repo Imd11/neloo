@@ -22,16 +22,17 @@ import type { ThreadItem } from "@/app/hooks/useThreads";
 import { useThreads } from "@/app/hooks/useThreads";
 import { getConfig } from "@/lib/config";
 import { useAuth } from "@/providers/AuthProvider";
+import { useLanguage } from "@/providers/LanguageProvider";
 import { toast } from "sonner";
 
 type StatusFilter = "all" | "idle" | "busy" | "interrupted" | "error";
 
 const GROUP_LABELS = {
-  interrupted: "需要关注",
-  today: "今天",
-  yesterday: "昨天",
-  week: "本周",
-  older: "更早",
+  interrupted: "thread.needs_attention",
+  today: "thread.today",
+  yesterday: "thread.yesterday",
+  week: "thread.this_week",
+  older: "thread.older",
 } as const;
 
 const STATUS_COLORS: Record<ThreadItem["status"], string> = {
@@ -104,11 +105,11 @@ function LoadingState() {
   );
 }
 
-function EmptyState() {
+function EmptyState({ message }: { message: string }) {
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center">
       <MessageSquare className="mb-2 h-12 w-12 text-gray-300" />
-      <p className="text-sm text-muted-foreground">暂无任务</p>
+      <p className="text-sm text-muted-foreground">{message}</p>
     </div>
   );
 }
@@ -132,6 +133,7 @@ export function ThreadList({
   const editInputRef = useRef<HTMLInputElement>(null);
   const config = getConfig();
   const { session } = useAuth();
+  const { t } = useLanguage();
 
   const threads = useThreads({
     status: statusFilter === "all" ? undefined : statusFilter,
@@ -189,11 +191,11 @@ export function ThreadList({
     async (threadId: string) => {
       if (!config?.deploymentUrl) return;
       if (!session?.access_token) {
-        toast.error("请先登录");
+        toast.error(t("common.login_required"));
         return;
       }
 
-      const ok = window.confirm("确认删除该对话？此操作不可恢复（不会删除文件）。");
+      const ok = window.confirm(t("thread.confirm_delete"));
       if (!ok) return;
 
       try {
@@ -217,7 +219,7 @@ export function ThreadList({
 
         await threads.mutate();
       } catch (e) {
-        toast.error("删除失败", {
+        toast.error(t("thread.delete_failed"), {
           description: e instanceof Error ? e.message : String(e),
         });
       }
@@ -249,7 +251,7 @@ export function ThreadList({
 
       const newTitle = editingTitle.trim();
       if (!newTitle) {
-        toast.error("标题不能为空");
+        toast.error(t("thread.title_empty"));
         return;
       }
 
@@ -275,7 +277,7 @@ export function ThreadList({
         setEditingThreadId(null);
         setEditingTitle("");
       } catch (e) {
-        toast.error("更新标题失败", {
+        toast.error(t("thread.title_update_failed"), {
           description: e instanceof Error ? e.message : String(e),
         });
       }
@@ -328,7 +330,7 @@ export function ThreadList({
     <div className="absolute inset-0 flex flex-col">
       {/* Header with title and filter */}
       <div className="grid flex-shrink-0 grid-cols-[1fr_auto] items-center gap-3 border-b border-border p-4">
-        <h2 className="text-lg font-semibold tracking-tight">历史任务</h2>
+        <h2 className="text-lg font-semibold tracking-tight">{t("thread.history_title")}</h2>
         <div className="flex items-center gap-2">
           <Select
             value={statusFilter}
@@ -338,37 +340,37 @@ export function ThreadList({
               <SelectValue />
             </SelectTrigger>
             <SelectContent align="end">
-              <SelectItem value="all">全部状态</SelectItem>
+              <SelectItem value="all">{t("thread.all_status")}</SelectItem>
               <SelectSeparator />
               <SelectGroup>
-                <SelectLabel>活跃</SelectLabel>
+                <SelectLabel>{t("thread.active_group")}</SelectLabel>
                 <SelectItem value="idle">
                   <StatusFilterItem
                     status="idle"
-                    label="空闲"
+                    label={t("thread.idle")}
                   />
                 </SelectItem>
                 <SelectItem value="busy">
                   <StatusFilterItem
                     status="busy"
-                    label="运行中"
+                    label={t("thread.running")}
                   />
                 </SelectItem>
               </SelectGroup>
               <SelectSeparator />
               <SelectGroup>
-                <SelectLabel>需要关注</SelectLabel>
+                <SelectLabel>{t("thread.needs_attention")}</SelectLabel>
                 <SelectItem value="interrupted">
                   <StatusFilterItem
                     status="interrupted"
-                    label="已中断"
+                    label={t("thread.interrupted")}
                     badge={interruptedCount}
                   />
                 </SelectItem>
                 <SelectItem value="error">
                   <StatusFilterItem
                     status="error"
-                    label="错误"
+                    label={t("thread.error")}
                   />
                 </SelectItem>
               </SelectGroup>
@@ -384,7 +386,7 @@ export function ThreadList({
           <LoadingState />
         )}
 
-        {!threads.error && !threads.isLoading && isEmpty && <EmptyState />}
+        {!threads.error && !threads.isLoading && isEmpty && <EmptyState message={t("thread.empty")} />}
 
         {!threads.error && !isEmpty && (
           <div className="box-border w-full max-w-full overflow-hidden p-2">
@@ -400,7 +402,7 @@ export function ThreadList({
                   className="mb-4"
                 >
                   <h4 className="m-0 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    {GROUP_LABELS[group]}
+                    {t(GROUP_LABELS[group])}
                   </h4>
                   <div className="flex flex-col gap-1">
                     {groupThreads.map((thread) => (
@@ -526,10 +528,10 @@ export function ThreadList({
                   {isLoadingMore ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      加载中...
+                      {t("thread.loading")}
                     </>
                   ) : (
-                    "加载更多"
+                    t("thread.load_more")
                   )}
                 </Button>
               </div>
