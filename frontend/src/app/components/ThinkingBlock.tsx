@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { ChevronDown, ChevronRight, Sparkles, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MarkdownContent } from "@/app/components/MarkdownContent";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 interface ThinkingBlockProps {
   /** The thinking content to display */
@@ -71,6 +72,7 @@ export function ThinkingBlock({
   const [isExpanded, setIsExpanded] = useState(
     defaultExpanded ?? isStreaming
   );
+  const { t } = useLanguage();
   const [elapsedTime, setElapsedTime] = useState(0);
   const startTimeRef = useRef(startTime || Date.now());
 
@@ -125,7 +127,7 @@ export function ThinkingBlock({
         {/* Content */}
         <div className="flex-1 pb-4">
           <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-            <span>思考过程已隐藏</span>
+            <span>{t("thinking.redacted")}</span>
             {signature && (
               <span className="font-mono text-xs text-gray-400 dark:text-gray-500">
                 ({signature.slice(0, 12)}...)
@@ -191,11 +193,11 @@ export function ThinkingBlock({
           >
             {isStreaming ? (
               <span className="flex items-center gap-1.5">
-                正在思考
+                {t("thinking.thinking")}
                 <AnimatedDots />
               </span>
             ) : (
-              "思考已完成"
+              t("thinking.completed")
             )}
           </span>
 

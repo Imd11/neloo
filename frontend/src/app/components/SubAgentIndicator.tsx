@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, Loader2, CheckCircle2, XCircle, Clock } from "lucide-react";
 import type { SubAgent } from "@/app/types/types";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 interface SubAgentIndicatorProps {
   subAgent: SubAgent;
@@ -35,7 +36,7 @@ function getStatusConfig(status: SubAgent["status"]) {
     case "pending":
       return {
         icon: Clock,
-        label: "等待中",
+        labelKey: "sub_agent.pending",
         className: "text-amber-500",
         bgClassName: "bg-amber-50 dark:bg-amber-950/30",
         borderClassName: "border-amber-200 dark:border-amber-800",
@@ -44,7 +45,7 @@ function getStatusConfig(status: SubAgent["status"]) {
     case "active":
       return {
         icon: Loader2,
-        label: "执行中",
+        labelKey: "sub_agent.active",
         className: "text-blue-500",
         bgClassName: "bg-blue-50 dark:bg-blue-950/30",
         borderClassName: "border-blue-200 dark:border-blue-800",
@@ -53,7 +54,7 @@ function getStatusConfig(status: SubAgent["status"]) {
     case "completed":
       return {
         icon: CheckCircle2,
-        label: "已完成",
+        labelKey: "sub_agent.completed",
         className: "text-emerald-500",
         bgClassName: "bg-emerald-50 dark:bg-emerald-950/30",
         borderClassName: "border-emerald-200 dark:border-emerald-800",
@@ -62,7 +63,7 @@ function getStatusConfig(status: SubAgent["status"]) {
     case "error":
       return {
         icon: XCircle,
-        label: "失败",
+        labelKey: "sub_agent.error",
         className: "text-red-500",
         bgClassName: "bg-red-50 dark:bg-red-950/30",
         borderClassName: "border-red-200 dark:border-red-800",
@@ -71,7 +72,7 @@ function getStatusConfig(status: SubAgent["status"]) {
     default:
       return {
         icon: Clock,
-        label: "未知",
+        labelKey: "sub_agent.unknown",
         className: "text-gray-500",
         bgClassName: "bg-gray-50 dark:bg-gray-950/30",
         borderClassName: "border-gray-200 dark:border-gray-800",
@@ -83,19 +84,23 @@ function getStatusConfig(status: SubAgent["status"]) {
 /**
  * Get a friendly display name for the subagent type
  */
-function getSubAgentDisplayName(name: string): string {
+function getSubAgentDisplayName(
+  name: string,
+  t: (key: string) => string
+): string {
   const nameMap: Record<string, string> = {
-    "eda-analyst": "数据探索分析",
-    "stats-analyst": "统计分析",
-    "regression-analyst": "回归分析",
-    "viz-analyst": "可视化分析",
-    "general-purpose": "通用任务",
+    "eda-analyst": t("sub_agent.name_eda_analyst"),
+    "stats-analyst": t("sub_agent.name_stats_analyst"),
+    "regression-analyst": t("sub_agent.name_regression_analyst"),
+    "viz-analyst": t("sub_agent.name_viz_analyst"),
+    "general-purpose": t("sub_agent.name_general_purpose"),
   };
   return nameMap[name] || name;
 }
 
 export const SubAgentIndicator = React.memo<SubAgentIndicatorProps>(
   ({ subAgent, onClick, isExpanded = true }) => {
+    const { t } = useLanguage();
     const [elapsedTime, setElapsedTime] = useState(0);
     const [startTime] = useState(() => {
       // Use startedAt if available, otherwise use current time for active tasks
@@ -140,7 +145,7 @@ export const SubAgentIndicator = React.memo<SubAgentIndicatorProps>(
 
     const statusConfig = getStatusConfig(subAgent.status);
     const StatusIcon = statusConfig.icon;
-    const displayName = getSubAgentDisplayName(subAgent.subAgentName);
+    const displayName = getSubAgentDisplayName(subAgent.subAgentName, t);
     const timeDisplay = displayTime();
 
     return (
@@ -190,7 +195,7 @@ export const SubAgentIndicator = React.memo<SubAgentIndicatorProps>(
                   statusConfig.className
                 )}
               >
-                {statusConfig.label}
+                {t(statusConfig.labelKey)}
               </span>
 
               {/* Time display */}

@@ -5,6 +5,7 @@ import { Lightbulb, Loader2, ChevronDown, ChevronRight, Lock } from "lucide-reac
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { MarkdownContent } from "@/app/components/MarkdownContent";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 interface ThinkingBlockProps {
     content: string;
@@ -12,10 +13,25 @@ interface ThinkingBlockProps {
     signature?: string;
     isStreaming?: boolean;
     startTime?: number;
+    /** Thinking duration in milliseconds. */
     duration?: number;
     defaultExpanded?: boolean;
     className?: string;
     hasDoctype?: boolean;
+}
+
+function formatDuration(ms: number): string {
+    const safeMs = Math.max(0, Math.floor(ms));
+    const totalSeconds = Math.max(1, Math.floor(safeMs / 1000));
+
+    if (totalSeconds < 60) {
+        return `${totalSeconds}s`;
+    }
+
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
 }
 
 export function ThinkingBlock({
@@ -29,7 +45,8 @@ export function ThinkingBlock({
     className,
 }: ThinkingBlockProps) {
     const [isExpanded, setIsExpanded] = useState(defaultExpanded ?? false);
-    const [elapsed, setElapsed] = useState(0);
+    const { t } = useLanguage();
+    const [elapsedMs, setElapsedMs] = useState(0);
     const startRef = useRef<number | null>(null);
     const frozenRef = useRef<number | null>(null);
 
@@ -42,8 +59,8 @@ export function ThinkingBlock({
             }
             frozenRef.current = null;
             const tick = () => {
-                const s = Math.floor((Date.now() - (startRef.current || Date.now())) / 1000);
-                setElapsed(s);
+                const ms = Date.now() - (startRef.current || Date.now());
+                setElapsedMs(Math.max(0, ms));
             };
             tick();
             const id = setInterval(tick, 1000);
@@ -51,12 +68,12 @@ export function ThinkingBlock({
         } else {
             // Streaming just ended — freeze the value
             if (duration != null) {
-                frozenRef.current = Math.round(duration);
+                frozenRef.current = Math.max(0, Math.round(duration));
             } else if (startRef.current && !frozenRef.current) {
-                frozenRef.current = Math.floor((Date.now() - startRef.current) / 1000);
+                frozenRef.current = Math.max(0, Date.now() - startRef.current);
             }
             if (frozenRef.current != null) {
-                setElapsed(frozenRef.current);
+                setElapsedMs(frozenRef.current);
             }
         }
     }, [isStreaming, startTime, duration]);
@@ -75,7 +92,14 @@ export function ThinkingBlock({
         if (defaultExpanded && !isStreaming) {
             setIsExpanded(true);
         }
-    }, [defaultExpanded]);
+    }, [defaultExpanded, isStreaming]);
+
+    const shouldShowTimer = elapsedMs >= 1000 || (!isStreaming && elapsedMs > 0);
+    const statusLabel = isStreaming
+        ? t("thinking.thinking")
+        : shouldShowTimer
+            ? t("thinking.duration")
+            : t("thinking.content");
 
     // Redacted thinking - simple inline indicator
     if (isRedacted) {
@@ -85,7 +109,7 @@ export function ThinkingBlock({
                                bg-zinc-200/70 dark:bg-zinc-900/50
                                border border-zinc-200/80 dark:border-zinc-800/50">
                     <Lock className="h-3.5 w-3.5 text-zinc-500" />
-                    <span className="text-zinc-500 dark:text-zinc-400 font-normal">思考过程已隐藏</span>
+                    <span className="text-zinc-500 dark:text-zinc-400 font-normal">{t("thinking.redacted")}</span>
                     {signature && (
                         <span className="font-mono text-[11px] text-zinc-400 opacity-70">
                             ({signature.slice(0, 12)}...)
@@ -115,11 +139,15 @@ export function ThinkingBlock({
                 )}
 
                 {/* Text Content */}
-                <span className="text-zinc-500 dark:text-zinc-300 font-normal text-[13px]">正在思考</span>
+                <span className="text-zinc-500 dark:text-zinc-300 font-normal text-[13px]">
+                    {statusLabel}
+                </span>
 
                 {/* Timer */}
-                {elapsed > 0 && (
-                    <span className="text-zinc-400 dark:text-zinc-500 font-normal text-[12px] tabular-nums">{elapsed}s</span>
+                {shouldShowTimer && (
+                    <span className="text-zinc-400 dark:text-zinc-500 font-normal text-[12px] tabular-nums">
+                        {formatDuration(elapsedMs)}
+                    </span>
                 )}
 
                 {/* Chevron */}

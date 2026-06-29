@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 export interface ToolStepProps {
     toolName: string;
@@ -104,7 +105,7 @@ interface SearchResult {
 function parseSearchResults(output: string): SearchResult[] {
     const results: SearchResult[] = [];
 
-    // Attempt to parse numbered list format seen in screenshots: 
+    // Attempt to parse numbered list format seen in screenshots:
     // 1. **Title** \n URL: https://... \n Snippet...
     const items = output.split(/^\d+\.\s+/m).filter(Boolean);
 
@@ -154,6 +155,7 @@ export function ToolStep({
     className
 }: ToolStepProps) {
     const [isExpanded, setIsExpanded] = useState(false);
+    const { t } = useLanguage();
     const config = getToolConfig(toolName);
     const Icon = config.icon;
     const displayInput = safeParseConfig(input, toolName);
@@ -183,7 +185,7 @@ export function ToolStep({
                 <span className="font-medium text-zinc-700 dark:text-zinc-300 truncate max-w-[400px] flex items-center gap-1.5">
                     {toolName === "search_web" ? (
                         <>
-                            <span className="text-zinc-500 dark:text-zinc-300 font-normal">正在搜索</span>
+                            <span className="text-zinc-500 dark:text-zinc-300 font-normal">{t("thinking.searching")}</span>
                             <span className="text-zinc-800 dark:text-zinc-200">{displayInput}</span>
                         </>
                     ) : (
