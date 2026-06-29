@@ -3,6 +3,7 @@ import { Check, Settings, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { AppInfo } from "./appsData";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 interface AppCardProps {
     app: AppInfo;
@@ -20,6 +21,7 @@ export function AppCard({
     onManage,
 }: AppCardProps) {
     const [imgError, setImgError] = useState(false);
+    const { t } = useLanguage();
 
     return (
         <div
@@ -54,7 +56,7 @@ export function AppCard({
                     {isConnected && (
                         <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-medium">
                             <Check className="w-3 h-3" />
-                            已连接
+                            {t("settings.connected_badge")}
                         </span>
                     )}
                 </div>
@@ -74,7 +76,7 @@ export function AppCard({
                             onClick={() => onManage(app.id)}
                         >
                             <Settings className="w-3.5 h-3.5 mr-1" />
-                            管理
+                            {t("settings.manage")}
                         </Button>
                         <Button
                             variant="ghost"
@@ -83,7 +85,7 @@ export function AppCard({
                             onClick={() => onDisconnect(app.id)}
                         >
                             <X className="w-3.5 h-3.5 mr-1" />
-                            断开
+                            {t("settings.disconnect")}
                         </Button>
                     </>
                 ) : (
@@ -93,7 +95,7 @@ export function AppCard({
                         className="h-8 text-xs"
                         onClick={() => onConnect(app.id)}
                     >
-                        连接
+                        {t("settings.connect")}
                     </Button>
                 )}
             </div>

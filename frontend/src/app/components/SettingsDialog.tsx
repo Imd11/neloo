@@ -55,7 +55,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const settingsTabs = [
     { id: "general", label: t("settings.general"), icon: Settings },
     { id: "notifications", label: t("settings.notifications"), icon: Bell },
-    { id: "connected-apps", label: "连接应用", icon: Plug },
+    { id: "connected-apps", label: t("settings.connected_apps"), icon: Plug },
     { id: "personalization", label: t("settings.personalization"), icon: Palette },
     { id: "privacy", label: t("settings.privacy"), icon: Shield },
     { id: "data", label: t("settings.data"), icon: Database },

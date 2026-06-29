@@ -79,7 +79,15 @@
     "connected_badge": "已连接",
     "manage": "管理",
     "disconnect": "断开",
-    "connect": "连接"
+    "connect": "连接",
+    "category_productivity": "生产力",
+    "category_communication": "通讯",
+    "category_development": "开发",
+    "category_crm": "CRM",
+    "category_social": "社交",
+    "category_storage": "存储",
+    "category_payment": "支付",
+    "category_other": "其他"
   },
   "canvas": {
     "ai_edit_image": "AI 改图",

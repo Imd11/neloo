@@ -79,7 +79,15 @@
         "connected_badge": "Connected",
         "manage": "Manage",
         "disconnect": "Disconnect",
-        "connect": "Connect"
+        "connect": "Connect",
+        "category_productivity": "Productivity",
+        "category_communication": "Communication",
+        "category_development": "Development",
+        "category_crm": "CRM",
+        "category_social": "Social",
+        "category_storage": "Storage",
+        "category_payment": "Payment",
+        "category_other": "Other"
     },
     "canvas": {
         "ai_edit_image": "AI Edit Image",

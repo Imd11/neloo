@@ -79,7 +79,15 @@
         "connected_badge": "連携済み",
         "manage": "管理",
         "disconnect": "切断",
-        "connect": "連携"
+        "connect": "連携",
+        "category_productivity": "生産性",
+        "category_communication": "コミュニケーション",
+        "category_development": "開発",
+        "category_crm": "CRM",
+        "category_social": "ソーシャル",
+        "category_storage": "ストレージ",
+        "category_payment": "決済",
+        "category_other": "その他"
     },
     "canvas": {
         "ai_edit_image": "AI 画像編集",

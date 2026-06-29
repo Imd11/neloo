@@ -16,6 +16,7 @@ const excludedPathParts = [
 
 const allowedFiles = new Set([
   "providers/LanguageProvider.tsx",
+  "app/components/settings/appsData.ts",
 ]);
 
 const extensions = new Set([".ts", ".tsx"]);

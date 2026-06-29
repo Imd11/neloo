@@ -15,6 +15,7 @@ import { apps, categoryLabels, type AppCategory } from "./appsData";
 import { toast } from "sonner";
 import { useAuth } from "@/providers/AuthProvider";
 import { getConfig } from "@/lib/config";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 interface ConnectionInfo {
     app_name: string;
@@ -27,6 +28,7 @@ export function ConnectedAppsTab() {
     const { session } = useAuth();
     const config = getConfig();
     const apiUrl = config?.deploymentUrl || "";
+    const { t } = useLanguage();
 
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedCategory, setSelectedCategory] = useState<AppCategory | "all">("all");
@@ -91,7 +93,8 @@ export function ConnectedAppsTab() {
                         if (data.connected) {
                             // Refresh connections
                             await fetchConnections();
-                            toast.success(`${apps.find(a => a.id === appId)?.name || appId} 连接成功！`);
+                            const appName = apps.find(a => a.id === appId)?.name || appId;
+                            toast.success(t("settings.connect_success", { name: appName }));
                             break;
                         }
                     }
@@ -140,7 +143,7 @@ export function ConnectedAppsTab() {
     // Connect handler - calls real API
     const handleConnect = async (appId: string) => {
         if (!session?.access_token) {
-            toast.error("请先登录");
+            toast.error(t("common.login_required"));
             return;
         }
 
@@ -169,13 +172,13 @@ export function ConnectedAppsTab() {
             }
         } catch (error) {
             console.error('[ConnectedApps] Failed to connect:', error);
-            toast.error(`连接失败: ${error instanceof Error ? error.message : '未知错误'}`);
+            toast.error(t("settings.connect_failed", { message: error instanceof Error ? error.message : String(error) }));
         } finally {
             setConnectingApp(null);
         }
     };
 
-    // Disconnect handler - calls real API  
+    // Disconnect handler - calls real API
     const handleDisconnect = async (appId: string) => {
         if (!session?.access_token) return;
 
@@ -203,25 +206,25 @@ export function ConnectedAppsTab() {
                 return next;
             });
 
-            toast.success(`已断开 ${app?.name}`);
+            toast.success(t("settings.disconnect_success", { name: app?.name ?? "" }));
         } catch (error) {
             console.error('[ConnectedApps] Failed to disconnect:', error);
-            toast.error(`断开失败: ${error instanceof Error ? error.message : '未知错误'}`);
+            toast.error(t("settings.disconnect_failed", { message: error instanceof Error ? error.message : String(error) }));
         }
     };
 
     const handleManage = (appId: string) => {
         const app = apps.find((a) => a.id === appId);
-        toast.info(`管理 ${app?.name} 设置`);
+        toast.info(t("settings.manage_app", { name: app?.name ?? "" }));
     };
 
     return (
         <div className="flex flex-col h-full">
             {/* Header */}
             <div className="mb-4">
-                <h3 className="text-lg font-medium text-foreground mb-1">连接应用</h3>
+                <h3 className="text-lg font-medium text-foreground mb-1">{t("settings.connected_apps")}</h3>
                 <p className="text-sm text-muted-foreground">
-                    连接第三方应用以扩展功能和提升工作效率
+                    {t("settings.connected_apps_desc")}
                 </p>
             </div>
 
@@ -230,7 +233,7 @@ export function ConnectedAppsTab() {
                 <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
-                        placeholder="搜索应用..."
+                        placeholder={t("settings.search_apps")}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="pl-9 bg-input border-border"
@@ -242,13 +245,13 @@ export function ConnectedAppsTab() {
                 >
                     <SelectTrigger className="w-32 bg-input border-border">
                         <Grid className="w-4 h-4 mr-2 text-muted-foreground" />
-                        <SelectValue placeholder="分类" />
+                        <SelectValue placeholder={t("settings.category")} />
                     </SelectTrigger>
                     <SelectContent className="bg-popover border-border">
-                        <SelectItem value="all">全部分类</SelectItem>
+                        <SelectItem value="all">{t("settings.all_categories")}</SelectItem>
                         {Object.entries(categoryLabels).map(([key, label]) => (
                             <SelectItem key={key} value={key}>
-                                {label}
+                                {t(`settings.category_${key}`)}
                             </SelectItem>
                         ))}
                     </SelectContent>
@@ -263,10 +266,10 @@ export function ConnectedAppsTab() {
                         <div className="flex items-center gap-2 mb-3">
                             <Package className="w-4 h-4 text-primary" />
                             <h4 className="text-sm font-medium text-foreground">
-                                我的应用
+                                {t("settings.my_apps")}
                             </h4>
                             <span className="text-xs text-muted-foreground">
-                                ({connectedApps.length} 个已连接)
+                                ({t("settings.connected_count", { count: connectedApps.length })})
                             </span>
                         </div>
                         {connectedApps.length > 0 ? (
@@ -285,8 +288,8 @@ export function ConnectedAppsTab() {
                         ) : (
                             <div className="py-8 text-center text-sm text-muted-foreground border border-dashed border-border rounded-lg">
                                 {searchQuery || selectedCategory !== "all"
-                                    ? "没有找到匹配的已连接应用"
-                                    : "还没有连接任何应用"}
+                                    ? t("settings.no_matching_connected_apps")
+                                    : t("settings.no_connected_apps")}
                             </div>
                         )}
                     </section>
@@ -296,10 +299,10 @@ export function ConnectedAppsTab() {
                         <div className="flex items-center gap-2 mb-3">
                             <Store className="w-4 h-4 text-muted-foreground" />
                             <h4 className="text-sm font-medium text-foreground">
-                                应用市场
+                                {t("settings.marketplace")}
                             </h4>
                             <span className="text-xs text-muted-foreground">
-                                ({marketplaceApps.length} 个可用)
+                                ({t("settings.available_count", { count: marketplaceApps.length })})
                             </span>
                         </div>
                         {marketplaceApps.length > 0 ? (
@@ -308,7 +311,7 @@ export function ConnectedAppsTab() {
                                     <div key={category}>
                                         <h5 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-2">
                                             <span className="w-1.5 h-1.5 rounded-full bg-primary/60" />
-                                            {categoryLabels[category as AppCategory]}
+                                            {t(`settings.category_${category}`)}
                                             <span className="text-muted-foreground/60">({categoryApps!.length})</span>
                                         </h5>
                                         <div className="space-y-2">
@@ -328,7 +331,7 @@ export function ConnectedAppsTab() {
                             </div>
                         ) : (
                             <div className="py-8 text-center text-sm text-muted-foreground border border-dashed border-border rounded-lg">
-                                没有找到匹配的应用
+                                {t("settings.no_matching_apps")}
                             </div>
                         )}
                     </section>
