@@ -15,18 +15,8 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const apiKey = process.env.NANOBANANA_IMAGE_API_KEY;
-        if (!apiKey) {
-            console.error("[API Generate] Missing NANOBANANA_IMAGE_API_KEY");
-            return NextResponse.json(
-                { error: "Server configuration error" },
-                { status: 500 }
-            );
-        }
-
         const images = await generateImage(
             prompt,
-            apiKey,
             resolution as ResolutionTier,
             size as ImageSize,
             120000,

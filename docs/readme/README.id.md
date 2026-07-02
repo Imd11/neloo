@@ -115,7 +115,7 @@ cp frontend/.env.example frontend/.env.local
 | Server | `PORT`, `API_BASE_URL`, `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS` | URL deployment dan CORS. |
 | LangGraph | `LANGGRAPH_API_URL`, `LANGGRAPH_INTERNAL_URL`, `LANGGRAPH_DEFAULT_GRAPH_ID` | Graph default masih `data_analyst`. |
 | Model | `DEEPSEEK_API_KEY`, `QWEN_API_KEY`, `MINIMAX_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `ZHIPU_API_KEY`, `OPENROUTER_API_KEY`, `CUSTOM_OPENAI_API_KEY`, `CUSTOM_ANTHROPIC_API_KEY` | Set satu atau lebih; selector menampilkan satu entri per provider. |
-| Nama model dan endpoint | Variabel `*_MODEL` dan `*_BASE_URL`, misalnya `QWEN_MODEL`, `QWEN_BASE_URL`, `OPENAI_MODEL`, `GEMINI_BASE_URL` | Pilih model dan gateway. `NEWAPI_*` dan `TUZI_*` tetap didukung. |
+| Nama model dan endpoint | Variabel `*_MODEL` dan `*_BASE_URL`, misalnya `QWEN_MODEL`, `QWEN_BASE_URL`, `OPENAI_MODEL`, `GEMINI_BASE_URL` | Pilih model dan gateway. |
 | Sandbox | `SANDBOX_MODE`, `E2B_API_KEY` | `local` hanya untuk input tepercaya. Produksi sebaiknya `e2b` atau `docker`. |
 | Supabase | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_JWT_SECRET`, `SUPABASE_DB_HOST`, `SUPABASE_DB_PASSWORD` | Service role key hanya untuk backend. |
 | Persistensi | `DATABASE_URL` | Tidak diperlukan oleh `backend/langgraph.json` lokal. Wajib untuk persistence production dengan `backend/langgraph.production.json`. |
@@ -128,8 +128,7 @@ cp frontend/.env.example frontend/.env.local
 | Backend | `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_ASSISTANT_ID` | Koneksi ke backend. |
 | Supabase | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Nilai publik; konfigurasikan RLS dengan benar. |
 | Google Drive | `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `NEXT_PUBLIC_GOOGLE_API_KEY` | Nilai publik; batasi origin dan referrer. |
-| Model client-side | `NEXT_PUBLIC_TUZI_API_KEY`, `NEXT_PUBLIC_TUZI_IMAGE_API_KEY`, `NEXT_PUBLIC_DEEPSEEK_API_KEY`, `NEXT_PUBLIC_QWEN_API_KEY` | Terekspos di browser. Gunakan hanya untuk lokal atau key yang dibatasi ketat. |
-| Gambar | `NANOBANANA_IMAGE_API_KEY`, `NEXT_PUBLIC_IMAGE_API_URL` | `NANOBANANA_IMAGE_API_KEY` adalah server-side. |
+| Gambar | `NANOBANANA_IMAGE_API_KEY`, `NANOBANANA_IMAGE_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_IMAGE_MODEL` | `NANOBANANA_IMAGE_API_KEY` adalah server-side. |
 
 ## Supabase
 

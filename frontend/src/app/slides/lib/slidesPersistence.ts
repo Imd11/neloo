@@ -1,226 +1,98 @@
-import { createClient } from '@supabase/supabase-js';
-import type { PresentationData, Slide } from '../types/slides';
+import { getConfig } from "@/lib/config";
+import type { PresentationData, Slide } from "../types/slides";
 
-// Get Supabase client
-const getSupabaseClient = () => {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+function getApiBaseUrl(): string {
+    return (getConfig()?.deploymentUrl || process.env.NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
+}
 
-    if (!supabaseUrl || !supabaseAnonKey) {
-        throw new Error('Supabase configuration missing');
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+    const response = await fetch(`${getApiBaseUrl()}${path}`, {
+        ...init,
+        headers: {
+            "Content-Type": "application/json",
+            ...init?.headers,
+        },
+    });
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Slides persistence failed: ${response.status} - ${errorText}`);
     }
-
-    return createClient(supabaseUrl, supabaseAnonKey);
-};
+    return response.json();
+}
 
 export const savePresentation = async (
-    data: Omit<PresentationData, 'created_at' | 'updated_at'>,
-    accessToken?: string
+    data: Omit<PresentationData, "created_at" | "updated_at">,
+    _accessToken?: string
 ): Promise<PresentationData> => {
-    const supabase = getSupabaseClient();
-
-    // Set auth header if token provided
-    if (accessToken) {
-        supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: ''
-        });
-    }
-
-    const { data: result, error } = await supabase
-        .from('slide_presentations')
-        .upsert({
+    return request<PresentationData>("/api/slides/presentations", {
+        method: "POST",
+        body: JSON.stringify({
             id: data.id,
-            user_id: data.user_id,
-            title: data.title || data.topic || 'Untitled',
+            title: data.title || data.topic || "Untitled",
             topic: data.topic,
             slides: data.slides,
             attachments: data.attachments || [],
-            updated_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-
-    if (error) {
-        console.error('Error saving presentation:', error);
-        throw error;
-    }
-
-    return result as PresentationData;
+        }),
+    });
 };
 
 export const getPresentation = async (
     id: string,
-    accessToken?: string
+    _accessToken?: string
 ): Promise<PresentationData | null> => {
-    const supabase = getSupabaseClient();
-
-    if (accessToken) {
-        supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: ''
-        });
-    }
-
-    const { data, error } = await supabase
-        .from('slide_presentations')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-    if (error) {
-        if (error.code === 'PGRST116') return null; // Not found
-        console.error('Error getting presentation:', error);
+    try {
+        return await request<PresentationData>(`/api/slides/presentations/${encodeURIComponent(id)}`);
+    } catch (error) {
+        if (error instanceof Error && error.message.includes("404")) return null;
         throw error;
     }
-
-    return data as PresentationData;
 };
 
 export const getAllPresentations = async (
-    userId: string,
-    accessToken?: string
+    _userId: string,
+    _accessToken?: string
 ): Promise<PresentationData[]> => {
-    const supabase = getSupabaseClient();
-
-    if (accessToken) {
-        supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: ''
-        });
-    }
-
-    const { data, error } = await supabase
-        .from('slide_presentations')
-        .select('*')
-        .eq('user_id', userId)
-        .order('updated_at', { ascending: false });
-
-    if (error) {
-        console.error('Error getting presentations:', error);
-        throw error;
-    }
-
-    return data as PresentationData[];
+    return request<PresentationData[]>("/api/slides/presentations");
 };
 
 export const deletePresentation = async (
     id: string,
-    accessToken?: string
+    _accessToken?: string
 ): Promise<void> => {
-    const supabase = getSupabaseClient();
-
-    if (accessToken) {
-        supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: ''
-        });
-    }
-
-    const { error } = await supabase
-        .from('slide_presentations')
-        .delete()
-        .eq('id', id);
-
-    if (error) {
-        console.error('Error deleting presentation:', error);
-        throw error;
-    }
+    await request(`/api/slides/presentations/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+    });
 };
 
 export const updateSlideImage = async (
     presentationId: string,
     slideId: string,
     imageBase64: string,
-    accessToken?: string
+    _accessToken?: string
 ): Promise<void> => {
-    const supabase = getSupabaseClient();
-
-    if (accessToken) {
-        supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: ''
-        });
-    }
-
-    // First get the current presentation
-    const { data: presentation, error: fetchError } = await supabase
-        .from('slide_presentations')
-        .select('slides')
-        .eq('id', presentationId)
-        .single();
-
-    if (fetchError || !presentation) {
-        console.error('Error fetching presentation:', fetchError);
-        return;
-    }
-
-    // Update the specific slide's image
-    const slides = presentation.slides as Slide[];
-    const slideIndex = slides.findIndex(s => s.id === slideId);
-
-    if (slideIndex !== -1) {
-        slides[slideIndex].imageBase64 = imageBase64;
-        slides[slideIndex].isGeneratingImage = false;
-
-        const { error: updateError } = await supabase
-            .from('slide_presentations')
-            .update({
-                slides,
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', presentationId);
-
-        if (updateError) {
-            console.error('Error updating slide image:', updateError);
-        }
-    }
+    const presentation = await getPresentation(presentationId);
+    if (!presentation) return;
+    const slides = updateSlide(presentation.slides, slideId, {
+        imageBase64,
+        isGeneratingImage: false,
+    });
+    await savePresentation({ ...presentation, slides });
 };
 
 export const updateSlideContent = async (
     presentationId: string,
     slideId: string,
     updates: { title?: string; content?: string; customCanvasJson?: string },
-    accessToken?: string
+    _accessToken?: string
 ): Promise<void> => {
-    const supabase = getSupabaseClient();
-
-    if (accessToken) {
-        supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: ''
-        });
-    }
-
-    const { data: presentation, error: fetchError } = await supabase
-        .from('slide_presentations')
-        .select('slides')
-        .eq('id', presentationId)
-        .single();
-
-    if (fetchError || !presentation) {
-        console.error('Error fetching presentation:', fetchError);
-        return;
-    }
-
-    const slides = presentation.slides as Slide[];
-    const slideIndex = slides.findIndex(s => s.id === slideId);
-
-    if (slideIndex !== -1) {
-        if (updates.title !== undefined) slides[slideIndex].title = updates.title;
-        if (updates.content !== undefined) slides[slideIndex].content = updates.content;
-        if (updates.customCanvasJson !== undefined) slides[slideIndex].customCanvasJson = updates.customCanvasJson;
-
-        const { error: updateError } = await supabase
-            .from('slide_presentations')
-            .update({
-                slides,
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', presentationId);
-
-        if (updateError) {
-            console.error('Error updating slide content:', updateError);
-        }
-    }
+    const presentation = await getPresentation(presentationId);
+    if (!presentation) return;
+    const slides = updateSlide(presentation.slides, slideId, updates);
+    await savePresentation({ ...presentation, slides });
 };
+
+function updateSlide(slides: Slide[], slideId: string, updates: Partial<Slide>): Slide[] {
+    return slides.map((slide) =>
+        slide.id === slideId ? { ...slide, ...updates } : slide
+    );
+}

@@ -44,14 +44,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/providers/AuthProvider";
 import { useAgentContext } from "@/providers/AgentProvider";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { SettingsDialog } from "./SettingsDialog";
 import { UserProfileDialog } from "./UserProfileDialog";
 import { AgentDialog } from "./AgentDialog";
 import { useThreads } from "@/app/hooks/useThreads";
 import { getConfig } from "@/lib/config";
 import { toast } from "sonner";
-import { format } from "date-fns";
 import { useLanguage } from "@/providers/LanguageProvider";
 
 export interface AppSidebarProps {
@@ -63,6 +61,34 @@ export interface AppSidebarProps {
   onInterruptCountChange?: (count: number) => void;
   onUseAgent?: (agentId: string, agentName: string, systemPrompt: string) => void;
   activeThreadId?: string | null;
+}
+
+function getHistoryStateCopy(
+  status: string,
+  t: (key: string) => string
+): { title: string; hint?: string } {
+  switch (status) {
+    case "backend_unavailable":
+      return {
+        title: t("sidebar.history_backend_unavailable"),
+        hint: t("sidebar.history_backend_unavailable_hint"),
+      };
+    case "history_disabled":
+      return {
+        title: t("sidebar.history_disabled"),
+        hint: t("sidebar.history_disabled_hint"),
+      };
+    case "access_denied":
+      return { title: t("sidebar.history_access_denied") };
+    case "error":
+      return { title: t("sidebar.history_error") };
+    case "empty":
+    default:
+      return {
+        title: t("sidebar.history_empty"),
+        hint: t("sidebar.history_empty_hint"),
+      };
+  }
 }
 
 export function AppSidebar({
@@ -147,6 +173,19 @@ export function AppSidebar({
     });
   }, [threads.data, pinnedIds]);
 
+  const showHistoryLoading = threads.historyStatus === "loading";
+  const showHistoryEmpty = threads.historyStatus === "empty";
+  const showHistoryBlockingProblem = Boolean(
+    threads.historyProblem && sortedHistory.length === 0
+  );
+  const showHistoryRefreshProblem = Boolean(
+    threads.historyProblem && sortedHistory.length > 0
+  );
+  const historyStateCopy = getHistoryStateCopy(
+    threads.historyProblem?.code ?? threads.historyStatus,
+    t
+  );
+
   const handlePin = (threadId: string) => {
     setPinnedIds(prev =>
       prev.includes(threadId)
@@ -178,7 +217,7 @@ export function AppSidebar({
 
       await threads.mutate();
       toast.success(t("sidebar.rename_success"));
-    } catch (e) {
+    } catch {
       toast.error(t("sidebar.rename_failed"));
     }
   };
@@ -206,7 +245,7 @@ export function AppSidebar({
       // If the deleted thread was active (checked via URL or prop), we might want to redirect.
       // For now, just deleting from list is enough.
       toast.success(t("sidebar.delete_success"));
-    } catch (e) {
+    } catch {
       toast.error(t("sidebar.delete_failed"));
     } finally {
       setDeleteDialogOpen(false);
@@ -455,9 +494,37 @@ export function AppSidebar({
             {t("sidebar.history")}
           </div>
           <div className="flex-1 overflow-y-auto space-y-0.5">
-            {threads.isLoading && !threads.data && (
+            {showHistoryLoading && (
               <div className="flex justify-center p-4">
                 <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              </div>
+            )}
+
+            {showHistoryRefreshProblem && (
+              <div className="px-2 pb-2 text-xs text-muted-foreground">
+                {t("sidebar.history_refresh_failed")}
+              </div>
+            )}
+
+            {(showHistoryEmpty || showHistoryBlockingProblem) && (
+              <div className="px-2 py-3 text-xs text-sidebar-muted">
+                <div className="font-medium text-sidebar-foreground/80">
+                  {historyStateCopy.title}
+                </div>
+                {historyStateCopy.hint && (
+                  <div className="mt-1 leading-5">{historyStateCopy.hint}</div>
+                )}
+                {showHistoryBlockingProblem && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="mt-2 h-7 px-2 text-xs"
+                    onClick={() => { void threads.retryHistory(); }}
+                  >
+                    {t("sidebar.history_retry")}
+                  </Button>
+                )}
               </div>
             )}
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Search, MessageSquarePlus, X, Loader2 } from "lucide-react";
 import {
   Dialog,
@@ -32,6 +32,22 @@ function getThreadColor(status: ThreadItem["status"]): string {
 
 function formatTime(date: Date): string {
   return format(date, "yyyy/MM/dd");
+}
+
+function getSearchHistoryHint(
+  status: string,
+  t: (key: string) => string
+): string {
+  switch (status) {
+    case "backend_unavailable":
+      return t("search.history_backend_unavailable");
+    case "history_disabled":
+      return t("search.history_disabled");
+    case "empty":
+      return t("search.history_empty");
+    default:
+      return t("search.history_error");
+  }
 }
 
 export function SearchDialog({
@@ -83,7 +99,7 @@ export function SearchDialog({
     });
 
     return results;
-  }, [query, flattened]);
+  }, [query, flattened, t]);
 
   // Reset selection when results change
   useEffect(() => {
@@ -97,6 +113,16 @@ export function SearchDialog({
       setSelectedIndex(0);
     }
   }, [open]);
+
+  const handleSelect = useCallback((id: string, type: string) => {
+    if (type === "new") {
+      // Handle new conversation
+      onOpenChange(false);
+    } else {
+      onThreadSelect(id);
+      onOpenChange(false);
+    }
+  }, [onOpenChange, onThreadSelect]);
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -112,29 +138,20 @@ export function SearchDialog({
           e.preventDefault();
           setSelectedIndex(i => Math.max(i - 1, 0));
           break;
-        case "Enter":
+        case "Enter": {
           e.preventDefault();
           const selected = filteredResults[selectedIndex];
           if (selected) {
             handleSelect(selected.id, selected.type);
           }
           break;
+        }
       }
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, filteredResults, selectedIndex]);
-
-  const handleSelect = (id: string, type: string) => {
-    if (type === "new") {
-      // Handle new conversation
-      onOpenChange(false);
-    } else {
-      onThreadSelect(id);
-      onOpenChange(false);
-    }
-  };
+  }, [open, filteredResults, selectedIndex, handleSelect]);
 
   // Group results by type
   const groupedResults = useMemo(() => {
@@ -153,7 +170,15 @@ export function SearchDialog({
     }
 
     return groups;
-  }, [filteredResults]);
+  }, [filteredResults, t]);
+
+  const hasHistoryResults = filteredResults.some((item) => item.type === "history");
+  const showHistoryProblem = Boolean(threads.historyProblem && !hasHistoryResults);
+  const showHistoryEmpty =
+    !threads.historyProblem &&
+    !threads.isLoading &&
+    !hasHistoryResults &&
+    !query;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -258,6 +283,30 @@ export function SearchDialog({
               {filteredResults.length === 1 && filteredResults[0].type === "new" && query && (
                 <div className="px-4 py-6 text-center text-sm text-muted-foreground">
                   {t("search.no_results")}
+                </div>
+              )}
+
+              {showHistoryProblem && threads.historyProblem && (
+                <div className="px-4 py-5 text-sm text-muted-foreground">
+                  <div className="font-medium text-foreground">
+                    {t("search.history_unavailable")}
+                  </div>
+                  <div className="mt-1 text-xs leading-5">
+                    {getSearchHistoryHint(threads.historyProblem.code, t)}
+                  </div>
+                  <button
+                    type="button"
+                    className="mt-3 text-xs text-foreground underline-offset-4 hover:underline"
+                    onClick={() => { void threads.retryHistory(); }}
+                  >
+                    {t("search.retry")}
+                  </button>
+                </div>
+              )}
+
+              {showHistoryEmpty && (
+                <div className="px-4 py-5 text-sm text-muted-foreground">
+                  {t("search.history_empty")}
                 </div>
               )}
             </div>

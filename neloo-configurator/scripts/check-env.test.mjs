@@ -91,16 +91,6 @@ test("analyzeEnvironment accepts complete custom OpenAI config", () => {
   assert.equal(hasCode(report, "missing-complete-chat-model-config"), false);
 });
 
-test("analyzeEnvironment accepts Tu-Zi gateway as a complete OpenAI-compatible provider", () => {
-  const report = reportFor({
-    TUZI_API_KEY: "key",
-    TUZI_BASE_URL: "https://api.tu-zi.com/v1",
-  });
-
-  assert.equal(report.ok, true);
-  assert.equal(hasCode(report, "missing-complete-chat-model-config"), false);
-});
-
 test("analyzeEnvironment warns about incomplete extra provider when one provider is usable", () => {
   const report = reportFor({
     DEEPSEEK_API_KEY: "key",
@@ -158,7 +148,7 @@ test("production profile fails without DATABASE_URL", () => {
   assert.equal(hasCode(report, "missing-production-database-url"), true);
 });
 
-test("analyzeEnvironment rejects server secrets in frontend env", () => {
+test("analyzeEnvironment allows Next.js server-route secrets in frontend env", () => {
   const report = analyzeEnvironment({
     backend: { exists: true, values: { DEEPSEEK_API_KEY: "backend-key", SANDBOX_MODE: "local" } },
     frontend: {
@@ -169,23 +159,20 @@ test("analyzeEnvironment rejects server secrets in frontend env", () => {
       },
     },
   });
-  assert.equal(report.ok, false);
-  assert.equal(report.items.some((item) => item.code === "server-secret-in-frontend"), true);
+  assert.equal(report.ok, true);
+  assert.equal(report.items.some((item) => item.code === "server-secret-in-frontend"), false);
 });
 
-test("allowed browser-side provider keys warn instead of fail", () => {
+test("public browser-side provider keys fail", () => {
   const report = reportFor(
     { DEEPSEEK_API_KEY: "backend-key" },
     {
-      NEXT_PUBLIC_DEEPSEEK_API_KEY: "browser-key",
-      NEXT_PUBLIC_QWEN_API_KEY: "browser-qwen-key",
-      NEXT_PUBLIC_TUZI_API_KEY: "browser-tuzi-key",
+      NEXT_PUBLIC_OPENAI_API_KEY: "browser-key",
     }
   );
 
-  assert.equal(report.ok, true);
-  assert.equal(hasCode(report, "server-secret-in-frontend"), false);
-  assert.equal(hasCode(report, "public-api-key"), true);
+  assert.equal(report.ok, false);
+  assert.equal(hasCode(report, "server-secret-in-frontend"), true);
 });
 
 test("public-prefixed server-only secrets still fail", () => {

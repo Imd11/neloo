@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
-// Ratio options matching tu-zi API size parameter
+// Ratio options matching the server-side image API size parameter.
 const ratios = [
     { label: "自动", value: "auto" },
     { label: "1:1", value: "1x1" },

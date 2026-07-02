@@ -1,11 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_IMAGE_API_URL || "https://api.tu-zi.com";
-const CHAT_ENDPOINT = `${API_BASE_URL}/v1/chat/completions`;
-const MODEL_MAP: Record<string, string> = {
-    "1k": "gemini-3-pro-image-preview",
-    "2k": "gemini-3-pro-image-preview-2k",
-    "4k": "gemini-3-pro-image-preview-4k",
-};
-const DEFAULT_MODEL = MODEL_MAP["1k"];
+import { resolveImageProvider } from "./image-generator";
 
 interface EditImageOptions {
     model?: string;
@@ -24,47 +17,46 @@ export async function editImage(
     originalImageUrl: string,
     markedImageDataUrl: string,
     prompt: string,
-    apiKey: string,
     options: EditImageOptions = {}
 ): Promise<string[]> {
-    const selectedModel = options.model || MODEL_MAP[options.resolution || "1k"] || DEFAULT_MODEL;
-    const systemPrompt = `你是一个专业的图片编辑AI。用户会给你两张图片：
-1. 第一张是原始图片（需要被修改的干净完整图片）
-2. 第二张是标记参考图（与第一张相同的原图 + 红色半透明标记层）
+    const provider = resolveImageProvider(options.model);
+    const systemPrompt = `You are a professional image-editing AI. The user will provide two images:
+1. The first image is the clean original image that needs to be edited.
+2. The second image is a marked reference image: the same original image with a semi-transparent red marking layer.
 
-第二张图片中的红色半透明区域标注了需要修改的位置。
-这些红色标记仅用于指示位置，不是图片的实际内容。
+The semi-transparent red regions in the second image mark the locations that need editing.
+These red marks are only positional indicators and are not part of the actual image content.
 
-你的任务是：
-- 观察第二张图片中的红色半透明标记位置
-- 查看该位置的原始内容是什么（第二张图中可以看到）
-- 在第一张原图的对应位置进行修改
-- 输出一张完整的修改后图片`;
+Your task:
+- Observe the positions of the semi-transparent red marks in the second image.
+- Inspect the original content at those positions, which is still visible in the second image.
+- Apply the requested edit to the corresponding positions in the first original image.
+- Output one complete edited image.`;
 
-    const userPrompt = `请根据标记图（第二张图片中的红色半透明区域），在原图（第一张图片）的对应位置进行以下修改：
+    const userPrompt = `Use the marked reference image, specifically the semi-transparent red regions in the second image, to edit the corresponding positions in the original image, which is the first image.
 
 ${prompt}
 
-重要约束：
-1. 只修改红色标记对应的区域
-2. 输出的图片中不能包含任何红色标记或半透明层
-3. 其他区域必须保持原样不变
-4. 修改要自然融入原图`;
+Important constraints:
+1. Modify only the areas corresponding to the red marks.
+2. The output image must not contain any red marks or semi-transparent overlay.
+3. All other areas must remain unchanged.
+4. The edit must blend naturally into the original image.`;
 
     try {
-        console.log("[AI Edit] Sending two-image request to", CHAT_ENDPOINT);
+        console.log("[AI Edit] Sending two-image request to", provider.baseUrl);
         console.log("[AI Edit] Original image URL:", originalImageUrl.substring(0, 100) + "...");
         console.log("[AI Edit] Marked image Data URL length:", markedImageDataUrl.length);
-        console.log("[AI Edit] Using model:", selectedModel, "resolution:", options.resolution, "size:", options.size);
+        console.log("[AI Edit] Using model:", provider.model, "resolution:", options.resolution, "size:", options.size);
 
-        const res = await fetch(CHAT_ENDPOINT, {
+        const res = await fetch(`${provider.baseUrl}/v1/chat/completions`, {
             method: "POST",
             headers: {
-                "Authorization": `Bearer ${apiKey}`,
+                "Authorization": `Bearer ${provider.apiKey}`,
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                model: selectedModel,
+                model: provider.model,
                 messages: [
                     {
                         role: "system",

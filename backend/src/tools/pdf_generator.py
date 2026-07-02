@@ -33,9 +33,9 @@ def _validate_context(config: RunnableConfig | None) -> tuple[str, str]:
         thread_id = thread_id_ctx.get()
     
     if not user_id or user_id in ("default", "anonymous"):
-        raise ValueError("无法获取用户身份，请重新登录")
+        raise ValueError("Unable to identify the user. Please sign in again.")
     if not thread_id or thread_id == "default":
-        raise ValueError("无法获取会话ID，请刷新页面")
+        raise ValueError("Unable to identify the thread. Please refresh the page.")
     
     return user_id, thread_id
 
@@ -43,27 +43,27 @@ def _validate_context(config: RunnableConfig | None) -> tuple[str, str]:
 @tool
 def create_pdf(
     spec: Annotated[str, """
-JSON格式的PDF规格说明：
+JSON specification for the PDF document:
 {
-    "title": "文档标题",
-    "author": "作者",
+    "title": "Document title",
+    "author": "Author",
     "content": [
-        {"type": "heading", "text": "第一章"},
-        {"type": "paragraph", "text": "正文内容..."},
-        {"type": "bullet_list", "items": ["要点1", "要点2"]}
+        {"type": "heading", "text": "Chapter 1"},
+        {"type": "paragraph", "text": "Body content..."},
+        {"type": "bullet_list", "items": ["Point 1", "Point 2"]}
     ],
     "page_size": "A4"
 }
     """],
-    output_name: Annotated[str, "输出文件名，如 'report.pdf'"],
+    output_name: Annotated[str, "Output filename, such as 'report.pdf'"],
     config: RunnableConfig = None,  # type: ignore[assignment]
 ) -> dict[str, Any]:
     """
-    创建 PDF 文档。
+    Create a PDF document.
     
-    适用场景：正式报告、发票、证书
+    Suitable for formal reports, invoices, certificates, and other structured PDFs.
     
-    返回包含 file_id, download_url, summary 的结构化对象。
+    Returns a structured object containing file_id, download_url, and summary.
     """
     try:
         user_id, thread_id = _validate_context(config)
@@ -151,7 +151,7 @@ print("__FILE_BASE64_END__")
         "download_url": file_info.get("download_url"),
         "filename": output_name,
         "file_type": "generated",
-        "summary": f"已创建 PDF 文档 {output_name}，共 {len(content)} 个内容块",
+        "summary": f"Created PDF document {output_name} with {len(content)} content blocks",
     }
 
 

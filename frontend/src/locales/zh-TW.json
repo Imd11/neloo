@@ -11,7 +11,25 @@
         "error": "錯誤",
         "success": "成功",
         "retry": "重試",
+        "back": "返回",
         "login_required": "請先登入"
+    },
+    "history": {
+        "thread_not_found_title": "未找到對話",
+        "thread_not_found_description": "這條對話可能已被刪除，或創建於另一個環境。",
+        "backend_unavailable_title": "無法載入對話",
+        "backend_unavailable_description": "無法連接後端。請啟動後端後重試。",
+        "history_disabled_title": "歷史記錄未啟用",
+        "history_disabled_description": "請先配置資料庫持久化，然後再打開已保存的對話。",
+        "access_denied_title": "對話不可用",
+        "access_denied_description": "當前本地用戶無法訪問這條對話。",
+        "generic_error_title": "無法載入對話",
+        "generic_error_description": "無法打開這條對話。",
+        "retry": "重試",
+        "new_chat": "開始新對話",
+        "runtime_missing_title": "對話歷史不可用",
+        "runtime_missing_description": "這條對話的運行態歷史無法恢復。你可以繼續發送新消息。",
+        "continue_chat": "繼續對話"
     },
     "settings": {
         "title": "設置",
@@ -87,7 +105,45 @@
         "category_social": "社交",
         "category_storage": "存儲",
         "category_payment": "支付",
-        "category_other": "其他"
+        "category_other": "其他",
+        "apps": {
+            "notion": { "description": "一體化工作空間，用於筆記、文件、知識庫和專案管理" },
+            "google_calendar": { "description": "日程管理和會議安排工具" },
+            "trello": { "description": "視覺化專案管理和協作工具" },
+            "asana": { "description": "團隊專案和任務管理平台" },
+            "slack": { "description": "團隊即時通訊和協作平台" },
+            "zoom": { "description": "視訊會議和線上協作工具" },
+            "discord": { "description": "社群語音、視訊和文字聊天平台" },
+            "teams": { "description": "企業協作和通訊平台" },
+            "github": { "description": "程式碼託管和版本控制平台" },
+            "gitlab": { "description": "DevOps 平台，用於程式碼管理和 CI/CD" },
+            "linear": { "description": "現代化問題追蹤和專案管理工具" },
+            "jira": { "description": "敏捷專案管理和問題追蹤工具" },
+            "salesforce": { "description": "領先的客戶關係管理平台" },
+            "hubspot": { "description": "行銷、銷售和客戶服務平台" },
+            "twitter": { "description": "社交媒體和即時資訊平台" },
+            "linkedin": { "description": "職業社交網路平台" },
+            "reddit": { "description": "社群內容分享和討論平台" },
+            "google_drive": { "description": "雲端檔案儲存和共享服務" },
+            "dropbox": { "description": "檔案同步和雲端儲存服務" },
+            "onedrive": { "description": "Microsoft 雲端儲存和檔案共享服務" },
+            "stripe": { "description": "線上支付處理平台" },
+            "paypal": { "description": "全球線上支付服務" },
+            "gmail": { "description": "Google 郵件服務" },
+            "zapier": { "description": "應用自動化和整合平台" },
+            "airtable": { "description": "結合試算表與資料庫的協作平台" },
+            "clickup": { "description": "一站式專案管理和生產力平台" },
+            "google_docs": { "description": "雲端文件編輯和協作工具" },
+            "google_sheets": { "description": "雲端試算表和資料分析工具" },
+            "outlook": { "description": "Microsoft 郵件和行事曆服務" },
+            "google_meet": { "description": "Google 視訊會議服務" },
+            "bitbucket": { "description": "Atlassian 程式碼託管和協作平台" },
+            "supabase": { "description": "開源 Firebase 替代方案，後端即服務" },
+            "zendesk": { "description": "客戶服務和支援平台" },
+            "figma": { "description": "協作式介面設計工具" },
+            "mailchimp": { "description": "郵件行銷和自動化平台" },
+            "shopify": { "description": "電商平台和線上商店建構工具" }
+        }
     },
     "canvas": {
         "ai_edit_image": "AI 改圖",
@@ -144,12 +200,21 @@
         "share_failed": "分享失敗",
         "share_login_required": "請先登入",
         "share_create_failed": "建立分享連結失敗",
-        "try_again_later": "請稍後重試"
+        "try_again_later": "請稍後重試",
+        "history_empty": "暫無歷史記錄",
+        "history_empty_hint": "開始對話後，你的歷史記錄會顯示在這裡。",
+        "history_backend_unavailable": "歷史記錄不可用",
+        "history_backend_unavailable_hint": "無法連接後端。請確認後端正在運行，然後重試。",
+        "history_disabled": "歷史記錄未啟用",
+        "history_disabled_hint": "配置資料庫持久化後，才能保存和查看對話歷史。",
+        "history_access_denied": "此歷史記錄不可用",
+        "history_error": "無法載入歷史記錄",
+        "history_refresh_failed": "無法刷新歷史記錄",
+        "history_retry": "重試"
     },
     "chat": {
         "default_placeholder": "描述你想要創建的內容...",
         "webdev_placeholder": "描述你想要開發的網頁...",
-        "continue_placeholder": "繼續輸入...",
         "webdev_mode": "網頁開發",
         "clear_selected_feature": "清除已選功能",
         "add_from_google_drive": "從 Google Drive 檔案中新增",
@@ -218,6 +283,170 @@
         "feature_prompt_optimize": "提示詞優化",
         "feature_deai": "去AI化"
     },
+    "features": {
+        "categories": {
+            "all": "全部",
+            "portrait": "人像",
+            "product": "產品",
+            "landscape": "風景",
+            "art": "藝術",
+            "anime": "動漫",
+            "design": "設計"
+        },
+        "video_categories": {
+            "all": "全部",
+            "portrait": "人物",
+            "landscape": "場景",
+            "art": "特效",
+            "product": "產品",
+            "anime": "動漫",
+            "design": "電影"
+        },
+        "fortune_form": {
+            "solar_prefix": "我出生於陽曆",
+            "year_placeholder": "xxxx",
+            "year_suffix": "年",
+            "month_placeholder": "xx",
+            "month_suffix": "月",
+            "day_placeholder": "xx",
+            "day_suffix": "日",
+            "hour_placeholder": "xx",
+            "hour_suffix": "時",
+            "minute_placeholder": "xx",
+            "gender_prefix": "分，性別為",
+            "gender_placeholder": "男/女",
+            "birthplace_prefix": "，出生地為",
+            "birthplace_placeholder": "省、市、區/縣",
+            "validation_prefix": "。\n前事驗證資訊（可選但推薦，用於模型微調）：",
+            "validation_placeholder": "例如：\"2021年考研成功\"",
+            "required_error": "請先填寫完整的出生資訊再送出。"
+        },
+        "image_templates": {
+            "movie_poster": { "title": "電影海報", "description": "生成專業的電影海報風格圖片" },
+            "product_showcase": { "title": "產品展示", "description": "簡潔的產品展示背景與光效" },
+            "natural_landscape": { "title": "自然風光", "description": "壯觀的自然景觀與風景照片" },
+            "abstract_art": { "title": "抽象藝術", "description": "創意抽象藝術與幾何圖案" },
+            "portrait": { "title": "人物肖像", "description": "專業的人物肖像與頭像生成" },
+            "anime_style": { "title": "動漫風格", "description": "日式動漫與插畫風格" },
+            "architecture": { "title": "建築設計", "description": "現代建築與室內設計渲染" },
+            "scifi_scene": { "title": "科幻場景", "description": "未來科技與太空主題" },
+            "vintage": { "title": "復古懷舊", "description": "經典復古與膠片風格" },
+            "watercolor": { "title": "水彩畫", "description": "柔和的水彩藝術風格" },
+            "black_white": { "title": "黑白攝影", "description": "高對比度黑白藝術照片" },
+            "render_3d": { "title": "3D 渲染", "description": "逼真的 3D 模型與場景" }
+        },
+        "video_templates": {
+            "talking_portrait": { "title": "人物說話", "description": "讓靜態人物開口說話，口型同步" },
+            "dance_motion": { "title": "舞蹈動作", "description": "生成流暢的人物舞蹈影片" },
+            "landscape_timelapse": { "title": "風景縮時", "description": "雲卷雲舒、日出日落縮時攝影" },
+            "water_animation": { "title": "水流動畫", "description": "河流、瀑布、海浪等水體動態" },
+            "morph_transition": { "title": "變形轉場", "description": "物體間的絲滑變形轉換效果" },
+            "particle_effects": { "title": "粒子特效", "description": "煙霧、火焰、星塵等粒子效果" },
+            "product_360": { "title": "產品360°", "description": "產品360度旋轉展示動畫" },
+            "unboxing": { "title": "開箱動畫", "description": "產品開箱與展示動態效果" },
+            "anime_character": { "title": "動漫角色", "description": "二次元角色動態動畫生成" },
+            "comic_panels": { "title": "漫畫分鏡", "description": "靜態漫畫轉動態分鏡影片" },
+            "cinematic_shot": { "title": "電影鏡頭", "description": "專業電影級運鏡與畫面感" },
+            "slow_motion": { "title": "慢動作", "description": "高幀率絲滑慢動作特效" }
+        },
+        "items": {
+            "web_dev": {
+                "title": "網頁開發",
+                "placeholder": "描述你想要開發的網頁...",
+                "templates": {
+                    "company_site": { "title": "企業官網", "description": "專業的企業形象展示網站" },
+                    "ecommerce": { "title": "電商平台", "description": "商品展示與購物車功能" },
+                    "blog": { "title": "個人部落格", "description": "簡潔優雅的部落格範本" },
+                    "landing": { "title": "落地頁", "description": "高轉化率的行銷落地頁" },
+                    "admin": { "title": "後台管理", "description": "資料看板與管理系統" },
+                    "saas": { "title": "SaaS產品", "description": "軟體即服務產品介面" }
+                }
+            },
+            "image": {
+                "title": "AI 生圖",
+                "placeholder": "描述你要生成的圖片...",
+                "description": "AI 生成圖片並進入畫布編輯"
+            },
+            "slides": {
+                "title": "製作幻燈片",
+                "placeholder": "描述你的簡報主題...",
+                "templates": {
+                    "business": { "title": "商業提案", "description": "專業的商業計畫書範本" },
+                    "product": { "title": "產品發布", "description": "新產品發布會簡報" },
+                    "education": { "title": "教育培訓", "description": "課程與培訓簡報材料" },
+                    "report": { "title": "年度報告", "description": "企業年度總結報告" },
+                    "creative": { "title": "創意展示", "description": "視覺衝擊力的創意簡報" },
+                    "minimal": { "title": "極簡風格", "description": "簡約大氣的簡報範本" }
+                }
+            },
+            "resume": {
+                "title": "製作履歷",
+                "placeholder": "點擊左側 + 上傳履歷，或直接輸入描述",
+                "templates": {
+                    "professional": { "title": "專業簡約", "description": "適合職場人士的經典範本" },
+                    "creative": { "title": "創意設計", "description": "適合設計師的創意履歷" },
+                    "technical": { "title": "技術極客", "description": "程式員與工程師專屬" },
+                    "executive": { "title": "商務精英", "description": "高階主管與商務人士範本" },
+                    "academic": { "title": "學術研究", "description": "學者與研究人員履歷" },
+                    "graduate": { "title": "應屆生版", "description": "清新活力的畢業生履歷" }
+                }
+            },
+            "prompt_optimize": {
+                "title": "提示詞優化",
+                "placeholder": "輸入你想要優化的提示詞...",
+                "templates": {
+                    "image": { "title": "圖像生成", "description": "優化AI繪圖提示詞" },
+                    "copy": { "title": "文案寫作", "description": "優化行銷文案提示詞" },
+                    "code": { "title": "程式碼生成", "description": "優化程式設計相關提示詞" },
+                    "roleplay": { "title": "角色扮演", "description": "優化AI角色設定詞" },
+                    "data": { "title": "資料分析", "description": "優化資料處理提示詞" },
+                    "general": { "title": "通用優化", "description": "全面提升提示詞品質" }
+                }
+            },
+            "fortune": {
+                "title": "五行算命",
+                "placeholder": "輸入你的出生年月日時...",
+                "templates": {
+                    "bazi": { "title": "八字全解", "description": "綜合排盤、格局、用神、喜忌分析" },
+                    "annual": { "title": "流年運勢", "description": "今年運勢、近年走向預測" },
+                    "relationship": { "title": "姻緣桃花", "description": "感情婚姻、配偶特徵分析" },
+                    "career": { "title": "事業發展", "description": "職業方向、升遷、適合產業" },
+                    "wealth": { "title": "財運分析", "description": "正財偏財、投資理財指引" },
+                    "health": { "title": "健康指引", "description": "身體注意事項、養生建議" },
+                    "personality": { "title": "性格天賦", "description": "性格特徵、天賦優勢分析" },
+                    "family": { "title": "子女親緣", "description": "與家人的緣分、子女運勢" }
+                }
+            },
+            "deai": {
+                "title": "去AI化",
+                "placeholder": "貼上需要去AI化的文字...",
+                "templates": {
+                    "academic": { "title": "學術論文", "description": "論文降重與人性化改寫" },
+                    "business": { "title": "商業文案", "description": "行銷文案自然化處理" },
+                    "news": { "title": "新聞稿件", "description": "新聞報導風格轉換" },
+                    "social": { "title": "社交媒體", "description": "讓貼文更像真人撰寫" },
+                    "email": { "title": "郵件往來", "description": "商務郵件人性化改寫" },
+                    "creative": { "title": "創意寫作", "description": "文學作品風格潤色" }
+                }
+            },
+            "translate": {
+                "title": "AI翻譯",
+                "placeholder": "輸入要翻譯的文字...",
+                "description": "專業AI翻譯，支援多種語言"
+            }
+        }
+    },
+    "translate": {
+        "empty_error": "請輸入要翻譯的文字。",
+        "request_failed": "翻譯請求失敗。",
+        "failed_error": "翻譯失敗，請重試。",
+        "copied": "已複製到剪貼簿。",
+        "copy_failed": "複製失敗。",
+        "source_placeholder": "輸入要翻譯的文字...",
+        "result_placeholder": "翻譯結果",
+        "translating": "翻譯中...",
+        "action": "翻譯"
+    },
     "thinking": {
         "thinking": "正在思考",
         "duration": "思考用時",
@@ -249,7 +478,13 @@
         "placeholder": "搜尋聊天...",
         "new_chat": "新建對話",
         "no_results": "未找到匹配的聊天記錄",
-        "earlier": "更早的"
+        "earlier": "更早的",
+        "history_unavailable": "歷史記錄不可用",
+        "history_backend_unavailable": "無法連接後端。請啟動後端後重試。",
+        "history_disabled": "配置資料庫持久化後，才能搜尋已保存的對話。",
+        "history_error": "無法載入對話歷史。",
+        "history_empty": "還沒有已保存的對話",
+        "retry": "重試"
     },
     "thread": {
         "empty": "暫無任務",

@@ -115,7 +115,7 @@ cp frontend/.env.example frontend/.env.local
 | Servidor | `PORT`, `API_BASE_URL`, `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS` | URLs de deploy e CORS. |
 | LangGraph | `LANGGRAPH_API_URL`, `LANGGRAPH_INTERNAL_URL`, `LANGGRAPH_DEFAULT_GRAPH_ID` | O graph padrão ainda é `data_analyst`. |
 | Modelos | `DEEPSEEK_API_KEY`, `QWEN_API_KEY`, `MINIMAX_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `ZHIPU_API_KEY`, `OPENROUTER_API_KEY`, `CUSTOM_OPENAI_API_KEY`, `CUSTOM_ANTHROPIC_API_KEY` | Configure um ou mais; o seletor mostra uma entrada por provedor. |
-| Modelo e endpoint | Variáveis `*_MODEL` e `*_BASE_URL`, por exemplo `QWEN_MODEL`, `QWEN_BASE_URL`, `OPENAI_MODEL`, `GEMINI_BASE_URL` | Escolha o modelo exato e a URL do gateway. `NEWAPI_*` e `TUZI_*` continuam compatíveis. |
+| Modelo e endpoint | Variáveis `*_MODEL` e `*_BASE_URL`, por exemplo `QWEN_MODEL`, `QWEN_BASE_URL`, `OPENAI_MODEL`, `GEMINI_BASE_URL` | Escolha o modelo exato e a URL do gateway. |
 | Sandbox | `SANDBOX_MODE`, `E2B_API_KEY` | Use `local` apenas com entradas confiáveis. Em produção prefira `e2b` ou `docker`. |
 | Supabase | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_JWT_SECRET`, `SUPABASE_DB_HOST`, `SUPABASE_DB_PASSWORD` | Service role key é segredo apenas do backend. |
 | Persistência | `DATABASE_URL` | Não é necessário para o `backend/langgraph.json` local. É obrigatório para persistência de produção com `backend/langgraph.production.json`. |
@@ -128,8 +128,7 @@ cp frontend/.env.example frontend/.env.local
 | Backend | `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_ASSISTANT_ID` | Conexão com o backend. |
 | Supabase | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Valores públicos; configure RLS corretamente. |
 | Google Drive | `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `NEXT_PUBLIC_GOOGLE_API_KEY` | Valores públicos; restrinja origins e referrers. |
-| Modelos no cliente | `NEXT_PUBLIC_TUZI_API_KEY`, `NEXT_PUBLIC_TUZI_IMAGE_API_KEY`, `NEXT_PUBLIC_DEEPSEEK_API_KEY`, `NEXT_PUBLIC_QWEN_API_KEY` | Expostos no navegador. Use apenas localmente ou com chaves bem restritas. |
-| Imagens | `NANOBANANA_IMAGE_API_KEY`, `NEXT_PUBLIC_IMAGE_API_URL` | `NANOBANANA_IMAGE_API_KEY` é server-side. |
+| Imagens | `NANOBANANA_IMAGE_API_KEY`, `NANOBANANA_IMAGE_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_IMAGE_MODEL` | `NANOBANANA_IMAGE_API_KEY` é server-side. |
 
 ## Supabase
 

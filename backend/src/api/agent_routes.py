@@ -363,7 +363,7 @@ async def copy_agent(
         supabase.table("agents")
         .insert({
             "user_id": user_id,
-            "name": source['name'],  # Keep original name (no "副本" suffix)
+            "name": source['name'],  # Keep original name without adding a copy suffix
             "icon": source["icon"],
             "description": source["description"],
             "system_prompt": source["system_prompt"],
@@ -430,8 +430,8 @@ async def generate_prompt(
     """
     Generate a system prompt using LLM (DeepSeek).
     
-    - System Prompt = 元提示词模板 (instructions for LLM on how to generate)
-    - User Prompt = 用户的需求 (agent name, description, tools)
+    - System Prompt = meta-prompt template with instructions for the LLM.
+    - User Prompt = the user's requirements, including agent name, description, and tools.
     - LLM generates the final agent system prompt
     """
     import httpx
@@ -443,73 +443,73 @@ async def generate_prompt(
     
     # Tool descriptions for context
     tool_descriptions = {
-        "search_web": "搜索网络获取最新信息",
-        "code_sandbox": "执行 Python 代码，进行数据分析和可视化",
-        "file_operations": "读写和管理用户文件",
-        "image_generation": "生成 AI 图像",
-        "browser": "浏览网页和提取信息",
+        "search_web": "Search the web for current information.",
+        "code_sandbox": "Execute Python code for computation, data processing, and visualization.",
+        "file_operations": "Read, write, and manage user files.",
+        "image_generation": "Generate AI images.",
+        "browser": "Browse web pages and extract information.",
     }
     
     tools_info = "\n".join([
-        f"- {tool}: {tool_descriptions.get(tool, '可用工具')}"
+        f"- {tool}: {tool_descriptions.get(tool, 'Available tool')}"
         for tool in data.tools
-    ]) if data.tools else "无特殊工具"
+    ]) if data.tools else "No special tools"
     
     # Meta-prompt template as System Prompt
-    meta_prompt_template = """你是一个专业的 AI 提示词工程师。你的任务是根据用户提供的智能体需求，生成一个完整、专业的系统提示词（System Prompt）。
+    meta_prompt_template = """You are a professional AI prompt engineer. Your task is to generate a complete, professional system prompt based on the agent requirements provided by the user.
 
-请严格按照以下模板结构生成系统提示词：
+Generate the system prompt strictly using this structure:
 
-# [智能体名称] 指令模板
+# [Agent Name] Instruction Template
 
-## 1. 职责 (Role/Responsibility)
-* 清晰、简洁地定义这个智能体的核心身份和主要任务。
-* 示例："你的职责是 [扮演的角色]，专注于帮助用户 [核心任务]。"
+## 1. Role / Responsibility
+* Clearly and concisely define the agent's core identity and primary task.
+* Example: "Your responsibility is to act as [role], focusing on helping users [core task]."
 
-## 2. 目标 (Goal)
-* (使用列表) 列出这个智能体需要达成的具体、可衡量的关键成果。
-* 这些目标应直接支持"职责"的实现。
+## 2. Goals
+* Use a list to describe the specific, measurable outcomes the agent should achieve.
+* These goals should directly support the stated role.
 
-## 3. 整体方向 (Overall Direction)
-* (使用列表) 设定贯穿始终的行为准则和风格：
-    * **语气与个性:** 定义应有的沟通风格
-    * **语言风格:** 使用通俗易懂的语言或专业术语
-    * **交互原则:** 主动提出澄清问题，寻求确认
-    * **上下文记忆:** 强调需要记住之前的对话内容
-    * **范围限制:** 明确哪些话题不应讨论
-    * **处理特殊情况:** 如何响应简单问候或能力问题
+## 3. Overall Direction
+* Use a list to define consistent behavior and style:
+    * **Tone and personality:** define the communication style.
+    * **Language style:** specify whether to use plain language, professional terminology, or both.
+    * **Interaction principles:** ask clarifying questions proactively and seek confirmation when needed.
+    * **Context memory:** emphasize using relevant prior conversation context.
+    * **Scope limits:** clearly define topics or tasks the agent should avoid.
+    * **Special cases:** explain how to respond to greetings or capability questions.
 
-## 4. 分步指引 (Step-by-Step Guidance)
-* 详细描述智能体完成核心任务的标准工作流程：
-    * **步骤 1: 理解需求/启动** - 如何分析用户请求，主动提问澄清
-    * **步骤 2: 规划与确认** - 概述解决方案，寻求用户确认
-    * **步骤 3: 核心任务执行** - 如何生成主要输出内容
-    * **步骤 4: 呈现与解释** - 如何展示结果和解释思路
-    * **步骤 5: 反馈与迭代** - 征求反馈并调整
-    * **步骤 6: 深入或下一步** - 选择后的深入操作
-    * **步骤 7: 总结与结束** - 总结和结束交互
+## 4. Step-by-Step Guidance
+* Describe the standard workflow for completing the agent's core task:
+    * **Step 1: Understand / initialize** - how to analyze the user's request and ask clarifying questions.
+    * **Step 2: Plan and confirm** - outline the solution and seek confirmation when useful.
+    * **Step 3: Execute the core task** - how to produce the main output.
+    * **Step 4: Present and explain** - how to show results and explain reasoning.
+    * **Step 5: Feedback and iteration** - request feedback and revise.
+    * **Step 6: Deepen or continue** - describe possible follow-up actions.
+    * **Step 7: Summarize and close** - summarize the outcome and close the interaction.
 
-## 5. 可用工具
-* 列出智能体可以使用的工具及其用途
+## 5. Available Tools
+* List the tools the agent can use and explain what each tool is for.
 
-## 6. 注意事项
-* 列出关键的注意事项和限制
+## 6. Constraints and Notes
+* List key constraints, limitations, and important operating rules.
 
 ---
 
-请根据用户提供的智能体信息，生成一个完整、个性化、高质量的系统提示词。直接输出生成的系统提示词，不需要额外解释。"""
+Generate a complete, customized, high-quality system prompt based on the provided agent information. Output only the generated system prompt, with no extra explanation."""
 
     # User's requirements as User Prompt
-    user_prompt = f"""请为我生成一个智能体的系统提示词：
+    user_prompt = f"""Generate a system prompt for an agent:
 
-**智能体名称**: {data.name}
+**Agent name**: {data.name}
 
-**智能体描述**: {data.description}
+**Agent description**: {data.description}
 
-**可用工具**:
+**Available tools**:
 {tools_info}
 
-请根据以上信息，生成完整的系统提示词。"""
+Generate the complete system prompt based on the information above."""
 
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -570,68 +570,67 @@ async def generate_agent(
     Generate both system prompt and icon in parallel.
     
     - Uses DeepSeek for system prompt generation
-    - Uses FLUX.2 Klein via OpenRouter for icon generation
+    - Uses the configured server-side image provider for icon generation
     """
     import httpx
     import asyncio
     
     deepseek_key = os.environ.get("DEEPSEEK_API_KEY", "")
-    tuzi_key = os.environ.get("TUZI_API_KEY", "")
     
     if not deepseek_key:
         raise HTTPException(status_code=500, detail="DeepSeek API not configured")
     
     # Tool descriptions for context
     tool_descriptions = {
-        "search_web": "搜索网络获取最新信息",
-        "code_sandbox": "执行 Python 代码，进行数据分析和可视化",
-        "file_operations": "读写和管理用户文件",
-        "image_generation": "生成 AI 图像",
-        "browser": "浏览网页和提取信息",
+        "search_web": "Search the web for current information.",
+        "code_sandbox": "Execute Python code for computation, data processing, and visualization.",
+        "file_operations": "Read, write, and manage user files.",
+        "image_generation": "Generate AI images.",
+        "browser": "Browse web pages and extract information.",
     }
     
     tools_info = "\n".join([
-        f"- {tool}: {tool_descriptions.get(tool, '可用工具')}"
+        f"- {tool}: {tool_descriptions.get(tool, 'Available tool')}"
         for tool in data.tools
-    ]) if data.tools else "无特殊工具"
+    ]) if data.tools else "No special tools"
     
     # Meta-prompt for system prompt generation
-    meta_prompt = """你是一个专业的 AI 提示词工程师。你的任务是根据用户提供的智能体需求，生成一个完整、专业的系统提示词（System Prompt）。
+    meta_prompt = """You are a professional AI prompt engineer. Your task is to generate a complete, professional system prompt based on the agent requirements provided by the user.
 
-请严格按照以下模板结构生成系统提示词：
+Generate the system prompt strictly using this structure:
 
-# [智能体名称] 指令模板
+# [Agent Name] Instruction Template
 
-## 1. 职责 (Role/Responsibility)
-* 清晰、简洁地定义这个智能体的核心身份和主要任务。
+## 1. Role / Responsibility
+* Clearly and concisely define the agent's core identity and primary task.
 
-## 2. 目标 (Goal)
-* (使用列表) 列出这个智能体需要达成的具体、可衡量的关键成果。
+## 2. Goals
+* Use a list to describe the specific, measurable outcomes the agent should achieve.
 
-## 3. 整体方向 (Overall Direction)
-* 设定贯穿始终的行为准则和风格。
+## 3. Overall Direction
+* Define consistent behavior, communication style, and interaction principles.
 
-## 4. 分步指引 (Step-by-Step Guidance)
-* 详细描述智能体完成核心任务的标准工作流程。
+## 4. Step-by-Step Guidance
+* Describe the standard workflow for completing the agent's core task.
 
-## 5. 可用工具
-* 列出智能体可以使用的工具及其用途。
+## 5. Available Tools
+* List the tools the agent can use and explain what each tool is for.
 
-## 6. 注意事项
-* 列出关键的注意事项和限制。
+## 6. Constraints and Notes
+* List key constraints, limitations, and important operating rules.
 
-请根据用户提供的智能体信息，生成一个完整、个性化、高质量的系统提示词。直接输出生成的系统提示词，不需要额外解释。"""
+Generate a complete, customized, high-quality system prompt based on the provided agent information. Output only the generated system prompt, with no extra explanation."""
 
-    user_prompt = f"""请为我生成一个智能体的系统提示词：
+    user_prompt = f"""Generate a system prompt for an agent:
 
-**智能体名称**: {data.name}
+**Agent name**: {data.name}
 
-**智能体描述**: {data.description}
+**Agent description**: {data.description}
 
-**可用工具**:
+**Available tools**:
 {tools_info}
 
-请根据以上信息，生成完整的系统提示词。"""
+Generate the complete system prompt based on the information above."""
 
     # Icon generation prompt
     icon_prompt = f"""Create a simple, modern app icon for an AI assistant called "{data.name}". 
@@ -675,16 +674,24 @@ Requirements:
             return ""
 
     async def generate_icon(client: httpx.AsyncClient) -> str:
-        """Generate icon using Gemini via tu-zi.com API."""
+        """Generate icon using the configured server-side image provider."""
         print(f"[Icon Generation] Starting icon generation...")
-        print(f"[Icon Generation] TUZI API Key configured: {bool(tuzi_key)}")
-        if not tuzi_key:
-            print("[Icon Generation] ERROR: No TUZI API Key!")
+        image_key = os.environ.get("NANOBANANA_IMAGE_API_KEY", "").strip()
+        image_base_url = os.environ.get("NANOBANANA_IMAGE_BASE_URL", "").strip().rstrip("/")
+        image_model = os.environ.get("NANOBANANA_IMAGE_MODEL", "nano-banana").strip()
+
+        if not image_key or not image_base_url:
+            image_key = os.environ.get("OPENAI_API_KEY", "").strip()
+            image_base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com").strip().rstrip("/")
+            image_model = os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-2").strip()
+
+        if not image_key or not image_base_url:
+            print("[Icon Generation] No server-side image provider configured.")
             return ""
         
         try:
             request_body = {
-                "model": "gemini-2.5-flash-image-preview-nt",
+                "model": image_model,
                 "prompt": icon_prompt,
                 "size": "1024x1024",
                 "n": 1,
@@ -693,9 +700,9 @@ Requirements:
             print(f"[Icon Generation] Request body: {request_body}")
             
             response = await client.post(
-                "https://api.tu-zi.com/v1/images/generations",
+                f"{image_base_url}/v1/images/generations",
                 headers={
-                    "Authorization": f"Bearer {tuzi_key}",
+                    "Authorization": f"Bearer {image_key}",
                     "Content-Type": "application/json",
                 },
                 json=request_body,
@@ -708,7 +715,6 @@ Requirements:
                 result = response.json()
                 print(f"[Icon Generation] Full response keys: {result.keys() if isinstance(result, dict) else 'not a dict'}")
                 
-                # tu-zi.com returns: { "data": [{ "b64_json": "..." }] }
                 data = result.get("data", [])
                 if data and len(data) > 0:
                     b64_json = data[0].get("b64_json", "")

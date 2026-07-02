@@ -1,5 +1,5 @@
 """
-Data Analyst Agent - Core Graph Definition
+Neloo Agent - Core Graph Definition
 
 This module defines the main agent graph using LangChain Deep Agents.
 Compatible with LangGraph server for frontend integration.
@@ -7,7 +7,7 @@ Compatible with LangGraph server for frontend integration.
 Architecture:
 - Uses create_deep_agent() for automatic TodoList planning
 - FilesystemMiddleware for file operations
-- SubAgentMiddleware for parallel data analysis tasks
+- SubAgentMiddleware for parallel specialized tasks
 - HumanInTheLoopMiddleware for sensitive operation approval
 - Custom tools: execute_python (sandbox), search_web (Tavily)
 - Context Engineering: Dual-form output + file storage (Manus strategy)
@@ -27,7 +27,6 @@ from deepagents import create_deep_agent, SubAgent
 
 from ..tools.search import internet_search
 from ..tools.code_execution import execute_python_tool
-from ..tools.knowledge import search_knowledge as search_knowledge_tool, list_knowledge_categories
 from ..tools.ui_design import search_ui_design
 from ..context import (
     create_dual_output,
@@ -109,11 +108,7 @@ GENERAL_ASSISTANT_PROMPT = """You are Neloo, a powerful AI assistant capable of 
    - 10 tech stack guidelines (React, Next.js, Vue, etc.)
    - Use when creating UI without specified design
 
-4. `search_knowledge` - Search the knowledge base (optional)
-   - Contains methodology guides and best practices
-   - Use for specialized domain knowledge
-
-5. **Document Generation Tools**
+4. **Document Generation Tools**
    - `create_excel` - Generate Excel spreadsheets
    - `create_word` - Generate Word documents
    - `create_pptx` - Generate PowerPoint presentations
@@ -372,51 +367,52 @@ When writing Python code:
 """
 
 # =============================================================================
-# Fortune Telling Mode Prompt (五行算命)
+# Fortune Telling Mode Prompt (Chinese Five Elements / BaZi)
 # =============================================================================
-# This prompt completely replaces the default prompt when user selects "五行算命" feature.
+# This prompt completely replaces the default prompt when the user selects the
+# Chinese Five Elements / BaZi fortune-telling feature.
 
-FORTUNE_PROMPT = """你现在是一个中国传统八字命理的专业研究人员。
+FORTUNE_PROMPT = """You are a professional researcher in traditional Chinese BaZi astrology.
 
-## 你的专业背景
+## Professional Background
 
-你熟读以下经典命理著作：
-- 《穷通宝典》、《三命通会》、《滴天髓》、《渊海子平》
-- 《千里命稿》、《协纪辨方书》、《果老星宗》、《子平真诠》、《神峰通考》
+You are deeply familiar with classical Chinese astrology texts, including:
+- Qiong Tong Bao Jian, San Ming Tong Hui, Di Tian Sui, Yuan Hai Zi Ping
+- Qian Li Ming Gao, Xie Ji Bian Fang Shu, Guo Lao Xing Zong, Zi Ping Zhen Quan, Shen Feng Tong Kao
 
-## 排大运规则
+## Major Luck Cycle Rules
 
-根据"排大运分阳年、阴年。阳年：甲丙戊庚壬。阴年：乙丁己辛癸，阳年男，阴年女为顺排，阴年男，阳年女为逆排，具体排法以月干支为基准，进行顺逆。小孩交大运前，以月柱干支为大运。"
+Use the traditional rule: major luck cycles are arranged by yang years and yin years. Yang heavenly stems are Jia, Bing, Wu, Geng, and Ren. Yin heavenly stems are Yi, Ding, Ji, Xin, and Gui. Men born in yang years and women born in yin years proceed forward; men born in yin years and women born in yang years proceed backward. The direction is based on the month pillar's heavenly stem and earthly branch. Before a child enters the first major luck cycle, use the month pillar as the luck cycle reference.
 
-**十天干**：甲乙丙丁戊己庚辛壬癸
-**十二地支**：子丑寅卯辰巳午未申酉戌亥
+**Ten Heavenly Stems**: Jia, Yi, Bing, Ding, Wu, Ji, Geng, Xin, Ren, Gui
+**Twelve Earthly Branches**: Zi, Chou, Yin, Mao, Chen, Si, Wu, Wei, Shen, You, Xu, Hai
 
-## 你的任务
+## Task
 
-请你以一个专业四柱八字研究者的角色，根据以上我所提到的书籍，及相关四柱八字的书籍和经验，对用户的八字进行全面分析：
+Act as a professional Four Pillars / BaZi researcher. Based on the classical texts above and established BaZi practice, provide a comprehensive analysis of the user's BaZi chart:
 
-1. **格局分析**：确定命格、用神、喜忌
-2. **五行喜忌**：分析五行强弱、喜用神、忌神
-3. **大运分析**：排列大运，分析每步大运吉凶
-4. **流年分析**：分析近年运势走向
-5. **事业运势**：职业发展建议
-6. **财运分析**：财富积累与投资建议
-7. **感情婚姻**：姻缘分析与建议
-8. **健康运势**：身体健康注意事项
-9. **家庭关系**：六亲关系分析
+1. **Chart Pattern Analysis**: identify the chart pattern, useful god, favorable elements, and unfavorable elements.
+2. **Five Elements Balance**: analyze the strength and weakness of the five elements, including favorable and unfavorable elements.
+3. **Major Luck Cycles**: arrange the major luck cycles and analyze the auspicious or challenging qualities of each cycle.
+4. **Annual Luck**: analyze recent yearly fortune trends.
+5. **Career**: provide career development guidance.
+6. **Wealth**: analyze wealth accumulation and investment tendencies.
+7. **Relationships and Marriage**: analyze relationship patterns and provide guidance.
+8. **Health**: identify health tendencies and points of caution.
+9. **Family Relationships**: analyze relationships with family members and close kin.
 
-## 输出要求
+## Output Requirements
 
-- 解读既有**专业深度**，又能以**通俗易懂**的方式呈现
-- 使用传统命理术语时，附带简单解释
-- 如果用户提供了"前事验证信息"，请用于微调预测模型
-- 对于不确定的预测，请诚实说明
+- Provide analysis with professional depth while remaining clear and easy to understand.
+- When using traditional terminology, include a brief explanation.
+- If the user provides past-event validation information, use it to calibrate the interpretation.
+- Be honest about uncertain predictions.
 
-## 重要提醒
+## Important Disclaimer
 
-- 这是传统文化知识的学术讨论，仅供参考
-- 命运掌握在自己手中，八字只是参考
-- 重大人生决策应综合多方面因素考虑
+- This is an academic discussion of traditional cultural knowledge and is for reference only.
+- People retain agency over their own lives; BaZi should be treated as one reference point, not a fixed destiny.
+- Major life decisions should be made by considering multiple practical factors.
 """
 
 # =============================================================================
@@ -874,12 +870,12 @@ def search_web(
     return "\n\n".join(output_parts)
 
 
-# Custom tools for the data analyst agent
+# Custom tools for the Neloo agent
 # INTEGRATION_TOOLS provides runtime dispatcher for third-party apps (Composio)
 # Document tools: Excel, Word, PDF, PowerPoint (each in separate file)
 # SKILL_RUNTIME_TOOLS: Progressive disclosure for document skills
 CUSTOM_TOOLS = (
-    [execute_python, search_web, search_knowledge_tool, list_knowledge_categories, search_ui_design]
+    [execute_python, search_web, search_ui_design]
     + INTEGRATION_TOOLS
     + EXCEL_TOOLS
     + WORD_TOOLS
@@ -890,7 +886,7 @@ CUSTOM_TOOLS = (
 
 
 # =============================================================================
-# SubAgent Definitions for Parallel Data Analysis
+# SubAgent Definitions for Parallel Specialized Work
 # =============================================================================
 
 # EDA (Exploratory Data Analysis) SubAgent
@@ -1059,7 +1055,7 @@ MODEL_PROFILES = {
     "openai": {"max_input_tokens": 120000},       # GPT-4o: 128k context, leave buffer
     "qwen": {"max_input_tokens": 120000},         # Qwen: 128k context, leave buffer
     "minimax": {"max_input_tokens": 80000},       # MiniMax: estimate based on typical limits
-    "openrouter": {"max_input_tokens": 180000},   # OpenRouter Claude: same as Anthropic
+    "openrouter": {"max_input_tokens": 900000},   # Meta Llama via OpenRouter; keep a conservative high ceiling
     "zhipu": {"max_input_tokens": 120000},        # GLM-4: 128k context, leave buffer
     "google": {"max_input_tokens": 900000},       # Gemini: 1M context, leave buffer
 }
@@ -1073,8 +1069,8 @@ AVAILABLE_MODELS = {
     # Public canonical model slots. These are the only chat models shown in the
     # top-left selector; users choose the concrete model with *_MODEL env vars.
     "deepseek": {
-        "display_name": "DeepSeek",
-        "model_name": "deepseek-chat",
+        "display_name": "DeepSeek V4 Pro",
+        "model_name": "deepseek-v4-pro",
         "model_env": "DEEPSEEK_MODEL",
         "provider": "deepseek",
         "env_key": "DEEPSEEK_API_KEY",
@@ -1082,8 +1078,8 @@ AVAILABLE_MODELS = {
         "profile_key": "deepseek",
     },
     "qwen": {
-        "display_name": "Qwen",
-        "model_name": "qwen-plus",
+        "display_name": "Qwen3 Max",
+        "model_name": "qwen3-max",
         "model_env": "QWEN_MODEL",
         "provider": "openai",
         "env_key": "QWEN_API_KEY",
@@ -1092,7 +1088,7 @@ AVAILABLE_MODELS = {
         "profile_key": "qwen",
     },
     "minimax": {
-        "display_name": "MiniMax",
+        "display_name": "MiniMax M2.1",
         "model_name": "MiniMax-M2.1",
         "model_env": "MINIMAX_MODEL",
         "provider": "anthropic",
@@ -1102,41 +1098,38 @@ AVAILABLE_MODELS = {
         "profile_key": "minimax",
     },
     "anthropic": {
-        "display_name": "Claude",
-        "model_name": "claude-sonnet-4-5-20250929",
+        "display_name": "Claude Opus 4.8",
+        "model_name": "claude-opus-4-8",
         "model_env": "ANTHROPIC_MODEL",
         "provider": "anthropic",
         "credentials": [
             {"env_key": "ANTHROPIC_API_KEY", "base_url_env": "ANTHROPIC_BASE_URL"},
             {"env_key": "NEWAPI_API_KEY", "base_url_env": "NEWAPI_ANTHROPIC_BASE_URL", "requires_base_url": True},
-            {"env_key": "TUZI_ANTHROPIC_API_KEY", "base_url_env": "TUZI_ANTHROPIC_BASE_URL", "requires_base_url": True},
         ],
         "profile_key": "anthropic",
     },
     "openai": {
-        "display_name": "OpenAI",
-        "model_name": "gpt-5",
+        "display_name": "GPT-5.5",
+        "model_name": "gpt-5.5",
         "model_env": "OPENAI_MODEL",
         "provider": "openai",
         "credentials": [
             {"env_key": "OPENAI_API_KEY", "base_url_env": "OPENAI_BASE_URL"},
-            {"env_key": "TUZI_API_KEY", "base_url_env": "TUZI_BASE_URL", "requires_base_url": True},
         ],
         "profile_key": "openai",
     },
     "gemini": {
-        "display_name": "Gemini",
+        "display_name": "Gemini 3 Pro",
         "model_name": "gemini-3-pro-preview",
         "model_env": "GEMINI_MODEL",
         "provider": "openai",
         "credentials": [
             {"env_key": "GEMINI_API_KEY", "base_url_env": "GEMINI_BASE_URL", "requires_base_url": True},
-            {"env_key": "TUZI_API_KEY", "base_url_env": "TUZI_BASE_URL", "requires_base_url": True},
         ],
         "profile_key": "google",
     },
     "zhipu": {
-        "display_name": "GLM",
+        "display_name": "GLM-4.7",
         "model_name": "glm-4.7",
         "model_env": "ZHIPU_MODEL",
         "provider": "openai",
@@ -1146,7 +1139,7 @@ AVAILABLE_MODELS = {
         "profile_key": "zhipu",
     },
     "openrouter": {
-        "display_name": "OpenRouter",
+        "display_name": "Llama 4 Maverick",
         "model_name": "meta-llama/llama-4-maverick",
         "model_env": "OPENROUTER_MODEL",
         "provider": "openai",
@@ -1187,7 +1180,7 @@ AVAILABLE_MODELS = {
         "profile_key": "deepseek",
     },
     "deepseek-reasoner": {
-        "display_name": "DeepSeek V3.2 (思考)",
+        "display_name": "DeepSeek V3.2 (Reasoning)",
         "model_name": "deepseek-reasoner",
         "provider": "deepseek",
         "env_key": "DEEPSEEK_API_KEY",
@@ -1266,38 +1259,6 @@ AVAILABLE_MODELS = {
         "base_url_env": "NEWAPI_ANTHROPIC_BASE_URL",  # Anthropic-compatible endpoint
         "profile_key": "anthropic",
     },
-    "gemini-3-pro": {
-        "display_name": "Gemini-3 pro",
-        "model_name": "gemini-3-pro-preview",
-        "provider": "openai",  # Tu-zi uses OpenAI-compatible API
-        "env_key": "TUZI_API_KEY",
-        "base_url_env": "TUZI_BASE_URL",
-        "profile_key": "google",
-    },
-    "gpt-5": {
-        "display_name": "GPT-5",
-        "model_name": "gpt-5",
-        "provider": "openai",  # Tu-zi uses OpenAI-compatible API
-        "env_key": "TUZI_API_KEY",
-        "base_url_env": "TUZI_BASE_URL",
-        "profile_key": "openai",
-    },
-    "gpt-5-thinking": {
-        "display_name": "GPT-5 thinking",
-        "model_name": "gpt-5-thinking-all",
-        "provider": "openai",  # Tu-zi uses OpenAI-compatible API
-        "env_key": "TUZI_API_KEY",
-        "base_url_env": "TUZI_BASE_URL",
-        "profile_key": "openai",
-    },
-    "claude-opus-tuzi": {
-        "display_name": "Claude Opus 4.5 thinking(tuzi)",
-        "model_name": "claude-opus-4-5-20251101-thinking",
-        "provider": "anthropic",  # Tu-zi Anthropic-compatible API
-        "env_key": "TUZI_ANTHROPIC_API_KEY",
-        "base_url_env": "TUZI_ANTHROPIC_BASE_URL",
-        "profile_key": "anthropic",
-    },
     "llama-4-maverick": {
         "display_name": "Llama 4 Maverick",
         "model_name": "meta-llama/llama-4-maverick",
@@ -1325,10 +1286,47 @@ def _env_names(value) -> list[str]:
     return list(value)
 
 
+PLACEHOLDER_ENV_VALUES = {
+    "changeme",
+    "change-me",
+    "demo",
+    "example",
+    "fake",
+    "none",
+    "null",
+    "placeholder",
+    "replace-me",
+    "replace_me",
+    "test",
+    "todo",
+    "xxx",
+    "xxxx",
+    "your-api-key",
+    "your-key",
+    "your-service-role-key",
+    "your-supabase-anon-key",
+}
+
+
+def _looks_like_placeholder(value: str | None) -> bool:
+    if value is None:
+        return True
+    normalized = value.strip().lower()
+    if not normalized:
+        return True
+    if normalized in PLACEHOLDER_ENV_VALUES:
+        return True
+    if normalized.startswith(("your-", "your_", "replace-", "replace_")):
+        return True
+    if normalized.startswith(("sk-your", "pk-your")):
+        return True
+    return "<" in normalized or ">" in normalized
+
+
 def _env_first(value) -> str | None:
     for name in _env_names(value):
         env_value = os.environ.get(name)
-        if env_value:
+        if env_value and not _looks_like_placeholder(env_value):
             return env_value
     return None
 
@@ -1479,19 +1477,19 @@ def get_model(model_id: str | None = None):
 
 def build_graph(model_id: str | None = None, mode: str = "default"):
     """
-    Build the data analyst agent using Deep Agents architecture.
+    Build the Neloo agent using Deep Agents architecture.
 
     Args:
         model_id: Specific model to use (e.g., "deepseek-chat", "qwen-plus").
                   If None, uses default based on available API keys.
         mode: Agent mode. Options:
-              - "default": Standard data analyst mode
+              - "default": Standard general-purpose assistant mode
               - "web-dev": Web development mode with artifact output
 
     This provides:
     - TodoListMiddleware: Automatic task planning with write_todos tool
     - FilesystemMiddleware: File operations routed to E2B sandbox (unified filesystem)
-    - SubAgentMiddleware: Parallel data analysis with specialized subagents
+    - SubAgentMiddleware: Parallel specialized work with subagents
       - eda-analyst: Exploratory Data Analysis
       - stats-analyst: Statistical hypothesis testing
       - regression-analyst: Econometric/regression analysis
@@ -1557,7 +1555,7 @@ def _build_model_graphs() -> dict:
     For each model, we build:
     - {model_id}: Default mode graph
     - {model_id}-web-dev: Web development mode graph with artifact output
-    - {model_id}-fortune: Fortune telling mode graph (五行算命)
+    - {model_id}-fortune: Fortune telling mode graph (Chinese Five Elements / BaZi)
     """
     graphs = {}
     for model_id in AVAILABLE_MODELS.keys():
@@ -1573,7 +1571,7 @@ def _build_model_graphs() -> dict:
                 graphs[webdev_id] = build_graph(model_id, mode="web-dev")
                 print(f"[graph.py] Built graph for model: {webdev_id}")
 
-                # Build fortune mode graph (五行算命)
+                # Build fortune mode graph (Chinese Five Elements / BaZi)
                 fortune_id = f"{model_id}-fortune"
                 graphs[fortune_id] = build_graph(model_id, mode="fortune")
                 print(f"[graph.py] Built graph for model: {fortune_id}")
@@ -1687,11 +1685,10 @@ graph_claude_opus_right_thinking = _MODEL_GRAPHS.get("claude-opus-right-thinking
 graph_claude_sonnet_right = _MODEL_GRAPHS.get("claude-sonnet-right") or graph_anthropic
 graph_claude_sonnet_right_thinking = _MODEL_GRAPHS.get("claude-sonnet-right-thinking") or graph_anthropic
 
-# Tu-zi models (third-party API)
+# Legacy model aliases
 graph_gemini_3_pro = _MODEL_GRAPHS.get("gemini-3-pro") or graph_gemini
 graph_gpt_5 = _MODEL_GRAPHS.get("gpt-5") or graph_openai
 graph_gpt_5_thinking = _MODEL_GRAPHS.get("gpt-5-thinking") or graph_openai
-graph_claude_opus_tuzi = _MODEL_GRAPHS.get("claude-opus-tuzi") or graph_anthropic
 
 # Web-dev mode graphs (with artifact output support)
 graph_deepseek_chat_webdev = _MODEL_GRAPHS.get("deepseek-chat-web-dev") or graph_deepseek_webdev
@@ -1708,11 +1705,10 @@ graph_claude_opus_right_thinking_webdev = _MODEL_GRAPHS.get("claude-opus-right-t
 graph_claude_sonnet_right_webdev = _MODEL_GRAPHS.get("claude-sonnet-right-web-dev") or graph_anthropic_webdev
 graph_claude_sonnet_right_thinking_webdev = _MODEL_GRAPHS.get("claude-sonnet-right-thinking-web-dev") or graph_anthropic_webdev
 
-# Tu-zi web-dev mode graphs
+# Legacy web-dev mode graph aliases
 graph_gemini_3_pro_webdev = _MODEL_GRAPHS.get("gemini-3-pro-web-dev") or graph_gemini_webdev
 graph_gpt_5_webdev = _MODEL_GRAPHS.get("gpt-5-web-dev") or graph_openai_webdev
 graph_gpt_5_thinking_webdev = _MODEL_GRAPHS.get("gpt-5-thinking-web-dev") or graph_openai_webdev
-graph_claude_opus_tuzi_webdev = _MODEL_GRAPHS.get("claude-opus-tuzi-web-dev") or graph_anthropic_webdev
 
 # OpenRouter Llama models
 graph_llama_4_maverick = _MODEL_GRAPHS.get("llama-4-maverick") or graph_openrouter

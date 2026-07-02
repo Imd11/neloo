@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
-import { Plus, Mic, ArrowUp, X, Square, Upload, FolderOpen } from "lucide-react";
+import { useState, useRef, useEffect, useMemo, forwardRef, useImperativeHandle } from "react";
+import { Plus, Mic, ArrowUp, X, Square, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Feature } from "@/data/featureTemplates";
+import { Feature, localizeFeature } from "@/data/featureTemplates";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -67,6 +67,10 @@ export const ChatPromptInput = forwardRef<ChatPromptInputRef, ChatPromptInputPro
     onGoogleDriveClick,
 }, ref) => {
     const { t } = useLanguage();
+    const localizedFeature = useMemo(
+        () => selectedFeature ? localizeFeature(selectedFeature, t) : null,
+        [selectedFeature, t]
+    );
     const [internalValue, setInternalValue] = useState("");
     const [isFocused, setIsFocused] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -110,8 +114,8 @@ export const ChatPromptInput = forwardRef<ChatPromptInputRef, ChatPromptInputPro
     };
 
     // Determine placeholder based on mode
-    const effectivePlaceholder = selectedFeature?.placeholder
-        || (webDevMode ? t("chat.webdev_placeholder") : placeholder ?? t("chat.default_placeholder"));
+    const effectivePlaceholder = localizedFeature?.placeholder
+        || (webDevMode ? t("chat.webdev_placeholder") : placeholder || t("chat.default_placeholder"));
 
     return (
         <div
@@ -150,21 +154,21 @@ export const ChatPromptInput = forwardRef<ChatPromptInputRef, ChatPromptInputPro
                 )}
 
                 {/* Selected Feature Tag (AnyAI style) */}
-                {selectedFeature && !webDevMode && (
+                {localizedFeature && !webDevMode && (
                     <div className={cn(
                         "group relative flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium shrink-0 mt-1 cursor-default overflow-hidden transition-all duration-150",
                         "hover:shadow-xs hover:ring-1 hover:ring-current/25",
                         "before:content-[''] before:absolute before:inset-0 before:rounded-full before:bg-foreground/10 before:opacity-0 before:transition-opacity before:duration-150 before:pointer-events-none before:z-0",
                         "hover:before:opacity-100",
-                        selectedFeature.id === "image" && "bg-cyan-500/15 text-cyan-700 dark:text-cyan-400",
-                        selectedFeature.id === "web-dev" && "bg-blue-500/15 text-blue-600 dark:text-blue-400",
-                        selectedFeature.id === "slides" && "bg-orange-500/15 text-orange-600 dark:text-orange-400",
-                        selectedFeature.id === "resume" && "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
-                        selectedFeature.id === "prompt-optimize" && "bg-violet-500/15 text-violet-600 dark:text-violet-400",
-                        selectedFeature.id === "fortune" && "bg-amber-500/15 text-amber-600 dark:text-amber-400",
-                        selectedFeature.id === "deai" && "bg-rose-500/15 text-rose-600 dark:text-rose-400",
+                        localizedFeature.id === "image" && "bg-cyan-500/15 text-cyan-700 dark:text-cyan-400",
+                        localizedFeature.id === "web-dev" && "bg-blue-500/15 text-blue-600 dark:text-blue-400",
+                        localizedFeature.id === "slides" && "bg-orange-500/15 text-orange-600 dark:text-orange-400",
+                        localizedFeature.id === "resume" && "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+                        localizedFeature.id === "prompt-optimize" && "bg-violet-500/15 text-violet-600 dark:text-violet-400",
+                        localizedFeature.id === "fortune" && "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+                        localizedFeature.id === "deai" && "bg-rose-500/15 text-rose-600 dark:text-rose-400",
                     )}>
-                        <span className="relative z-10">{selectedFeature.title}</span>
+                        <span className="relative z-10">{localizedFeature.title}</span>
                         <button
                             onClick={onClearFeature}
                             type="button"

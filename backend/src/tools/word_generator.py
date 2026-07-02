@@ -33,9 +33,9 @@ def _validate_context(config: RunnableConfig | None) -> tuple[str, str]:
         thread_id = thread_id_ctx.get()
     
     if not user_id or user_id in ("default", "anonymous"):
-        raise ValueError("无法获取用户身份，请重新登录")
+        raise ValueError("Unable to identify the user. Please sign in again.")
     if not thread_id or thread_id == "default":
-        raise ValueError("无法获取会话ID，请刷新页面")
+        raise ValueError("Unable to identify the thread. Please refresh the page.")
     
     return user_id, thread_id
 
@@ -43,26 +43,26 @@ def _validate_context(config: RunnableConfig | None) -> tuple[str, str]:
 @tool
 def create_word(
     spec: Annotated[str, """
-JSON格式的Word文档规格说明：
+JSON specification for the Word document:
 {
-    "title": "文档标题",
+    "title": "Document title",
     "sections": [
-        {"type": "heading", "level": 1, "text": "第一章"},
-        {"type": "paragraph", "text": "正文内容..."},
-        {"type": "bullet_list", "items": ["要点1", "要点2", "要点3"]},
-        {"type": "table", "headers": ["列A", "列B"], "rows": [["数据1", "数据2"]]}
+        {"type": "heading", "level": 1, "text": "Chapter 1"},
+        {"type": "paragraph", "text": "Body content..."},
+        {"type": "bullet_list", "items": ["Point 1", "Point 2", "Point 3"]},
+        {"type": "table", "headers": ["Column A", "Column B"], "rows": [["Data 1", "Data 2"]]}
     ]
 }
     """],
-    output_name: Annotated[str, "输出文件名，如 'document.docx'"],
+    output_name: Annotated[str, "Output filename, such as 'document.docx'"],
     config: RunnableConfig = None,  # type: ignore[assignment]
 ) -> dict[str, Any]:
     """
-    创建 Word 文档。
+    Create a Word document.
     
-    适用场景：报告、合同、备忘录
+    Suitable for reports, contracts, memos, and other structured documents.
     
-    返回包含 file_id, download_url, summary 的结构化对象。
+    Returns a structured object containing file_id, download_url, and summary.
     """
     try:
         user_id, thread_id = _validate_context(config)
@@ -159,7 +159,7 @@ print("__FILE_BASE64_END__")
         "download_url": file_info.get("download_url"),
         "filename": output_name,
         "file_type": "generated",
-        "summary": f"已创建 Word 文档 {output_name}，共 {len(sections)} 个章节",
+        "summary": f"Created Word document {output_name} with {len(sections)} sections",
     }
 
 

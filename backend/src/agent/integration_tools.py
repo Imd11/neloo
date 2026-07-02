@@ -143,12 +143,12 @@ async def integrations_list_apps(
     print(f"[integrations_list_apps] user_id={user_id}, thread_id={thread_id}")
     
     if not user_id or user_id in ("default", "anonymous"):
-        return "Error: 无法获取用户身份，请重新登录"
+        return "Error: Unable to identify the user. Please sign in again."
     
     try:
         supabase = await get_supabase_client()
         if not supabase:
-            return "Error: 数据库连接失败"
+            return "Error: Database connection failed."
         
         result = await supabase.table("user_integrations")\
             .select("app_name")\
@@ -159,13 +159,13 @@ async def integrations_list_apps(
         apps = [r["app_name"] for r in (result.data or [])]
         
         if not apps:
-            return "No apps connected. 请在设置中连接应用（如 Twitter）后再使用集成功能。"
+            return "No apps connected. Connect an app such as Twitter in Settings before using integration tools."
         
         return f"Connected apps: {', '.join(apps)}"
         
     except Exception as e:
         print(f"[integrations_list_apps] Error: {e}")
-        return f"Error: 查询连接状态失败 - {e}"
+        return f"Error: Failed to query connection status - {e}"
 
 
 @tool
@@ -194,7 +194,7 @@ async def integrations_list_actions(
             user_id = await _resolve_user_id_for_thread(thread_id)
     
     if not user_id or user_id in ("default", "anonymous"):
-        return "Error: 无法获取用户身份"
+        return "Error: Unable to identify the user."
     
     app_name = app_name.lower()
     
@@ -203,13 +203,13 @@ async def integrations_list_actions(
         
         client = get_composio_client()
         if not client:
-            return "Error: Composio client 未配置"
+            return "Error: Composio client is not configured."
         
         # Fetch all tools for this app (may be limited to ~20 by Composio)
         app_tools = client.tools.get(user_id=user_id, toolkits=[app_name])
         
         if not app_tools:
-            return f"No actions found for {app_name}. 请确认该应用已连接。"
+            return f"No actions found for {app_name}. Confirm that this app is connected."
         
         actions = [t.name for t in app_tools]
         
@@ -224,7 +224,7 @@ async def integrations_list_actions(
         
     except Exception as e:
         print(f"[integrations_list_actions] Error: {e}")
-        return f"Error: 无法获取 {app_name} 的可用操作 - {e}"
+        return f"Error: Failed to fetch available actions for {app_name} - {e}"
 
 @tool
 async def integrations_execute(
@@ -270,13 +270,13 @@ async def integrations_execute(
     if not user_id or user_id in ("default", "anonymous"):
         return {
             "status": "error",
-            "message": "用户未认证，请重新登录",
+            "message": "User is not authenticated. Please sign in again.",
         }
     
     if not thread_id or thread_id == "default":
         return {
             "status": "error",
-            "message": "无法获取 thread_id",
+            "message": "Unable to identify thread_id.",
         }
     
     # ==========================================================================
@@ -285,7 +285,7 @@ async def integrations_execute(
     try:
         supabase = await get_supabase_client()
         if not supabase:
-            return {"status": "error", "message": "数据库连接失败"}
+            return {"status": "error", "message": "Database connection failed."}
         
         conn = await supabase.table("user_integrations")\
             .select("composio_connection_id")\
@@ -297,11 +297,11 @@ async def integrations_execute(
         if not conn.data:
             return {
                 "status": "error",
-                "message": f"请先在设置中连接 {app_name}",
+                "message": f"Please connect {app_name} in Settings first.",
             }
         
     except Exception as e:
-        return {"status": "error", "message": f"连接验证失败: {e}"}
+        return {"status": "error", "message": f"Connection verification failed: {e}"}
     
     # ==========================================================================
     # Step 3: Action ownership validation (dynamic - NO whitelist)
@@ -316,7 +316,7 @@ async def integrations_execute(
         
         client = get_composio_client()
         if not client:
-            return {"status": "error", "message": "Composio client 未配置"}
+            return {"status": "error", "message": "Composio client is not configured."}
         
         # Method 1: Try direct tool fetch by action name (bypasses 20-action limit)
         # This is the primary method - more reliable than toolkit listing
@@ -344,7 +344,7 @@ async def integrations_execute(
             if action not in available_actions:
                 return {
                     "status": "error",
-                    "message": f"操作 {action} 不可用。可能原因: 1) 该操作不属于 {app_name}; 2) Composio 尚未支持此操作。已知可用操作 ({len(available_actions)} 个): {available_actions[:15]}...",
+                    "message": f"Action {action} is not available. Possible reasons: 1) the action does not belong to {app_name}; 2) Composio does not support this action yet. Known available actions ({len(available_actions)} total): {available_actions[:15]}...",
                     "available_actions": available_actions,
                 }
             else:
@@ -357,11 +357,11 @@ async def integrations_execute(
         print(f"[integrations_execute] Action validation failed: {e}")
         return {
             "status": "error",
-            "message": f"无法验证可用操作，请稍后重试: {e}",
+            "message": f"Unable to validate available actions. Please try again later: {e}",
         }
     
     if not tool_instance:
-        return {"status": "error", "message": f"无法获取工具 {action}"}
+        return {"status": "error", "message": f"Unable to fetch tool {action}"}
     
     # ==========================================================================
     # Step 4: Idempotency check
@@ -380,7 +380,7 @@ async def integrations_execute(
             print(f"[integrations_execute] Idempotency hit: {idem_key}")
             return {
                 "status": "cached",
-                "message": "此操作已执行过（幂等保护）",
+                "message": "This action has already been executed and was skipped by idempotency protection.",
                 "result_id": cached.get("result_id"),
                 "cached": True,
             }
@@ -473,7 +473,7 @@ async def integrations_execute(
         
         return {
             "status": "error",
-            "message": f"执行失败: {e}",
+            "message": f"Execution failed: {e}",
         }
     
     # ==========================================================================
@@ -504,7 +504,7 @@ async def integrations_execute(
         "app_name": app_name,
         "result_id": result_id,
         "result_url": result_url,
-        "message": f"{app_name} 操作成功执行" + (f" - 查看: {result_url}" if result_url else ""),
+        "message": f"{app_name} action executed successfully" + (f" - View: {result_url}" if result_url else ""),
     }
 
 
@@ -513,4 +513,3 @@ async def integrations_execute(
 # =============================================================================
 
 INTEGRATION_TOOLS = [integrations_list_apps, integrations_list_actions, integrations_execute]
-

@@ -1,13 +1,13 @@
-"""
-Translation API Routes
-Simple translation endpoint using DeepSeek
-"""
+"""Translation API routes."""
+
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException
+from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel
-import os
-import httpx
 
 from .auth import get_current_user
+from ..agent.graph import get_model
 
 translate_router = APIRouter(prefix="/api", tags=["translate"])
 
@@ -15,23 +15,36 @@ translate_router = APIRouter(prefix="/api", tags=["translate"])
 class TranslateRequest(BaseModel):
     text: str
     target_language: str = "English"
+    source_language: str = "auto"
     style: str = "general"
+    model_id: str | None = None
 
 
 class TranslateResponse(BaseModel):
     translation: str
 
 
-# Style-specific translation instructions
 STYLE_PROMPTS = {
-    "general": "使用自然、通顺的表达方式",
-    "business_email": "使用专业、礼貌的商务用语，注意邮件格式",
-    "academic": "使用严谨、学术规范的表达，保留专业术语",
-    "technical": "使用准确、简洁的技术语言，保持术语一致性",
-    "social_media": "使用轻松、亲切的口语化表达",
+    "general": "Use natural, fluent wording.",
+    "business_email": "Use professional, polite business language and preserve email formatting.",
+    "academic": "Use rigorous academic wording and preserve domain-specific terminology.",
+    "technical": "Use accurate, concise technical language and keep terminology consistent.",
+    "social_media": "Use relaxed, friendly, conversational wording.",
 }
 
-TRANSLATE_SYSTEM_PROMPT = """You are a professional translation assistant. Detect the source language automatically. Translate the user's text into {target_language}.
+
+def _build_system_prompt(request: TranslateRequest) -> str:
+    source_language = (request.source_language or "auto").strip()
+    if source_language.lower() == "auto":
+        source_rule = "Detect the source language automatically."
+    else:
+        source_rule = f"The source language is {source_language}."
+
+    style_requirement = STYLE_PROMPTS.get(request.style, STYLE_PROMPTS["general"])
+    return f"""You are a professional translation assistant.
+
+{source_rule}
+Translate the user's text into {request.target_language}.
 
 Translation style requirement: {style_requirement}
 
@@ -40,53 +53,39 @@ Preserve tone, meaning, punctuation, emoji, and inline formatting. Return only t
 
 @translate_router.post("/translate", response_model=TranslateResponse)
 async def translate(request: TranslateRequest, user: dict = Depends(get_current_user)):
-    """Translate text using DeepSeek API"""
-    
+    """Translate text with the currently selected model."""
+
     if not request.text.strip():
         raise HTTPException(status_code=400, detail="Text cannot be empty")
-    
-    # Get DeepSeek API key from environment
-    api_key = os.getenv("DEEPSEEK_API_KEY", "")
-    if not api_key:
-        raise HTTPException(status_code=500, detail="Translation service not configured")
-    
-    # Get style requirement
-    style_requirement = STYLE_PROMPTS.get(request.style, STYLE_PROMPTS["general"])
-    
-    # Build the system prompt with target language and style
-    system_prompt = TRANSLATE_SYSTEM_PROMPT.format(
-        target_language=request.target_language,
-        style_requirement=style_requirement
-    )
-    
+
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(
-                "https://api.deepseek.com/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "deepseek-chat",
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": request.text},
-                    ],
-                    "temperature": 0.3,  # Lower temperature for more consistent translation
-                    "max_tokens": 4096,
-                },
-            )
-            
-            if response.status_code != 200:
-                raise HTTPException(status_code=502, detail="Translation service error")
-            
-            data = response.json()
-            translation = data["choices"][0]["message"]["content"].strip()
-            
-            return TranslateResponse(translation=translation)
-            
-    except httpx.TimeoutException:
-        raise HTTPException(status_code=504, detail="Translation request timed out")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Translation failed: {str(e)}")
+        model = get_model(request.model_id or "deepseek")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Selected model is not configured: {exc}") from exc
+
+    try:
+        response = await asyncio.wait_for(
+            model.ainvoke(
+                [
+                    SystemMessage(content=_build_system_prompt(request)),
+                    HumanMessage(content=request.text),
+                ]
+            ),
+            timeout=60,
+        )
+    except asyncio.TimeoutError as exc:
+        raise HTTPException(status_code=504, detail="Translation request timed out") from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Translation failed: {exc}") from exc
+
+    content = getattr(response, "content", "")
+    if isinstance(content, list):
+        content = "".join(
+            part.get("text", "") if isinstance(part, dict) else str(part)
+            for part in content
+        )
+
+    translation = str(content).strip()
+    if not translation:
+        raise HTTPException(status_code=502, detail="Translation returned an empty response")
+    return TranslateResponse(translation=translation)

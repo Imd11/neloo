@@ -1,18 +1,8 @@
 import { Slide, Attachment, StyleDimensions } from '../types';
 import { buildStyleInstructions } from '../data/styleInstructions';
 import { buildPresetPromptContext } from '../data/presets';
+import { getConfig } from '@/lib/config';
 
-// DeepSeek API 配置（文本生成）
-const DEEPSEEK_CHAT_URL = 'https://api.deepseek.com/v1/chat/completions';
-const DEEPSEEK_API_KEY = process.env.NEXT_PUBLIC_DEEPSEEK_API_KEY?.trim();
-const DEEPSEEK_CHAT_MODEL = 'deepseek-chat';
-
-const IMAGE_API_URL = 'https://api.tu-zi.com/v1/images/generations';
-const IMAGE_MODEL = 'gemini-2.5-flash-image-preview-nt';
-const TUZI_IMAGE_API_KEY = (
-    process.env.NEXT_PUBLIC_TUZI_IMAGE_API_KEY ||
-    process.env.NEXT_PUBLIC_TUZI_API_KEY
-)?.trim();
 const BAOYU_OUTLINE_RULES = `## Content & Deck Rules
 - Respect reader attention: each slide communicates ONE main idea
 - Prioritize clarity over comprehensiveness
@@ -59,11 +49,26 @@ You are "The Architect" - a master visual storyteller creating presentation slid
 - Keep wording direct and confident, without AI-sounding filler
 - Use the same language and punctuation style as the provided slide content`;
 
-function getRequiredPublicEnv(value: string | undefined, name: string): string {
-    if (!value) {
-        throw new Error(`Missing ${name}`);
+function getApiBaseUrl(): string {
+    return (getConfig()?.deploymentUrl || process.env.NEXT_PUBLIC_API_URL || '').replace(/\/+$/, '');
+}
+
+async function generateSlidesText(system: string, prompt: string, signal?: AbortSignal): Promise<string> {
+    const baseUrl = getApiBaseUrl();
+    const response = await fetch(`${baseUrl}/api/slides/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ system, prompt }),
+        signal,
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Slides generation failed: ${response.status} ${errorText}`);
     }
-    return value;
+
+    const data = await response.json();
+    return data.text || '';
 }
 function buildOutlineSystemPrompt(style?: StyleDimensions, presetId?: string): string {
     const styleBlock = style ? buildStyleInstructions(style, presetId) : '';
@@ -118,81 +123,18 @@ export async function generateOutlineStream(
     signal?: AbortSignal,
     presetId?: string
 ): Promise<string> {
-    const deepseekApiKey = getRequiredPublicEnv(DEEPSEEK_API_KEY, 'NEXT_PUBLIC_DEEPSEEK_API_KEY');
     const presetContext = buildPresetPromptContext(presetId);
     const attachmentSummary = attachments.length > 0
         ? `\n\nAttached files (names only; file contents are not sent in the DeepSeek text-only path):\n${attachments
             .map(att => `- ${att.name} (${att.mimeType || 'unknown'})`)
             .join('\n')}`
         : '';
-    const messages: any[] = [
-        { role: 'system', content: buildOutlineSystemPrompt(style, presetId) },
-        {
-            role: 'user',
-            content: `Create a presentation about: ${topic || 'the provided content'}.${attachmentSummary}${presetContext ? `\n\n${presetContext}\n\nUse this preset faithfully in the deck's narrative, visual direction, layout choice, and information density.` : ''}`,
-        },
-    ];
-
-    const requestBody = {
-        model: DEEPSEEK_CHAT_MODEL,
-        messages,
-        stream: true,
-        temperature: 0.7,
-    };
-
-    // Debug: log request structure (without huge base64 data)
-    const debugMessages = messages.map((m: any) => {
-        if (typeof m.content === 'string') return { role: m.role, content: m.content.substring(0, 200) };
-        return {
-            role: m.role,
-            content: m.content.map((part: any) => {
-                if (part.type === 'text') return { type: 'text', text: part.text.substring(0, 200) };
-                if (part.type === 'image_url') return { type: 'image_url', url_prefix: part.image_url.url.substring(0, 80) + '...' };
-                return part;
-            })
-        };
-    });
-    console.log('[SlideCraft] Request structure:', JSON.stringify(debugMessages, null, 2));
-
-    const response = await fetch(DEEPSEEK_CHAT_URL, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${deepseekApiKey}`,
-        },
-        body: JSON.stringify(requestBody),
-        signal,
-    });
-
-    console.log('[SlideCraft] Response status:', response.status, response.statusText);
-
-    const reader = response.body!.getReader();
-    const decoder = new TextDecoder();
-    let fullText = '';
-    let buffer = '';
-
-    while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-            if (!line.startsWith('data: ')) continue;
-            const data = line.slice(6);
-            if (data === '[DONE]') continue;
-            try {
-                const parsed = JSON.parse(data);
-                const delta = parsed.choices?.[0]?.delta?.content;
-                if (delta) {
-                    fullText += delta;
-                    onChunk(delta);
-                }
-            } catch { /* skip parse errors */ }
-        }
-    }
+    const fullText = await generateSlidesText(
+        buildOutlineSystemPrompt(style, presetId),
+        `Create a presentation about: ${topic || 'the provided content'}.${attachmentSummary}${presetContext ? `\n\n${presetContext}\n\nUse this preset faithfully in the deck's narrative, visual direction, layout choice, and information density.` : ''}`,
+        signal
+    );
+    onChunk(fullText);
 
     return fullText;
 }
@@ -204,40 +146,18 @@ export async function generateSingleSlide(
     style?: StyleDimensions,
     presetId?: string
 ): Promise<Slide | null> {
-    const deepseekApiKey = getRequiredPublicEnv(DEEPSEEK_API_KEY, 'NEXT_PUBLIC_DEEPSEEK_API_KEY');
     const styleBlock = style ? buildStyleInstructions(style, presetId) : '';
     const presetContext = buildPresetPromptContext(presetId);
     const context = existingSlides.map((s, i) => `Slide ${i + 1}: ${s.title}`).join('\n');
 
-    const response = await fetch(DEEPSEEK_CHAT_URL, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${deepseekApiKey}`,
-        },
-        body: JSON.stringify({
-            model: DEEPSEEK_CHAT_MODEL,
-            messages: [
-                {
-                    role: 'system',
-                    content: `You are a presentation designer. Generate ONE slide to insert at position ${insertIndex + 1}.
+    const text = await generateSlidesText(
+        `You are a presentation designer. Generate ONE slide to insert at position ${insertIndex + 1}.
 ${BAOYU_OUTLINE_RULES}
 ${styleBlock}
 Return a single JSON object with: title, content, visualDescription, slideType ("content"), layout (one of: title-left, split-screen, big-statement, top-title, quote-callout, bottom-heavy), narrativeGoal.
-Return ONLY JSON. No markdown.`
-                },
-                {
-                    role: 'user',
-                    content: `Topic: ${topic}\n\nExisting outline:\n${context}\n\nGenerate a new slide for position ${insertIndex + 1}.${presetContext ? `\n\n${presetContext}` : ''}`
-                }
-            ],
-            temperature: 0.7,
-        }),
-    });
-
-    if (!response.ok) return null;
-    const data = await response.json();
-    const text = data.choices?.[0]?.message?.content || '';
+Return ONLY JSON. No markdown.`,
+        `Topic: ${topic}\n\nExisting outline:\n${context}\n\nGenerate a new slide for position ${insertIndex + 1}.${presetContext ? `\n\n${presetContext}` : ''}`,
+    );
     try {
         const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
         const slide = JSON.parse(cleaned);
@@ -259,10 +179,6 @@ export async function generateSlideImage(
     signal?: AbortSignal,
     presetId?: string
 ): Promise<string> {
-    const imageApiKey = getRequiredPublicEnv(
-        TUZI_IMAGE_API_KEY,
-        'NEXT_PUBLIC_TUZI_IMAGE_API_KEY or NEXT_PUBLIC_TUZI_API_KEY'
-    );
     const styleBlock = style ? buildStyleInstructions(style, presetId) : '';
     const presetContext = buildPresetPromptContext(presetId);
     const layoutGuidance = getLayoutGuidance(slide.layout, slide.slideType);
@@ -305,35 +221,33 @@ ${styleBlock}
 - Aspect ratio MUST be 16:9 (landscape)
 - High resolution, professional quality`;
 
-    const response = await fetch(IMAGE_API_URL, {
+    const response = await fetch('/api/generate-image', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${imageApiKey}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            model: IMAGE_MODEL,
             prompt,
-            n: 1,
             size: '16x9',
-            response_format: 'b64_json',
+            resolution: '1k',
         }),
         signal,
     });
 
     if (!response.ok) {
         const errText = await response.text();
-        throw new Error(`Image API error: ${response.status} — ${errText}`);
+        throw new Error(`Image API error: ${response.status} - ${errText}`);
     }
 
     const data = await response.json();
 
-    // Try b64_json first, fallback to URL
-    if (data.data?.[0]?.b64_json) {
-        return data.data[0].b64_json;
+    const image = data.images?.[0];
+    if (!image) {
+        throw new Error('No image data returned');
     }
-    if (data.data?.[0]?.url) {
-        const imageResponse = await fetch(data.data[0].url);
+    if (image.startsWith('data:image/')) {
+        return image.split(',')[1] || '';
+    }
+    if (image.startsWith('http')) {
+        const imageResponse = await fetch(image);
         const imageBlob = await imageResponse.blob();
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -345,7 +259,7 @@ ${styleBlock}
             reader.readAsDataURL(imageBlob);
         });
     }
-    throw new Error('No image data returned');
+    return image;
 }
 
 function getLayoutGuidance(layout?: string, slideType?: string): string {

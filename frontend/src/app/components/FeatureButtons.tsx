@@ -1,5 +1,7 @@
+import { useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { features, Feature } from "@/data/featureTemplates";
+import { features, Feature, localizeFeature } from "@/data/featureTemplates";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 // Use emoji as icons for a more lively look
 const featureEmojis: Record<string, string> = {
@@ -22,14 +24,19 @@ export function FeatureButtons({
     selectedFeature,
     onSelectFeature,
 }: FeatureButtonsProps) {
+    const { t } = useLanguage();
+
+    const visibleFeatures = useMemo(
+        () => features
+            .filter((feature) => !["web-dev", "resume"].includes(feature.id))
+            .map((feature) => localizeFeature(feature, t)),
+        [t]
+    );
+
     // If a feature is already selected, render nothing
     if (selectedFeature) {
         return null;
     }
-
-    const visibleFeatures = features.filter(
-        (feature) => !["web-dev", "resume"].includes(feature.id)
-    );
 
     const rows: Feature[][] = [];
     for (let index = 0; index < visibleFeatures.length; index += 6) {

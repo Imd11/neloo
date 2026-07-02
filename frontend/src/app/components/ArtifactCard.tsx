@@ -57,7 +57,7 @@ export function ArtifactCard({
       default:
         return t("chat.artifact_code");
     }
-  }, [artifact]);
+  }, [artifact, t]);
 
   // Status icon and color
   const StatusIcon = useMemo(() => {
@@ -93,7 +93,7 @@ export function ArtifactCard({
       default:
         return "";
     }
-  }, [status]);
+  }, [status, t]);
 
   // Card is always clickable (even during streaming, to view code in real-time)
   const isClickable = artifact !== null;

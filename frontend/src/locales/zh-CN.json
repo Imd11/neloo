@@ -11,7 +11,25 @@
     "error": "错误",
     "success": "成功",
     "retry": "重试",
+    "back": "返回",
     "login_required": "请先登录"
+  },
+  "history": {
+    "thread_not_found_title": "未找到对话",
+    "thread_not_found_description": "这条对话可能已被删除，或创建于另一个环境。",
+    "backend_unavailable_title": "无法加载对话",
+    "backend_unavailable_description": "无法连接后端。请启动后端后重试。",
+    "history_disabled_title": "历史记录未启用",
+    "history_disabled_description": "请先配置数据库持久化，然后再打开已保存的对话。",
+    "access_denied_title": "对话不可用",
+    "access_denied_description": "当前本地用户无法访问这条对话。",
+    "generic_error_title": "无法加载对话",
+    "generic_error_description": "无法打开这条对话。",
+    "retry": "重试",
+    "new_chat": "开始新对话",
+    "runtime_missing_title": "对话历史不可用",
+    "runtime_missing_description": "这条对话的运行态历史无法恢复。你可以继续发送新消息。",
+    "continue_chat": "继续对话"
   },
   "settings": {
     "title": "设置",
@@ -87,7 +105,45 @@
     "category_social": "社交",
     "category_storage": "存储",
     "category_payment": "支付",
-    "category_other": "其他"
+    "category_other": "其他",
+    "apps": {
+      "notion": { "description": "一体化工作空间，用于笔记、文档、知识库和项目管理" },
+      "google_calendar": { "description": "日程管理和会议安排工具" },
+      "trello": { "description": "可视化项目管理和协作工具" },
+      "asana": { "description": "团队项目和任务管理平台" },
+      "slack": { "description": "团队即时通讯和协作平台" },
+      "zoom": { "description": "视频会议和在线协作工具" },
+      "discord": { "description": "社区语音、视频和文字聊天平台" },
+      "teams": { "description": "企业协作和通讯平台" },
+      "github": { "description": "代码托管和版本控制平台" },
+      "gitlab": { "description": "DevOps 平台，用于代码管理和 CI/CD" },
+      "linear": { "description": "现代化的问题跟踪和项目管理工具" },
+      "jira": { "description": "敏捷项目管理和问题跟踪工具" },
+      "salesforce": { "description": "领先的客户关系管理平台" },
+      "hubspot": { "description": "营销、销售和客户服务平台" },
+      "twitter": { "description": "社交媒体和实时信息平台" },
+      "linkedin": { "description": "职业社交网络平台" },
+      "reddit": { "description": "社区内容分享和讨论平台" },
+      "google_drive": { "description": "云端文件存储和共享服务" },
+      "dropbox": { "description": "文件同步和云存储服务" },
+      "onedrive": { "description": "微软云存储和文件共享服务" },
+      "stripe": { "description": "在线支付处理平台" },
+      "paypal": { "description": "全球在线支付服务" },
+      "gmail": { "description": "Google 邮件服务" },
+      "zapier": { "description": "应用自动化和集成平台" },
+      "airtable": { "description": "电子表格与数据库结合的协作平台" },
+      "clickup": { "description": "一站式项目管理和生产力平台" },
+      "google_docs": { "description": "云端文档编辑和协作工具" },
+      "google_sheets": { "description": "云端电子表格和数据分析工具" },
+      "outlook": { "description": "微软邮件和日历服务" },
+      "google_meet": { "description": "Google 视频会议服务" },
+      "bitbucket": { "description": "Atlassian 代码托管和协作平台" },
+      "supabase": { "description": "开源 Firebase 替代方案，后端即服务" },
+      "zendesk": { "description": "客户服务和支持平台" },
+      "figma": { "description": "协作式界面设计工具" },
+      "mailchimp": { "description": "邮件营销和自动化平台" },
+      "shopify": { "description": "电商平台和在线商店构建工具" }
+    }
   },
   "canvas": {
     "ai_edit_image": "AI 改图",
@@ -144,12 +200,21 @@
     "share_failed": "分享失败",
     "share_login_required": "请先登录",
     "share_create_failed": "创建分享链接失败",
-    "try_again_later": "请稍后重试"
+    "try_again_later": "请稍后重试",
+    "history_empty": "暂无历史记录",
+    "history_empty_hint": "开始对话后，你的历史记录会显示在这里。",
+    "history_backend_unavailable": "历史记录不可用",
+    "history_backend_unavailable_hint": "无法连接后端。请确认后端正在运行，然后重试。",
+    "history_disabled": "历史记录未启用",
+    "history_disabled_hint": "配置数据库持久化后，才能保存和查看对话历史。",
+    "history_access_denied": "此历史记录不可用",
+    "history_error": "无法加载历史记录",
+    "history_refresh_failed": "无法刷新历史记录",
+    "history_retry": "重试"
   },
   "chat": {
     "default_placeholder": "描述你想要创建的内容...",
     "webdev_placeholder": "描述你想要开发的网页...",
-    "continue_placeholder": "继续输入...",
     "webdev_mode": "网页开发",
     "clear_selected_feature": "清除已选功能",
     "add_from_google_drive": "从 Google Drive 文件中添加",
@@ -218,6 +283,170 @@
     "feature_prompt_optimize": "提示词优化",
     "feature_deai": "去AI化"
   },
+  "features": {
+    "categories": {
+      "all": "全部",
+      "portrait": "人像",
+      "product": "产品",
+      "landscape": "风景",
+      "art": "艺术",
+      "anime": "动漫",
+      "design": "设计"
+    },
+    "video_categories": {
+      "all": "全部",
+      "portrait": "人物",
+      "landscape": "场景",
+      "art": "特效",
+      "product": "产品",
+      "anime": "动漫",
+      "design": "电影"
+    },
+    "fortune_form": {
+      "solar_prefix": "我出生于阳历",
+      "year_placeholder": "xxxx",
+      "year_suffix": "年",
+      "month_placeholder": "xx",
+      "month_suffix": "月",
+      "day_placeholder": "xx",
+      "day_suffix": "日",
+      "hour_placeholder": "xx",
+      "hour_suffix": "时",
+      "minute_placeholder": "xx",
+      "gender_prefix": "分，性别为",
+      "gender_placeholder": "男/女",
+      "birthplace_prefix": "，出生地为",
+      "birthplace_placeholder": "省、市、区/县",
+      "validation_prefix": "。\n前事验证信息（可选但推荐，用于模型微调）：",
+      "validation_placeholder": "例如：\"2021年考研成功\"",
+      "required_error": "请先填写完整的出生信息再发送。"
+    },
+    "image_templates": {
+      "movie_poster": { "title": "电影海报", "description": "生成专业的电影海报风格图片" },
+      "product_showcase": { "title": "产品展示", "description": "简洁的产品展示背景与光效" },
+      "natural_landscape": { "title": "自然风光", "description": "壮观的自然景观与风景照片" },
+      "abstract_art": { "title": "抽象艺术", "description": "创意抽象艺术与几何图案" },
+      "portrait": { "title": "人物肖像", "description": "专业的人物肖像与头像生成" },
+      "anime_style": { "title": "动漫风格", "description": "日式动漫与插画风格" },
+      "architecture": { "title": "建筑设计", "description": "现代建筑与室内设计渲染" },
+      "scifi_scene": { "title": "科幻场景", "description": "未来科技与太空主题" },
+      "vintage": { "title": "复古怀旧", "description": "经典复古与胶片风格" },
+      "watercolor": { "title": "水彩画", "description": "柔和的水彩艺术风格" },
+      "black_white": { "title": "黑白摄影", "description": "高对比度黑白艺术照片" },
+      "render_3d": { "title": "3D 渲染", "description": "逼真的 3D 模型与场景" }
+    },
+    "video_templates": {
+      "talking_portrait": { "title": "人物说话", "description": "让静态人物开口说话，口型同步" },
+      "dance_motion": { "title": "舞蹈动作", "description": "生成流畅的人物舞蹈视频" },
+      "landscape_timelapse": { "title": "风景延时", "description": "云卷云舒、日出日落延时摄影" },
+      "water_animation": { "title": "水流动画", "description": "河流、瀑布、海浪等水体动态" },
+      "morph_transition": { "title": "变形过渡", "description": "物体间的丝滑变形转换效果" },
+      "particle_effects": { "title": "粒子特效", "description": "烟雾、火焰、星尘等粒子效果" },
+      "product_360": { "title": "产品360°", "description": "产品360度旋转展示动画" },
+      "unboxing": { "title": "开箱动画", "description": "产品开箱与展示动态效果" },
+      "anime_character": { "title": "动漫角色", "description": "二次元角色动态动画生成" },
+      "comic_panels": { "title": "漫画分镜", "description": "静态漫画转动态分镜视频" },
+      "cinematic_shot": { "title": "电影镜头", "description": "专业电影级运镜与画面感" },
+      "slow_motion": { "title": "慢动作", "description": "高帧率丝滑慢动作特效" }
+    },
+    "items": {
+      "web_dev": {
+        "title": "网页开发",
+        "placeholder": "描述你想要开发的网页...",
+        "templates": {
+          "company_site": { "title": "企业官网", "description": "专业的企业形象展示网站" },
+          "ecommerce": { "title": "电商平台", "description": "商品展示与购物车功能" },
+          "blog": { "title": "个人博客", "description": "简洁优雅的博客模板" },
+          "landing": { "title": "落地页", "description": "高转化率的营销落地页" },
+          "admin": { "title": "后台管理", "description": "数据看板与管理系统" },
+          "saas": { "title": "SaaS产品", "description": "软件即服务产品界面" }
+        }
+      },
+      "image": {
+        "title": "AI 生图",
+        "placeholder": "描述你要生成的图...",
+        "description": "AI 生成图片并进入画布编辑"
+      },
+      "slides": {
+        "title": "制作幻灯片",
+        "placeholder": "描述你的演示文稿主题...",
+        "templates": {
+          "business": { "title": "商业提案", "description": "专业的商业计划书模板" },
+          "product": { "title": "产品发布", "description": "新产品发布会演示稿" },
+          "education": { "title": "教育培训", "description": "课程与培训演示材料" },
+          "report": { "title": "年度报告", "description": "企业年度总结报告" },
+          "creative": { "title": "创意展示", "description": "视觉冲击力的创意演示" },
+          "minimal": { "title": "极简风格", "description": "简约大气的演示模板" }
+        }
+      },
+      "resume": {
+        "title": "制作简历",
+        "placeholder": "点击左侧 + 上传简历，或直接输入描述",
+        "templates": {
+          "professional": { "title": "专业简约", "description": "适合职场人士的经典模板" },
+          "creative": { "title": "创意设计", "description": "适合设计师的创意简历" },
+          "technical": { "title": "技术极客", "description": "程序员与工程师专属" },
+          "executive": { "title": "商务精英", "description": "高管与商务人士模板" },
+          "academic": { "title": "学术研究", "description": "学者与研究人员简历" },
+          "graduate": { "title": "应届生版", "description": "清新活力的毕业生简历" }
+        }
+      },
+      "prompt_optimize": {
+        "title": "提示词优化",
+        "placeholder": "输入你想要优化的提示词...",
+        "templates": {
+          "image": { "title": "图像生成", "description": "优化AI绘图提示词" },
+          "copy": { "title": "文案写作", "description": "优化营销文案提示词" },
+          "code": { "title": "代码生成", "description": "优化编程相关提示词" },
+          "roleplay": { "title": "角色扮演", "description": "优化AI角色设定词" },
+          "data": { "title": "数据分析", "description": "优化数据处理提示词" },
+          "general": { "title": "通用优化", "description": "全面提升提示词质量" }
+        }
+      },
+      "fortune": {
+        "title": "五行算命",
+        "placeholder": "输入你的出生年月日时...",
+        "templates": {
+          "bazi": { "title": "八字全解", "description": "综合排盘、格局、用神、喜忌分析" },
+          "annual": { "title": "流年运势", "description": "今年运势、近年走向预测" },
+          "relationship": { "title": "姻缘桃花", "description": "感情婚姻、配偶特征分析" },
+          "career": { "title": "事业发展", "description": "职业方向、升迁、适合行业" },
+          "wealth": { "title": "财运分析", "description": "正财偏财、投资理财指引" },
+          "health": { "title": "健康指引", "description": "身体注意事项、养生建议" },
+          "personality": { "title": "性格天赋", "description": "性格特征、天赋优势分析" },
+          "family": { "title": "子女亲缘", "description": "与家人的缘分、子女运势" }
+        }
+      },
+      "deai": {
+        "title": "去AI化",
+        "placeholder": "粘贴需要去AI化的文本...",
+        "templates": {
+          "academic": { "title": "学术论文", "description": "论文降重与人性化改写" },
+          "business": { "title": "商业文案", "description": "营销文案自然化处理" },
+          "news": { "title": "新闻稿件", "description": "新闻报道风格转换" },
+          "social": { "title": "社交媒体", "description": "让帖子更像真人撰写" },
+          "email": { "title": "邮件往来", "description": "商务邮件人性化改写" },
+          "creative": { "title": "创意写作", "description": "文学作品风格润色" }
+        }
+      },
+      "translate": {
+        "title": "AI翻译",
+        "placeholder": "输入要翻译的文本...",
+        "description": "专业AI翻译，支持多种语言"
+      }
+    }
+  },
+  "translate": {
+    "empty_error": "请输入要翻译的文本。",
+    "request_failed": "翻译请求失败。",
+    "failed_error": "翻译失败，请重试。",
+    "copied": "已复制到剪贴板。",
+    "copy_failed": "复制失败。",
+    "source_placeholder": "输入要翻译的文本...",
+    "result_placeholder": "翻译结果",
+    "translating": "翻译中...",
+    "action": "翻译"
+  },
   "thinking": {
     "thinking": "正在思考",
     "duration": "思考用时",
@@ -249,7 +478,13 @@
     "placeholder": "搜索聊天...",
     "new_chat": "新建对话",
     "no_results": "未找到匹配的聊天记录",
-    "earlier": "更早的"
+    "earlier": "更早的",
+    "history_unavailable": "历史记录不可用",
+    "history_backend_unavailable": "无法连接后端。请启动后端后重试。",
+    "history_disabled": "配置数据库持久化后，才能搜索已保存的对话。",
+    "history_error": "无法加载对话历史。",
+    "history_empty": "还没有已保存的对话",
+    "retry": "重试"
   },
   "thread": {
     "empty": "暂无任务",

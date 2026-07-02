@@ -2188,6 +2188,7 @@ class ThreadListResponse(BaseModel):
     """Response model for thread list."""
     threads: list[ThreadInfo]
     total: int
+    history_enabled: bool = True
 
 
 class ThreadUpdateRequest(BaseModel):
@@ -2293,7 +2294,7 @@ async def list_threads_api(
     user_id = auth_get_user_id(user)
 
     if not USE_SUPABASE_DB:
-        return ThreadListResponse(threads=[], total=0)
+        return ThreadListResponse(threads=[], total=0, history_enabled=False)
 
     try:
         threads_data = await get_user_threads(
@@ -2318,6 +2319,7 @@ async def list_threads_api(
         return ThreadListResponse(
             threads=threads,
             total=len(threads),
+            history_enabled=True,
         )
 
     except Exception as e:
@@ -2556,22 +2558,23 @@ async def _generate_title_with_llm(user_message: str) -> str:
         from langchain_core.messages import SystemMessage, HumanMessage
 
         response = await model.ainvoke([
-            SystemMessage(content="""Generate a concise but descriptive title (7-15 Chinese characters or 5-8 English words) for this conversation.
+            SystemMessage(content="""Generate a concise but descriptive title for this conversation.
 
 Rules:
 - Include both the action AND the subject/topic
 - Be specific enough to distinguish from other conversations
 - Use the same language as the user's message
+- For Chinese, use roughly 7-15 Chinese characters; for English, use roughly 5-8 words
 - Do NOT use quotes or punctuation
 - Just output the title, nothing else
 
 Examples:
-- "帮我分析这个销售数据" → "销售数据趋势分析与洞察"
+- "Please analyze this sales data" -> "Sales Data Trend Analysis"
 - "Analyze my sales data" → "Sales Data Trend Analysis"
-- "帮我写一个Python爬虫" → "Python网页爬虫开发"
+- "Help me write a Python web scraper" -> "Python Web Scraper Development"
 - "Write a React component for login" → "React Login Component Development"
-- "解释一下量子计算的原理" → "量子计算原理详解"
-- "帮我翻译这篇文章" → "文章翻译与润色"
+- "Explain the principles of quantum computing" -> "Quantum Computing Principles"
+- "Translate and polish this article" -> "Article Translation and Polishing"
 """),
             HumanMessage(content=user_message),
         ])
@@ -2714,21 +2717,21 @@ async def _generate_suggested_questions(ai_response: str, context: str = "") -> 
         truncated_response = ai_response[:max_context] if len(ai_response) > max_context else ai_response
 
         response = await model.ainvoke([
-            SystemMessage(content="""基于AI的回复内容，生成3个用户可能想继续问的后续问题。
+            SystemMessage(content="""Generate 3 follow-up questions the user may want to ask next based on the AI response.
 
-规则：
-- 问题要与AI回复的内容相关
-- 问题要有深度，能够延续对话
-- 使用与AI回复相同的语言（中文或英文）
-- 每个问题15-40个字符
-- 直接输出3个问题，每行一个
-- 不要加序号、引号或其他格式
+Rules:
+- The questions must be relevant to the AI response.
+- The questions should have enough depth to continue the conversation.
+- Use the same language as the AI response.
+- Each question should be concise: about 15-40 Chinese characters or 6-14 English words.
+- Output exactly 3 questions, one per line.
+- Do not add numbering, quotes, bullets, or other formatting.
 
-示例输出：
-这个方法在大数据量下性能如何？
-能否用其他语言实现相同功能？
-这种方案的安全性考虑有哪些？"""),
-            HumanMessage(content=f"AI回复:\n{truncated_response}"),
+Example output:
+How does this method perform at larger scale?
+Can the same idea be implemented in another language?
+What security risks should this approach consider?"""),
+            HumanMessage(content=f"AI response:\n{truncated_response}"),
         ])
 
         # Parse response into list of questions
@@ -2887,12 +2890,12 @@ async def get_shared_conversation(share_id: str):
     share = await get_share_by_id(share_id)
     
     if not share:
-        raise HTTPException(status_code=404, detail="分享链接不存在")
+        raise HTTPException(status_code=404, detail="Share link does not exist")
     
     # Check if the original thread still exists
     thread_record = await get_thread_by_langgraph_id(share["thread_id"])
     if not thread_record:
-        raise HTTPException(status_code=404, detail="该对话已被删除")
+        raise HTTPException(status_code=404, detail="The original conversation has been deleted")
     
     # Get messages from LangGraph
     try:
@@ -2918,7 +2921,7 @@ async def get_shared_conversation(share_id: str):
                 serialized_messages.append({"type": "unknown", "content": str(msg)})
         
         return SharedConversationResponse(
-            title=thread_record.get("title", "分享的对话"),
+            title=thread_record.get("title", "Shared conversation"),
             messages=serialized_messages,
             shared_at=share["created_at"],
             message_index=share.get("message_index"),  # For single message sharing
@@ -3323,6 +3326,9 @@ app.include_router(trigger_router)
 
 from .translate_routes import translate_router
 app.include_router(translate_router)
+
+from .slides_routes import slides_router
+app.include_router(slides_router)
 
 # =============================================================================
 # Resume Parsing Routes

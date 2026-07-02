@@ -106,9 +106,9 @@ def _validate_context_strict(config: RunnableConfig | None) -> tuple[str, str]:
     
     # Hard constraint: no silent fallback
     if not user_id or user_id in ("default", "anonymous"):
-        raise ContextError("无法获取用户身份，请重新登录")
+        raise ContextError("Unable to identify the user. Please sign in again.")
     if not thread_id or thread_id == "default":
-        raise ContextError("无法获取会话ID，请刷新页面")
+        raise ContextError("Unable to identify the thread. Please refresh the page.")
     
     return user_id, thread_id
 
@@ -119,27 +119,27 @@ def _validate_context_strict(config: RunnableConfig | None) -> tuple[str, str]:
 
 @tool
 def read_skill_doc(
-    skill: Annotated[str, "技能名称: xlsx, pptx, docx, pdf"],
-    doc: Annotated[str, "文档名称，如 'SKILL.md', 'html2pptx.md', 'forms.md'"] = "SKILL.md",
-    section: Annotated[str, "章节标题，如 '## Creating new', '### Workflow'"] = None,
-    keyword: Annotated[str, "搜索关键字"] = None,
-    max_lines: Annotated[int, "最大返回行数"] = 50,
+    skill: Annotated[str, "Skill name: xlsx, pptx, docx, pdf"],
+    doc: Annotated[str, "Document name, such as 'SKILL.md', 'html2pptx.md', or 'forms.md'"] = "SKILL.md",
+    section: Annotated[str, "Section heading, such as '## Creating new' or '### Workflow'"] = None,
+    keyword: Annotated[str, "Search keyword"] = None,
+    max_lines: Annotated[int, "Maximum number of lines to return"] = 50,
     config: RunnableConfig = None,  # type: ignore[assignment]
 ) -> dict[str, Any]:
     """
-    读取 Skill 文档片段（不返回全文）。
+    Read a fragment of a Skill document without returning the full document.
     
-    用于获取特定章节或关键字相关的指引。
+    Use this to retrieve guidance related to a specific section or keyword.
     
-    返回：
+    Returns:
     - source: {path, start_line, end_line, snippet_hash}
-    - content: 文档片段
-    - truncated: 是否被截断
+    - content: document fragment
+    - truncated: whether the content was truncated
     """
     if skill not in AVAILABLE_SKILLS:
         return {
             "success": False,
-            "error": f"未知技能: {skill}. 可用: {AVAILABLE_SKILLS}"
+            "error": f"Unknown skill: {skill}. Available: {AVAILABLE_SKILLS}"
         }
     
     doc_path = SKILLS_BASE_PATH / skill / doc
@@ -153,14 +153,14 @@ def read_skill_doc(
         else:
             return {
                 "success": False,
-                "error": f"文档不存在: {skill}/{doc}"
+                "error": f"Document does not exist: {skill}/{doc}"
             }
     
     try:
         with open(doc_path, "r", encoding="utf-8") as f:
             lines = f.readlines()
     except Exception as e:
-        return {"success": False, "error": f"读取失败: {e}"}
+        return {"success": False, "error": f"Read failed: {e}"}
     
     total_lines = len(lines)
     start_line = 1
@@ -235,19 +235,19 @@ def read_skill_doc(
 
 @tool
 def list_skill_capabilities(
-    skill: Annotated[str, "技能名称: xlsx, pptx, docx, pdf"] = None,
+    skill: Annotated[str, "Skill name: xlsx, pptx, docx, pdf"] = None,
     config: RunnableConfig = None,  # type: ignore[assignment]
 ) -> dict[str, Any]:
     """
-    列出可用的 Skill 能力。
+    List available Skill capabilities.
     
-    不指定 skill 时返回所有技能概览；
-    指定 skill 时返回该技能的详细能力。
+    If skill is omitted, return an overview of all skills.
+    If skill is provided, return detailed capabilities for that skill.
     """
     if skill and skill not in AVAILABLE_SKILLS:
         return {
             "success": False,
-            "error": f"未知技能: {skill}. 可用: {AVAILABLE_SKILLS}"
+            "error": f"Unknown skill: {skill}. Available: {AVAILABLE_SKILLS}"
         }
     
     if not skill:
@@ -321,18 +321,18 @@ def list_skill_capabilities(
 
 @tool
 def run_skill_script(
-    script_path: Annotated[str, "脚本路径，如 'pptx/scripts/thumbnail.py'"],
-    args: Annotated[list[str], "脚本参数列表"],
-    input_files: Annotated[list[str], "输入文件路径（沙盒内）"] = None,
+    script_path: Annotated[str, "Script path, such as 'pptx/scripts/thumbnail.py'"],
+    args: Annotated[list[str], "Script argument list"],
+    input_files: Annotated[list[str], "Input file paths inside the sandbox"] = None,
     config: RunnableConfig = None,  # type: ignore[assignment]
 ) -> dict[str, Any]:
     """
-    执行白名单内的 Skill 脚本。
+    Execute a whitelisted Skill script.
     
-    执行环境：E2B 沙盒
-    输出契约：产物必须写到 /home/user/data/
+    Execution environment: E2B sandbox.
+    Output contract: generated artifacts must be written to /home/user/data/.
     
-    需要人工审批（HITL）。
+    Requires human-in-the-loop approval.
     """
     # Hard constraint: validate context
     try:
@@ -344,7 +344,7 @@ def run_skill_script(
     if script_path not in SCRIPT_WHITELIST:
         return {
             "success": False,
-            "error": f"脚本不在白名单: {script_path}",
+            "error": f"Script is not whitelisted: {script_path}",
             "available_scripts": list(SCRIPT_WHITELIST)
         }
     
@@ -353,7 +353,7 @@ def run_skill_script(
     if not full_script_path.exists():
         return {
             "success": False,
-            "error": f"脚本文件不存在: {script_path}"
+            "error": f"Script file does not exist: {script_path}"
         }
     
     # Read script content
@@ -361,7 +361,7 @@ def run_skill_script(
         with open(full_script_path, "r") as f:
             script_content = f.read()
     except Exception as e:
-        return {"success": False, "error": f"读取脚本失败: {e}"}
+        return {"success": False, "error": f"Failed to read script: {e}"}
     
     # Determine script type
     is_python = script_path.endswith(".py")
@@ -416,7 +416,7 @@ print(result.stdout.strip() if result.returncode == 0 else "NODE_NOT_FOUND")
         if "NODE_NOT_FOUND" in check_result.get("stdout", ""):
             return {
                 "success": False,
-                "error": "Node.js 未在 E2B 镜像中预装，无法执行 JS 脚本"
+                "error": "Node.js is not preinstalled in the E2B image, so JS scripts cannot be executed."
             }
         
         args_str = " ".join(f'"{arg}"' for arg in args) if args else ""
@@ -454,13 +454,13 @@ print(result.returncode)
     else:
         return {
             "success": False,
-            "error": f"不支持的脚本类型: {script_path}"
+            "error": f"Unsupported script type: {script_path}"
         }
     
     if not result.get("success"):
         return {
             "success": False,
-            "error": result.get("error") or result.get("stderr", "执行失败"),
+            "error": result.get("error") or result.get("stderr", "Execution failed"),
             "stdout": result.get("stdout"),
             "stderr": result.get("stderr")
         }
@@ -495,13 +495,13 @@ print(result.returncode)
 
 @tool
 def check_skill_dependencies(
-    skill: Annotated[str, "技能名称: xlsx, pptx, docx, pdf"],
+    skill: Annotated[str, "Skill name: xlsx, pptx, docx, pdf"],
     config: RunnableConfig = None,  # type: ignore[assignment]
 ) -> dict[str, Any]:
     """
-    检查 Skill 所需依赖是否在 E2B 镜像中预装。
+    Check whether the dependencies required by a Skill are preinstalled in the E2B image.
     
-    启动时调用，失败时提前报错。
+    Call this during startup or before using a Skill so missing dependencies fail early.
     """
     try:
         user_id, thread_id = _validate_context_strict(config)
@@ -528,7 +528,7 @@ def check_skill_dependencies(
     }
     
     if skill not in checks:
-        return {"success": False, "error": f"未知技能: {skill}"}
+        return {"success": False, "error": f"Unknown skill: {skill}"}
     
     results = []
     all_ok = True
@@ -574,7 +574,7 @@ else:
         "success": all_ok,
         "skill": skill,
         "checks": results,
-        "message": "所有依赖已安装" if all_ok else "部分依赖缺失，请更新 E2B 镜像"
+        "message": "All dependencies are installed" if all_ok else "Some dependencies are missing. Please update the E2B image."
     }
 
 

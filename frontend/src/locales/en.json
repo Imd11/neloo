@@ -11,7 +11,25 @@
         "error": "Error",
         "success": "Success",
         "retry": "Retry",
+        "back": "Back",
         "login_required": "Please sign in first"
+    },
+    "history": {
+        "thread_not_found_title": "Conversation not found",
+        "thread_not_found_description": "This conversation may have been deleted or was created in a different environment.",
+        "backend_unavailable_title": "Could not load conversation",
+        "backend_unavailable_description": "The backend is not reachable. Start the backend and retry.",
+        "history_disabled_title": "History is not enabled",
+        "history_disabled_description": "Configure database persistence before opening saved conversations.",
+        "access_denied_title": "Conversation unavailable",
+        "access_denied_description": "This conversation is not available to the current local user.",
+        "generic_error_title": "Could not load conversation",
+        "generic_error_description": "The conversation could not be opened.",
+        "retry": "Retry",
+        "new_chat": "Start new chat",
+        "runtime_missing_title": "Conversation history is unavailable",
+        "runtime_missing_description": "The saved runtime state for this conversation could not be restored. You can continue the conversation by sending a new message.",
+        "continue_chat": "Continue here"
     },
     "settings": {
         "title": "Settings",
@@ -87,7 +105,45 @@
         "category_social": "Social",
         "category_storage": "Storage",
         "category_payment": "Payment",
-        "category_other": "Other"
+        "category_other": "Other",
+        "apps": {
+            "notion": { "description": "All-in-one workspace for notes, docs, knowledge bases, and project management" },
+            "google_calendar": { "description": "Schedule management and meeting planning tool" },
+            "trello": { "description": "Visual project management and collaboration tool" },
+            "asana": { "description": "Team project and task management platform" },
+            "slack": { "description": "Team messaging and collaboration platform" },
+            "zoom": { "description": "Video meetings and online collaboration tool" },
+            "discord": { "description": "Community voice, video, and text chat platform" },
+            "teams": { "description": "Enterprise collaboration and communication platform" },
+            "github": { "description": "Code hosting and version control platform" },
+            "gitlab": { "description": "DevOps platform for code management and CI/CD" },
+            "linear": { "description": "Modern issue tracking and project management tool" },
+            "jira": { "description": "Agile project management and issue tracking tool" },
+            "salesforce": { "description": "Leading customer relationship management platform" },
+            "hubspot": { "description": "Marketing, sales, and customer service platform" },
+            "twitter": { "description": "Social media and real-time information platform" },
+            "linkedin": { "description": "Professional social networking platform" },
+            "reddit": { "description": "Community content sharing and discussion platform" },
+            "google_drive": { "description": "Cloud file storage and sharing service" },
+            "dropbox": { "description": "File sync and cloud storage service" },
+            "onedrive": { "description": "Microsoft cloud storage and file sharing service" },
+            "stripe": { "description": "Online payment processing platform" },
+            "paypal": { "description": "Global online payment service" },
+            "gmail": { "description": "Google email service" },
+            "zapier": { "description": "App automation and integration platform" },
+            "airtable": { "description": "Collaborative platform combining spreadsheets and databases" },
+            "clickup": { "description": "All-in-one project management and productivity platform" },
+            "google_docs": { "description": "Cloud document editing and collaboration tool" },
+            "google_sheets": { "description": "Cloud spreadsheet and data analysis tool" },
+            "outlook": { "description": "Microsoft email and calendar service" },
+            "google_meet": { "description": "Google video meeting service" },
+            "bitbucket": { "description": "Atlassian code hosting and collaboration platform" },
+            "supabase": { "description": "Open-source Firebase alternative and backend-as-a-service" },
+            "zendesk": { "description": "Customer service and support platform" },
+            "figma": { "description": "Collaborative interface design tool" },
+            "mailchimp": { "description": "Email marketing and automation platform" },
+            "shopify": { "description": "E-commerce platform and online store builder" }
+        }
     },
     "canvas": {
         "ai_edit_image": "AI Edit Image",
@@ -144,12 +200,21 @@
         "share_failed": "Share failed",
         "share_login_required": "Please sign in first",
         "share_create_failed": "Failed to create share link",
-        "try_again_later": "Please try again later"
+        "try_again_later": "Please try again later",
+        "history_empty": "No history yet",
+        "history_empty_hint": "Your conversations will appear here after you start chatting.",
+        "history_backend_unavailable": "History is unavailable",
+        "history_backend_unavailable_hint": "The backend is not reachable. Check that the backend is running, then retry.",
+        "history_disabled": "History is not enabled",
+        "history_disabled_hint": "Configure database persistence to save and view conversation history.",
+        "history_access_denied": "This history is unavailable",
+        "history_error": "Could not load history",
+        "history_refresh_failed": "Could not refresh history",
+        "history_retry": "Retry"
     },
     "chat": {
         "default_placeholder": "Describe what you want to create...",
         "webdev_placeholder": "Describe the web page you want to build...",
-        "continue_placeholder": "Continue typing...",
         "webdev_mode": "Web Dev",
         "clear_selected_feature": "Clear selected feature",
         "add_from_google_drive": "Add from Google Drive",
@@ -218,6 +283,170 @@
         "feature_prompt_optimize": "Prompt Optimize",
         "feature_deai": "DeAI"
     },
+    "features": {
+        "categories": {
+            "all": "All",
+            "portrait": "Portrait",
+            "product": "Product",
+            "landscape": "Landscape",
+            "art": "Art",
+            "anime": "Anime",
+            "design": "Design"
+        },
+        "video_categories": {
+            "all": "All",
+            "portrait": "People",
+            "landscape": "Scenes",
+            "art": "Effects",
+            "product": "Product",
+            "anime": "Anime",
+            "design": "Cinematic"
+        },
+        "fortune_form": {
+            "solar_prefix": "I was born on the Gregorian calendar in ",
+            "year_placeholder": "yyyy",
+            "year_suffix": "-",
+            "month_placeholder": "mm",
+            "month_suffix": "-",
+            "day_placeholder": "dd",
+            "day_suffix": " at ",
+            "hour_placeholder": "hh",
+            "hour_suffix": ":",
+            "minute_placeholder": "mm",
+            "gender_prefix": ", gender ",
+            "gender_placeholder": "male/female",
+            "birthplace_prefix": ", birthplace ",
+            "birthplace_placeholder": "city, region",
+            "validation_prefix": ".\nPast validation info (optional but recommended): ",
+            "validation_placeholder": "e.g. \"passed an exam in 2021\"",
+            "required_error": "Please fill in all required birth information before sending."
+        },
+        "image_templates": {
+            "movie_poster": { "title": "Movie Poster", "description": "Generate a professional movie poster style image" },
+            "product_showcase": { "title": "Product Showcase", "description": "Clean product backgrounds with polished lighting" },
+            "natural_landscape": { "title": "Natural Landscape", "description": "Dramatic natural scenery and landscape photos" },
+            "abstract_art": { "title": "Abstract Art", "description": "Creative abstract art and geometric patterns" },
+            "portrait": { "title": "Portrait", "description": "Professional portraits and profile images" },
+            "anime_style": { "title": "Anime Style", "description": "Japanese anime and illustration style" },
+            "architecture": { "title": "Architecture", "description": "Modern architecture and interior design renders" },
+            "scifi_scene": { "title": "Sci-Fi Scene", "description": "Future technology and outer-space themes" },
+            "vintage": { "title": "Vintage", "description": "Classic retro and film photography style" },
+            "watercolor": { "title": "Watercolor", "description": "Soft watercolor art style" },
+            "black_white": { "title": "Black and White", "description": "High-contrast black-and-white art photography" },
+            "render_3d": { "title": "3D Render", "description": "Realistic 3D models and scenes" }
+        },
+        "video_templates": {
+            "talking_portrait": { "title": "Talking Portrait", "description": "Animate a static person with lip sync" },
+            "dance_motion": { "title": "Dance Motion", "description": "Generate smooth character dance videos" },
+            "landscape_timelapse": { "title": "Landscape Timelapse", "description": "Clouds, sunrise, and sunset timelapse footage" },
+            "water_animation": { "title": "Water Animation", "description": "Dynamic rivers, waterfalls, waves, and other water scenes" },
+            "morph_transition": { "title": "Morph Transition", "description": "Smooth morphing transitions between objects" },
+            "particle_effects": { "title": "Particle Effects", "description": "Smoke, fire, stardust, and particle effects" },
+            "product_360": { "title": "Product 360", "description": "360-degree product rotation animation" },
+            "unboxing": { "title": "Unboxing", "description": "Product unboxing and showcase motion" },
+            "anime_character": { "title": "Anime Character", "description": "Generate motion for two-dimensional characters" },
+            "comic_panels": { "title": "Comic Panels", "description": "Turn static comic panels into animated shots" },
+            "cinematic_shot": { "title": "Cinematic Shot", "description": "Professional cinematic camera motion and visuals" },
+            "slow_motion": { "title": "Slow Motion", "description": "Smooth high-frame-rate slow-motion effects" }
+        },
+        "items": {
+            "web_dev": {
+                "title": "Web Dev",
+                "placeholder": "Describe the web page you want to build...",
+                "templates": {
+                    "company_site": { "title": "Company Website", "description": "A professional corporate presence website" },
+                    "ecommerce": { "title": "E-commerce", "description": "Product showcase and shopping cart flow" },
+                    "blog": { "title": "Personal Blog", "description": "A clean, elegant blog template" },
+                    "landing": { "title": "Landing Page", "description": "A high-converting marketing landing page" },
+                    "admin": { "title": "Admin Dashboard", "description": "A data dashboard and management system" },
+                    "saas": { "title": "SaaS Product", "description": "A software-as-a-service product interface" }
+                }
+            },
+            "image": {
+                "title": "AI Image",
+                "placeholder": "Describe the image you want to generate...",
+                "description": "Generate images with AI and edit them on the canvas"
+            },
+            "slides": {
+                "title": "Slides",
+                "placeholder": "Describe the topic of your presentation...",
+                "templates": {
+                    "business": { "title": "Business Proposal", "description": "A professional business plan deck" },
+                    "product": { "title": "Product Launch", "description": "A presentation for launching a new product" },
+                    "education": { "title": "Education", "description": "Course and training presentation materials" },
+                    "report": { "title": "Annual Report", "description": "A company annual summary report" },
+                    "creative": { "title": "Creative Showcase", "description": "A visually striking creative presentation" },
+                    "minimal": { "title": "Minimal", "description": "A clean and spacious presentation template" }
+                }
+            },
+            "resume": {
+                "title": "Resume",
+                "placeholder": "Upload a resume with +, or describe what you need",
+                "templates": {
+                    "professional": { "title": "Professional Minimal", "description": "A classic template for professionals" },
+                    "creative": { "title": "Creative Design", "description": "A creative resume for designers" },
+                    "technical": { "title": "Technical", "description": "Built for programmers and engineers" },
+                    "executive": { "title": "Business Executive", "description": "A template for executives and business roles" },
+                    "academic": { "title": "Academic", "description": "A resume for researchers and scholars" },
+                    "graduate": { "title": "Graduate", "description": "A fresh template for recent graduates" }
+                }
+            },
+            "prompt_optimize": {
+                "title": "Prompt Optimize",
+                "placeholder": "Enter the prompt you want to improve...",
+                "templates": {
+                    "image": { "title": "Image Generation", "description": "Improve prompts for AI drawing" },
+                    "copy": { "title": "Copywriting", "description": "Improve marketing copy prompts" },
+                    "code": { "title": "Code Generation", "description": "Improve programming-related prompts" },
+                    "roleplay": { "title": "Role Play", "description": "Improve AI persona instructions" },
+                    "data": { "title": "Data Analysis", "description": "Improve data processing prompts" },
+                    "general": { "title": "General Improve", "description": "Improve overall prompt quality" }
+                }
+            },
+            "fortune": {
+                "title": "Fortune Telling",
+                "placeholder": "Enter your birth date and time...",
+                "templates": {
+                    "bazi": { "title": "Full Bazi Reading", "description": "Chart, structure, useful element, and preference analysis" },
+                    "annual": { "title": "Annual Luck", "description": "This year's luck and near-term direction" },
+                    "relationship": { "title": "Relationship", "description": "Romance, marriage, and partner traits" },
+                    "career": { "title": "Career", "description": "Career direction, promotion, and suitable industries" },
+                    "wealth": { "title": "Wealth", "description": "Income, investment, and money guidance" },
+                    "health": { "title": "Health", "description": "Health cautions and wellness suggestions" },
+                    "personality": { "title": "Personality", "description": "Personality traits and natural strengths" },
+                    "family": { "title": "Family", "description": "Family bonds and child-related luck" }
+                }
+            },
+            "deai": {
+                "title": "Humanize",
+                "placeholder": "Paste text that should sound less AI-generated...",
+                "templates": {
+                    "academic": { "title": "Academic Paper", "description": "Reduce repetition and make academic writing more natural" },
+                    "business": { "title": "Business Copy", "description": "Make marketing copy sound more natural" },
+                    "news": { "title": "News Article", "description": "Convert text into a newsroom style" },
+                    "social": { "title": "Social Post", "description": "Make posts sound more human-written" },
+                    "email": { "title": "Email", "description": "Humanize business email conversations" },
+                    "creative": { "title": "Creative Writing", "description": "Polish literary writing style" }
+                }
+            },
+            "translate": {
+                "title": "AI Translate",
+                "placeholder": "Enter text to translate...",
+                "description": "Professional AI translation across multiple languages"
+            }
+        }
+    },
+    "translate": {
+        "empty_error": "Enter text to translate.",
+        "request_failed": "Translation request failed.",
+        "failed_error": "Translation failed. Please try again.",
+        "copied": "Copied to clipboard.",
+        "copy_failed": "Copy failed.",
+        "source_placeholder": "Enter text to translate...",
+        "result_placeholder": "Translation result",
+        "translating": "Translating...",
+        "action": "Translate"
+    },
     "thinking": {
         "thinking": "Thinking",
         "duration": "Thinking time",
@@ -249,7 +478,13 @@
         "placeholder": "Search chats...",
         "new_chat": "New Chat",
         "no_results": "No matching chats found",
-        "earlier": "Earlier"
+        "earlier": "Earlier",
+        "history_unavailable": "History unavailable",
+        "history_backend_unavailable": "The backend is not reachable. Start the backend and retry.",
+        "history_disabled": "Configure database persistence to search saved conversations.",
+        "history_error": "Could not load conversation history.",
+        "history_empty": "No saved conversations yet",
+        "retry": "Retry"
     },
     "thread": {
         "empty": "No tasks yet",

@@ -1,11 +1,18 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Mic, ArrowUp, Square, LayoutGrid, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ImageMessage } from "@/types/imageChat";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { imageTemplates, imageCategories, TemplateCategory } from "@/data/featureTemplates";
+import {
+    imageTemplates,
+    imageCategories,
+    TemplateCategory,
+    localizeCategory,
+    localizeTemplate,
+} from "@/data/featureTemplates";
+import { useLanguage } from "@/providers/LanguageProvider";
 import {
     Popover,
     PopoverContent,
@@ -31,6 +38,7 @@ export function ImageChatPanel({
     onMarkAutoFlown,
     onSelectTemplate
 }: ImageChatPanelProps) {
+    const { t } = useLanguage();
     const [inputValue, setInputValue] = useState("");
     const [isFocused, setIsFocused] = useState(false);
     const [templateOpen, setTemplateOpen] = useState(false);
@@ -38,9 +46,18 @@ export function ImageChatPanel({
     const imageRefs = useRef<Map<string, HTMLImageElement>>(new Map());
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+    const localizedTemplates = useMemo(
+        () => imageTemplates.map((template) => localizeTemplate(template, t)),
+        [t]
+    );
+    const localizedCategories = useMemo(
+        () => imageCategories.map((category) => localizeCategory(category, t)),
+        [t]
+    );
+
     const filteredTemplates = selectedCategory === "all"
-        ? imageTemplates
-        : imageTemplates.filter(t => t.category === selectedCategory);
+        ? localizedTemplates
+        : localizedTemplates.filter((template) => template.category === selectedCategory);
 
     const handleSubmit = () => {
         if (inputValue.trim()) {
@@ -215,7 +232,7 @@ export function ImageChatPanel({
                     >
                         <div className="p-3 border-b border-border">
                             <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-medium">选择模板</span>
+                                <span className="text-sm font-medium">{t("chat.select_template")}</span>
                                 <Button
                                     variant="ghost"
                                     size="icon"
@@ -227,7 +244,7 @@ export function ImageChatPanel({
                             </div>
                             {/* Category Tabs */}
                             <div className="flex gap-1 flex-wrap">
-                                {imageCategories.map((cat) => (
+                                {localizedCategories.map((cat) => (
                                     <Button
                                         key={cat.id}
                                         variant={selectedCategory === cat.id ? "secondary" : "ghost"}

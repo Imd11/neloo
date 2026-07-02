@@ -37,7 +37,6 @@ import {
   FolderOpen,
   Plus,
   X,
-  Upload,
   Loader2,
   RefreshCw,
   Share2,
@@ -69,7 +68,6 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useLanguage } from "@/providers/LanguageProvider";
 import { formatFilesForMessage, getAcceptAttribute } from "@/lib/data-file-utils";
 import { useDataFileUpload } from "@/app/hooks/useDataFileUpload";
-import { DataFileUpload } from "@/app/components/DataFileUpload";
 import { LibraryDialog } from "@/app/components/LibraryDialog";
 import { useGoogleDrivePicker } from "@/app/hooks/useGoogleDrivePicker";
 // WebDevToggle removed - web-dev mode is now set via homepage feature selection
@@ -128,7 +126,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
 
   // Suggested follow-up questions state
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
-  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [, setIsLoadingSuggestions] = useState(false);
   const [footerCopied, setFooterCopied] = useState(false);
   const [autoFollowEnabled, setAutoFollowEnabled] = useState(true);
   const [anchorSpacerHeight, setAnchorSpacerHeight] = useState(0);
@@ -163,12 +161,9 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
     stopStream,
     resumeInterrupt,
     webDevMode,
-    enableWebDevMode,
-    isModeLocked,
     editMessageAndRerun,
     regenerateLastResponse,
     forkAndRegenerate,
-    fortuneMode,
     activeFeatureId,
   } = useChatContext();
 
@@ -336,7 +331,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
     [submitDisabled, fileUpload, input, sendMessage, pendingCount, uploadingCount, threadId]
   );
 
-  const handleKeyDown = useCallback(
+  const _handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (submitDisabled) return;
       if (e.key === "Enter" && !e.shiftKey) {
@@ -370,7 +365,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
     []
   );
 
-  const handleConfirmEdit = useCallback(() => {
+  const _handleConfirmEdit = useCallback(() => {
     if (editingMessageIndex === null || !editingMessageContent.trim()) return;
 
     editMessageAndRerun(editingMessageIndex, editingMessageContent.trim());
@@ -381,9 +376,9 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
     // Clear editing state
     setEditingMessageIndex(null);
     setEditingMessageContent("");
-  }, [editingMessageIndex, editingMessageContent, editMessageAndRerun]);
+  }, [editingMessageIndex, editingMessageContent, editMessageAndRerun, t]);
 
-  const handleCancelEdit = useCallback(() => {
+  const _handleCancelEdit = useCallback(() => {
     setEditingMessageIndex(null);
     setEditingMessageContent("");
   }, []);
@@ -396,7 +391,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
     toast.info(t("chat.regenerating"), {
       description: t("chat.regenerated_replaced"),
     });
-  }, [isLoading, messages, regenerateLastResponse]);
+  }, [isLoading, messages, regenerateLastResponse, t]);
 
   const handleCopyLastAiResponse = useCallback(async () => {
     try {
@@ -486,7 +481,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
         description: error instanceof Error ? error.message : t("sidebar.try_again_later"),
       });
     }
-  }, [isLoading, messages, forkAndRegenerate]);
+  }, [isLoading, messages, forkAndRegenerate, t]);
 
   // Handle share - create share link and copy to clipboard
   // targetAiMessageId: if provided, shares up to that AI message
@@ -539,7 +534,7 @@ export const ChatInterface = React.memo<ChatInterfaceProps>(({
         description: error instanceof Error ? error.message : t("sidebar.try_again_later"),
       });
     }
-  }, [threadId, config, session?.access_token]);
+  }, [threadId, config, session?.access_token, t]);
 
   // Fetch suggested follow-up questions after AI response completes
   const fetchSuggestedQuestions = useCallback(async (aiResponse: string) => {

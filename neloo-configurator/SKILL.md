@@ -26,11 +26,11 @@ Use this skill to help users configure the Neloo repository for local developmen
 ## Configuration Rules
 
 - Keep backend secrets in `backend/.env` locally or Railway backend variables in production.
-- Keep browser-safe public values in `frontend/.env.local` locally or Vercel frontend variables in production.
+- Keep browser-safe public values and Next.js server-route secrets in `frontend/.env.local` locally or Vercel frontend variables in production.
 - Treat every `NEXT_PUBLIC_*` value as visible to browser users.
-- Do not place `SUPABASE_SERVICE_KEY`, `DATABASE_URL`, provider API keys, `E2B_API_KEY`, or database passwords in frontend public variables.
+- Do not place `SUPABASE_SERVICE_KEY`, `DATABASE_URL`, provider API keys, `E2B_API_KEY`, or database passwords in `NEXT_PUBLIC_*` variables.
 - The top-left chat model selector is powered by backend model availability from `backend/src/agent/graph.py`; configure chat model keys and base URLs on the backend.
-- Image generation is split between server-side Next.js API route keys such as `NANOBANANA_IMAGE_API_KEY` and browser-exposed optional keys such as `NEXT_PUBLIC_TUZI_IMAGE_API_KEY`.
+- Image generation uses server-side Next.js API route keys such as `NANOBANANA_IMAGE_API_KEY`, `NANOBANANA_IMAGE_BASE_URL`, `OPENAI_API_KEY`, and `OPENAI_IMAGE_MODEL`.
 - Never commit generated `.env` files.
 
 ## Resources

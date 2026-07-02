@@ -3,150 +3,146 @@
 import type { ResumeData } from '../types/resume';
 import { defaultResumeData } from '../types/resume';
 
-// Qwen API for resume parsing (faster than DeepSeek)
-const QWEN_API_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
-
 // Schema description for the AI
 const RESUME_SCHEMA = `
 {
   "personal": {
-    "name": "姓名",
-    "title": "职位头衔",
-    "email": "邮箱",
-    "phone": "电话",
-    "address": "地址",
-    "website": "个人网站",
-    "summary": "个人简介"
+    "name": "Full name",
+    "title": "Professional title",
+    "email": "Email address",
+    "phone": "Phone number",
+    "address": "Location or address",
+    "website": "Personal website",
+    "summary": "Professional summary"
   },
   "experience": [{
-    "id": "唯一ID",
-    "company": "公司名",
-    "position": "职位",
-    "location": "地点",
-    "startDate": "开始日期",
-    "endDate": "结束日期（如在职则为空）",
-    "description": "工作描述",
-    "highlights": ["工作亮点/成就"]
+    "id": "Unique ID",
+    "company": "Company or organization name",
+    "position": "Position",
+    "location": "Location",
+    "startDate": "Start date",
+    "endDate": "End date, empty if current",
+    "description": "Work description",
+    "highlights": ["Work highlights or achievements"]
   }],
   "education": [{
-    "id": "唯一ID",
-    "institution": "学校名",
-    "degree": "学位（如: 本科、硕士）",
-    "field": "专业",
-    "startDate": "开始日期",
-    "endDate": "毕业日期",
-    "description": "描述"
+    "id": "Unique ID",
+    "institution": "School or university name",
+    "degree": "Degree, such as bachelor or master",
+    "field": "Field of study",
+    "startDate": "Start date",
+    "endDate": "Graduation date",
+    "description": "Description"
   }],
   "skills": [{
-    "id": "唯一ID",
-    "name": "技能名称",
+    "id": "Unique ID",
+    "name": "Skill name",
     "level": 3,
-    "category": "technical 或 soft",
-    "icon": "表情符号"
+    "category": "technical or soft",
+    "icon": "Emoji"
   }],
   "languages": [{
-    "id": "唯一ID",
-    "name": "语言名称",
+    "id": "Unique ID",
+    "name": "Language name",
     "level": "native/fluent/advanced/intermediate/basic",
     "levelNumber": 5,
-    "flag": "国旗表情"
+    "flag": "Flag emoji"
   }],
   "projects": [{
-    "id": "唯一ID",
-    "name": "项目名",
-    "role": "角色",
-    "organization": "组织",
-    "startDate": "开始日期",
-    "endDate": "结束日期",
-    "description": "描述",
-    "technologies": ["技术栈"]
+    "id": "Unique ID",
+    "name": "Project name",
+    "role": "Role",
+    "organization": "Organization",
+    "startDate": "Start date",
+    "endDate": "End date",
+    "description": "Description",
+    "technologies": ["Technology stack"]
   }],
   "awards": [{
-    "id": "唯一ID",
-    "title": "奖项名称",
-    "issuer": "颁发机构",
-    "date": "获奖日期",
-    "description": "描述"
+    "id": "Unique ID",
+    "title": "Award name",
+    "issuer": "Issuer",
+    "date": "Award date",
+    "description": "Description"
   }],
   "certificates": [{
-    "id": "唯一ID",
-    "name": "证书名称",
-    "issuer": "颁发机构",
-    "date": "获取日期"
+    "id": "Unique ID",
+    "name": "Certificate name",
+    "issuer": "Issuer",
+    "date": "Issue date"
   }]
 }`;
 
-const PARSE_SYSTEM_PROMPT = `你是一个专业的简历解析专家。你的任务是从用户提供的简历文本中精准提取结构化信息。
+const PARSE_SYSTEM_PROMPT = `You are a professional resume parsing expert. Your task is to accurately extract structured information from the resume text provided by the user.
 
-【输出格式】
-严格按照以下 JSON 格式返回，只返回 JSON，不要有任何其他文字：
+Output format:
+Return strictly in the following JSON structure. Return JSON only, with no extra text:
 ${RESUME_SCHEMA}
 
-【字段识别规则】
+Field recognition rules:
 
-1. **personal（个人信息）**
-   - name: 通常在简历最顶部。如果格式是"姓名/其他信息"（如"杨锦航/CET6:451"），只提取姓名部分（杨锦航）
-   - title: 如果没有明确职位，可以根据简历内容推断（如有研究助理经历可填"研究助理"）
-   - email: 包含 @ 符号的文字
-   - phone: 包含数字的电话号码，如 13812345678、(+86) xxx
-   - address: 包含省/市/区的地址信息
-   - website: 包含 github/linkedin/http 的链接
-   - summary: 识别关键词"个人简介"、"自我评价"、"个人评价"、"About Me"开头的段落
+1. **personal**
+   - name: usually appears at the top of the resume. If the format is "name / other info", extract only the name.
+   - title: if no explicit title is present, infer a reasonable title from the resume content.
+   - email: text containing an @ symbol.
+   - phone: phone numbers containing digits, including international formats.
+   - address: location or address information.
+   - website: links containing github, linkedin, http, or similar domains.
+   - summary: paragraphs introduced by profile, summary, self evaluation, about me, or equivalent headings.
 
-2. **experience（工作/实习经历）** - 非常重要！
-   - 识别关键词：工作经历、工作经验、实习经历、社会工作与实习、社会实践、Work Experience、Internship
-   - 研究助理（RA）、研究助手、助研 也算工作经历
-   - company: 公司/机构/大学名称
-   - position: 职位名称，如"总经理助理"、"研究员"、"研究助理(RA)"
-   - startDate/endDate: 提取日期，格式如"2024年3月-12月"转为"2024-03"和"2024-12"
-   - description: "主要工作"、"负责"后面的内容
-   - highlights: 以"•"、"□"、"-"、"1."开头的条目
+2. **experience** - very important.
+   - Recognize work experience, internships, social practice, research assistant work, RA roles, and similar sections.
+   - company: company, institution, lab, university, or organization name.
+   - position: role title, such as assistant general manager, researcher, or research assistant.
+   - startDate/endDate: extract dates and normalize them to "YYYY-MM" or "YYYY".
+   - description: duties and responsibilities.
+   - highlights: bullets or numbered achievements.
 
-3. **education（教育背景）** - 非常重要！
-   - 识别关键词：教育背景、教育经历、学历、Education
-   - institution: 学校名称，如"天津财经大学"、"河北农业大学"（包含"大学"、"学院"的都是学校）
-   - degree: 如果没有明确写，默认本科="本科"，研究生="硕士"
-   - field: 专业名称，如"统计学"、"经济统计学"，通常紧跟学校名称后面
-   - description: 课程、成绩、学术成就等
+3. **education** - very important.
+   - Recognize education background, degrees, schools, universities, colleges, and similar sections.
+   - institution: school or university name.
+   - degree: infer bachelor or master if not explicitly stated.
+   - field: major or field of study, often near the institution name.
+   - description: coursework, grades, academic achievements, or related details.
 
-4. **skills（技能）**
-   - 识别各种技能：Stata、R、Python、SPSS、Excel、SQL 等
-   - 如果有技能条/进度条，根据长度判断 level（满=5）
-   - category: 编程/数据类=technical
+4. **skills**
+   - Recognize skills such as Stata, R, Python, SPSS, Excel, SQL, and other technical or soft skills.
+   - If a visual skill bar is present, infer level from its length, where full equals 5.
+   - category: programming, analytics, and data skills should be technical.
 
-5. **languages（语言能力）**
-   - CET6/CET4 表示英语能力
-   - CET6 分数 > 450 → levelNumber=4, 分数 > 550 → levelNumber=5
+5. **languages**
+   - Recognize language proficiency certificates and level indicators.
+   - For CET4/CET6, infer English proficiency and map stronger scores to higher levelNumber values.
 
-6. **publications（期刊论文）**
-   - 识别关键词：期刊论文、发表论文、Publications
-   - 格式通常是 [序号] 作者. 论文标题 [J]. 期刊名
+6. **publications**
+   - Recognize publications, papers, journal articles, and similar sections.
+   - Common format: authors, paper title, publication type, journal or venue.
 
-7. **projects（项目/论文/竞赛）**
-   - 识别关键词：会议论文、竞赛与科研、项目经历、Projects
-   - 论文名称、竞赛名称都可以作为项目
+7. **projects**
+   - Recognize projects, papers, competitions, research projects, and similar sections.
+   - Paper titles and competition names may be treated as projects when appropriate.
 
-8. **awards（荣誉奖项）**
-   - 识别：一等奖、二等奖、三等奖、优秀奖等
-   - 从"竞赛与科研"部分提取获奖信息
+8. **awards**
+   - Recognize prizes, honors, scholarships, rankings, and awards.
+   - Extract award information from competition and research sections when relevant.
 
-【特别注意】
-1. 仔细阅读整个简历，不要遗漏任何章节
-2. "社会工作与实习"等同于"工作经历"，必须提取到 experience 数组
-3. 学校名称和专业通常在同一行，如"天津财经大学 统计学"，分别填入 institution 和 field
-4. 日期格式统一为 "YYYY-MM" 或 "YYYY"
-5. 为每个数组项生成唯一 id，格式如 "exp_xxx"、"edu_xxx"
-6. 确保 JSON 格式正确
+Important notes:
+1. Read the entire resume carefully and do not omit any section.
+2. Social work, internships, research assistant work, and practice experience should be extracted into the experience array when appropriate.
+3. School names and majors often appear on the same line; split them into institution and field.
+4. Normalize dates as "YYYY-MM" or "YYYY".
+5. Generate a unique id for every array item, such as "exp_xxx" or "edu_xxx".
+6. Ensure the JSON is valid.
 
-【重要：双栏布局处理】
-如果文本中出现以下标记，说明简历是双栏布局，已被分栏提取：
-- 【侧边栏 - 个人信息/技能】：包含姓名、联系方式、技能、语言等
-- 【主内容 - 经历/项目】：包含工作经历、教育背景、项目经验等
+Important: two-column layout handling.
+If the text contains sidebar or main-content markers, it means the resume was extracted from a two-column layout:
+- Sidebar personal/skills content: name, contact information, skills, languages, and similar data.
+- Main content experience/projects content: work experience, education, projects, and similar data.
 
-请注意：
-- 侧边栏中的大学名称属于 education，不是 experience 的 company
-- 主内容中的公司/机构名称才是 experience 的 company
-- 不要把教育背景中的学校误认为工作经历的公司`;
+Notes:
+- University names in the sidebar usually belong to education, not experience.company.
+- Company and organization names in the main content are more likely to be experience.company.
+- Do not misclassify schools in the education section as employers.`;
 
 // ============================================
 // 技术增强：预处理 + 后处理
@@ -342,50 +338,36 @@ function postProcessData(
 }
 
 export async function parseResumeText(text: string): Promise<ResumeData> {
-  const apiKey = process.env.NEXT_PUBLIC_QWEN_API_KEY;
-
-  if (!apiKey) {
-    throw new Error('Qwen API key not configured');
-  }
-
-  // 步骤 1: 预处理 - 用正则提取关键信息
-  console.log('📄 [步骤1] 预处理文本...');
+  // Step 1: Preprocess and extract key information with regexes.
+  console.log('📄 [Step 1] Preprocessing text...');
   const preExtracted = preExtractInfo(text);
 
-  // 步骤 2: AI 解析
-  console.log('📄 [步骤2] 发送给 Qwen AI 解析...');
-  console.log('📄 文本长度:', text.length, '字符');
-  console.log('📄 文本预览:\n', text.substring(0, 800));
+  // Step 2: AI parsing.
+  console.log('📄 [Step 2] Sending text to Qwen AI for parsing...');
+  console.log('📄 Text length:', text.length, 'characters');
+  console.log('📄 Text preview:\n', text.substring(0, 800));
 
-  // 构建增强的 prompt，包含预处理信息
-  const enhancedPrompt = `请仔细解析以下简历内容，提取所有信息。
+  // Build an enhanced prompt with preprocessing hints.
+  const enhancedPrompt = `Carefully parse the following resume content and extract all information.
 
-【预处理提示】
-- 检测到的邮箱: ${preExtracted.email || '未检测到'}
-- 检测到的电话: ${preExtracted.phone || '未检测到'}
-- 检测到的姓名: ${preExtracted.name || '未检测到'}
-- 检测到的大学: ${preExtracted.universities.join(', ') || '未检测到'}
-- 检测到的公司/机构: ${preExtracted.companies.join(', ') || '未检测到'}
-- 检测到的章节: ${Object.keys(preExtracted.sections).join(', ') || '未检测到'}
+Preprocessing hints:
+- Detected email: ${preExtracted.email || 'not detected'}
+- Detected phone: ${preExtracted.phone || 'not detected'}
+- Detected name: ${preExtracted.name || 'not detected'}
+- Detected universities: ${preExtracted.universities.join(', ') || 'not detected'}
+- Detected companies/organizations: ${preExtracted.companies.join(', ') || 'not detected'}
+- Detected sections: ${Object.keys(preExtracted.sections).join(', ') || 'not detected'}
 
-请基于以上提示和下面的简历原文，提取完整的结构化数据：
+Based on the hints above and the original resume text below, extract complete structured data:
 
 ${text}`;
 
-  const response = await fetch(QWEN_API_URL, {
+  const response = await fetch('/api/resume/parse-text', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: 'qwen-plus',
-      messages: [
-        { role: 'system', content: PARSE_SYSTEM_PROMPT },
-        { role: 'user', content: enhancedPrompt },
-      ],
-      temperature: 0.1,
-      max_tokens: 4000,
+      system: PARSE_SYSTEM_PROMPT,
+      prompt: enhancedPrompt,
     }),
   });
 
@@ -608,16 +590,16 @@ export async function extractTextFromPDF(file: File): Promise<string> {
         // 智能判断哪个是侧边栏（通常侧边栏文字更少）
         if (leftText.length < rightText.length * 0.7) {
           // 左边是侧边栏
-          fullText += '【侧边栏 - 个人信息/技能】\n' + leftText + '\n\n';
-          fullText += '【主内容 - 经历/项目】\n' + rightText + '\n';
+          fullText += '[Sidebar - personal information / skills]\n' + leftText + '\n\n';
+          fullText += '[Main content - experience / projects]\n' + rightText + '\n';
         } else if (rightText.length < leftText.length * 0.7) {
           // 右边是侧边栏（罕见）
-          fullText += '【主内容 - 经历/项目】\n' + leftText + '\n\n';
-          fullText += '【侧边栏 - 个人信息/技能】\n' + rightText + '\n';
+          fullText += '[Main content - experience / projects]\n' + leftText + '\n\n';
+          fullText += '[Sidebar - personal information / skills]\n' + rightText + '\n';
         } else {
           // 两栏相近，都作为主内容
-          fullText += '【左栏】\n' + leftText + '\n\n';
-          fullText += '【右栏】\n' + rightText + '\n';
+          fullText += '[Left column]\n' + leftText + '\n\n';
+          fullText += '[Right column]\n' + rightText + '\n';
         }
       } else {
         console.log('📄 单栏布局，按正常顺序提取');

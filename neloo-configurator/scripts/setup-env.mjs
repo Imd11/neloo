@@ -39,7 +39,6 @@ const PROFILES = {
     frontend: {
       NEXT_PUBLIC_API_URL: "http://localhost:2024",
       NEXT_PUBLIC_ASSISTANT_ID: "data_analyst",
-      NEXT_PUBLIC_IMAGE_API_URL: "https://api.tu-zi.com",
       NEXT_PUBLIC_BACKEND_URL: "http://localhost:2024",
     },
   },
@@ -54,7 +53,6 @@ const PROFILES = {
     },
     frontend: {
       NEXT_PUBLIC_ASSISTANT_ID: "data_analyst",
-      NEXT_PUBLIC_IMAGE_API_URL: "https://api.tu-zi.com",
     },
   },
 };

@@ -1,14 +1,20 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Plus, Mic, ArrowUp, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Feature } from "@/data/featureTemplates";
+import { Feature, localizeFeature } from "@/data/featureTemplates";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 interface PlaceholderSegment {
     type: "text" | "placeholder";
     content: string;
     value?: string;
 }
+
+type FortuneTemplateDefinition = {
+    type: "text" | "placeholder";
+    key: string;
+};
 
 interface TemplatePromptInputProps {
     placeholder?: string;
@@ -19,52 +25,71 @@ interface TemplatePromptInputProps {
     onPlusClick?: () => void;
 }
 
-// 五行算命的模板文本
-const FORTUNE_TEMPLATE = [
-    { type: "text" as const, content: "我出生于阳历" },
-    { type: "placeholder" as const, content: "xxxx", value: "" },
-    { type: "text" as const, content: "年" },
-    { type: "placeholder" as const, content: "xx", value: "" },
-    { type: "text" as const, content: "月" },
-    { type: "placeholder" as const, content: "xx", value: "" },
-    { type: "text" as const, content: "日" },
-    { type: "placeholder" as const, content: "xx", value: "" },
-    { type: "text" as const, content: "时" },
-    { type: "placeholder" as const, content: "xx", value: "" },
-    { type: "text" as const, content: "分，性别为" },
-    { type: "placeholder" as const, content: "男/女", value: "" },
-    { type: "text" as const, content: "，出生地为" },
-    { type: "placeholder" as const, content: "省、市、区/县", value: "" },
-    { type: "text" as const, content: "。\n前事验证信息（可选但推荐，用于模型微调）：" },
-    { type: "placeholder" as const, content: '例如："2021年考研成功"', value: "" },
+const FORTUNE_TEMPLATE_DEFINITION: FortuneTemplateDefinition[] = [
+    { type: "text", key: "features.fortune_form.solar_prefix" },
+    { type: "placeholder", key: "features.fortune_form.year_placeholder" },
+    { type: "text", key: "features.fortune_form.year_suffix" },
+    { type: "placeholder", key: "features.fortune_form.month_placeholder" },
+    { type: "text", key: "features.fortune_form.month_suffix" },
+    { type: "placeholder", key: "features.fortune_form.day_placeholder" },
+    { type: "text", key: "features.fortune_form.day_suffix" },
+    { type: "placeholder", key: "features.fortune_form.hour_placeholder" },
+    { type: "text", key: "features.fortune_form.hour_suffix" },
+    { type: "placeholder", key: "features.fortune_form.minute_placeholder" },
+    { type: "text", key: "features.fortune_form.gender_prefix" },
+    { type: "placeholder", key: "features.fortune_form.gender_placeholder" },
+    { type: "text", key: "features.fortune_form.birthplace_prefix" },
+    { type: "placeholder", key: "features.fortune_form.birthplace_placeholder" },
+    { type: "text", key: "features.fortune_form.validation_prefix" },
+    { type: "placeholder", key: "features.fortune_form.validation_placeholder" },
 ];
 
 export function TemplatePromptInput({
-    placeholder = "输入你的任务...",
+    placeholder,
     onSubmit,
     className,
     selectedFeature,
     onClearFeature,
     onPlusClick,
 }: TemplatePromptInputProps) {
+    const { t } = useLanguage();
+    const resolvedPlaceholder = placeholder ?? t("chat.default_placeholder");
+    const localizedFeature = useMemo(
+        () => selectedFeature ? localizeFeature(selectedFeature, t) : null,
+        [selectedFeature, t]
+    );
+    const fortuneTemplate = useMemo<PlaceholderSegment[]>(
+        () => FORTUNE_TEMPLATE_DEFINITION.map((segment) => ({
+            type: segment.type,
+            content: t(segment.key),
+            value: "",
+        })),
+        [t]
+    );
     const [value, setValue] = useState("");
     const [isFocused, setIsFocused] = useState(false);
     const [segments, setSegments] = useState<PlaceholderSegment[]>([]);
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
+    const [validationError, setValidationError] = useState<string | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const editInputRef = useRef<HTMLInputElement>(null);
 
-    // 当选择五行算命时，初始化模板
+    // Initialize the structured fortune form when the mode is selected.
     useEffect(() => {
         if (selectedFeature?.id === "fortune") {
-            setSegments(FORTUNE_TEMPLATE.map(seg => ({ ...seg })));
+            setSegments((previous) =>
+                fortuneTemplate.map((segment, index) => ({
+                    ...segment,
+                    value: previous[index]?.value ?? "",
+                }))
+            );
             setValue("");
         } else {
             setSegments([]);
         }
-    }, [selectedFeature]);
+    }, [selectedFeature?.id, fortuneTemplate]);
 
-    // 自动聚焦到编辑框
+    // Focus the active placeholder editor.
     useEffect(() => {
         if (editingIndex !== null && editInputRef.current) {
             editInputRef.current.focus();
@@ -74,13 +99,23 @@ export function TemplatePromptInput({
 
     const handleSubmit = () => {
         if (selectedFeature?.id === "fortune") {
-            // 组装完整的文本
+            const requiredPlaceholders = segments.filter((seg) =>
+                seg.type === "placeholder" &&
+                seg.content !== t("features.fortune_form.validation_placeholder")
+            );
+            const missingRequiredValue = requiredPlaceholders.some((seg) => !seg.value?.trim());
+            if (missingRequiredValue) {
+                setValidationError(t("features.fortune_form.required_error"));
+                return;
+            }
+
             const fullText = segments
                 .map((seg) =>
                     seg.type === "placeholder" ? (seg.value || seg.content) : seg.content
                 )
                 .join("");
             if (onSubmit) {
+                setValidationError(null);
                 onSubmit(fullText);
             }
         } else if (value.trim() && onSubmit) {
@@ -106,6 +141,7 @@ export function TemplatePromptInput({
                 i === index ? { ...seg, value: newValue } : seg
             )
         );
+        setValidationError(null);
     };
 
     const handlePlaceholderBlur = () => {
@@ -118,7 +154,6 @@ export function TemplatePromptInput({
             setEditingIndex(null);
         } else if (e.key === "Tab") {
             e.preventDefault();
-            // 找到下一个占位符
             const placeholderIndices = segments
                 .map((seg, i) => (seg.type === "placeholder" ? i : -1))
                 .filter((i) => i !== -1);
@@ -163,52 +198,52 @@ export function TemplatePromptInput({
                     <Plus className="w-5 h-5" />
                 </Button>
 
-                {/* Selected Feature Tag (非fortune模式) */}
-                {selectedFeature && !isFortuneMode && (
+                {/* Selected feature tag */}
+                {localizedFeature && !isFortuneMode && (
                     <div className={cn(
                         "group relative flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium shrink-0 cursor-default overflow-hidden transition-all duration-150",
                         "hover:shadow-xs hover:ring-1 hover:ring-current/25",
                         "before:content-[''] before:absolute before:inset-0 before:rounded-full before:bg-foreground/10 before:opacity-0 before:transition-opacity before:duration-150 before:pointer-events-none before:z-0",
                         "hover:before:opacity-100",
-                        selectedFeature.id === "image" && "bg-cyan-500/15 text-cyan-700 dark:text-cyan-400",
-                        selectedFeature.id === "web-dev" && "bg-blue-500/15 text-blue-600 dark:text-blue-400",
-                        selectedFeature.id === "slides" && "bg-orange-500/15 text-orange-600 dark:text-orange-400",
-                        selectedFeature.id === "resume" && "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
-                        selectedFeature.id === "prompt-optimize" && "bg-violet-500/15 text-violet-600 dark:text-violet-400",
-                        selectedFeature.id === "deai" && "bg-rose-500/15 text-rose-600 dark:text-rose-400",
+                        localizedFeature.id === "image" && "bg-cyan-500/15 text-cyan-700 dark:text-cyan-400",
+                        localizedFeature.id === "web-dev" && "bg-blue-500/15 text-blue-600 dark:text-blue-400",
+                        localizedFeature.id === "slides" && "bg-orange-500/15 text-orange-600 dark:text-orange-400",
+                        localizedFeature.id === "resume" && "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+                        localizedFeature.id === "prompt-optimize" && "bg-violet-500/15 text-violet-600 dark:text-violet-400",
+                        localizedFeature.id === "deai" && "bg-rose-500/15 text-rose-600 dark:text-rose-400",
                     )}>
-                        <span className="relative z-10">{selectedFeature.title}</span>
+                        <span className="relative z-10">{localizedFeature.title}</span>
                         <button
                             onClick={onClearFeature}
                             type="button"
                             className="relative z-10 flex items-center justify-center w-4 h-4 rounded-full cursor-pointer transition-all duration-150 hover:bg-current/45 hover:scale-125 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                            aria-label="清除已选功能"
+                            aria-label={t("chat.clear_selected_feature")}
                         >
                             <X className="w-2.5 h-2.5" />
                         </button>
                     </div>
                 )}
 
-                {/* 模板内容区域 */}
+                {/* Input content */}
                 <div className="flex-1 min-w-0">
                     {isFortuneMode ? (
                         <div className="relative">
                             {/* Fortune Feature Tag */}
                             <div className="flex items-center gap-1.5 mb-2">
                                 <div className="group relative flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-amber-500/15 text-amber-600 dark:text-amber-400 cursor-default overflow-hidden transition-all duration-150 hover:shadow-xs hover:ring-1 hover:ring-current/25">
-                                    <span className="relative z-10">{selectedFeature.title}</span>
+                                    <span className="relative z-10">{localizedFeature?.title ?? selectedFeature.title}</span>
                                     <button
                                         onClick={onClearFeature}
                                         type="button"
                                         className="relative z-10 flex items-center justify-center w-4 h-4 rounded-full cursor-pointer transition-all duration-150 hover:bg-current/45 hover:scale-125 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                        aria-label="清除已选功能"
+                                        aria-label={t("chat.clear_selected_feature")}
                                     >
                                         <X className="w-2.5 h-2.5" />
                                     </button>
                                 </div>
                             </div>
 
-                            {/* 模板文本区域 */}
+                            {/* Structured template text */}
                             <div
                                 className="text-base leading-relaxed text-foreground"
                                 onFocus={() => setIsFocused(true)}
@@ -216,7 +251,6 @@ export function TemplatePromptInput({
                             >
                                 {segments.map((segment, index) => {
                                     if (segment.type === "text") {
-                                        // 处理换行符
                                         const parts = segment.content.split('\n');
                                         return (
                                             <span key={index} className="text-foreground">
@@ -233,7 +267,6 @@ export function TemplatePromptInput({
                                     const hasValue = segment.value && segment.value.trim() !== "";
                                     const isEditing = editingIndex === index;
 
-                                    // 使用统一的样式，无论是编辑状态还是非编辑状态
                                     const displayText = hasValue ? segment.value : segment.content;
 
                                     return (
@@ -242,7 +275,7 @@ export function TemplatePromptInput({
                                             onClick={() => !isEditing && handlePlaceholderClick(index)}
                                             className="inline-block bg-placeholder-accent/15 text-placeholder-accent rounded mx-0.5 cursor-pointer relative"
                                         >
-                                            {/* 始终显示的文本容器（负责撑开宽高），编辑时隐藏但保留占位 */}
+                                            {/* Keeps dimensions stable while the inline editor is active. */}
                                             <span
                                                 className={cn(
                                                     "inline-block px-1.5 py-0.5 text-base leading-relaxed whitespace-pre",
@@ -252,7 +285,7 @@ export function TemplatePromptInput({
                                                 {displayText}
                                             </span>
 
-                                            {/* 编辑时的输入框，绝对定位覆盖在上面（padding/line-height 与上面一致，避免抖动） */}
+                                            {/* Overlay editor uses matching spacing to avoid layout jumps. */}
                                             {isEditing && (
                                                 <input
                                                     ref={editInputRef}
@@ -280,7 +313,7 @@ export function TemplatePromptInput({
                             onFocus={() => setIsFocused(true)}
                             onBlur={() => setIsFocused(false)}
                             onKeyDown={handleKeyDown}
-                            placeholder={selectedFeature?.placeholder || placeholder}
+                            placeholder={localizedFeature?.placeholder || resolvedPlaceholder}
                             className="w-full bg-transparent text-foreground placeholder:text-muted-foreground text-base leading-5 outline-none"
                         />
                     )}
@@ -308,6 +341,11 @@ export function TemplatePromptInput({
                     <ArrowUp className="w-4 h-4" />
                 </Button>
             </div>
+            {validationError && (
+                <div className="px-4 pb-3 text-sm text-destructive">
+                    {validationError}
+                </div>
+            )}
         </div>
     );
 }

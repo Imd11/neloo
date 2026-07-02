@@ -28,7 +28,6 @@ LEGACY_MODEL_ID_ALIASES = {
     "gemini-3-pro": "gemini",
     "gpt-5": "openai",
     "gpt-5-thinking": "openai",
-    "claude-opus-tuzi": "anthropic",
     "llama-4-maverick": "openrouter",
     "llama-3.3-70b": "openrouter",
 }

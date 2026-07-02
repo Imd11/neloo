@@ -161,7 +161,7 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
 
         setIsGenerating(true);
         try {
-            const prompt = await generatePrompt(formData.name || "智能体", formData.description, formData.tools);
+            const prompt = await generatePrompt(formData.name || "Agent", formData.description, formData.tools);
             if (prompt) {
                 setFormData(prev => ({ ...prev, systemPrompt: prompt }));
                 setEditTab("prompt");

@@ -30,16 +30,7 @@ export async function POST(req: NextRequest) {
             size,
         });
 
-        const apiKey = process.env.NANOBANANA_IMAGE_API_KEY;
-        if (!apiKey) {
-            console.error("[API Edit] Missing NANOBANANA_IMAGE_API_KEY");
-            return NextResponse.json(
-                { error: "Server configuration error" },
-                { status: 500 }
-            );
-        }
-
-        const urls = await editImage(originalImageUrl, markedImageDataUrl, prompt, apiKey, {
+        const urls = await editImage(originalImageUrl, markedImageDataUrl, prompt, {
             model: typeof model === "string" ? model : undefined,
             resolution: typeof resolution === "string" ? resolution : undefined,
             size: typeof size === "string" ? size : undefined,

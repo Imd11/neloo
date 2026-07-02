@@ -19,7 +19,7 @@ from functools import lru_cache
 # Action whitelist - only these actions are allowed
 ALLOWED_ACTIONS = {
     "twitter": [
-        "TWITTER_CREATION_OF_A_POST",  # 发推
+        "TWITTER_CREATION_OF_A_POST",  # Create a post
     ],
     # Future apps:
     # "gmail": ["GMAIL_SEND_EMAIL"],
@@ -225,4 +225,3 @@ async def get_composio_tools_for_user(user_id: str) -> list:
     except Exception as e:
         print(f"[Composio] Failed to load tools: {e}")
         return []
-

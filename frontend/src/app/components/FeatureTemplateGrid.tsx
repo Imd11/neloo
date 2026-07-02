@@ -1,6 +1,6 @@
+import { useMemo } from "react";
 import { TemplateCard } from "./TemplateCard";
-import { Feature } from "@/data/featureTemplates";
-import { Template } from "@/data/featureTemplates"; // Fixed import path
+import { Feature, Template, localizeFeature } from "@/data/featureTemplates";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguage } from "@/providers/LanguageProvider";
 
@@ -14,12 +14,16 @@ export function FeatureTemplateGrid({
     onSelectTemplate,
 }: FeatureTemplateGridProps) {
     const { t } = useLanguage();
-    if (!feature) return null;
+    const localizedFeature = useMemo(
+        () => feature ? localizeFeature(feature, t) : null,
+        [feature, t]
+    );
+    if (!localizedFeature) return null;
 
     return (
         <AnimatePresence mode="wait">
             <motion.div
-                key={feature.id}
+                key={localizedFeature.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
@@ -30,7 +34,7 @@ export function FeatureTemplateGrid({
                     {t("chat.select_template")}
                 </h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                    {feature.templates.map((template) => (
+                    {localizedFeature.templates.map((template) => (
                         <TemplateCard
                             key={template.id}
                             title={template.title}

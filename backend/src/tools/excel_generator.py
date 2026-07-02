@@ -33,9 +33,9 @@ def _validate_context(config: RunnableConfig | None) -> tuple[str, str]:
         thread_id = thread_id_ctx.get()
     
     if not user_id or user_id in ("default", "anonymous"):
-        raise ValueError("无法获取用户身份，请重新登录")
+        raise ValueError("Unable to identify the user. Please sign in again.")
     if not thread_id or thread_id == "default":
-        raise ValueError("无法获取会话ID，请刷新页面")
+        raise ValueError("Unable to identify the thread. Please refresh the page.")
     
     return user_id, thread_id
 
@@ -43,26 +43,26 @@ def _validate_context(config: RunnableConfig | None) -> tuple[str, str]:
 @tool
 def create_excel(
     spec: Annotated[str, """
-JSON格式的Excel规格说明：
+JSON specification for the Excel workbook:
 {
     "sheets": [{
         "name": "Sheet1",
-        "headers": ["列A", "列B", "列C"],
-        "rows": [["数据1", 100, 50.5], ["数据2", 200, 75.3]],
+        "headers": ["Column A", "Column B", "Column C"],
+        "rows": [["Data 1", 100, 50.5], ["Data 2", 200, 75.3]],
         "formulas": {"D2": "=SUM(B2:C2)"},
         "column_widths": {"A": 20, "B": 15}
     }]
 }
     """],
-    output_name: Annotated[str, "输出文件名，如 'report.xlsx'"],
+    output_name: Annotated[str, "Output filename, such as 'report.xlsx'"],
     config: RunnableConfig = None,  # type: ignore[assignment]
 ) -> dict[str, Any]:
     """
-    创建 Excel 表格文件。
+    Create an Excel workbook.
     
-    适用场景：数据表格、财务报表、统计汇总
+    Suitable for data tables, financial reports, and statistical summaries.
     
-    返回包含 file_id, download_url, summary 的结构化对象。
+    Returns a structured object containing file_id, download_url, and summary.
     """
     try:
         user_id, thread_id = _validate_context(config)
@@ -153,7 +153,7 @@ print("__FILE_BASE64_END__")
         "download_url": file_info.get("download_url"),
         "filename": output_name,
         "file_type": "generated",
-        "summary": f"已创建 Excel 文件 {output_name}，包含 {len(sheets)} 个工作表，共 {total_rows} 行数据",
+        "summary": f"Created Excel file {output_name} with {len(sheets)} sheets and {total_rows} data rows",
     }
 
 

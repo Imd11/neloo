@@ -3,11 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Sparkles, Send, Loader2 } from 'lucide-react';
 import type { Slide } from '@/app/slides/types/slides';
-
-// Tu-Zi API configuration
-const TUZI_CHAT_URL = 'https://api.tu-zi.com/v1/chat/completions';
-const TUZI_API_KEY = process.env.NEXT_PUBLIC_TUZI_API_KEY?.trim();
-const TUZI_CHAT_MODEL = 'gemini-3-flash-preview';
+import { getConfig } from '@/lib/config';
 
 interface SlidesChatPanelProps {
     slides: Slide[];
@@ -24,18 +20,22 @@ interface ChatMessage {
     isStreaming?: boolean;
 }
 
-const SYSTEM_PROMPT = `你是一个专业的演示文稿助手。用户正在编辑一个演示文稿，你可以帮助他们：
-1. 修改幻灯片标题或内容
-2. 优化文案表达
-3. 添加或删除要点
-4. 调整视觉描述
+const SYSTEM_PROMPT = `You are a professional presentation assistant. The user is editing a presentation, and you can help them:
+1. Modify slide titles or content
+2. Improve copy and wording
+3. Add or remove bullet points
+4. Refine visual descriptions
 
-当用户请求修改时，请提供具体的建议。如果需要修改特定幻灯片，请明确指出幻灯片编号和修改内容。
+When the user asks for changes, provide specific suggestions. If a specific slide should be changed, clearly identify the slide number and the exact change.
 
-回复格式：
-- 直接回答用户的问题
-- 如果是修改建议，用 "【修改建议】" 标记
-- 保持简洁友好的语气`;
+Response format:
+- Answer the user's question directly
+- For edit suggestions, mark them with "[Edit suggestion]"
+- Keep the tone concise and friendly`;
+
+function getApiBaseUrl(): string {
+    return (getConfig()?.deploymentUrl || process.env.NEXT_PUBLIC_API_URL || '').replace(/\/+$/, '');
+}
 
 export function SlidesChatPanel({
     slides,
@@ -52,12 +52,12 @@ export function SlidesChatPanel({
     // Generate welcome message based on state
     const getWelcomeMessage = () => {
         if (isGenerating) {
-            return `正在为你生成 "${topic || '演示文稿'}" 的大纲...`;
+            return `Generating an outline for "${topic || 'your presentation'}"...`;
         }
         if (slides.length > 0) {
-            return `大纲已生成，共 ${slides.length} 张幻灯片。你可以：\n\n• 直接编辑左侧的内容\n• 让我帮你优化某张幻灯片\n• 询问结构建议`;
+            return `The outline is ready with ${slides.length} slides. You can:\n\n• Edit content directly on the left\n• Ask me to improve a slide\n• Ask for structure suggestions`;
         }
-        return `你好！我是幻灯片助手。请稍等大纲生成完成...`;
+        return `Hi. I am your slides assistant. Wait for the outline to finish generating.`;
     };
 
     // Scroll to bottom when messages change
@@ -69,12 +69,12 @@ export function SlidesChatPanel({
     const createSlidesContext = () => {
         if (slides.length === 0) return '';
 
-        let context = `当前演示文稿主题: ${topic || '未命名'}\n\n幻灯片列表:\n`;
+        let context = `Current presentation topic: ${topic || 'Untitled'}\n\nSlides:\n`;
         slides.forEach((slide, index) => {
-            context += `\n【幻灯片 ${index + 1}】\n`;
-            context += `标题: ${slide.title}\n`;
-            context += `内容: ${slide.content}\n`;
-            context += `视觉描述: ${slide.visualDescription}\n`;
+            context += `\n[Slide ${index + 1}]\n`;
+            context += `Title: ${slide.title}\n`;
+            context += `Content: ${slide.content}\n`;
+            context += `Visual description: ${slide.visualDescription}\n`;
         });
         return context;
     };
@@ -100,42 +100,17 @@ export function SlidesChatPanel({
         ]);
 
         try {
-            if (!TUZI_API_KEY) {
-                throw new Error('Missing NEXT_PUBLIC_TUZI_API_KEY');
-            }
-
-            // Build API messages
-            const apiMessages = [
-                { role: 'system', content: SYSTEM_PROMPT },
-            ];
-
-            // Add slides context if available
             const slidesContext = createSlidesContext();
-            if (slidesContext) {
-                apiMessages.push({ role: 'user', content: slidesContext });
-                apiMessages.push({ role: 'assistant', content: '我已了解当前的幻灯片内容，请告诉我你需要什么帮助。' });
-            }
-
-            // Add conversation history
-            messages.forEach(m => {
-                apiMessages.push({ role: m.role, content: m.content });
-            });
-
-            // Add current user message
-            apiMessages.push({ role: 'user', content: input });
-
-            // Call Tu-Zi API with streaming
-            const response = await fetch(TUZI_CHAT_URL, {
+            const conversation = messages
+                .map((message) => `${message.role}: ${message.content}`)
+                .join('\n');
+            const response = await fetch(`${getApiBaseUrl()}/api/slides/generate`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${TUZI_API_KEY}`
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    model: TUZI_CHAT_MODEL,
-                    messages: apiMessages,
-                    stream: true,
-                    temperature: 0.7
+                    system: SYSTEM_PROMPT,
+                    prompt: `${slidesContext ? `${slidesContext}\n\n` : ''}${conversation ? `Conversation so far:\n${conversation}\n\n` : ''}User request: ${input}`,
+                    temperature: 0.7,
                 })
             });
 
@@ -143,43 +118,15 @@ export function SlidesChatPanel({
                 throw new Error(`API error: ${response.status}`);
             }
 
-            const reader = response.body?.getReader();
-            if (!reader) throw new Error("No response body");
-
-            const decoder = new TextDecoder();
-            let fullContent = '';
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.split('\n').filter(line => line.trim() !== '');
-
-                for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        const data = line.slice(6);
-                        if (data === '[DONE]') continue;
-
-                        try {
-                            const parsed = JSON.parse(data);
-                            const content = parsed.choices?.[0]?.delta?.content;
-                            if (content) {
-                                fullContent += content;
-                                setMessages(prev =>
-                                    prev.map(m =>
-                                        m.id === assistantId
-                                            ? { ...m, content: fullContent }
-                                            : m
-                                    )
-                                );
-                            }
-                        } catch {
-                            // Ignore parse errors
-                        }
-                    }
-                }
-            }
+            const data = await response.json();
+            const fullContent = data.text || '';
+            setMessages(prev =>
+                prev.map(m =>
+                    m.id === assistantId
+                        ? { ...m, content: fullContent }
+                        : m
+                )
+            );
 
             // Mark streaming complete
             setMessages(prev =>
@@ -194,7 +141,7 @@ export function SlidesChatPanel({
             setMessages(prev =>
                 prev.map(m =>
                     m.id === assistantId
-                        ? { ...m, content: `错误: ${error instanceof Error ? error.message : '请求失败'}`, isStreaming: false }
+                        ? { ...m, content: `Error: ${error instanceof Error ? error.message : 'Request failed'}`, isStreaming: false }
                         : m
                 )
             );
@@ -215,7 +162,7 @@ export function SlidesChatPanel({
             {/* Header */}
             <div className="h-14 px-4 flex items-center gap-2 border-b border-zinc-800 shrink-0">
                 <Sparkles size={18} className="text-purple-400" />
-                <span className="font-semibold text-white">AI 助手</span>
+                <span className="font-semibold text-white">AI Assistant</span>
             </div>
 
             {/* Messages Area */}
@@ -237,7 +184,7 @@ export function SlidesChatPanel({
                     <div className="bg-zinc-800/30 rounded-lg p-3">
                         <p className="text-xs text-zinc-500 mb-2 flex items-center gap-2">
                             <Loader2 size={12} className="animate-spin" />
-                            生成大纲中...
+                            Generating outline...
                         </p>
                         <pre className="text-xs text-green-400/80 font-mono whitespace-pre-wrap max-h-32 overflow-y-auto">
                             {streamingContent.substring(0, 500)}...
@@ -252,13 +199,13 @@ export function SlidesChatPanel({
                                 ? 'bg-purple-600'
                                 : 'bg-zinc-600'
                             }`}>
-                            {message.role === 'assistant' ? <Sparkles size={14} /> : '我'}
+                            {message.role === 'assistant' ? <Sparkles size={14} /> : 'Me'}
                         </div>
                         <div className={`flex-1 rounded-lg p-3 text-sm ${message.role === 'assistant'
                                 ? 'bg-zinc-800 text-zinc-300'
                                 : 'bg-purple-600/20 text-purple-100'
                             }`}>
-                            {message.content || (message.isStreaming ? '思考中...' : '')}
+                            {message.content || (message.isStreaming ? 'Thinking...' : '')}
                             {message.isStreaming && message.content && (
                                 <span className="inline-block w-1.5 h-4 bg-purple-500 ml-0.5 animate-pulse" />
                             )}
@@ -277,7 +224,7 @@ export function SlidesChatPanel({
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        placeholder="输入你的需求..."
+                        placeholder="Describe what you need..."
                         disabled={isLoading || isGenerating}
                         className="flex-1 px-3 py-2 text-sm bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
                     />
@@ -295,7 +242,7 @@ export function SlidesChatPanel({
                 </div>
                 {isGenerating && (
                     <p className="text-xs text-zinc-500 mt-2 text-center">
-                        大纲生成完成后可开始对话
+                        You can chat after the outline is ready.
                     </p>
                 )}
             </div>

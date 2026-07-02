@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Search, Grid, Package, Store, Loader2 } from "lucide-react";
+import { Search, Grid, Package, Store } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import {
     Select,
     SelectContent,
@@ -11,7 +10,7 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AppCard } from "./AppCard";
-import { apps, categoryLabels, type AppCategory } from "./appsData";
+import { apps, appCategories, type AppCategory } from "./appsData";
 import { toast } from "sonner";
 import { useAuth } from "@/providers/AuthProvider";
 import { getConfig } from "@/lib/config";
@@ -34,8 +33,16 @@ export function ConnectedAppsTab() {
     const [selectedCategory, setSelectedCategory] = useState<AppCategory | "all">("all");
     const [connectedAppIds, setConnectedAppIds] = useState<Set<string>>(new Set());
     const [pendingAppIds, setPendingAppIds] = useState<Set<string>>(new Set());
-    const [isLoading, setIsLoading] = useState(true);
-    const [connectingApp, setConnectingApp] = useState<string | null>(null);
+
+    const localizedApps = useMemo(() => {
+        return apps.map((app) => {
+            const description = t(app.descriptionKey);
+            return {
+                ...app,
+                description: description === app.descriptionKey ? app.description : description,
+            };
+        });
+    }, [t]);
 
     // Auth headers helper
     const getAuthHeaders = (token: string) => ({
@@ -67,10 +74,8 @@ export function ConnectedAppsTab() {
             }
         } catch (error) {
             console.error('[ConnectedApps] Failed to fetch connections:', error);
-        } finally {
-            setIsLoading(false);
         }
-    }, [session?.access_token]);
+    }, [session?.access_token, apiUrl]);
 
     useEffect(() => {
         fetchConnections();
@@ -93,7 +98,7 @@ export function ConnectedAppsTab() {
                         if (data.connected) {
                             // Refresh connections
                             await fetchConnections();
-                            const appName = apps.find(a => a.id === appId)?.name || appId;
+                            const appName = localizedApps.find(a => a.id === appId)?.name || appId;
                             toast.success(t("settings.connect_success", { name: appName }));
                             break;
                         }
@@ -105,11 +110,11 @@ export function ConnectedAppsTab() {
         }, 3000);
 
         return () => clearInterval(interval);
-    }, [pendingAppIds, session?.access_token, fetchConnections]);
+    }, [pendingAppIds, session?.access_token, fetchConnections, apiUrl, localizedApps, t]);
 
     // Filter apps based on search and category
     const filteredApps = useMemo(() => {
-        return apps.filter((app) => {
+        return localizedApps.filter((app) => {
             const matchesSearch =
                 app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 app.description.toLowerCase().includes(searchQuery.toLowerCase());
@@ -117,7 +122,7 @@ export function ConnectedAppsTab() {
                 selectedCategory === "all" || app.category === selectedCategory;
             return matchesSearch && matchesCategory;
         });
-    }, [searchQuery, selectedCategory]);
+    }, [searchQuery, selectedCategory, localizedApps]);
 
     // Separate connected and marketplace apps
     const connectedApps = useMemo(() => {
@@ -130,7 +135,7 @@ export function ConnectedAppsTab() {
 
     // Group marketplace apps by category
     const groupedMarketplaceApps = useMemo(() => {
-        const groups: Partial<Record<AppCategory, typeof apps>> = {};
+        const groups: Partial<Record<AppCategory, typeof localizedApps>> = {};
         marketplaceApps.forEach((app) => {
             if (!groups[app.category]) {
                 groups[app.category] = [];
@@ -146,8 +151,6 @@ export function ConnectedAppsTab() {
             toast.error(t("common.login_required"));
             return;
         }
-
-        setConnectingApp(appId);
 
         try {
             const response = await fetch(`${apiUrl}/api/integrations/connect`, {
@@ -173,8 +176,6 @@ export function ConnectedAppsTab() {
         } catch (error) {
             console.error('[ConnectedApps] Failed to connect:', error);
             toast.error(t("settings.connect_failed", { message: error instanceof Error ? error.message : String(error) }));
-        } finally {
-            setConnectingApp(null);
         }
     };
 
@@ -182,7 +183,7 @@ export function ConnectedAppsTab() {
     const handleDisconnect = async (appId: string) => {
         if (!session?.access_token) return;
 
-        const app = apps.find((a) => a.id === appId);
+        const app = localizedApps.find((a) => a.id === appId);
 
         try {
             const response = await fetch(`${apiUrl}/api/integrations/disconnect`, {
@@ -214,7 +215,7 @@ export function ConnectedAppsTab() {
     };
 
     const handleManage = (appId: string) => {
-        const app = apps.find((a) => a.id === appId);
+        const app = localizedApps.find((a) => a.id === appId);
         toast.info(t("settings.manage_app", { name: app?.name ?? "" }));
     };
 
@@ -249,9 +250,9 @@ export function ConnectedAppsTab() {
                     </SelectTrigger>
                     <SelectContent className="bg-popover border-border">
                         <SelectItem value="all">{t("settings.all_categories")}</SelectItem>
-                        {Object.entries(categoryLabels).map(([key, label]) => (
-                            <SelectItem key={key} value={key}>
-                                {t(`settings.category_${key}`)}
+                        {appCategories.map((category) => (
+                            <SelectItem key={category} value={category}>
+                                {t(`settings.category_${category}`)}
                             </SelectItem>
                         ))}
                     </SelectContent>

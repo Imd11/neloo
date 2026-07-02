@@ -271,7 +271,7 @@ class E2BSandboxExecutor(SandboxExecutor):
         """
         Ensure all user files are synced to sandbox before execution.
 
-        This is the "兜底同步" (fallback sync) that guarantees files
+        This fallback sync guarantees files
         are present even if pre-warming failed or sandbox was recreated.
         """
         try:
@@ -359,7 +359,7 @@ class E2BSandboxExecutor(SandboxExecutor):
                     self._set_executing(user_id, True)
 
                     try:
-                        # Ensure files are synced before execution (兜底同步)
+                        # Ensure files are synced before execution.
                         self._ensure_files_synced(sandbox, user_id)
 
                         # Execute code
@@ -749,7 +749,7 @@ class AsyncE2BSandboxExecutor(SandboxExecutor):
         """
         Ensure all user files are synced to sandbox before execution (async).
 
-        This is the "兜底同步" (fallback sync) that guarantees files
+        This fallback sync guarantees files
         are present even if pre-warming failed or sandbox was recreated.
         """
         try:
@@ -899,7 +899,7 @@ class AsyncE2BSandboxExecutor(SandboxExecutor):
                     await self._set_executing(user_id, True)
 
                     try:
-                        # Ensure files are synced before execution (兜底同步)
+                        # Ensure files are synced before execution.
                         await self._ensure_files_synced(sandbox, user_id)
 
                         # Execute code

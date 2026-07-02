@@ -39,16 +39,10 @@ import { features } from "@/data/featureTemplates";
 
 // Import logos for image models
 import nanoBananaLogo from "@/assets/logos/nano-banana.png";
-import klingLogo from "@/assets/logos/kling.png";
-import jimengLogo from "@/assets/logos/jimeng.png";
-import midjourneyLogo from "@/assets/logos/midjourney.png";
 import openaiLogo from "@/assets/logos/openai.png";
-import stabilityLogo from "@/assets/logos/stability.png";
-import minimaxLogo from "@/assets/logos/minimax.png";
-import qwenLogo from "@/assets/logos/qwen.png";
 
 // Logos that need dark background in light mode
-const lightLogos = [openaiLogo, midjourneyLogo];
+const lightLogos = [openaiLogo];
 
 interface ModelInfo {
     name: string;
@@ -58,15 +52,8 @@ interface ModelInfo {
 }
 
 const imageModels: ModelInfo[] = [
-    { name: "Nano Banana", logo: nanoBananaLogo, available: true },
-    { name: "Flash Image (测试)", logo: nanoBananaLogo, available: true, modelId: "gemini-2.5-flash-image-preview-nt" },
-    { name: "可灵 AI", logo: klingLogo, available: false },
-    { name: "即梦", logo: jimengLogo, available: false },
-    { name: "Midjourney", logo: midjourneyLogo, available: false },
-    { name: "DALL·E 3", logo: openaiLogo, available: false },
-    { name: "Stable Diffusion", logo: stabilityLogo, available: false },
-    { name: "MiniMax", logo: minimaxLogo, available: false },
-    { name: "通义万相", logo: qwenLogo, available: false },
+    { name: "Nano Banana", logo: nanoBananaLogo, available: true, modelId: "nano-banana" },
+    { name: "GPT Image 2", logo: openaiLogo, available: true, modelId: "gpt-image-2" },
 ];
 
 const SUPPORTED_IMAGE_RATIOS: ImageRatio[] = ["auto", "1x1", "16x9", "9x16", "4x3", "3x4"];
@@ -323,13 +310,6 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
         } else {
             setRatio("auto");
         }
-    }, []);
-
-    // Handle going back to input mode
-    const handleBackToInput = useCallback(() => {
-        setIsEditMode(false);
-        setMessages([]);
-        setCanvasImages([]);
     }, []);
 
     // Handle new conversation (stay in edit mode, clear messages)

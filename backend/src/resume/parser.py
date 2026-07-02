@@ -180,7 +180,7 @@ class ResumeParser:
                             "model": self.model,
                             "messages": [
                                 {"role": "system", "content": prompt},
-                                {"role": "user", "content": f"请从以下简历文本中提取信息：\n\n{indexed_text}"}
+                                {"role": "user", "content": f"Extract information from the following resume text:\n\n{indexed_text}"}
                             ],
                             "temperature": 0.1,
                             "max_tokens": 2000

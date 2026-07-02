@@ -77,22 +77,21 @@ These are backend secrets. Configure them in `backend/.env` locally or Railway i
 | Custom OpenAI-compatible | `custom-openai` | `CUSTOM_OPENAI_API_KEY` | `CUSTOM_OPENAI_BASE_URL` | `CUSTOM_OPENAI_MODEL` | Secret |
 | Custom Anthropic-compatible | `custom-anthropic` | `CUSTOM_ANTHROPIC_API_KEY` | `CUSTOM_ANTHROPIC_BASE_URL` | `CUSTOM_ANTHROPIC_MODEL` | Secret |
 
-Legacy `NEWAPI_*`, `TUZI_*`, and old graph IDs such as `deepseek-chat`, `qwen3-max`, and `gpt-5-thinking` remain supported for existing deployments, but new setup flows should guide users to the canonical entries above.
+Legacy `NEWAPI_*` and old graph IDs such as `deepseek-chat`, `qwen3-max`, and `claude-opus-right` remain supported for existing deployments, but new setup flows should guide users to the canonical entries above.
 
 Old graph IDs are hidden from the selector but kept so existing LangGraph graph IDs and older stored thread values do not crash. The thread API normalizes old stored `model_id` values to the canonical public ID for display and future updates. If users need the old exact model choice, guide them to set the canonical provider's model variable, for example `DEEPSEEK_MODEL=deepseek-reasoner`, `QWEN_MODEL=qwen3-max`, or `OPENAI_MODEL=gpt-5-thinking`.
 
-`NEWAPI_BASE_URL` remains a legacy compatibility variable for old direct graph IDs. It does not count as a complete canonical public provider route by itself; use `OPENAI_API_KEY`, `TUZI_API_KEY` + `TUZI_BASE_URL`, or `CUSTOM_OPENAI_*` for the public selector.
+`NEWAPI_BASE_URL` remains a legacy compatibility variable for old direct graph IDs. It does not count as a complete canonical public provider route by itself; use `OPENAI_API_KEY` or `CUSTOM_OPENAI_*` for the public selector.
 
 ## Image Generation Variables
 
 | Variable | Location | Required when | Security | Feature |
 | --- | --- | --- | --- | --- |
-| `NANOBANANA_IMAGE_API_KEY` | Frontend environment / Vercel server-side | Using `/api/generate-image` or `/api/edit` | Secret, do not prefix with `NEXT_PUBLIC_` | Next.js image generation and editing routes. |
-| `NEXT_PUBLIC_IMAGE_API_URL` | Frontend | Image helper clients | Public browser value | Image API base URL. Defaults to `https://api.tu-zi.com`. |
-| `NEXT_PUBLIC_TUZI_API_KEY` | Frontend | Slides text generation and some image flows | Public browser value | Tu-Zi browser-side slides calls. Use restricted keys only. |
-| `NEXT_PUBLIC_TUZI_IMAGE_API_KEY` | Frontend | Slides image generation | Public browser value | Tu-Zi browser-side image calls. Falls back to `NEXT_PUBLIC_TUZI_API_KEY` in some code paths. |
-| `NEXT_PUBLIC_DEEPSEEK_API_KEY` | Frontend | Slidecraft flows | Public browser value | Browser-side DeepSeek calls. Prefer backend proxy for production. |
-| `NEXT_PUBLIC_QWEN_API_KEY` | Frontend | Resume parser flows | Public browser value | Browser-side Qwen calls. Prefer backend proxy for production. |
+| `NANOBANANA_IMAGE_API_KEY` | Frontend environment / Vercel server-side | Using Nano Banana through `/api/generate-image` or `/api/edit` | Secret, do not prefix with `NEXT_PUBLIC_` | Next.js image generation and editing routes. |
+| `NANOBANANA_IMAGE_BASE_URL` | Frontend environment / Vercel server-side | Using Nano Banana | Secret-ish endpoint config | OpenAI-compatible Nano Banana base URL. |
+| `NANOBANANA_IMAGE_MODEL` | Frontend environment / Vercel server-side | Optional | Public config | Defaults to `nano-banana`. |
+| `OPENAI_API_KEY` | Frontend environment / Vercel server-side | Using GPT Image 2 | Secret, do not prefix with `NEXT_PUBLIC_` | Server-side image provider key. |
+| `OPENAI_IMAGE_MODEL` | Frontend environment / Vercel server-side | Optional | Public config | Defaults to `gpt-image-2`. |
 
 ## Supabase Variables
 

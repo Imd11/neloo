@@ -74,9 +74,9 @@ def _validate_context(config: RunnableConfig | None) -> tuple[str, str]:
         thread_id = thread_id_ctx.get()
     
     if not user_id or user_id in ("default", "anonymous"):
-        raise ValueError("无法获取用户身份，请重新登录")
+        raise ValueError("Unable to identify the user. Please sign in again.")
     if not thread_id or thread_id == "default":
-        raise ValueError("无法获取会话ID，请刷新页面")
+        raise ValueError("Unable to identify the thread. Please refresh the page.")
     
     return user_id, thread_id
 
@@ -118,25 +118,25 @@ def _save_document_file(
 @tool
 def create_pptx(
     spec: Annotated[str, """
-JSON格式的PPT规格说明：
+JSON specification for the PowerPoint presentation:
 {
-    "title": "演示文稿标题",
+    "title": "Presentation title",
     "slides": [
-        {"layout": "title", "title": "封面标题", "subtitle": "副标题"},
-        {"layout": "content", "title": "内容页", "bullets": ["要点1", "要点2", "要点3"]},
-        {"layout": "two_column", "title": "对比", "left": ["左列内容"], "right": ["右列内容"]}
+        {"layout": "title", "title": "Cover title", "subtitle": "Subtitle"},
+        {"layout": "content", "title": "Content slide", "bullets": ["Point 1", "Point 2", "Point 3"]},
+        {"layout": "two_column", "title": "Comparison", "left": ["Left column content"], "right": ["Right column content"]}
     ]
 }
     """],
-    output_name: Annotated[str, "输出文件名，如 'presentation.pptx'"],
+    output_name: Annotated[str, "Output filename, such as 'presentation.pptx'"],
     config: RunnableConfig = None,  # type: ignore[assignment]
 ) -> dict[str, Any]:
     """
-    创建 PowerPoint 演示文稿。
+    Create a PowerPoint presentation.
     
-    适用场景：业务汇报、培训材料、项目提案
+    Suitable for business reports, training materials, and project proposals.
     
-    返回包含 file_id, download_url, summary 的结构化对象。
+    Returns a structured object containing file_id, download_url, and summary.
     """
     try:
         user_id, thread_id = _validate_context(config)
@@ -274,7 +274,7 @@ print(f"Generated {{output_name}} with {{len(spec.get('slides', []))}} slides")
         "download_url": file_info["download_url"],
         "filename": output_name,
         "file_type": "generated",
-        "summary": f"已创建 PowerPoint 演示文稿 {output_name}，共 {len(slides)} 页",
+        "summary": f"Created PowerPoint presentation {output_name} with {len(slides)} slides",
     }
 
 

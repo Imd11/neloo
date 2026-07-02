@@ -187,7 +187,7 @@ export function ThreadList({
     return flattened.filter((t) => t.status === "interrupted").length;
   }, [flattened]);
 
-  const handleDeleteThread = useCallback(
+  const _handleDeleteThread = useCallback(
     async (threadId: string) => {
       if (!config?.deploymentUrl) return;
       if (!session?.access_token) {
@@ -224,7 +224,7 @@ export function ThreadList({
         });
       }
     },
-    [config?.deploymentUrl, currentThreadId, session?.access_token, setCurrentThreadId, threads]
+    [config?.deploymentUrl, currentThreadId, session?.access_token, setCurrentThreadId, threads, t]
   );
 
   const startEditingTitle = useCallback(
@@ -282,7 +282,7 @@ export function ThreadList({
         });
       }
     },
-    [config?.deploymentUrl, session?.access_token, editingTitle, threads]
+    [config?.deploymentUrl, session?.access_token, editingTitle, threads, t]
   );
 
   const handleKeyDown = useCallback(
@@ -500,7 +500,7 @@ export function ThreadList({
                                   className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    onThreadSelect?.(thread.id);
+                                    void _handleDeleteThread(thread.id);
                                   }}
                                   aria-label="Delete thread"
                                 >

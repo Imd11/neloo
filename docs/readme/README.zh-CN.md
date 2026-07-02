@@ -115,7 +115,7 @@ cp frontend/.env.example frontend/.env.local
 | 服务地址 | `PORT`, `API_BASE_URL`, `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS` | 部署地址、回调地址和跨域配置。 |
 | LangGraph | `LANGGRAPH_API_URL`, `LANGGRAPH_INTERNAL_URL`, `LANGGRAPH_DEFAULT_GRAPH_ID` | 默认 graph ID 目前仍是 `data_analyst`。 |
 | 模型服务 | `DEEPSEEK_API_KEY`, `QWEN_API_KEY`, `MINIMAX_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `ZHIPU_API_KEY`, `OPENROUTER_API_KEY`, `CUSTOM_OPENAI_API_KEY`, `CUSTOM_ANTHROPIC_API_KEY` | 至少配置一个；选择器每个服务只显示一个入口。 |
-| 模型名称和地址 | `*_MODEL`, `*_BASE_URL`，例如 `QWEN_MODEL`, `QWEN_BASE_URL`, `OPENAI_MODEL`, `GEMINI_BASE_URL`, `CUSTOM_OPENAI_MODEL` | 用于选择具体模型和网关地址；旧的 `NEWAPI_*`、`TUZI_*` 仍兼容。 |
+| 模型名称和地址 | `*_MODEL`, `*_BASE_URL`，例如 `QWEN_MODEL`, `QWEN_BASE_URL`, `OPENAI_MODEL`, `GEMINI_BASE_URL`, `CUSTOM_OPENAI_MODEL` | 用于选择具体模型和网关地址；旧的 |
 | 沙箱 | `SANDBOX_MODE`, `E2B_API_KEY` | 本地可信开发可用 `local`，生产建议 `e2b` 或 `docker`。 |
 | Supabase | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_JWT_SECRET`, `SUPABASE_DB_HOST`, `SUPABASE_DB_PASSWORD` | service role key 只能放在后端。 |
 | 持久化 | `DATABASE_URL` | 默认本地 `backend/langgraph.json` 不需要；使用 `backend/langgraph.production.json` 做生产持久化时必须配置。 |
@@ -129,8 +129,7 @@ cp frontend/.env.example frontend/.env.local
 | 后端连接 | `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_ASSISTANT_ID` | 指向 LangGraph/FastAPI 后端。 |
 | Supabase 浏览器端 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | 公开值，但仍要正确配置 RLS 策略。 |
 | Google Drive | `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `NEXT_PUBLIC_GOOGLE_API_KEY` | 公开值，要限制来源域名和 OAuth origins。 |
-| 前端直连模型 | `NEXT_PUBLIC_TUZI_API_KEY`, `NEXT_PUBLIC_TUZI_IMAGE_API_KEY`, `NEXT_PUBLIC_DEEPSEEK_API_KEY`, `NEXT_PUBLIC_QWEN_API_KEY` | 会暴露在浏览器 bundle 中，只适合本地开发或受限 key。生产建议改成后端代理。 |
-| 图片 API | `NANOBANANA_IMAGE_API_KEY`, `NEXT_PUBLIC_IMAGE_API_URL` | `NANOBANANA_IMAGE_API_KEY` 是 Next.js API route 的服务端变量。 |
+| 图片 API | `NANOBANANA_IMAGE_API_KEY`, `NANOBANANA_IMAGE_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_IMAGE_MODEL` | `NANOBANANA_IMAGE_API_KEY` 是 Next.js API route 的服务端变量。 |
 
 ## Supabase 配置
 

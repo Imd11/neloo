@@ -115,7 +115,7 @@ cp frontend/.env.example frontend/.env.local
 | الخادم | `PORT`, `API_BASE_URL`, `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS` | عناوين النشر و CORS. |
 | LangGraph | `LANGGRAPH_API_URL`, `LANGGRAPH_INTERNAL_URL`, `LANGGRAPH_DEFAULT_GRAPH_ID` | المعرف الافتراضي الحالي هو `data_analyst`. |
 | النماذج | `DEEPSEEK_API_KEY`, `QWEN_API_KEY`, `MINIMAX_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `ZHIPU_API_KEY`, `OPENROUTER_API_KEY`, `CUSTOM_OPENAI_API_KEY`, `CUSTOM_ANTHROPIC_API_KEY` | اضبط واحداً أو أكثر؛ يعرض المحدد مدخلاً واحداً لكل مزود. |
-| اسم النموذج والعنوان | متغيرات `*_MODEL` و `*_BASE_URL` مثل `QWEN_MODEL`, `QWEN_BASE_URL`, `OPENAI_MODEL`, `GEMINI_BASE_URL` | اختر النموذج الدقيق وعنوان البوابة. تبقى متغيرات `NEWAPI_*` و `TUZI_*` مدعومة. |
+| اسم النموذج والعنوان | متغيرات `*_MODEL` و `*_BASE_URL` مثل `QWEN_MODEL`, `QWEN_BASE_URL`, `OPENAI_MODEL`, `GEMINI_BASE_URL` | اختر النموذج الدقيق وعنوان البوابة. تبقى متغيرات |
 | Sandbox | `SANDBOX_MODE`, `E2B_API_KEY` | استخدم `local` فقط مع مدخلات موثوقة. للإنتاج استخدم `e2b` أو `docker`. |
 | Supabase | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_JWT_SECRET`, `SUPABASE_DB_HOST`, `SUPABASE_DB_PASSWORD` | مفتاح service role سرّ خاص بالخلفية فقط. |
 | الاستمرارية | `DATABASE_URL` | غير مطلوب في `backend/langgraph.json` المحلي. مطلوب لاستمرارية الإنتاج مع `backend/langgraph.production.json`. |
@@ -128,8 +128,7 @@ cp frontend/.env.example frontend/.env.local
 | اتصال الخلفية | `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_ASSISTANT_ID` | يحدد عنوان الخلفية. |
 | Supabase | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | قيم عامة؛ اضبط سياسات RLS جيداً. |
 | Google Drive | `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `NEXT_PUBLIC_GOOGLE_API_KEY` | قيم عامة؛ قيّد النطاقات و referrers. |
-| نماذج من المتصفح | `NEXT_PUBLIC_TUZI_API_KEY`, `NEXT_PUBLIC_TUZI_IMAGE_API_KEY`, `NEXT_PUBLIC_DEEPSEEK_API_KEY`, `NEXT_PUBLIC_QWEN_API_KEY` | تظهر في حزمة المتصفح. استخدمها محلياً فقط أو مع مفاتيح مقيدة. |
-| الصور | `NANOBANANA_IMAGE_API_KEY`, `NEXT_PUBLIC_IMAGE_API_URL` | `NANOBANANA_IMAGE_API_KEY` متغير خادم. |
+| الصور | `NANOBANANA_IMAGE_API_KEY`, `NANOBANANA_IMAGE_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_IMAGE_MODEL` | `NANOBANANA_IMAGE_API_KEY` متغير خادم. |
 
 ## Supabase
 

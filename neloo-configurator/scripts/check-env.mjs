@@ -15,8 +15,6 @@ export const CHAT_MODEL_KEYS = [
   "CUSTOM_OPENAI_API_KEY",
   "CUSTOM_ANTHROPIC_API_KEY",
   "NEWAPI_API_KEY",
-  "TUZI_API_KEY",
-  "TUZI_ANTHROPIC_API_KEY",
 ];
 
 export const CHAT_MODEL_CONFIGS = [
@@ -41,24 +39,17 @@ export const CHAT_MODEL_CONFIGS = [
     credentials: [
       { key: "ANTHROPIC_API_KEY" },
       { key: "NEWAPI_API_KEY", required: ["NEWAPI_ANTHROPIC_BASE_URL"] },
-      { key: "TUZI_ANTHROPIC_API_KEY", required: ["TUZI_ANTHROPIC_BASE_URL"] },
     ],
   },
   {
     id: "openai",
     label: "OpenAI",
-    credentials: [
-      { key: "OPENAI_API_KEY" },
-      { key: "TUZI_API_KEY", required: ["TUZI_BASE_URL"] },
-    ],
+    credentials: [{ key: "OPENAI_API_KEY" }],
   },
   {
     id: "gemini",
     label: "Gemini",
-    credentials: [
-      { key: "GEMINI_API_KEY", required: ["GEMINI_BASE_URL"] },
-      { key: "TUZI_API_KEY", required: ["TUZI_BASE_URL"] },
-    ],
+    credentials: [{ key: "GEMINI_API_KEY", required: ["GEMINI_BASE_URL"] }],
   },
   {
     id: "zhipu",
@@ -112,20 +103,10 @@ const PUBLIC_FRONTEND_KEYS = [
   "NEXT_PUBLIC_LANGSMITH_API_KEY",
   "NEXT_PUBLIC_GOOGLE_CLIENT_ID",
   "NEXT_PUBLIC_GOOGLE_API_KEY",
-  "NEXT_PUBLIC_IMAGE_API_URL",
-  "NEXT_PUBLIC_TUZI_API_KEY",
-  "NEXT_PUBLIC_TUZI_IMAGE_API_KEY",
-  "NEXT_PUBLIC_DEEPSEEK_API_KEY",
-  "NEXT_PUBLIC_QWEN_API_KEY",
   "NEXT_PUBLIC_BACKEND_URL",
 ];
 
-const ALLOWED_PUBLIC_PROVIDER_KEYS = new Set([
-  "NEXT_PUBLIC_TUZI_API_KEY",
-  "NEXT_PUBLIC_TUZI_IMAGE_API_KEY",
-  "NEXT_PUBLIC_DEEPSEEK_API_KEY",
-  "NEXT_PUBLIC_QWEN_API_KEY",
-]);
+const ALLOWED_PUBLIC_PROVIDER_KEYS = new Set([]);
 
 export function parseEnvContent(content) {
   const values = {};
@@ -282,11 +263,8 @@ export function analyzeEnvironment({ backend, frontend, profile = "local-minimal
   if (frontend.exists) {
     for (const key of SERVER_ONLY_KEYS) {
       const publicKey = `NEXT_PUBLIC_${key}`;
-      if (
-        hasValue(frontendValues, key) ||
-        (hasValue(frontendValues, publicKey) && !ALLOWED_PUBLIC_PROVIDER_KEYS.has(publicKey))
-      ) {
-        add(report, "error", "server-secret-in-frontend", `${key} is a server-side secret and must not be placed in frontend/.env.local.`, "frontend/.env.local");
+      if (hasValue(frontendValues, publicKey) && !ALLOWED_PUBLIC_PROVIDER_KEYS.has(publicKey)) {
+        add(report, "error", "server-secret-in-frontend", `${publicKey} would expose a server-side secret to the browser. Use ${key} without NEXT_PUBLIC_ for Next.js server routes.`, "frontend/.env.local");
       }
     }
 
@@ -300,6 +278,16 @@ export function analyzeEnvironment({ backend, frontend, profile = "local-minimal
     const hasSupabaseAnon = hasValue(frontendValues, "NEXT_PUBLIC_SUPABASE_ANON_KEY");
     if (hasSupabaseUrl !== hasSupabaseAnon) {
       add(report, "warning", "partial-frontend-supabase", "Frontend Supabase usually needs both NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.", "frontend/.env.local");
+    }
+
+    const hasNanoBananaKey = hasValue(frontendValues, "NANOBANANA_IMAGE_API_KEY");
+    const hasNanoBananaBaseUrl = hasValue(frontendValues, "NANOBANANA_IMAGE_BASE_URL");
+    if (hasNanoBananaKey !== hasNanoBananaBaseUrl) {
+      add(report, "warning", "partial-nanobanana-image-config", "Nano Banana image generation needs both NANOBANANA_IMAGE_API_KEY and NANOBANANA_IMAGE_BASE_URL.", "frontend/.env.local");
+    }
+
+    if (hasValue(frontendValues, "OPENAI_IMAGE_MODEL") && !hasValue(frontendValues, "OPENAI_API_KEY")) {
+      add(report, "warning", "partial-openai-image-config", "GPT Image 2 needs OPENAI_API_KEY when OPENAI_IMAGE_MODEL is configured.", "frontend/.env.local");
     }
   }
 

@@ -14,9 +14,65 @@ export interface ThreadItem {
   type?: "chat" | "image" | "slides";  // 对话类型
 }
 
+export type ThreadHistoryStatus =
+  | "loading"
+  | "ready"
+  | "empty"
+  | "backend_unavailable"
+  | "history_disabled"
+  | "access_denied"
+  | "error";
+
+export interface ThreadHistoryProblem {
+  code: Exclude<ThreadHistoryStatus, "loading" | "ready" | "empty">;
+  message: string;
+  status?: number;
+}
+
+class ThreadHistoryRequestError extends Error {
+  readonly problem: ThreadHistoryProblem;
+
+  constructor(problem: ThreadHistoryProblem) {
+    super(problem.message);
+    this.name = "ThreadHistoryRequestError";
+    this.problem = problem;
+  }
+}
+
 const DEFAULT_PAGE_SIZE = 20;
 const THREADS_FETCH_TIMEOUT_MS = 10000;
 const THREADS_CACHE_PREFIX = "neloo:threads-cache";
+
+async function readErrorDetail(resp: Response): Promise<string> {
+  const body = await resp.json().catch(() => null);
+  if (typeof body?.detail === "string") return body.detail;
+  return resp.statusText || "Request failed";
+}
+
+function makeThreadHistoryProblem(error: unknown): ThreadHistoryProblem {
+  if (error instanceof ThreadHistoryRequestError) {
+    return error.problem;
+  }
+
+  if (error instanceof DOMException && error.name === "AbortError") {
+    return {
+      code: "backend_unavailable",
+      message: "History could not connect to the backend.",
+    };
+  }
+
+  if (error instanceof TypeError) {
+    return {
+      code: "backend_unavailable",
+      message: "History could not connect to the backend.",
+    };
+  }
+
+  return {
+    code: "error",
+    message: error instanceof Error ? error.message : "History failed to load.",
+  };
+}
 
 function buildThreadsCacheKey(
   userId: string | undefined,
@@ -112,11 +168,6 @@ export function useThreads(props: {
       status?: Thread["status"];
       accessToken: string | null;
     }) => {
-      const fallbackPage = cachedThreads.slice(
-        pageIndex * pageSize,
-        (pageIndex + 1) * pageSize
-      );
-
       if (!accessToken) {
         // Not authenticated: do not show any history.
         return [];
@@ -139,10 +190,40 @@ export function useThreads(props: {
         });
 
         if (!resp.ok) {
-          return fallbackPage;
+          const detail = await readErrorDetail(resp);
+
+          if (resp.status === 503 && detail.toLowerCase().includes("database")) {
+            throw new ThreadHistoryRequestError({
+              code: "history_disabled",
+              status: resp.status,
+              message: "Conversation history requires database persistence.",
+            });
+          }
+
+          if (resp.status === 401 || resp.status === 403) {
+            throw new ThreadHistoryRequestError({
+              code: "access_denied",
+              status: resp.status,
+              message: "This conversation history is not available to the current user.",
+            });
+          }
+
+          throw new ThreadHistoryRequestError({
+            code: "error",
+            status: resp.status,
+            message: detail,
+          });
         }
 
         const data = await resp.json();
+        if (data?.history_enabled === false) {
+          throw new ThreadHistoryRequestError({
+            code: "history_disabled",
+            status: 200,
+            message: "Conversation history requires database persistence.",
+          });
+        }
+
         const threads = Array.isArray(data?.threads) ? data.threads : [];
 
         // DB threads do not contain LangGraph status or message previews; keep UI stable with defaults.
@@ -161,7 +242,7 @@ export function useThreads(props: {
         } else {
           console.error("[useThreads] Failed to fetch threads:", error);
         }
-        return fallbackPage;
+        throw error;
       } finally {
         clearTimeout(timeoutId);
       }
@@ -170,6 +251,7 @@ export function useThreads(props: {
       fallbackData: cachedThreads.length > 0 ? [cachedThreads.slice(0, pageSize)] : undefined,
       revalidateFirstPage: true,
       revalidateOnFocus: true,
+      shouldRetryOnError: false,
     }
   );
 
@@ -179,5 +261,21 @@ export function useThreads(props: {
     writeThreadsCache(cacheKey, flattened);
   }, [cacheKey, swr.data]);
 
-  return swr;
+  const flattened = swr.data?.flat() ?? [];
+  const historyProblem = swr.error ? makeThreadHistoryProblem(swr.error) : null;
+  const historyStatus: ThreadHistoryStatus = historyProblem
+    ? (flattened.length > 0 ? "ready" : historyProblem.code)
+    : swr.isLoading && !swr.data
+      ? "loading"
+      : flattened.length > 0
+        ? "ready"
+        : "empty";
+
+  return {
+    ...swr,
+    historyStatus,
+    historyProblem,
+    hasCachedHistory: cachedThreads.length > 0,
+    retryHistory: () => swr.mutate(),
+  };
 }

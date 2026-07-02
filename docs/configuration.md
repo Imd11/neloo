@@ -101,28 +101,28 @@ Configure these in `frontend/.env.local` for local development or in Vercel for 
 
 ## Chat Model Configuration
 
-The model selector in the top-left of the app is controlled by the backend model registry in `backend/src/agent/graph.py`. The frontend displays one canonical entry per provider. Choose the exact model by setting the provider's `*_MODEL` variable.
+The model selector in the top-left of the app is controlled by the backend model registry in `backend/src/agent/graph.py`. The frontend displays one canonical entry per provider route, labeled with the concrete default model rather than only the company or gateway name. Choose a different concrete model by setting the provider's `*_MODEL` variable.
 
 Put chat model keys and base URLs in `backend/.env` locally or Railway environment variables in production. Do not put chat model provider secrets in frontend `NEXT_PUBLIC_*` variables.
 
-A complete backend chat model provider configuration means the backend can build that provider: the API key must be present, and providers with `requires_base_url` or `requires_model_env` in `backend/src/agent/graph.py` also need the matching required base URL or model variable. Values shown in `.env.example` are examples; in Railway or another host you must set the same variables explicitly.
+A complete backend chat model provider configuration means the backend can build that provider: the API key must be present, and providers with `requires_base_url` or `requires_model_env` in `backend/src/agent/graph.py` also need the matching required base URL or model variable. Empty values and obvious placeholders such as `your-key`, `replace-me`, or `placeholder` are treated as unconfigured. Values shown in `.env.example` are examples; in Railway or another host you must set the same variables explicitly.
 
 | UI model | Key variable | Base URL variable | Model variable | Notes |
 | --- | --- | --- | --- | --- |
-| DeepSeek | `DEEPSEEK_API_KEY` | None | `DEEPSEEK_MODEL` | Default: `deepseek-chat`. Use `deepseek-reasoner` if you prefer the reasoning model. |
-| Qwen | `QWEN_API_KEY` | `QWEN_BASE_URL` | `QWEN_MODEL` | `QWEN_BASE_URL` must be set, commonly `https://dashscope.aliyuncs.com/compatible-mode/v1`; default model: `qwen-plus`. |
-| MiniMax | `MINIMAX_API_KEY` | `MINIMAX_ANTHROPIC_BASE_URL` | `MINIMAX_MODEL` | Requires `MINIMAX_ANTHROPIC_BASE_URL` for an Anthropic-compatible MiniMax endpoint. |
-| Claude | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` | `ANTHROPIC_MODEL` | Native Anthropic. Legacy `NEWAPI_API_KEY` + `NEWAPI_ANTHROPIC_BASE_URL` and `TUZI_ANTHROPIC_API_KEY` + `TUZI_ANTHROPIC_BASE_URL` are still accepted. |
-| OpenAI | `OPENAI_API_KEY` | `OPENAI_BASE_URL` | `OPENAI_MODEL` | `OPENAI_BASE_URL` is optional for native OpenAI. Legacy `TUZI_API_KEY` + `TUZI_BASE_URL` is still accepted. |
-| Gemini | `GEMINI_API_KEY` | `GEMINI_BASE_URL` | `GEMINI_MODEL` | `GEMINI_BASE_URL` is required unless routing through legacy `TUZI_API_KEY` + `TUZI_BASE_URL`. |
-| GLM | `ZHIPU_API_KEY` | `ZHIPU_BASE_URL` | `ZHIPU_MODEL` | Requires `ZHIPU_BASE_URL` for a Zhipu OpenAI-compatible endpoint. |
-| OpenRouter | `OPENROUTER_API_KEY` | `OPENROUTER_BASE_URL` | `OPENROUTER_MODEL` | `OPENROUTER_BASE_URL` must be set, commonly `https://openrouter.ai/api/v1`; default model: `meta-llama/llama-4-maverick`. |
+| DeepSeek V4 Pro | `DEEPSEEK_API_KEY` | None | `DEEPSEEK_MODEL` | Default: `deepseek-v4-pro`. |
+| Qwen3 Max | `QWEN_API_KEY` | `QWEN_BASE_URL` | `QWEN_MODEL` | `QWEN_BASE_URL` must be set, commonly `https://dashscope.aliyuncs.com/compatible-mode/v1`; default model: `qwen3-max`. |
+| MiniMax M2.1 | `MINIMAX_API_KEY` | `MINIMAX_ANTHROPIC_BASE_URL` | `MINIMAX_MODEL` | Requires `MINIMAX_ANTHROPIC_BASE_URL` for an Anthropic-compatible MiniMax endpoint. |
+| Claude Opus 4.8 | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` | `ANTHROPIC_MODEL` | Native Anthropic. `NEWAPI_API_KEY` + `NEWAPI_ANTHROPIC_BASE_URL` remains available for custom deployments. |
+| GPT-5.5 | `OPENAI_API_KEY` | `OPENAI_BASE_URL` | `OPENAI_MODEL` | `OPENAI_BASE_URL` is optional for native OpenAI. |
+| Gemini 3 Pro | `GEMINI_API_KEY` | `GEMINI_BASE_URL` | `GEMINI_MODEL` | `GEMINI_BASE_URL` is required for OpenAI-compatible Gemini routing. |
+| GLM-4.7 | `ZHIPU_API_KEY` | `ZHIPU_BASE_URL` | `ZHIPU_MODEL` | Requires `ZHIPU_BASE_URL` for a Zhipu OpenAI-compatible endpoint. |
+| Llama 4 Maverick | `OPENROUTER_API_KEY` | `OPENROUTER_BASE_URL` | `OPENROUTER_MODEL` | Meta Llama through OpenRouter. `OPENROUTER_BASE_URL` must be set, commonly `https://openrouter.ai/api/v1`; default model: `meta-llama/llama-4-maverick`. |
 | Custom OpenAI-compatible | `CUSTOM_OPENAI_API_KEY` | `CUSTOM_OPENAI_BASE_URL` | `CUSTOM_OPENAI_MODEL` | Both base URL and model are required for self-hosted or third-party OpenAI-compatible gateways. |
 | Custom Anthropic-compatible | `CUSTOM_ANTHROPIC_API_KEY` | `CUSTOM_ANTHROPIC_BASE_URL` | `CUSTOM_ANTHROPIC_MODEL` | Both base URL and model are required for self-hosted or third-party Anthropic-compatible gateways. |
 
-Old graph IDs such as `deepseek-chat`, `qwen3-max`, `gpt-5-thinking`, and `claude-opus-right` are hidden from the selector but kept so existing LangGraph graph IDs and older stored thread values do not crash. The thread API normalizes old stored `model_id` values to the canonical public ID for display and future updates. If you need the old exact model choice, set the canonical provider's model variable, for example `DEEPSEEK_MODEL=deepseek-reasoner`, `QWEN_MODEL=qwen3-max`, or `OPENAI_MODEL=gpt-5-thinking`.
+Old graph IDs such as `deepseek-chat`, `qwen3-max`, `gpt-5-thinking`, and `claude-opus-right` are hidden from the selector but kept so existing LangGraph graph IDs and older stored thread values do not crash. The thread API normalizes old stored `model_id` values to the canonical public ID for display and future updates. If you need a different exact model choice, set the canonical provider's model variable, for example `DEEPSEEK_MODEL=deepseek-v4-flash`, `QWEN_MODEL=qwen-plus`, or `OPENAI_MODEL=gpt-5.5`.
 
-`NEWAPI_BASE_URL` remains a legacy compatibility variable for old direct graph IDs. It does not make the canonical `OpenAI` selector entry available by itself; use `OPENAI_API_KEY`, `TUZI_API_KEY` + `TUZI_BASE_URL`, or `CUSTOM_OPENAI_*` for the public selector.
+`NEWAPI_BASE_URL` remains a legacy compatibility variable for old direct graph IDs. It does not make the canonical `OpenAI` selector entry available by itself; use `OPENAI_API_KEY` or `CUSTOM_OPENAI_*` for the public selector.
 
 You normally do not need `NELOO_BUILD_ALL_MODEL_GRAPHS=true` for the selector. Public configured provider graph exports are registered by default. Use `NELOO_BUILD_ALL_MODEL_GRAPHS=true` only when you intentionally want all configured canonical and hidden legacy graph IDs built eagerly at import time.
 
@@ -136,21 +136,15 @@ The image page calls Next.js API routes that use a server-side key:
 
 | Variable | Location | Purpose |
 | --- | --- | --- |
-| `NANOBANANA_IMAGE_API_KEY` | `frontend/.env.local` or Vercel | Server-side key used by `frontend/src/app/api/generate-image/route.ts` and `frontend/src/app/api/edit/route.ts`. |
-| `NEXT_PUBLIC_IMAGE_API_URL` | `frontend/.env.local` or Vercel | Public image API base URL used by frontend image helper clients. Defaults to `https://api.tu-zi.com`. |
+| `NANOBANANA_IMAGE_API_KEY` | `frontend/.env.local` or Vercel | Server-side Nano Banana key used by `frontend/src/app/api/generate-image/route.ts` and `frontend/src/app/api/edit/route.ts`. |
+| `NANOBANANA_IMAGE_BASE_URL` | `frontend/.env.local` or Vercel | Server-side Nano Banana OpenAI-compatible base URL. |
+| `NANOBANANA_IMAGE_MODEL` | `frontend/.env.local` or Vercel | Optional image model override. Defaults to `nano-banana`. |
+| `OPENAI_API_KEY` | `frontend/.env.local` or Vercel | Server-side OpenAI key for GPT Image 2. |
+| `OPENAI_IMAGE_MODEL` | `frontend/.env.local` or Vercel | Optional OpenAI image model override. Defaults to `gpt-image-2`. |
 
 ### Slides / PPT Image Generation
 
-Some slides workflows currently call providers from the browser:
-
-| Variable | Location | Purpose |
-| --- | --- | --- |
-| `NEXT_PUBLIC_TUZI_API_KEY` | `frontend/.env.local` or Vercel | Tu-Zi key for slides text generation and some image flows. |
-| `NEXT_PUBLIC_TUZI_IMAGE_API_KEY` | `frontend/.env.local` or Vercel | Tu-Zi image key for slide image generation. Falls back to `NEXT_PUBLIC_TUZI_API_KEY` in some code paths. |
-| `NEXT_PUBLIC_DEEPSEEK_API_KEY` | `frontend/.env.local` or Vercel | Used by some slidecraft flows. |
-| `NEXT_PUBLIC_QWEN_API_KEY` | `frontend/.env.local` or Vercel | Used by some resume parsing flows. |
-
-Every `NEXT_PUBLIC_*` value is exposed in the browser bundle. For production, do not place unrestricted provider keys in `NEXT_PUBLIC_*`; use restricted keys or move the provider call behind a server route.
+Slides text generation uses the backend-selected chat model through `/api/slides/generate`. Slide images use the same server-side Next.js image route as the image page. Do not put unrestricted provider API keys in `NEXT_PUBLIC_*` variables.
 
 ## Supabase Configuration
 

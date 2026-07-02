@@ -1,12 +1,15 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { TemplateCard } from "./TemplateCard";
 import {
     Template,
     TemplateCategory,
     imageTemplates,
     imageCategories,
+    localizeCategory,
+    localizeTemplate,
 } from "@/data/featureTemplates";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 interface TabbedTemplateGridProps {
     type?: "image";
@@ -14,10 +17,17 @@ interface TabbedTemplateGridProps {
 }
 
 export function TabbedTemplateGrid({ type = "image", onSelectTemplate }: TabbedTemplateGridProps) {
+    const { t } = useLanguage();
     const [activeCategory, setActiveCategory] = useState<TemplateCategory>("all");
 
-    const templates = imageTemplates;
-    const categories = imageCategories;
+    const templates = useMemo(
+        () => imageTemplates.map((template) => localizeTemplate(template, t)),
+        [t]
+    );
+    const categories = useMemo(
+        () => imageCategories.map((category) => localizeCategory(category, t)),
+        [t]
+    );
 
     const filteredTemplates = activeCategory === "all"
         ? templates

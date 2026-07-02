@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, Suspense, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect, useCallback, Suspense, useMemo, useRef } from "react";
 import { useQueryState } from "nuqs";
 import { getConfig, StandaloneConfig } from "@/lib/config";
 import { Assistant } from "@langchain/langgraph-sdk";
@@ -43,7 +42,118 @@ import { useDataFileUpload } from "@/app/hooks/useDataFileUpload";
 import { WaterDropletMascot } from "@/app/components/WaterDropletMascot";
 import { toast } from "sonner";
 import { getFortuneTemplatePrefix } from '@/data/fortuneTemplatePrefix';
+import { getHumanizePrompt, getPromptOptimizePrompt } from "@/data/featurePrompts";
 import { useLanguage } from "@/providers/LanguageProvider";
+import { Button } from "@/components/ui/button";
+
+type ThreadOpenProblemCode =
+  | "not_found"
+  | "backend_unavailable"
+  | "history_disabled"
+  | "access_denied"
+  | "error";
+
+type ThreadOpenProblem = {
+  code: ThreadOpenProblemCode;
+  threadId: string;
+};
+
+type ThreadOpenState = "idle" | "checking";
+
+async function classifyThreadOpenFailure(response: Response): Promise<ThreadOpenProblemCode> {
+  if (response.status === 404) return "not_found";
+  if (response.status === 401 || response.status === 403) return "access_denied";
+  if (response.status === 503) {
+    const detail = await response.text().catch(() => "");
+    if (detail.toLowerCase().includes("database")) return "history_disabled";
+  }
+  return "error";
+}
+
+function getThreadOpenProblemCopy(
+  code: ThreadOpenProblemCode,
+  t: (key: string) => string
+) {
+  switch (code) {
+    case "not_found":
+      return {
+        title: t("history.thread_not_found_title"),
+        description: t("history.thread_not_found_description"),
+      };
+    case "backend_unavailable":
+      return {
+        title: t("history.backend_unavailable_title"),
+        description: t("history.backend_unavailable_description"),
+      };
+    case "history_disabled":
+      return {
+        title: t("history.history_disabled_title"),
+        description: t("history.history_disabled_description"),
+      };
+    case "access_denied":
+      return {
+        title: t("history.access_denied_title"),
+        description: t("history.access_denied_description"),
+      };
+    case "error":
+    default:
+      return {
+        title: t("history.generic_error_title"),
+        description: t("history.generic_error_description"),
+      };
+  }
+}
+
+function ThreadOpenStateView({
+  state,
+  problem,
+  onRetry,
+  onNewChat,
+}: {
+  state: ThreadOpenState;
+  problem: ThreadOpenProblem | null;
+  onRetry: (threadId: string) => void;
+  onNewChat: () => void;
+}) {
+  const { t } = useLanguage();
+
+  if (state === "checking" && !problem) {
+    return (
+      <div className="flex flex-1 items-center justify-center px-6 text-sm text-muted-foreground">
+        {t("common.loading")}
+      </div>
+    );
+  }
+
+  if (!problem) return null;
+
+  const copy = getThreadOpenProblemCopy(problem.code, t);
+  return (
+    <div className="flex flex-1 items-center justify-center px-6">
+      <div className="max-w-md text-center">
+        <h2 className="text-lg font-semibold text-foreground">{copy.title}</h2>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          {copy.description}
+        </p>
+        <div className="mt-5 flex items-center justify-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onRetry(problem.threadId)}
+          >
+            {t("history.retry")}
+          </Button>
+          <Button
+            type="button"
+            onClick={onNewChat}
+          >
+            {t("history.new_chat")}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface LandingViewProps {
   onPromptSubmit: (value: string, hiddenPrefix?: string) => void;
@@ -62,10 +172,16 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
   const [selectedFortuneTemplateId, setSelectedFortuneTemplateId] = useState<number | null>(null);
   const [selectedTemplateName, setSelectedTemplateName] = useState<string | null>(null);
   const [selectedSlidesPresetId, setSelectedSlidesPresetId] = useState<string | null>(null);
+  const [selectedTextTemplateId, setSelectedTextTemplateId] = useState<number | null>(null);
 
   // File upload state - use proper upload hook
   const { session } = useAuth();
   const [libraryDialogOpen, setLibraryDialogOpen] = useState(false);
+
+  useEffect(() => {
+    setSelectedTextTemplateId(null);
+    setSelectedTemplateName(null);
+  }, [selectedFeature?.id]);
 
   // Use data file upload hook for proper Supabase upload
   const fileUpload = useDataFileUpload({
@@ -131,6 +247,14 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
       setFortuneMode(false);
       setActiveFeatureId('web-dev');
       onPromptSubmit(userInput);
+    } else if (selectedFeature?.id === 'prompt-optimize') {
+      setFortuneMode(false);
+      setActiveFeatureId('prompt-optimize');
+      onPromptSubmit(userInput, getPromptOptimizePrompt(selectedTextTemplateId));
+    } else if (selectedFeature?.id === 'deai') {
+      setFortuneMode(false);
+      setActiveFeatureId('deai');
+      onPromptSubmit(userInput, getHumanizePrompt(selectedTextTemplateId));
     } else if (selectedFeature) {
       // Other features (slides, prompt-optimize, deai)
       setFortuneMode(false);
@@ -163,6 +287,9 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
       setSelectedTemplateName(preset?.nameZh || preset?.name || template.title);
     } else {
       // For text/chat features, we ideally start a new thread with this template
+      if (selectedFeature?.id === 'prompt-optimize' || selectedFeature?.id === 'deai') {
+        setSelectedTextTemplateId(template.id);
+      }
       console.log("Selected template:", template);
     }
   };
@@ -189,7 +316,7 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
             <PromptInput
               placeholder={t("chat.default_placeholder")}
               selectedFeature={selectedFeature}
-              onClearFeature={() => { onSelectFeature(null); setSelectedTemplateName(null); }}
+              onClearFeature={() => { onSelectFeature(null); setSelectedTemplateName(null); setSelectedTextTemplateId(null); }}
               onSubmit={handlePromptSubmit}
               disabled={false}
               onUploadClick={() => fileUpload.triggerFileSelect()}
@@ -300,9 +427,9 @@ function ChatWithFilePanel({
   threadType?: "chat" | "image" | "slides" | null;
   onModeChange?: (mode: "chat" | "image" | "resume" | "slides") => void;
 }) {
-  const router = useRouter();
   const [, setThreadIdQuery] = useQueryState("threadId");
-  const { messages, isLoading, isThreadLoading, webDevMode, sendMessage, setFortuneMode, enableWebDevMode, setActiveFeatureId } = useChatContext();
+  const { t } = useLanguage();
+  const { messages, isLoading, isThreadLoading, historyUnavailable, webDevMode, sendMessage, setFortuneMode, enableWebDevMode, setActiveFeatureId } = useChatContext();
   const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
 
   // Resume edit mode state
@@ -471,7 +598,7 @@ function ChatWithFilePanel({
 
     setActiveFeatureId(feature.id);
     onModeChange?.("chat");
-  }, [router, setActiveFeatureId, setFortuneMode]);
+  }, [setActiveFeatureId, setFortuneMode, onModeChange]);
 
   // Ensure active feature is cleared when returning to landing.
   useEffect(() => {
@@ -504,6 +631,7 @@ function ChatWithFilePanel({
     return (
       <div className="flex-1 overflow-y-auto">
         <TranslatePanel
+          modelId={assistant?.graph_id || assistant?.assistant_id}
           onBack={() => {
             setSelectedFeature(null);
             setActiveFeatureId(null);
@@ -583,6 +711,18 @@ function ChatWithFilePanel({
     >
       <ResizablePanel defaultSize={showRightPanel ? 50 : 100} minSize={40}>
         <div className="flex h-full flex-col overflow-hidden">
+          {historyUnavailable && (
+            <div className="border-b border-border bg-muted/40 px-4 py-3">
+              <div className="mx-auto max-w-3xl">
+                <div className="text-sm font-medium text-foreground">
+                  {t("history.runtime_missing_title")}
+                </div>
+                <div className="mt-1 text-xs leading-5 text-muted-foreground">
+                  {t("history.runtime_missing_description")}
+                </div>
+              </div>
+            </div>
+          )}
           <ChatInterface
             assistant={assistant}
             onOpenFilePanel={onOpenFilePanel}
@@ -652,6 +792,12 @@ function HomePageInner() {
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [uiMode, setUiMode] = useState<"chat" | "image" | "resume" | "slides">("chat");
   const [threadType, setThreadType] = useState<"chat" | "image" | "slides" | null>(null);
+  const initialThreadIdRef = useRef(threadId);
+  const initialThreadValidatedRef = useRef(!threadId);
+  const [threadOpenState, setThreadOpenState] = useState<ThreadOpenState>(
+    threadId ? "checking" : "idle"
+  );
+  const [threadOpenProblem, setThreadOpenProblem] = useState<ThreadOpenProblem | null>(null);
 
   // Load config
   useEffect(() => {
@@ -662,10 +808,89 @@ function HomePageInner() {
     setConfigLoading(false);
   }, []);
 
-  // Load thread's model preference when thread changes
+  const validateThreadForOpen = useCallback(
+    async (
+      targetThreadId: string,
+      options?: {
+        clearQueryOnFailure?: boolean;
+        restoreQueryOnSuccess?: boolean;
+      }
+    ) => {
+      if (!config) return false;
+
+      setThreadOpenState("checking");
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 8000);
+
+      try {
+        const headers: Record<string, string> = {};
+        if (session?.access_token) {
+          headers["Authorization"] = `Bearer ${session.access_token}`;
+        }
+
+        const response = await fetch(
+          `${config.deploymentUrl}/api/threads/${targetThreadId}`,
+          { headers, signal: controller.signal }
+        );
+
+        if (!response.ok) {
+          const code = await classifyThreadOpenFailure(response);
+          setThreadOpenProblem({ code, threadId: targetThreadId });
+          initialThreadValidatedRef.current = true;
+          if (options?.clearQueryOnFailure) {
+            await setThreadId(null);
+          }
+          return false;
+        }
+
+        initialThreadValidatedRef.current = true;
+        setThreadOpenProblem(null);
+        const thread = await response.json();
+        if (thread.model_id) {
+          setSelectedModel(thread.model_id);
+        }
+        setThreadType(thread.type || "chat");
+        if (thread.type === "slides") {
+          setUiMode("slides");
+        }
+        if (options?.restoreQueryOnSuccess) {
+          await setThreadId(targetThreadId);
+        }
+        return true;
+      } catch (error) {
+        setThreadOpenProblem({
+          code: "backend_unavailable",
+          threadId: targetThreadId,
+        });
+        initialThreadValidatedRef.current = true;
+        if (options?.clearQueryOnFailure) {
+          await setThreadId(null);
+        }
+        console.error("Failed to load thread model:", error);
+        return false;
+      } finally {
+        window.clearTimeout(timeoutId);
+        setThreadOpenState("idle");
+      }
+    },
+    [config, session?.access_token, setThreadId]
+  );
+
+  useEffect(() => {
+    const initialThreadId = initialThreadIdRef.current;
+    if (!initialThreadId || initialThreadValidatedRef.current || !config) return;
+
+    void validateThreadForOpen(initialThreadId, {
+      clearQueryOnFailure: true,
+      restoreQueryOnSuccess: false,
+    });
+  }, [config, validateThreadForOpen]);
+
+  // Load thread's model preference when thread changes after the initial URL thread is validated.
   useEffect(() => {
     async function loadThreadModel() {
       if (!threadId || !config) return;
+      if (initialThreadIdRef.current && !initialThreadValidatedRef.current) return;
 
       try {
         const headers: Record<string, string> = {};
@@ -678,23 +903,22 @@ function HomePageInner() {
           { headers }
         );
 
-        if (response.ok) {
-          const thread = await response.json();
-          // Use thread's model_id if set, otherwise keep current or use default
-          if (thread.model_id) {
-            setSelectedModel(thread.model_id);
-          }
-          setThreadType(thread.type || "chat");
-          if (thread.type === "slides") {
-            setUiMode("slides");
-          }
+        if (!response.ok) return;
+
+        const thread = await response.json();
+        if (thread.model_id) {
+          setSelectedModel(thread.model_id);
+        }
+        setThreadType(thread.type || "chat");
+        if (thread.type === "slides") {
+          setUiMode("slides");
         }
       } catch (error) {
         console.error("Failed to load thread model:", error);
       }
     }
 
-    loadThreadModel();
+    void loadThreadModel();
   }, [threadId, config, session?.access_token]);
 
   // Reset model to default when starting new thread
@@ -801,6 +1025,8 @@ function HomePageInner() {
   }, [threadId, persistThreadModelSelection]);
 
   const handleNewThread = () => {
+    setThreadOpenProblem(null);
+    setThreadOpenState("idle");
     setThreadId(null);
     setThreadType(null);
     setUiMode("chat");
@@ -815,6 +1041,9 @@ function HomePageInner() {
   };
 
   const handleThreadSelect = async (id: string) => {
+    setThreadOpenProblem(null);
+    setThreadOpenState("idle");
+    initialThreadValidatedRef.current = true;
     await setThreadId(id);
     setSearchOpen(false);
   };
@@ -844,6 +1073,9 @@ function HomePageInner() {
       </div>
     );
   }
+
+  const shouldGateInitialThread = Boolean(initialThreadIdRef.current) &&
+    (!initialThreadValidatedRef.current || threadOpenProblem);
 
   return (
     <>
@@ -875,20 +1107,39 @@ function HomePageInner() {
           }}
         >
           <div className="flex h-full flex-col">
-            <ChatProvider
-              activeAssistant={assistant}
-              onHistoryRevalidate={() => mutateThreads?.()}
-            >
-              <ChatWithFilePanel
-                assistant={assistant}
-                showFilePanel={!!filePanel}
-                onOpenFilePanel={() => setFilePanel("1")}
-                onCloseFilePanel={() => setFilePanel(null)}
-                threadId={threadId}
-                threadType={threadType}
-                onModeChange={setUiMode}
+            {shouldGateInitialThread ? (
+              <ThreadOpenStateView
+                state={threadOpenState}
+                problem={threadOpenProblem}
+                onRetry={(failedThreadId) => {
+                  setThreadOpenProblem(null);
+                  void validateThreadForOpen(failedThreadId, {
+                    clearQueryOnFailure: true,
+                    restoreQueryOnSuccess: true,
+                  });
+                }}
+                onNewChat={() => {
+                  setThreadOpenProblem(null);
+                  setThreadOpenState("idle");
+                  void setThreadId(null);
+                }}
               />
-            </ChatProvider>
+            ) : (
+              <ChatProvider
+                activeAssistant={assistant}
+                onHistoryRevalidate={() => mutateThreads?.()}
+              >
+                <ChatWithFilePanel
+                  assistant={assistant}
+                  showFilePanel={!!filePanel}
+                  onOpenFilePanel={() => setFilePanel("1")}
+                  onCloseFilePanel={() => setFilePanel(null)}
+                  threadId={threadId}
+                  threadType={threadType}
+                  onModeChange={setUiMode}
+                />
+              </ChatProvider>
+            )}
           </div>
         </MainLayout>
       </AgentProvider>

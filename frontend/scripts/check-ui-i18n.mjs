@@ -7,7 +7,6 @@ const chineseRegex = /[\u4e00-\u9fff]/;
 
 const excludedPathParts = [
   "/locales/",
-  "/data/",
   "/app/resume/",
   "/app/slides/",
   "/app/components/slides/",
@@ -25,10 +24,9 @@ const excludedPathParts = [
 
 const allowedFiles = new Set([
   "providers/LanguageProvider.tsx",
-  "app/components/settings/appsData.ts",
+  "data/fortuneTemplatePrefix.ts",
   "app/components/AgentDialog.tsx",
   "app/components/ScheduleDialog.tsx",
-  "app/components/TemplatePromptInput.tsx",
   "app/components/TranslatePanel.tsx",
   "app/components/WaterDropletMascot.tsx",
   "app/components/RotatingHeadline.tsx",

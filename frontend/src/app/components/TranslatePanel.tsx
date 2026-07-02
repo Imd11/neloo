@@ -16,13 +16,14 @@ import { getConfig } from "@/lib/config";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/app/context/SidebarContext";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 // Supported languages
 const LANGUAGES = [
-    { code: "auto", label: "自动检测" },
+    { code: "auto", label: "Auto detect" },
     { code: "English", label: "English" },
-    { code: "Chinese (Simplified)", label: "简体中文" },
-    { code: "Chinese (Traditional)", label: "繁體中文" },
+    { code: "Chinese (Simplified)", label: "Simplified Chinese" },
+    { code: "Chinese (Traditional)", label: "Traditional Chinese" },
     { code: "Japanese", label: "日本語" },
     { code: "Korean", label: "한국어" },
     { code: "French", label: "Français" },
@@ -39,28 +40,27 @@ const LANGUAGES = [
 
 // Translation styles
 const STYLES = [
-    { code: "general", label: "通用", description: "自然通顺的表达" },
-    { code: "business_email", label: "商务邮件", description: "专业礼貌的用语" },
-    { code: "academic", label: "学术论文", description: "严谨规范的表达" },
-    { code: "technical", label: "技术文档", description: "准确简洁的语言" },
-    { code: "social_media", label: "社交媒体", description: "轻松亲切的口语" },
+    { code: "general", label: "General", description: "Natural and fluent wording" },
+    { code: "business_email", label: "Business", description: "Professional and polite wording" },
+    { code: "academic", label: "Academic", description: "Rigorous academic wording" },
+    { code: "technical", label: "Technical", description: "Accurate technical language" },
+    { code: "social_media", label: "Social", description: "Relaxed conversational wording" },
 ];
 
 // Rotating headlines for translation mode
 const HEADLINES = [
-    "让AI成为你的语言伙伴",
-    "让世界听懂你的声音",
-    "跨越语言的桥梁",
-    "译出你心中所想",
-    "智能翻译，让沟通无界",
-    "语言的尽头，是理解的开始",
+    "Translate with your selected model",
+    "Keep the meaning, change the language",
+    "Make every sentence travel clearly",
 ];
 
 interface TranslatePanelProps {
     onBack: () => void;
+    modelId?: string | null;
 }
 
-export function TranslatePanel({ onBack }: TranslatePanelProps) {
+export function TranslatePanel({ onBack, modelId }: TranslatePanelProps) {
+    const { t } = useLanguage();
     const { collapsed, width, collapsedWidth } = useSidebar();
     const sidebarWidth = collapsed ? collapsedWidth : width;
 
@@ -87,7 +87,7 @@ export function TranslatePanel({ onBack }: TranslatePanelProps) {
 
     const handleTranslate = useCallback(async () => {
         if (!sourceText.trim()) {
-            toast.error("请输入要翻译的文本");
+            toast.error(t("translate.empty_error"));
             return;
         }
 
@@ -110,24 +110,27 @@ export function TranslatePanel({ onBack }: TranslatePanelProps) {
                 },
                 body: JSON.stringify({
                     text: sourceText,
+                    source_language: sourceLang,
                     target_language: targetLang,
                     style: selectedStyle,
+                    model_id: modelId,
                 }),
             });
 
             if (!response.ok) {
-                throw new Error("翻译请求失败");
+                const errorText = await response.text();
+                throw new Error(errorText || t("translate.request_failed"));
             }
 
             const data = await response.json();
             setTranslatedText(data.translation);
         } catch (error) {
             console.error("Translation error:", error);
-            toast.error("翻译失败，请重试");
+            toast.error(t("translate.failed_error"));
         } finally {
             setLoading(false);
         }
-    }, [sourceText, targetLang, selectedStyle]);
+    }, [sourceText, sourceLang, targetLang, selectedStyle, modelId, t]);
 
     const handleCopy = useCallback(async () => {
         if (!translatedText) return;
@@ -135,12 +138,12 @@ export function TranslatePanel({ onBack }: TranslatePanelProps) {
         try {
             await navigator.clipboard.writeText(translatedText);
             setCopied(true);
-            toast.success("已复制到剪贴板");
+            toast.success(t("translate.copied"));
             setTimeout(() => setCopied(false), 2000);
         } catch {
-            toast.error("复制失败");
+            toast.error(t("translate.copy_failed"));
         }
-    }, [translatedText]);
+    }, [translatedText, t]);
 
     return (
         <div className="relative flex flex-col items-center justify-center h-full px-4 py-8 max-w-5xl mx-auto">
@@ -149,7 +152,7 @@ export function TranslatePanel({ onBack }: TranslatePanelProps) {
                 onClick={onBack}
                 className="fixed top-14 p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors z-10"
                 style={{ left: sidebarWidth + 16 }}
-                aria-label="返回"
+                aria-label={t("common.back")}
             >
                 <ArrowLeft className="w-5 h-5" />
             </button>
@@ -208,7 +211,7 @@ export function TranslatePanel({ onBack }: TranslatePanelProps) {
                     <Textarea
                         value={sourceText}
                         onChange={(e) => setSourceText(e.target.value)}
-                        placeholder="输入要翻译的文本..."
+                        placeholder={t("translate.source_placeholder")}
                         className="min-h-[240px] resize-none bg-muted/50 border-border rounded-xl p-4 text-base"
                     />
                 </div>
@@ -218,7 +221,7 @@ export function TranslatePanel({ onBack }: TranslatePanelProps) {
                     <Textarea
                         value={translatedText}
                         readOnly
-                        placeholder="翻译结果"
+                        placeholder={t("translate.result_placeholder")}
                         className="min-h-[240px] resize-none bg-muted/50 border-border rounded-xl p-4 text-base"
                     />
                     {translatedText && (
@@ -267,13 +270,12 @@ export function TranslatePanel({ onBack }: TranslatePanelProps) {
                 {loading ? (
                     <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        翻译中...
+                        {t("translate.translating")}
                     </>
                 ) : (
-                    "翻译"
+                    t("translate.action")
                 )}
             </Button>
         </div>
     );
 }
-

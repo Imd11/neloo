@@ -6,7 +6,7 @@ export const PRESETS: StylePreset[] = [
         name: 'Blueprint',
         nameZh: '蓝图',
         description: 'Engineering precision, analytical clarity',
-        feel: '工程精确、分析清晰',
+        feel: 'Engineering precision and analytical clarity',
         dimensions: { texture: 'grid', mood: 'cool', typography: 'technical', density: 'balanced' },
         autoSelectTriggers: ['architecture', 'system', 'data', 'analysis', 'technical', '架构', '系统', '数据', '分析', '技术'],
         colorPalette: { background: '#FAF8F5', primaryText: '#334155', secondaryText: '#64748B', accent1: '#2563EB', accent2: '#1E3A5F' }
@@ -16,7 +16,7 @@ export const PRESETS: StylePreset[] = [
         name: 'Chalkboard',
         nameZh: '黑板',
         description: 'Classroom warmth, educational',
-        feel: '课堂温暖、教育性',
+        feel: 'Classroom warmth and educational clarity',
         dimensions: { texture: 'organic', mood: 'warm', typography: 'handwritten', density: 'balanced' },
         autoSelectTriggers: ['classroom', 'teaching', 'school', 'chalkboard', '教学', '课堂', '学校'],
         colorPalette: { background: '#2C3E50', primaryText: '#ECF0F1', secondaryText: '#BDC3C7', accent1: '#F4A261', accent2: '#E9C46A' }
@@ -26,7 +26,7 @@ export const PRESETS: StylePreset[] = [
         name: 'Corporate',
         nameZh: '商务',
         description: 'Business credibility, institutional trust',
-        feel: '商业可信、机构感',
+        feel: 'Business credibility and institutional trust',
         dimensions: { texture: 'clean', mood: 'professional', typography: 'geometric', density: 'balanced' },
         autoSelectTriggers: ['investor', 'quarterly', 'business', 'corporate', '投资', '商务', '季度', '融资'],
         colorPalette: { background: '#FFFFFF', primaryText: '#1E3A5F', secondaryText: '#4A5568', accent1: '#C9A227', accent2: '#3D5A80' }
@@ -36,7 +36,7 @@ export const PRESETS: StylePreset[] = [
         name: 'Minimal',
         nameZh: '极简',
         description: 'Maximum sophistication, executive focus',
-        feel: '极致简约、高管聚焦',
+        feel: 'Maximum minimalism and executive focus',
         dimensions: { texture: 'clean', mood: 'neutral', typography: 'geometric', density: 'minimal' },
         autoSelectTriggers: ['executive', 'minimal', 'clean', 'simple', '极简', '高端', '简约'],
         colorPalette: { background: '#FFFFFF', primaryText: '#18181B', secondaryText: '#71717A', accent1: '#18181B', accent2: '#A1A1AA' }
@@ -46,7 +46,7 @@ export const PRESETS: StylePreset[] = [
         name: 'Sketch Notes',
         nameZh: '手绘笔记',
         description: 'Friendly learning, approachable education',
-        feel: '友好学习、平易近人',
+        feel: 'Friendly learning and approachable education',
         dimensions: { texture: 'organic', mood: 'warm', typography: 'handwritten', density: 'balanced' },
         autoSelectTriggers: ['tutorial', 'learn', 'education', 'guide', 'beginner', '教程', '学习', '入门'],
         colorPalette: { background: '#FAF8F0', primaryText: '#2C3E50', secondaryText: '#4A4A4A', accent1: '#F4A261', accent2: '#E9C46A', accent3: '#87A96B' }
@@ -56,7 +56,7 @@ export const PRESETS: StylePreset[] = [
         name: 'Watercolor',
         nameZh: '水彩',
         description: 'Artistic, natural, lifestyle',
-        feel: '艺术、自然、生活化',
+        feel: 'Artistic, natural, and lifestyle-oriented',
         dimensions: { texture: 'organic', mood: 'warm', typography: 'humanist', density: 'minimal' },
         autoSelectTriggers: ['lifestyle', 'wellness', 'travel', 'artistic', '生活', '旅行', '艺术'],
         colorPalette: { background: '#FAF8F0', primaryText: '#2C3E50', secondaryText: '#4A4A4A', accent1: '#F4A261', accent2: '#E9C46A', accent3: '#87A96B' }
@@ -66,7 +66,7 @@ export const PRESETS: StylePreset[] = [
         name: 'Dark Atmospheric',
         nameZh: '暗色氛围',
         description: 'Cinematic, entertainment',
-        feel: '电影感、娱乐',
+        feel: 'Cinematic and entertainment-focused',
         dimensions: { texture: 'clean', mood: 'dark', typography: 'editorial', density: 'balanced' },
         autoSelectTriggers: ['entertainment', 'music', 'gaming', 'atmospheric', '娱乐', '音乐', '游戏', '电影'],
         colorPalette: { background: '#0D1117', primaryText: '#E6EDF3', secondaryText: '#8B949E', accent1: '#58A6FF', accent2: '#7EE787', accent3: '#FF7B72' }
@@ -76,7 +76,7 @@ export const PRESETS: StylePreset[] = [
         name: 'Notion',
         nameZh: 'Notion 风',
         description: 'SaaS professional, data-forward',
-        feel: 'SaaS 专业、数据驱动',
+        feel: 'SaaS professionalism and data-forward clarity',
         dimensions: { texture: 'clean', mood: 'neutral', typography: 'geometric', density: 'dense' },
         autoSelectTriggers: ['saas', 'product', 'dashboard', 'metrics', '产品', '指标', '仪表板'],
         colorPalette: { background: '#FFFFFF', primaryText: '#18181B', secondaryText: '#71717A', accent1: '#18181B', accent2: '#A1A1AA' }
@@ -86,7 +86,7 @@ export const PRESETS: StylePreset[] = [
         name: 'Bold Editorial',
         nameZh: '大胆排版',
         description: 'Magazine impact, keynote drama',
-        feel: '杂志冲击力、演讲戏剧感',
+        feel: 'Magazine impact and keynote drama',
         dimensions: { texture: 'clean', mood: 'vibrant', typography: 'editorial', density: 'balanced' },
         autoSelectTriggers: ['launch', 'marketing', 'keynote', 'magazine', '发布', '营销', '演讲'],
         colorPalette: { background: '#FFFFFF', primaryText: '#1A1A2E', secondaryText: '#4A5568', accent1: '#E94560', accent2: '#0F3460', accent3: '#16C79A' }
@@ -96,7 +96,7 @@ export const PRESETS: StylePreset[] = [
         name: 'Editorial Infographic',
         nameZh: '编辑信息图',
         description: 'Publication quality, informative',
-        feel: '出版品质、信息丰富',
+        feel: 'Publication quality and information richness',
         dimensions: { texture: 'clean', mood: 'cool', typography: 'editorial', density: 'dense' },
         autoSelectTriggers: ['explainer', 'journalism', 'science communication', '科普', '解释', '新闻'],
         colorPalette: { background: '#FAF8F5', primaryText: '#334155', secondaryText: '#64748B', accent1: '#2563EB', accent2: '#1E3A5F', accent3: '#BFDBFE' }
@@ -106,7 +106,7 @@ export const PRESETS: StylePreset[] = [
         name: 'Fantasy Animation',
         nameZh: '奇幻动画',
         description: 'Magical, storytelling',
-        feel: '魔幻、讲故事',
+        feel: 'Magical and storytelling-driven',
         dimensions: { texture: 'organic', mood: 'vibrant', typography: 'handwritten', density: 'minimal' },
         autoSelectTriggers: ['story', 'fantasy', 'animation', 'magical', '故事', '动画', '奇幻'],
         colorPalette: { background: '#1A1A2E', primaryText: '#FFFFFF', secondaryText: '#B4B4C0', accent1: '#E94560', accent2: '#F9B208', accent3: '#16C79A' }
@@ -116,7 +116,7 @@ export const PRESETS: StylePreset[] = [
         name: 'Intuition Machine',
         nameZh: '直觉机器',
         description: 'Technical briefing, bilingual documentation',
-        feel: '技术简报、双语文档',
+        feel: 'Technical briefing and bilingual documentation',
         dimensions: { texture: 'clean', mood: 'cool', typography: 'technical', density: 'dense' },
         autoSelectTriggers: ['briefing', 'academic', 'research', 'bilingual', '学术', '研究', '简报'],
         colorPalette: { background: '#FAF8F5', primaryText: '#334155', secondaryText: '#64748B', accent1: '#2563EB', accent2: '#1E3A5F' }
@@ -126,7 +126,7 @@ export const PRESETS: StylePreset[] = [
         name: 'Pixel Art',
         nameZh: '像素风',
         description: 'Retro gaming, developer culture',
-        feel: '复古游戏、开发者文化',
+        feel: 'Retro gaming and developer culture',
         dimensions: { texture: 'pixel', mood: 'vibrant', typography: 'technical', density: 'balanced' },
         autoSelectTriggers: ['gaming', 'retro', 'pixel', 'developer', '像素', '复古', '开发'],
         colorPalette: { background: '#1A1A2E', primaryText: '#FFFFFF', secondaryText: '#B4B4C0', accent1: '#E94560', accent2: '#F9B208', accent3: '#16C79A' }
@@ -136,7 +136,7 @@ export const PRESETS: StylePreset[] = [
         name: 'Scientific',
         nameZh: '学术科研',
         description: 'Academic precision, research quality',
-        feel: '学术精确、研究品质',
+        feel: 'Academic precision and research quality',
         dimensions: { texture: 'clean', mood: 'cool', typography: 'technical', density: 'dense' },
         autoSelectTriggers: ['biology', 'chemistry', 'medical', 'scientific', '生物', '化学', '医学', '科学'],
         colorPalette: { background: '#FAF8F5', primaryText: '#334155', secondaryText: '#64748B', accent1: '#2563EB', accent2: '#1E3A5F' }
@@ -146,7 +146,7 @@ export const PRESETS: StylePreset[] = [
         name: 'Vector Illustration',
         nameZh: '矢量插画',
         description: 'Flat design, friendly creative',
-        feel: '扁平设计、友好创意',
+        feel: 'Flat design and friendly creativity',
         dimensions: { texture: 'clean', mood: 'vibrant', typography: 'humanist', density: 'balanced' },
         autoSelectTriggers: ['creative', 'children', 'kids', 'cute', '创意', '儿童', '可爱'],
         colorPalette: { background: '#FFFFFF', primaryText: '#1A1A2E', secondaryText: '#4A5568', accent1: '#E94560', accent2: '#0F3460', accent3: '#16C79A' }
@@ -156,7 +156,7 @@ export const PRESETS: StylePreset[] = [
         name: 'Vintage',
         nameZh: '复古',
         description: 'Historical, heritage storytelling',
-        feel: '历史、传承、故事感',
+        feel: 'Historical, heritage-focused storytelling',
         dimensions: { texture: 'paper', mood: 'warm', typography: 'editorial', density: 'balanced' },
         autoSelectTriggers: ['history', 'heritage', 'vintage', 'expedition', '历史', '复古', '探险'],
         colorPalette: { background: '#FAF3E0', primaryText: '#3E2723', secondaryText: '#5D4037', accent1: '#D4A574', accent2: '#8D6E63', accent3: '#A1887F' }
@@ -184,7 +184,7 @@ export function buildPresetPromptContext(id?: string): string {
     if (!preset) return '';
 
     return `Selected preset:
-- Name: ${preset.name} (${preset.nameZh})
+- Name: ${preset.name}
 - Description: ${preset.description}
 - Feel: ${preset.feel}
 - Texture: ${preset.dimensions.texture}

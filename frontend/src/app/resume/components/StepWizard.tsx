@@ -34,6 +34,15 @@ const steps: Step[] = [
     { id: 'finalize', label: '完成', icon: '✨' },
 ];
 
+const STEP_PROMPT_LABELS: Record<StepId, string> = {
+    personal: 'personal information',
+    experience: 'work experience',
+    education: 'education',
+    skills: 'skills',
+    additional: 'additional information',
+    finalize: 'final review',
+};
+
 type SuggestionStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 interface SuggestionCard {
@@ -279,52 +288,52 @@ export function StepWizard({ data, onChange, onComplete, active = true }: StepWi
     const singleCard = singleStepSuggestions[stepId];
 
     function buildPromptForSingle(step: StepId, payload: unknown): string {
-        const stepLabel = steps.find((s) => s.id === step)?.label || '简历';
-        return `请帮我优化简历的${stepLabel}部分。当前内容：
+        const stepLabel = STEP_PROMPT_LABELS[step] || 'resume';
+        return `Help me optimize the ${stepLabel} section of this resume. Current content:
 \`\`\`json
 ${safeJSONStringify(payload)}
 \`\`\`
 
-请返回 JSON 格式的优化建议：
+Return optimization suggestions in JSON:
 \`\`\`json
 {
-  "message": "简短说明为什么这样优化",
+  "message": "brief explanation of why this optimization helps",
   "suggestion": {
-    "field": "字段路径，如 personal.summary 或 experience.0.description",
-    "fieldLabel": "字段中文名，如 个人简介",
-    "after": "优化后的内容",
-    "reason": "修改理由"
+    "field": "field path, such as personal.summary or experience.0.description",
+    "fieldLabel": "human-readable field label, such as Professional summary",
+    "after": "optimized content",
+    "reason": "reason for the change"
   }
 }
 \`\`\`
-请选择最值得优化的一个字段给出建议。`;
+Choose the single field that is most worth optimizing and provide one suggestion.`;
     }
 
     function buildPromptForListItem(step: 'experience' | 'education', index: number, item: unknown): string {
-        const label = step === 'experience' ? '工作经历' : '教育背景';
+        const label = step === 'experience' ? 'work experience' : 'education';
         const prefix = `${step}.${index}`;
         const allowed =
             step === 'experience'
                 ? ['company', 'position', 'location', 'startDate', 'endDate', 'description', 'highlights']
                 : ['institution', 'degree', 'field', 'location', 'startDate', 'endDate', 'gpa', 'description', 'courses'];
-        return `请帮我优化简历的${label}第 ${index + 1} 条记录。当前记录：
+        return `Help me optimize item ${index + 1} in the resume ${label} section. Current item:
 \`\`\`json
 ${safeJSONStringify(item)}
 \`\`\`
 
-请返回 JSON 格式的优化建议：
+Return optimization suggestions in JSON:
 \`\`\`json
 {
-  "message": "简短说明为什么这样优化",
+  "message": "brief explanation of why this optimization helps",
   "suggestion": {
-    "field": "字段路径，必须以 ${prefix}. 开头，例如 ${prefix}.description",
-    "fieldLabel": "字段中文名，如 工作描述",
-    "after": "优化后的内容",
-    "reason": "修改理由"
+    "field": "field path, must start with ${prefix}., for example ${prefix}.description",
+    "fieldLabel": "human-readable field label, such as Work description",
+    "after": "optimized content",
+    "reason": "reason for the change"
   }
 }
 \`\`\`
-请选择最值得优化的一个字段给出建议（允许字段：${allowed.join(', ')}）。`;
+Choose the single field that is most worth optimizing. Allowed fields: ${allowed.join(', ')}.`;
     }
 
     type AdditionalModuleType = 'projects' | 'certificates' | 'awards' | 'publications' | 'hobbies';
@@ -335,6 +344,13 @@ ${safeJSONStringify(item)}
         publications: '出版物',
         hobbies: '兴趣爱好',
     };
+    const ADDITIONAL_MODULE_PROMPT_LABELS: Record<AdditionalModuleType, string> = {
+        projects: 'projects',
+        certificates: 'certifications',
+        awards: 'awards',
+        publications: 'publications',
+        hobbies: 'hobbies',
+    };
     const ADDITIONAL_MODULE_FIELDS: Record<AdditionalModuleType, string[]> = {
         projects: ['name', 'role', 'organization', 'startDate', 'endDate', 'description', 'highlights', 'technologies'],
         certificates: ['name', 'issuer', 'date', 'expiryDate', 'credentialId'],
@@ -344,27 +360,27 @@ ${safeJSONStringify(item)}
     };
 
     function buildPromptForAdditionalItem(moduleType: AdditionalModuleType, index: number, item: unknown): string {
-        const label = ADDITIONAL_MODULE_LABELS[moduleType];
+        const label = ADDITIONAL_MODULE_PROMPT_LABELS[moduleType];
         const prefix = `${moduleType}.${index}`;
         const allowed = ADDITIONAL_MODULE_FIELDS[moduleType];
-        return `请帮我优化简历的${label}第 ${index + 1} 条记录。当前记录：
+        return `Help me optimize item ${index + 1} in the resume ${label} section. Current item:
 \`\`\`json
 ${safeJSONStringify(item)}
 \`\`\`
 
-请返回 JSON 格式的优化建议：
+Return optimization suggestions in JSON:
 \`\`\`json
 {
-  "message": "简短说明为什么这样优化",
+  "message": "brief explanation of why this optimization helps",
   "suggestion": {
-    "field": "字段路径，必须以 ${prefix}. 开头，例如 ${prefix}.description",
-    "fieldLabel": "字段中文名，如 项目描述",
-    "after": "优化后的内容",
-    "reason": "修改理由"
+    "field": "field path, must start with ${prefix}., for example ${prefix}.description",
+    "fieldLabel": "human-readable field label, such as Project description",
+    "after": "optimized content",
+    "reason": "reason for the change"
   }
 }
 \`\`\`
-请选择最值得优化的一个字段给出建议（允许字段：${allowed.join(', ')}）。`;
+Choose the single field that is most worth optimizing. Allowed fields: ${allowed.join(', ')}.`;
     }
 
     function rewriteListFieldPath(step: 'experience' | 'education', itemId: string, field: string): string | null {
@@ -392,14 +408,14 @@ ${safeJSONStringify(item)}
     function getSinglePayload(step: StepId): unknown {
         if (step === 'personal') {
             // Exclude photo to avoid sending base64 image data to AI (causes token overflow)
-            const { photo, ...rest } = data.personal;
+            const { photo: _photo, ...rest } = data.personal;
             return rest;
         }
         if (step === 'skills') return { skills: data.skills, languages: data.languages };
         if (step === 'additional') return { projects: data.projects, awards: data.awards, certificates: data.certificates };
         if (step === 'finalize') {
             // Exclude photo from finalize payload as well
-            const { photo, ...personalRest } = data.personal;
+            const { photo: _photo, ...personalRest } = data.personal;
             return { ...data, personal: personalRest };
         }
         return null;
@@ -474,7 +490,7 @@ ${safeJSONStringify(item)}
     // Skills recommendation: analyze resume and suggest new skills
     async function generateSkillsRecommendations(force = false) {
         // Build comprehensive resume context for AI analysis
-        const { photo, ...personalRest } = data.personal;
+        const { photo: _photo, ...personalRest } = data.personal;
         const resumeContext = {
             personal: personalRest,
             experience: data.experience,
@@ -498,35 +514,35 @@ ${safeJSONStringify(item)}
             requestId,
         });
 
-        const prompt = `基于用户的完整简历，分析其职业背景和已有技能，推荐 3-5 个能帮助其获得更多面试机会的技能。
+        const prompt = `Based on the user's full resume, analyze their career background and existing skills. Recommend 3-5 skills that can help them get more interview opportunities.
 
-【用户简历】
-个人信息：${safeJSONStringify(personalRest)}
-工作经历：${safeJSONStringify(data.experience)}
-教育背景：${safeJSONStringify(data.education)}
-现有技能：${data.skills.map(s => s.name).join(', ') || '暂无'}
-项目经历：${safeJSONStringify(data.projects)}
+User resume:
+Personal information: ${safeJSONStringify(personalRest)}
+Work experience: ${safeJSONStringify(data.experience)}
+Education: ${safeJSONStringify(data.education)}
+Existing skills: ${data.skills.map(s => s.name).join(', ') || 'none'}
+Projects: ${safeJSONStringify(data.projects)}
 
-请以 JSON 格式返回推荐：
+Return recommendations in JSON:
 \`\`\`json
 {
-  "message": "总体分析（一句话）",
+  "message": "overall analysis in one sentence",
   "recommendations": [
     {
-      "name": "技能名称",
+      "name": "skill name",
       "level": 3,
-      "reason": "为什么这个技能能帮助获得面试（简短）",
-      "relevance": "与用户背景的关联（简短）"
+      "reason": "briefly explain why this skill helps win interviews",
+      "relevance": "briefly explain how it relates to the user's background"
     }
   ]
 }
 \`\`\`
 
-推荐原则：
-1. 与用户职业方向高度相关
-2. 当前就业市场需求高
-3. 能补充现有技能组合的短板
-4. 不要重复推荐用户已有的技能`;
+Recommendation principles:
+1. Highly relevant to the user's career direction.
+2. Currently in demand in the job market.
+3. Complements gaps in the existing skill mix.
+4. Do not recommend skills the user already has.`;
 
         try {
             const response = await sendMessage([{ role: 'user', content: prompt }]);

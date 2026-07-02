@@ -14,8 +14,8 @@ export const LOCALE_NAMES: Record<Locale, string> = {
     "ja": "日本語",
 };
 
-// 翻译消息类型
-type Messages = Record<string, Record<string, string>>;
+type MessageValue = string | { [key: string]: MessageValue };
+type Messages = Record<string, MessageValue>;
 
 interface LanguageContextType {
     locale: Locale;
