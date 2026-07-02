@@ -445,7 +445,35 @@
         "source_placeholder": "Enter text to translate...",
         "result_placeholder": "Translation result",
         "translating": "Translating...",
-        "action": "Translate"
+        "action": "Translate",
+        "headline_1": "Translate with your selected model",
+        "headline_2": "Keep the meaning, change the language",
+        "headline_3": "Make every sentence travel clearly",
+        "languages": {
+            "auto": "Auto detect",
+            "English": "English",
+            "Chinese (Simplified)": "Simplified Chinese",
+            "Chinese (Traditional)": "Traditional Chinese",
+            "Japanese": "Japanese",
+            "Korean": "Korean",
+            "French": "French",
+            "German": "German",
+            "Spanish": "Spanish",
+            "Portuguese": "Portuguese",
+            "Russian": "Russian",
+            "Arabic": "Arabic",
+            "Italian": "Italian",
+            "Dutch": "Dutch",
+            "Thai": "Thai",
+            "Vietnamese": "Vietnamese"
+        },
+        "styles": {
+            "general": { "label": "General", "description": "Natural and fluent wording" },
+            "business_email": { "label": "Business", "description": "Professional and polite wording" },
+            "academic": { "label": "Academic", "description": "Rigorous academic wording" },
+            "technical": { "label": "Technical", "description": "Accurate technical language" },
+            "social_media": { "label": "Social", "description": "Relaxed conversational wording" }
+        }
     },
     "thinking": {
         "thinking": "Thinking",

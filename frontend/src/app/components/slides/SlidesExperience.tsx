@@ -35,6 +35,7 @@ interface SlidesExperienceProps {
     initialPrompt?: string;
     initialPresetId?: string;
     initialStyle?: StyleDimensions;
+    modelId?: string | null;
 }
 
 const SlidesExperience: React.FC<SlidesExperienceProps> = ({
@@ -47,6 +48,7 @@ const SlidesExperience: React.FC<SlidesExperienceProps> = ({
     initialPrompt,
     initialPresetId,
     initialStyle,
+    modelId,
 }) => {
     const { setCollapsed, setHideTopBar } = useSidebar();
     const { session, user } = useAuth();
@@ -76,16 +78,11 @@ const SlidesExperience: React.FC<SlidesExperienceProps> = ({
     }, [setCollapsed, setHideTopBar]);
 
     useEffect(() => {
-        if (!user?.id || !session?.access_token) {
-            setHistory([]);
-            return;
-        }
-
         let cancelled = false;
 
         const loadHistory = async () => {
             try {
-                const presentations = await getAllPresentations(user.id, session.access_token);
+                const presentations = await getAllPresentations(user?.id || 'default', session?.access_token);
                 if (!cancelled) {
                     setHistory(
                         presentations.map((item) => ({
@@ -282,15 +279,11 @@ const SlidesExperience: React.FC<SlidesExperienceProps> = ({
         presentation: PresentationData,
         currentSlides: Slide[]
     ) => {
-        if (!user?.id) {
-            return;
-        }
-
         try {
             await savePresentation(
                 {
                     id: presentation.id,
-                    user_id: user.id,
+                    user_id: user?.id || 'default',
                     title: presentation.topic,
                     topic: presentation.topic,
                     slides: currentSlides as any,
@@ -309,6 +302,7 @@ const SlidesExperience: React.FC<SlidesExperienceProps> = ({
                 <SlideShow
                     presentation={presentation}
                     style={style}
+                    modelId={modelId}
                     onBack={() => setView('OUTLINE')}
                     onSlidesUpdate={handleSlidesUpdate}
                 />
@@ -383,6 +377,7 @@ const SlidesExperience: React.FC<SlidesExperienceProps> = ({
                 attachments={attachments}
                 style={style}
                 presetId={presetId}
+                modelId={modelId}
                 onBack={onExit}
                 onGenerateSlides={handleGenerateSlides}
             />

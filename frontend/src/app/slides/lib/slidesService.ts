@@ -23,11 +23,11 @@ function getApiBaseUrl(): string {
     return (getConfig()?.deploymentUrl || process.env.NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
 }
 
-async function generateSlidesText(system: string, prompt: string): Promise<string> {
+async function generateSlidesText(system: string, prompt: string, modelId?: string | null): Promise<string> {
     const response = await fetch(`${getApiBaseUrl()}/api/slides/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ system, prompt }),
+        body: JSON.stringify({ system, prompt, model_id: modelId }),
     });
     if (!response.ok) {
         const errorText = await response.text();
@@ -40,14 +40,16 @@ async function generateSlidesText(system: string, prompt: string): Promise<strin
 export const generateOutlineStream = async (
     topic: string,
     attachments: Attachment[] = [],
-    onChunk: (text: string) => void
+    onChunk: (text: string) => void,
+    modelId?: string | null
 ): Promise<string> => {
     const attachmentSummary = attachments.length
         ? `\n\nAttached files:\n${attachments.map((file) => `- ${file.name} (${file.mimeType})`).join("\n")}`
         : "";
     const text = await generateSlidesText(
         OUTLINE_SYSTEM_INSTRUCTION,
-        `Create a slide deck outline for: ${topic || "the provided content"}.${attachmentSummary}`
+        `Create a slide deck outline for: ${topic || "the provided content"}.${attachmentSummary}`,
+        modelId
     );
     onChunk(text);
     return text;
@@ -57,7 +59,8 @@ export const generateSingleSlide = async (
     presentationTopic: string,
     slideDescription: string,
     existingSlides: Slide[] = [],
-    insertIndex: number = -1
+    insertIndex: number = -1,
+    modelId?: string | null
 ): Promise<Omit<Slide, "id">> => {
     const context = existingSlides
         .map((slide, index) => `Slide ${index + 1}: ${slide.title} - ${slide.content}`)
@@ -72,7 +75,8 @@ ${context || "No existing slides."}
 Insert index: ${insertIndex}
 New slide request: ${slideDescription}
 
-Return one JSON object with title, content, and visualDescription.`
+Return one JSON object with title, content, and visualDescription.`,
+        modelId
     );
     return JSON.parse(text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim());
 };

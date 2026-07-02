@@ -52,7 +52,7 @@ def _now() -> str:
 
 
 def _default_user_id(user: dict | None) -> str:
-    return str((user or {}).get("id") or "default")
+    return str((user or {}).get("id") or (user or {}).get("sub") or "default")
 
 
 def _load_local_store() -> dict[str, Any]:

@@ -27,6 +27,9 @@ export function TopBar({ hideUserActions = false, currentModelId, onModelSelect,
     const { t } = useLanguage();
     const [searchQuery, setSearchQuery] = useState("");
     const [backendModels, setBackendModels] = useState<ModelInfo[]>([]);
+    const [imageModels, setImageModels] = useState<ModelInfo[]>(
+        IMAGE_MODELS.map((model) => ({ ...model, available: false }))
+    );
     const pathname = usePathname();
 
     const isImagePage = mode ? mode === "image" : pathname === "/image";
@@ -75,8 +78,42 @@ export function TopBar({ hideUserActions = false, currentModelId, onModelSelect,
         };
     }, [isImagePage]);
 
+    useEffect(() => {
+        if (!isImagePage) return;
+
+        let cancelled = false;
+
+        async function fetchImageModels() {
+            try {
+                const response = await fetch("/api/image-providers");
+                if (!response.ok) return;
+
+                const data = await response.json();
+                const availability = new Map<string, boolean>(
+                    (data.models || []).map((model: { id: string; available: boolean }) => [model.id, model.available])
+                );
+                const fetchedModels = IMAGE_MODELS.map((model) => ({
+                    ...model,
+                    available: availability.get(model.id) ?? false,
+                }));
+
+                if (!cancelled) {
+                    setImageModels(fetchedModels);
+                }
+            } catch (error) {
+                console.error("Failed to fetch image provider status:", error);
+            }
+        }
+
+        void fetchImageModels();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isImagePage]);
+
     // Select model list based on current page
-    const models = isImagePage ? IMAGE_MODELS : (backendModels.length > 0 ? backendModels : CHAT_MODELS);
+    const models = isImagePage ? imageModels : (backendModels.length > 0 ? backendModels : CHAT_MODELS);
 
     // Derived state from props or default
     const currentModel = models.find(m => m.id === currentModelId) || models[0];

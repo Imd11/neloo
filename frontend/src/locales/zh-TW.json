@@ -445,7 +445,35 @@
         "source_placeholder": "輸入要翻譯的文字...",
         "result_placeholder": "翻譯結果",
         "translating": "翻譯中...",
-        "action": "翻譯"
+        "action": "翻譯",
+        "headline_1": "使用目前選擇的模型翻譯",
+        "headline_2": "保留意思，切換語言",
+        "headline_3": "讓每一句都清楚傳達",
+        "languages": {
+            "auto": "自動偵測",
+            "English": "英文",
+            "Chinese (Simplified)": "簡體中文",
+            "Chinese (Traditional)": "繁體中文",
+            "Japanese": "日文",
+            "Korean": "韓文",
+            "French": "法文",
+            "German": "德文",
+            "Spanish": "西班牙文",
+            "Portuguese": "葡萄牙文",
+            "Russian": "俄文",
+            "Arabic": "阿拉伯文",
+            "Italian": "義大利文",
+            "Dutch": "荷蘭文",
+            "Thai": "泰文",
+            "Vietnamese": "越南文"
+        },
+        "styles": {
+            "general": { "label": "通用", "description": "自然流暢的表達" },
+            "business_email": { "label": "商務", "description": "專業、禮貌的表達" },
+            "academic": { "label": "學術", "description": "嚴謹的學術表達" },
+            "technical": { "label": "技術", "description": "準確、簡潔的技術語言" },
+            "social_media": { "label": "社群", "description": "輕鬆、口語化的表達" }
+        }
     },
     "thinking": {
         "thinking": "正在思考",

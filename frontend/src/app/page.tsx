@@ -682,6 +682,7 @@ function ChatWithFilePanel({
           initialPrompt={threadType === "slides" ? undefined : slidesPrompt}
           initialPresetId={threadType === "slides" ? undefined : slidesPresetId}
           initialStyle={threadType === "slides" ? undefined : slidesStyle}
+          modelId={assistant?.graph_id || assistant?.assistant_id}
         />
       </div>
     );

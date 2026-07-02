@@ -53,12 +53,12 @@ function getApiBaseUrl(): string {
     return (getConfig()?.deploymentUrl || process.env.NEXT_PUBLIC_API_URL || '').replace(/\/+$/, '');
 }
 
-async function generateSlidesText(system: string, prompt: string, signal?: AbortSignal): Promise<string> {
+async function generateSlidesText(system: string, prompt: string, signal?: AbortSignal, modelId?: string | null): Promise<string> {
     const baseUrl = getApiBaseUrl();
     const response = await fetch(`${baseUrl}/api/slides/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ system, prompt }),
+        body: JSON.stringify({ system, prompt, model_id: modelId }),
         signal,
     });
 
@@ -121,7 +121,8 @@ export async function generateOutlineStream(
     style: StyleDimensions | undefined,
     onChunk: (text: string) => void,
     signal?: AbortSignal,
-    presetId?: string
+    presetId?: string,
+    modelId?: string | null
 ): Promise<string> {
     const presetContext = buildPresetPromptContext(presetId);
     const attachmentSummary = attachments.length > 0
@@ -132,7 +133,8 @@ export async function generateOutlineStream(
     const fullText = await generateSlidesText(
         buildOutlineSystemPrompt(style, presetId),
         `Create a presentation about: ${topic || 'the provided content'}.${attachmentSummary}${presetContext ? `\n\n${presetContext}\n\nUse this preset faithfully in the deck's narrative, visual direction, layout choice, and information density.` : ''}`,
-        signal
+        signal,
+        modelId
     );
     onChunk(fullText);
 
@@ -144,7 +146,8 @@ export async function generateSingleSlide(
     existingSlides: Slide[],
     insertIndex: number,
     style?: StyleDimensions,
-    presetId?: string
+    presetId?: string,
+    modelId?: string | null
 ): Promise<Slide | null> {
     const styleBlock = style ? buildStyleInstructions(style, presetId) : '';
     const presetContext = buildPresetPromptContext(presetId);
@@ -157,6 +160,8 @@ ${styleBlock}
 Return a single JSON object with: title, content, visualDescription, slideType ("content"), layout (one of: title-left, split-screen, big-statement, top-title, quote-callout, bottom-heavy), narrativeGoal.
 Return ONLY JSON. No markdown.`,
         `Topic: ${topic}\n\nExisting outline:\n${context}\n\nGenerate a new slide for position ${insertIndex + 1}.${presetContext ? `\n\n${presetContext}` : ''}`,
+        undefined,
+        modelId
     );
     try {
         const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();

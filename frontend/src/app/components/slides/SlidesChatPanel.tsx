@@ -11,6 +11,7 @@ interface SlidesChatPanelProps {
     topic?: string;
     streamingContent?: string;
     isGenerating?: boolean;
+    modelId?: string | null;
 }
 
 interface ChatMessage {
@@ -42,7 +43,8 @@ export function SlidesChatPanel({
     onSlidesChange,
     topic,
     streamingContent,
-    isGenerating
+    isGenerating,
+    modelId
 }: SlidesChatPanelProps) {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [input, setInput] = useState('');
@@ -111,6 +113,7 @@ export function SlidesChatPanel({
                     system: SYSTEM_PROMPT,
                     prompt: `${slidesContext ? `${slidesContext}\n\n` : ''}${conversation ? `Conversation so far:\n${conversation}\n\n` : ''}User request: ${input}`,
                     temperature: 0.7,
+                    model_id: modelId,
                 })
             });
 

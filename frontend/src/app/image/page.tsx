@@ -36,6 +36,7 @@ import { v4 as uuidv4 } from "uuid";
 import { getConfig } from "@/lib/config";
 import { useThreads } from "@/app/hooks/useThreads";
 import { features } from "@/data/featureTemplates";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 // Import logos for image models
 import nanoBananaLogo from "@/assets/logos/nano-banana.png";
@@ -52,8 +53,8 @@ interface ModelInfo {
 }
 
 const imageModels: ModelInfo[] = [
-    { name: "Nano Banana", logo: nanoBananaLogo, available: true, modelId: "nano-banana" },
-    { name: "GPT Image 2", logo: openaiLogo, available: true, modelId: "gpt-image-2" },
+    { name: "Nano Banana", logo: nanoBananaLogo, available: false, modelId: "nano-banana" },
+    { name: "GPT Image 2", logo: openaiLogo, available: false, modelId: "gpt-image-2" },
 ];
 
 const SUPPORTED_IMAGE_RATIOS: ImageRatio[] = ["auto", "1x1", "16x9", "9x16", "4x3", "3x4"];
@@ -62,6 +63,7 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
     const router = useRouter();
     const { setCollapsed, setHideTopBar } = useSidebar();
     const { session } = useAuth();
+    const { t } = useLanguage();
     const config = getConfig();
     const threads = useThreads({ limit: 20 });
 
@@ -71,6 +73,7 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
     const [canvasImages, setCanvasImages] = useState<CanvasImage[]>([]);
     const [isGenerating, setIsGenerating] = useState(false);
     const [imageModel, setImageModel] = useState<ModelInfo>(imageModels[0]);
+    const [availableImageModels, setAvailableImageModels] = useState<ModelInfo[]>(imageModels);
     const [resolution, setResolution] = useState<Resolution>("1k");
     const [ratio, setRatio] = useState<ImageRatio>("auto");
     const [searchQuery, setSearchQuery] = useState("");
@@ -81,6 +84,43 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
         generationParams?: CanvasImage["generationParams"];
     } | null>(null);
     const generationParamsByUrlRef = useRef<Map<string, CanvasImage["generationParams"]>>(new Map());
+
+    useEffect(() => {
+        let cancelled = false;
+
+        async function fetchImageProviderStatus() {
+            try {
+                const response = await fetch("/api/image-providers");
+                if (!response.ok) return;
+
+                const data = await response.json();
+                const availability = new Map<string, boolean>(
+                    (data.models || []).map((model: { id: string; available: boolean }) => [model.id, model.available])
+                );
+                const nextModels = imageModels.map((model) => ({
+                    ...model,
+                    available: availability.get(model.modelId || "") ?? false,
+                }));
+
+                if (!cancelled) {
+                    setAvailableImageModels(nextModels);
+                    setImageModel((current) => (
+                        nextModels.find((model) => model.modelId === current.modelId && model.available) ||
+                        nextModels.find((model) => model.available) ||
+                        nextModels[0]
+                    ));
+                }
+            } catch (error) {
+                console.error("[ImagePage] Failed to fetch image provider status:", error);
+            }
+        }
+
+        void fetchImageProviderStatus();
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     // Thread/conversation state for history
     const [threadId, setThreadId] = useState<string | null>(null);
@@ -156,11 +196,16 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
         return () => setHideTopBar(false);
     }, [isEditMode, setHideTopBar]);
 
-    const filteredModels = imageModels.filter((model) =>
+    const filteredModels = availableImageModels.filter((model) =>
         model.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     const handleSubmit = useCallback(async (value: string) => {
+        if (!imageModel.available) {
+            toast.error(`${imageModel.name} ${t("model_selector.not_configured")}`);
+            return;
+        }
+
         // Collapse sidebar
         setCollapsed(true);
 
@@ -254,7 +299,7 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
             setIsGenerating(false);
             toast.error(error instanceof Error ? error.message : "图片生成失败");
         }
-    }, [setCollapsed, messages, createImageThread, generateTitle, imageModel, ratio, resolution]);
+    }, [setCollapsed, messages, createImageThread, generateTitle, imageModel, ratio, resolution, t]);
 
     const handleSelectTemplate = (template: Template) => {
         toast.info(`已选择模板: ${template.title}`);
@@ -291,7 +336,7 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
     const handleEditTargetSelected = useCallback((params?: CanvasImage["generationParams"]) => {
         if (!params) return;
 
-        const matchedModel = imageModels.find(model =>
+        const matchedModel = availableImageModels.find(model =>
             model.available && (
                 (params.modelId && model.modelId === params.modelId) ||
                 (params.modelName && model.name === params.modelName)
@@ -310,7 +355,7 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
         } else {
             setRatio("auto");
         }
-    }, []);
+    }, [availableImageModels]);
 
     // Handle new conversation (stay in edit mode, clear messages)
     const handleNewConversation = useCallback(() => {
@@ -467,7 +512,7 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
                                                             </span>
                                                             <span className="text-sm flex-1">{model.name}</span>
                                                             {!model.available && (
-                                                                <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">即将上线</span>
+                                                                <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{t("model_selector.not_configured")}</span>
                                                             )}
                                                             {imageModel.name === model.name && model.available && (
                                                                 <Check className="w-4 h-4 text-foreground flex-shrink-0" />

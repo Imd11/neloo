@@ -18,41 +18,27 @@ import { cn } from "@/lib/utils";
 import { useSidebar } from "@/app/context/SidebarContext";
 import { useLanguage } from "@/providers/LanguageProvider";
 
-// Supported languages
-const LANGUAGES = [
-    { code: "auto", label: "Auto detect" },
-    { code: "English", label: "English" },
-    { code: "Chinese (Simplified)", label: "Simplified Chinese" },
-    { code: "Chinese (Traditional)", label: "Traditional Chinese" },
-    { code: "Japanese", label: "日本語" },
-    { code: "Korean", label: "한국어" },
-    { code: "French", label: "Français" },
-    { code: "German", label: "Deutsch" },
-    { code: "Spanish", label: "Español" },
-    { code: "Portuguese", label: "Português" },
-    { code: "Russian", label: "Русский" },
-    { code: "Arabic", label: "العربية" },
-    { code: "Italian", label: "Italiano" },
-    { code: "Dutch", label: "Nederlands" },
-    { code: "Thai", label: "ไทย" },
-    { code: "Vietnamese", label: "Tiếng Việt" },
+const LANGUAGE_CODES = [
+    "auto",
+    "English",
+    "Chinese (Simplified)",
+    "Chinese (Traditional)",
+    "Japanese",
+    "Korean",
+    "French",
+    "German",
+    "Spanish",
+    "Portuguese",
+    "Russian",
+    "Arabic",
+    "Italian",
+    "Dutch",
+    "Thai",
+    "Vietnamese",
 ];
 
-// Translation styles
-const STYLES = [
-    { code: "general", label: "General", description: "Natural and fluent wording" },
-    { code: "business_email", label: "Business", description: "Professional and polite wording" },
-    { code: "academic", label: "Academic", description: "Rigorous academic wording" },
-    { code: "technical", label: "Technical", description: "Accurate technical language" },
-    { code: "social_media", label: "Social", description: "Relaxed conversational wording" },
-];
-
-// Rotating headlines for translation mode
-const HEADLINES = [
-    "Translate with your selected model",
-    "Keep the meaning, change the language",
-    "Make every sentence travel clearly",
-];
+const STYLE_CODES = ["general", "business_email", "academic", "technical", "social_media"];
+const HEADLINE_KEYS = ["translate.headline_1", "translate.headline_2", "translate.headline_3"];
 
 interface TranslatePanelProps {
     onBack: () => void;
@@ -71,7 +57,7 @@ export function TranslatePanel({ onBack, modelId }: TranslatePanelProps) {
     const [selectedStyle, setSelectedStyle] = useState("general");
     const [loading, setLoading] = useState(false);
     const [copied, setCopied] = useState(false);
-    const [headline] = useState(() => HEADLINES[Math.floor(Math.random() * HEADLINES.length)]);
+    const [headlineKey] = useState(() => HEADLINE_KEYS[Math.floor(Math.random() * HEADLINE_KEYS.length)]);
 
     const handleSwapLanguages = useCallback(() => {
         if (sourceLang !== "auto") {
@@ -162,7 +148,7 @@ export function TranslatePanel({ onBack, modelId }: TranslatePanelProps) {
                 className="text-3xl md:text-4xl font-medium text-foreground mb-8 text-center fade-in"
                 style={{ fontFamily: "'Lora', 'Noto Serif SC', Georgia, serif" }}
             >
-                {headline}
+                {t(headlineKey)}
             </h1>
 
             {/* Language Selectors */}
@@ -172,9 +158,9 @@ export function TranslatePanel({ onBack, modelId }: TranslatePanelProps) {
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                        {LANGUAGES.map((lang) => (
-                            <SelectItem key={lang.code} value={lang.code}>
-                                {lang.label}
+                        {LANGUAGE_CODES.map((code) => (
+                            <SelectItem key={code} value={code}>
+                                {t(`translate.languages.${code}`)}
                             </SelectItem>
                         ))}
                     </SelectContent>
@@ -195,9 +181,9 @@ export function TranslatePanel({ onBack, modelId }: TranslatePanelProps) {
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                        {LANGUAGES.filter(l => l.code !== "auto").map((lang) => (
-                            <SelectItem key={lang.code} value={lang.code}>
-                                {lang.label}
+                        {LANGUAGE_CODES.filter((code) => code !== "auto").map((code) => (
+                            <SelectItem key={code} value={code}>
+                                {t(`translate.languages.${code}`)}
                             </SelectItem>
                         ))}
                     </SelectContent>
@@ -243,20 +229,20 @@ export function TranslatePanel({ onBack, modelId }: TranslatePanelProps) {
 
             {/* Style Cards */}
             <div className="flex flex-wrap justify-center gap-3 w-full mb-6">
-                {STYLES.map((style) => (
+                {STYLE_CODES.map((style) => (
                     <button
-                        key={style.code}
-                        onClick={() => setSelectedStyle(style.code)}
+                        key={style}
+                        onClick={() => setSelectedStyle(style)}
                         className={cn(
                             "flex flex-col items-center px-4 py-3 rounded-xl border transition-all",
                             "hover:bg-muted/50",
-                            selectedStyle === style.code
+                            selectedStyle === style
                                 ? "bg-muted border-foreground/30"
                                 : "bg-background border-border"
                         )}
                     >
-                        <span className="font-medium text-sm text-foreground">{style.label}</span>
-                        <span className="text-xs text-muted-foreground mt-0.5">{style.description}</span>
+                        <span className="font-medium text-sm text-foreground">{t(`translate.styles.${style}.label`)}</span>
+                        <span className="text-xs text-muted-foreground mt-0.5">{t(`translate.styles.${style}.description`)}</span>
                     </button>
                 ))}
             </div>

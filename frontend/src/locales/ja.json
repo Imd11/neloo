@@ -445,7 +445,35 @@
         "source_placeholder": "翻訳するテキストを入力...",
         "result_placeholder": "翻訳結果",
         "translating": "翻訳中...",
-        "action": "翻訳"
+        "action": "翻訳",
+        "headline_1": "選択中のモデルで翻訳",
+        "headline_2": "意味を保ったまま言語を変える",
+        "headline_3": "一文ずつわかりやすく伝える",
+        "languages": {
+            "auto": "自動検出",
+            "English": "英語",
+            "Chinese (Simplified)": "簡体字中国語",
+            "Chinese (Traditional)": "繁体字中国語",
+            "Japanese": "日本語",
+            "Korean": "韓国語",
+            "French": "フランス語",
+            "German": "ドイツ語",
+            "Spanish": "スペイン語",
+            "Portuguese": "ポルトガル語",
+            "Russian": "ロシア語",
+            "Arabic": "アラビア語",
+            "Italian": "イタリア語",
+            "Dutch": "オランダ語",
+            "Thai": "タイ語",
+            "Vietnamese": "ベトナム語"
+        },
+        "styles": {
+            "general": { "label": "一般", "description": "自然で流暢な表現" },
+            "business_email": { "label": "ビジネス", "description": "丁寧でプロらしい表現" },
+            "academic": { "label": "学術", "description": "厳密な学術表現" },
+            "technical": { "label": "技術", "description": "正確で簡潔な技術文" },
+            "social_media": { "label": "SNS", "description": "自然で会話調の表現" }
+        }
     },
     "thinking": {
         "thinking": "思考中",

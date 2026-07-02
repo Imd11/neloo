@@ -9,11 +9,12 @@ import SlideViewer from './SlideViewer';
 interface SlideShowProps {
     presentation: PresentationData;
     style?: StyleDimensions;
+    modelId?: string | null;
     onBack: () => void;
     onSlidesUpdate: (slides: Slide[]) => void;
 }
 
-const SlideShow: React.FC<SlideShowProps> = ({ presentation, style, onBack, onSlidesUpdate }) => {
+const SlideShow: React.FC<SlideShowProps> = ({ presentation, style, modelId, onBack, onSlidesUpdate }) => {
     const [slides, setSlides] = useState<Slide[]>(presentation.slides);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isExporting, setIsExporting] = useState(false);
@@ -193,7 +194,7 @@ const SlideShow: React.FC<SlideShowProps> = ({ presentation, style, onBack, onSl
     };
 
     const handleAddSlide = async (atIndex: number) => {
-        const newSlide = await generateSingleSlide(presentation.topic, slides, atIndex, style, presentation.presetId);
+        const newSlide = await generateSingleSlide(presentation.topic, slides, atIndex, style, presentation.presetId, modelId);
         if (newSlide) {
             const newSlides = [...slides];
             newSlides.splice(atIndex, 0, newSlide);
