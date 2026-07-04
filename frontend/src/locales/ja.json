@@ -390,38 +390,38 @@
                 "title": "プロンプト最適化",
                 "placeholder": "改善したいプロンプトを入力してください...",
                 "templates": {
-                    "image": { "title": "画像生成", "description": "AI 描画用プロンプトを改善" },
-                    "copy": { "title": "コピーライティング", "description": "マーケティング文案用プロンプトを改善" },
-                    "code": { "title": "コード生成", "description": "プログラミング関連プロンプトを改善" },
-                    "roleplay": { "title": "ロールプレイ", "description": "AI ペルソナ指示を改善" },
-                    "data": { "title": "データ分析", "description": "データ処理プロンプトを改善" },
-                    "general": { "title": "汎用改善", "description": "プロンプト全体の品質を向上" }
+                    "image": { "title": "画像生成", "description": "AI 描画用プロンプトを改善", "effect": "大まかな画像アイデアを、被写体、構図、光、スタイル、カメラ、比率、制約を含む詳細なプロンプトに整えます。" },
+                    "copy": { "title": "コピーライティング", "description": "マーケティング文案用プロンプトを改善", "effect": "曖昧な文案依頼を、読者、提案、トーン、根拠、反論、出力形式を含む明確な brief に整えます。" },
+                    "code": { "title": "コード生成", "description": "プログラミング関連プロンプトを改善", "effect": "開発依頼を、文脈、制約、境界条件、対象ファイル、検証手順を含む実装しやすいプロンプトにします。" },
+                    "roleplay": { "title": "ロールプレイ", "description": "AI ペルソナ指示を改善", "effect": "ペルソナ案を、範囲、行動ルール、境界、応答スタイルを持つ安定した役割指示に整えます。" },
+                    "data": { "title": "データ分析", "description": "データ処理プロンプトを改善", "effect": "分析アイデアを、データ背景、仮定、手法、出力、品質確認を含む構造化プロンプトにします。" },
+                    "general": { "title": "汎用改善", "description": "プロンプト全体の品質を向上", "effect": "大まかな指示を、役割、タスク、文脈、制約、出力形式が明確なプロンプトに整えます。" }
                 }
             },
             "fortune": {
                 "title": "占い",
                 "placeholder": "生年月日と時刻を入力してください...",
                 "templates": {
-                    "bazi": { "title": "八字総合鑑定", "description": "命式、構造、用神、喜忌を分析" },
-                    "annual": { "title": "年運", "description": "今年の運勢と近い将来の流れ" },
-                    "relationship": { "title": "恋愛・結婚", "description": "恋愛、結婚、相手の特徴を分析" },
-                    "career": { "title": "キャリア", "description": "職業方向、昇進、適した業界" },
-                    "wealth": { "title": "金運", "description": "収入、投資、資産形成の指針" },
-                    "health": { "title": "健康", "description": "健康上の注意点と養生提案" },
-                    "personality": { "title": "性格と才能", "description": "性格特性と強みの分析" },
-                    "family": { "title": "家族", "description": "家族との縁と子どもに関する運勢" }
+                    "bazi": { "title": "八字総合鑑定", "description": "命式、構造、用神、喜忌を分析", "effect": "命式構造、用神、十神、大運、全体の方向性まで広く見る総合的な八字鑑定です。" },
+                    "annual": { "title": "年運", "description": "今年の運勢と近い将来の流れ", "effect": "今年の流れ、重要な月、近い機会、注意が必要な時期に焦点を当てます。" },
+                    "relationship": { "title": "恋愛・結婚", "description": "恋愛、結婚、相手の特徴を分析", "effect": "恋愛の時期、結婚傾向、相手の特徴、関係上のリスクに焦点を当てます。" },
+                    "career": { "title": "キャリア", "description": "職業方向、昇進、適した業界", "effect": "職業方向、適した業界、昇進の時期、職場での注意点に焦点を当てます。" },
+                    "wealth": { "title": "金運", "description": "収入、投資、資産形成の指針", "effect": "収入、臨時収入の傾向、投資上の注意点、金運の時期、資産を守る力に焦点を当てます。" },
+                    "health": { "title": "健康", "description": "健康上の注意点と養生提案", "effect": "五行バランス、健康上の注意点、養生の方向性、特に気をつけたい年に焦点を当てます。" },
+                    "personality": { "title": "性格と才能", "description": "性格特性と強みの分析", "effect": "性格特性、強み、弱点、才能、人間関係の傾向に焦点を当てます。" },
+                    "family": { "title": "家族", "description": "家族との縁と子どもに関する運勢", "effect": "家族関係、親兄弟との縁、子どもに関する運、家庭の調和に焦点を当てます。" }
                 }
             },
             "deai": {
                 "title": "AI らしさを減らす",
                 "placeholder": "AI 生成らしさを減らしたい文章を貼り付けてください...",
                 "templates": {
-                    "academic": { "title": "学術論文", "description": "重複感を減らし自然な学術文にする" },
-                    "business": { "title": "ビジネス文案", "description": "マーケティング文案を自然にする" },
-                    "news": { "title": "ニュース記事", "description": "報道文体に変換" },
-                    "social": { "title": "SNS 投稿", "description": "人が書いたような投稿にする" },
-                    "email": { "title": "メール", "description": "ビジネスメールを自然に整える" },
-                    "creative": { "title": "創作", "description": "文学的な文章スタイルを磨く" }
+                    "academic": { "title": "学術論文", "description": "重複感を減らし自然な学術文にする", "effect": "厳密さ、専門用語、引用、論理構成を保ちながら、学術文をより自然にします。" },
+                    "business": { "title": "ビジネス文案", "description": "マーケティング文案を自然にする", "effect": "誇張や定型的なマーケティング表現を減らし、信頼できて具体的な文案にします。" },
+                    "news": { "title": "ニュース記事", "description": "報道文体に変換", "effect": "機械的な言い回しを避け、事実に基づいた簡潔な編集文体に整えます。" },
+                    "social": { "title": "SNS 投稿", "description": "人が書いたような投稿にする", "effect": "元の要点を保ちながら、会話らしく、わかりやすく、自然な投稿にします。" },
+                    "email": { "title": "メール", "description": "ビジネスメールを自然に整える", "effect": "過度に堅い表現や機械的な文を避け、明確で丁寧なメールにします。" },
+                    "creative": { "title": "創作", "description": "文学的な文章スタイルを磨く", "effect": "声、リズム、感情の意図を保ちながら、創作文をより生きた表現にします。" }
                 }
             },
             "translate": {

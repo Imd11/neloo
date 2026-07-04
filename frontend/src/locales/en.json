@@ -390,38 +390,38 @@
                 "title": "Prompt Optimize",
                 "placeholder": "Enter the prompt you want to improve...",
                 "templates": {
-                    "image": { "title": "Image Generation", "description": "Improve prompts for AI drawing" },
-                    "copy": { "title": "Copywriting", "description": "Improve marketing copy prompts" },
-                    "code": { "title": "Code Generation", "description": "Improve programming-related prompts" },
-                    "roleplay": { "title": "Role Play", "description": "Improve AI persona instructions" },
-                    "data": { "title": "Data Analysis", "description": "Improve data processing prompts" },
-                    "general": { "title": "General Improve", "description": "Improve overall prompt quality" }
+                    "image": { "title": "Image Generation", "description": "Improve prompts for AI drawing", "effect": "Turns rough image ideas into detailed prompts with subject, composition, lighting, style, camera, aspect ratio, and constraints." },
+                    "copy": { "title": "Copywriting", "description": "Improve marketing copy prompts", "effect": "Turns a vague copy request into a clear brief with audience, offer, tone, proof points, objections, and output format." },
+                    "code": { "title": "Code Generation", "description": "Improve programming-related prompts", "effect": "Turns programming requests into implementation-ready prompts with context, constraints, edge cases, files, and verification steps." },
+                    "roleplay": { "title": "Role Play", "description": "Improve AI persona instructions", "effect": "Turns persona ideas into reliable role instructions with scope, behavior rules, boundaries, and response style." },
+                    "data": { "title": "Data Analysis", "description": "Improve data processing prompts", "effect": "Turns analysis ideas into structured prompts with data context, assumptions, methods, outputs, and quality checks." },
+                    "general": { "title": "General Improve", "description": "Improve overall prompt quality", "effect": "Turns a rough instruction into a clearer prompt with role, task, context, constraints, and output format." }
                 }
             },
             "fortune": {
                 "title": "Fortune Telling",
                 "placeholder": "Enter your birth date and time...",
                 "templates": {
-                    "bazi": { "title": "Full Bazi Reading", "description": "Chart, structure, useful element, and preference analysis" },
-                    "annual": { "title": "Annual Luck", "description": "This year's luck and near-term direction" },
-                    "relationship": { "title": "Relationship", "description": "Romance, marriage, and partner traits" },
-                    "career": { "title": "Career", "description": "Career direction, promotion, and suitable industries" },
-                    "wealth": { "title": "Wealth", "description": "Income, investment, and money guidance" },
-                    "health": { "title": "Health", "description": "Health cautions and wellness suggestions" },
-                    "personality": { "title": "Personality", "description": "Personality traits and natural strengths" },
-                    "family": { "title": "Family", "description": "Family bonds and child-related luck" }
+                    "bazi": { "title": "Full Bazi Reading", "description": "Chart, structure, useful element, and preference analysis", "effect": "Gives a broad BaZi reading across chart structure, useful elements, ten gods, major luck cycles, and overall direction." },
+                    "annual": { "title": "Annual Luck", "description": "This year's luck and near-term direction", "effect": "Focuses the reading on this year's flow, key months, near-term opportunities, and periods that need caution." },
+                    "relationship": { "title": "Relationship", "description": "Romance, marriage, and partner traits", "effect": "Focuses the reading on romance timing, marriage tendencies, partner traits, and relationship risks." },
+                    "career": { "title": "Career", "description": "Career direction, promotion, and suitable industries", "effect": "Focuses the reading on career direction, suitable industries, promotion timing, and workplace risks." },
+                    "wealth": { "title": "Wealth", "description": "Income, investment, and money guidance", "effect": "Focuses the reading on income, windfall tendencies, investment caution, money timing, and wealth retention." },
+                    "health": { "title": "Health", "description": "Health cautions and wellness suggestions", "effect": "Focuses the reading on elemental balance, health cautions, wellness direction, and years that need extra care." },
+                    "personality": { "title": "Personality", "description": "Personality traits and natural strengths", "effect": "Focuses the reading on personality traits, natural strengths, blind spots, talents, and interpersonal patterns." },
+                    "family": { "title": "Family", "description": "Family bonds and child-related luck", "effect": "Focuses the reading on family relationships, parent and sibling affinity, child-related luck, and household harmony." }
                 }
             },
             "deai": {
                 "title": "Humanize",
                 "placeholder": "Paste text that should sound less AI-generated...",
                 "templates": {
-                    "academic": { "title": "Academic Paper", "description": "Reduce repetition and make academic writing more natural" },
-                    "business": { "title": "Business Copy", "description": "Make marketing copy sound more natural" },
-                    "news": { "title": "News Article", "description": "Convert text into a newsroom style" },
-                    "social": { "title": "Social Post", "description": "Make posts sound more human-written" },
-                    "email": { "title": "Email", "description": "Humanize business email conversations" },
-                    "creative": { "title": "Creative Writing", "description": "Polish literary writing style" }
+                    "academic": { "title": "Academic Paper", "description": "Reduce repetition and make academic writing more natural", "effect": "Makes academic writing more natural while preserving rigor, terminology, citations, and logical structure." },
+                    "business": { "title": "Business Copy", "description": "Make marketing copy sound more natural", "effect": "Makes business copy sound more credible, direct, and specific without hype or generic marketing language." },
+                    "news": { "title": "News Article", "description": "Convert text into a newsroom style", "effect": "Makes article-style writing more factual, concise, and editorial while avoiding robotic phrasing." },
+                    "social": { "title": "Social Post", "description": "Make posts sound more human-written", "effect": "Makes social posts feel conversational, clear, and natural while keeping the user's point intact." },
+                    "email": { "title": "Email", "description": "Humanize business email conversations", "effect": "Makes emails clearer, warmer, and more respectful without sounding overly formal or robotic." },
+                    "creative": { "title": "Creative Writing", "description": "Polish literary writing style", "effect": "Makes creative writing more vivid and human while preserving voice, rhythm, and emotional intent." }
                 }
             },
             "translate": {

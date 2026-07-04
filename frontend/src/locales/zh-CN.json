@@ -390,38 +390,38 @@
         "title": "提示词优化",
         "placeholder": "输入你想要优化的提示词...",
         "templates": {
-          "image": { "title": "图像生成", "description": "优化AI绘图提示词" },
-          "copy": { "title": "文案写作", "description": "优化营销文案提示词" },
-          "code": { "title": "代码生成", "description": "优化编程相关提示词" },
-          "roleplay": { "title": "角色扮演", "description": "优化AI角色设定词" },
-          "data": { "title": "数据分析", "description": "优化数据处理提示词" },
-          "general": { "title": "通用优化", "description": "全面提升提示词质量" }
+          "image": { "title": "图像生成", "description": "优化AI绘图提示词", "effect": "把粗略的图像想法改成包含主体、构图、光线、风格、镜头、比例和限制条件的详细提示词。" },
+          "copy": { "title": "文案写作", "description": "优化营销文案提示词", "effect": "把模糊的文案需求整理成清晰 brief，包含受众、卖点、语气、证据、异议和输出格式。" },
+          "code": { "title": "代码生成", "description": "优化编程相关提示词", "effect": "把编程需求改成可执行提示词，补齐上下文、限制、边界情况、相关文件和验证步骤。" },
+          "roleplay": { "title": "角色扮演", "description": "优化AI角色设定词", "effect": "把角色想法整理成稳定的人设指令，包含范围、行为规则、边界和回复风格。" },
+          "data": { "title": "数据分析", "description": "优化数据处理提示词", "effect": "把分析想法改成结构化提示词，包含数据背景、假设、方法、输出和质量检查。" },
+          "general": { "title": "通用优化", "description": "全面提升提示词质量", "effect": "把粗略指令改成更清楚的提示词，包含角色、任务、上下文、限制和输出格式。" }
         }
       },
       "fortune": {
         "title": "五行算命",
         "placeholder": "输入你的出生年月日时...",
         "templates": {
-          "bazi": { "title": "八字全解", "description": "综合排盘、格局、用神、喜忌分析" },
-          "annual": { "title": "流年运势", "description": "今年运势、近年走向预测" },
-          "relationship": { "title": "姻缘桃花", "description": "感情婚姻、配偶特征分析" },
-          "career": { "title": "事业发展", "description": "职业方向、升迁、适合行业" },
-          "wealth": { "title": "财运分析", "description": "正财偏财、投资理财指引" },
-          "health": { "title": "健康指引", "description": "身体注意事项、养生建议" },
-          "personality": { "title": "性格天赋", "description": "性格特征、天赋优势分析" },
-          "family": { "title": "子女亲缘", "description": "与家人的缘分、子女运势" }
+          "bazi": { "title": "八字全解", "description": "综合排盘、格局、用神、喜忌分析", "effect": "提供完整八字分析，覆盖命盘结构、用神喜忌、十神配置、大运走势和整体方向。" },
+          "annual": { "title": "流年运势", "description": "今年运势、近年走向预测", "effect": "聚焦今年运势、关键月份、近期机会，以及需要谨慎的时间段。" },
+          "relationship": { "title": "姻缘桃花", "description": "感情婚姻、配偶特征分析", "effect": "聚焦感情时机、婚恋倾向、伴侣特征和关系中的风险点。" },
+          "career": { "title": "事业发展", "description": "职业方向、升迁、适合行业", "effect": "聚焦职业方向、适合行业、晋升时机和职场风险。" },
+          "wealth": { "title": "财运分析", "description": "正财偏财、投资理财指引", "effect": "聚焦收入、偏财倾向、投资谨慎点、财富时机和守财能力。" },
+          "health": { "title": "健康指引", "description": "身体注意事项、养生建议", "effect": "聚焦五行平衡、健康注意点、养生方向和需要额外留意的年份。" },
+          "personality": { "title": "性格天赋", "description": "性格特征、天赋优势分析", "effect": "聚焦性格特点、天赋优势、盲点、潜能和人际模式。" },
+          "family": { "title": "子女亲缘", "description": "与家人的缘分、子女运势", "effect": "聚焦家庭关系、父母兄弟缘分、子女缘和家庭和谐度。" }
         }
       },
       "deai": {
         "title": "去AI化",
         "placeholder": "粘贴需要去AI化的文本...",
         "templates": {
-          "academic": { "title": "学术论文", "description": "论文降重与人性化改写" },
-          "business": { "title": "商业文案", "description": "营销文案自然化处理" },
-          "news": { "title": "新闻稿件", "description": "新闻报道风格转换" },
-          "social": { "title": "社交媒体", "description": "让帖子更像真人撰写" },
-          "email": { "title": "邮件往来", "description": "商务邮件人性化改写" },
-          "creative": { "title": "创意写作", "description": "文学作品风格润色" }
+          "academic": { "title": "学术论文", "description": "论文降重与人性化改写", "effect": "让学术文本更自然，同时保留严谨性、术语、引用和逻辑结构。" },
+          "business": { "title": "商业文案", "description": "营销文案自然化处理", "effect": "让商业文案更可信、直接、具体，去掉夸张和套路化营销语言。" },
+          "news": { "title": "新闻稿件", "description": "新闻报道风格转换", "effect": "让文章表达更事实、简洁、有编辑感，避免机械化措辞。" },
+          "social": { "title": "社交媒体", "description": "让帖子更像真人撰写", "effect": "让社交内容更口语、清楚、自然，同时保留用户原本的重点。" },
+          "email": { "title": "邮件往来", "description": "商务邮件人性化改写", "effect": "让邮件更清楚、温和、得体，同时避免过度正式或机械。" },
+          "creative": { "title": "创意写作", "description": "文学作品风格润色", "effect": "让创意写作更生动、更像真人表达，同时保留声音、节奏和情绪意图。" }
         }
       },
       "translate": {

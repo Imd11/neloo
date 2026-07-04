@@ -20,6 +20,17 @@ export interface Template {
     previewImage?: string;
     titleKey?: string;
     descriptionKey?: string;
+    effectKey?: string;
+    exampleInputKey?: string;
+    exampleOutputKey?: string;
+    userFacingEffect?: string;
+    exampleInput?: string;
+    exampleOutput?: string;
+    /**
+     * Backend-facing instruction. Keep this stable and English.
+     * Do not localize it through UI locale files.
+     */
+    promptInstruction?: string;
     model?: string;
     category?: TemplateCategory;
 }
@@ -53,6 +64,16 @@ export function localizeTemplate(template: Template, t: Translate): Template {
         ...template,
         title: translateWithFallback(t, template.titleKey, template.title),
         description: translateWithFallback(t, template.descriptionKey, template.description),
+        userFacingEffect: template.userFacingEffect
+            ? translateWithFallback(t, template.effectKey, template.userFacingEffect)
+            : undefined,
+        exampleInput: template.exampleInput
+            ? translateWithFallback(t, template.exampleInputKey, template.exampleInput)
+            : undefined,
+        exampleOutput: template.exampleOutput
+            ? translateWithFallback(t, template.exampleOutputKey, template.exampleOutput)
+            : undefined,
+        promptInstruction: template.promptInstruction,
     };
 }
 
@@ -463,6 +484,9 @@ export const features: Feature[] = [
                 titleKey: "features.items.prompt_optimize.templates.image.title",
                 description: "Improve prompts for AI drawing",
                 descriptionKey: "features.items.prompt_optimize.templates.image.description",
+                userFacingEffect: "Turns rough image ideas into detailed prompts with subject, composition, lighting, style, camera, aspect ratio, and constraints.",
+                effectKey: "features.items.prompt_optimize.templates.image.effect",
+                promptInstruction: "Optimize the user's prompt specifically for image generation. Include subject, scene, style, camera angle, composition, lighting, color palette, texture, aspect ratio, and constraints. Return only the improved prompt.",
                 gradient: "bg-gradient-to-br from-violet-900 via-purple-800 to-indigo-900",
             },
             {
@@ -471,6 +495,9 @@ export const features: Feature[] = [
                 titleKey: "features.items.prompt_optimize.templates.copy.title",
                 description: "Improve marketing copy prompts",
                 descriptionKey: "features.items.prompt_optimize.templates.copy.description",
+                userFacingEffect: "Turns a vague copy request into a clear brief with audience, offer, tone, proof points, objections, and output format.",
+                effectKey: "features.items.prompt_optimize.templates.copy.effect",
+                promptInstruction: "Optimize the user's prompt for copywriting. Clarify audience, offer, channel, tone, proof points, objections, constraints, and output format. Return only the improved prompt.",
                 gradient: "bg-gradient-to-br from-amber-900 via-orange-800 to-red-900",
             },
             {
@@ -479,6 +506,9 @@ export const features: Feature[] = [
                 titleKey: "features.items.prompt_optimize.templates.code.title",
                 description: "Improve programming-related prompts",
                 descriptionKey: "features.items.prompt_optimize.templates.code.description",
+                userFacingEffect: "Turns programming requests into implementation-ready prompts with context, constraints, edge cases, files, and verification steps.",
+                effectKey: "features.items.prompt_optimize.templates.code.effect",
+                promptInstruction: "Optimize the user's prompt for code generation. Include relevant context, target behavior, constraints, edge cases, file or API boundaries, and verification criteria. Return only the improved prompt.",
                 gradient: "bg-gradient-to-br from-cyan-900 via-blue-800 to-indigo-900",
             },
             {
@@ -487,6 +517,9 @@ export const features: Feature[] = [
                 titleKey: "features.items.prompt_optimize.templates.roleplay.title",
                 description: "Improve AI persona instructions",
                 descriptionKey: "features.items.prompt_optimize.templates.roleplay.description",
+                userFacingEffect: "Turns persona ideas into reliable role instructions with scope, behavior rules, boundaries, and response style.",
+                effectKey: "features.items.prompt_optimize.templates.roleplay.effect",
+                promptInstruction: "Optimize the user's prompt for role play or AI persona design. Define role, objective, expertise, behavior rules, boundaries, tone, interaction pattern, and output constraints. Return only the improved prompt.",
                 gradient: "bg-gradient-to-br from-rose-900 via-pink-800 to-purple-900",
             },
             {
@@ -495,6 +528,9 @@ export const features: Feature[] = [
                 titleKey: "features.items.prompt_optimize.templates.data.title",
                 description: "Improve data processing prompts",
                 descriptionKey: "features.items.prompt_optimize.templates.data.description",
+                userFacingEffect: "Turns analysis ideas into structured prompts with data context, assumptions, methods, outputs, and quality checks.",
+                effectKey: "features.items.prompt_optimize.templates.data.effect",
+                promptInstruction: "Optimize the user's prompt for data analysis. Clarify dataset context, analysis goal, assumptions, methods, metrics, expected tables or charts, and validation checks. Return only the improved prompt.",
                 gradient: "bg-gradient-to-br from-emerald-900 via-teal-800 to-cyan-900",
             },
             {
@@ -503,6 +539,9 @@ export const features: Feature[] = [
                 titleKey: "features.items.prompt_optimize.templates.general.title",
                 description: "Improve overall prompt quality",
                 descriptionKey: "features.items.prompt_optimize.templates.general.description",
+                userFacingEffect: "Turns a rough instruction into a clearer prompt with role, task, context, constraints, and output format.",
+                effectKey: "features.items.prompt_optimize.templates.general.effect",
+                promptInstruction: "Optimize the user's prompt for general-purpose AI use. Preserve intent, add useful structure, clarify context and constraints, and define a practical output format. Return only the improved prompt.",
                 gradient: "bg-gradient-to-br from-slate-800 via-zinc-700 to-neutral-800",
             },
         ],
@@ -521,6 +560,8 @@ export const features: Feature[] = [
                 titleKey: "features.items.fortune.templates.bazi.title",
                 description: "Chart, structure, useful element, and preference analysis",
                 descriptionKey: "features.items.fortune.templates.bazi.description",
+                userFacingEffect: "Gives a broad BaZi reading across chart structure, useful elements, ten gods, major luck cycles, and overall direction.",
+                effectKey: "features.items.fortune.templates.bazi.effect",
                 gradient: "bg-gradient-to-br from-amber-900 via-yellow-800 to-orange-900",
             },
             {
@@ -529,6 +570,8 @@ export const features: Feature[] = [
                 titleKey: "features.items.fortune.templates.annual.title",
                 description: "This year's luck and near-term direction",
                 descriptionKey: "features.items.fortune.templates.annual.description",
+                userFacingEffect: "Focuses the reading on this year's flow, key months, near-term opportunities, and periods that need caution.",
+                effectKey: "features.items.fortune.templates.annual.effect",
                 gradient: "bg-gradient-to-br from-purple-900 via-violet-800 to-indigo-900",
             },
             {
@@ -537,6 +580,8 @@ export const features: Feature[] = [
                 titleKey: "features.items.fortune.templates.relationship.title",
                 description: "Romance, marriage, and partner traits",
                 descriptionKey: "features.items.fortune.templates.relationship.description",
+                userFacingEffect: "Focuses the reading on romance timing, marriage tendencies, partner traits, and relationship risks.",
+                effectKey: "features.items.fortune.templates.relationship.effect",
                 gradient: "bg-gradient-to-br from-rose-900 via-pink-800 to-red-900",
             },
             {
@@ -545,6 +590,8 @@ export const features: Feature[] = [
                 titleKey: "features.items.fortune.templates.career.title",
                 description: "Career direction, promotion, and suitable industries",
                 descriptionKey: "features.items.fortune.templates.career.description",
+                userFacingEffect: "Focuses the reading on career direction, suitable industries, promotion timing, and workplace risks.",
+                effectKey: "features.items.fortune.templates.career.effect",
                 gradient: "bg-gradient-to-br from-blue-900 via-indigo-800 to-violet-900",
             },
             {
@@ -553,6 +600,8 @@ export const features: Feature[] = [
                 titleKey: "features.items.fortune.templates.wealth.title",
                 description: "Income, investment, and money guidance",
                 descriptionKey: "features.items.fortune.templates.wealth.description",
+                userFacingEffect: "Focuses the reading on income, windfall tendencies, investment caution, money timing, and wealth retention.",
+                effectKey: "features.items.fortune.templates.wealth.effect",
                 gradient: "bg-gradient-to-br from-yellow-900 via-amber-800 to-orange-900",
             },
             {
@@ -561,6 +610,8 @@ export const features: Feature[] = [
                 titleKey: "features.items.fortune.templates.health.title",
                 description: "Health cautions and wellness suggestions",
                 descriptionKey: "features.items.fortune.templates.health.description",
+                userFacingEffect: "Focuses the reading on elemental balance, health cautions, wellness direction, and years that need extra care.",
+                effectKey: "features.items.fortune.templates.health.effect",
                 gradient: "bg-gradient-to-br from-emerald-900 via-teal-800 to-cyan-900",
             },
             {
@@ -569,6 +620,8 @@ export const features: Feature[] = [
                 titleKey: "features.items.fortune.templates.personality.title",
                 description: "Personality traits and natural strengths",
                 descriptionKey: "features.items.fortune.templates.personality.description",
+                userFacingEffect: "Focuses the reading on personality traits, natural strengths, blind spots, talents, and interpersonal patterns.",
+                effectKey: "features.items.fortune.templates.personality.effect",
                 gradient: "bg-gradient-to-br from-sky-900 via-blue-800 to-cyan-900",
             },
             {
@@ -577,6 +630,8 @@ export const features: Feature[] = [
                 titleKey: "features.items.fortune.templates.family.title",
                 description: "Family bonds and child-related luck",
                 descriptionKey: "features.items.fortune.templates.family.description",
+                userFacingEffect: "Focuses the reading on family relationships, parent and sibling affinity, child-related luck, and household harmony.",
+                effectKey: "features.items.fortune.templates.family.effect",
                 gradient: "bg-gradient-to-br from-slate-800 via-zinc-700 to-neutral-800",
             },
         ],
@@ -595,6 +650,9 @@ export const features: Feature[] = [
                 titleKey: "features.items.deai.templates.academic.title",
                 description: "Reduce repetition and make academic writing more natural",
                 descriptionKey: "features.items.deai.templates.academic.description",
+                userFacingEffect: "Makes academic writing more natural while preserving rigor, terminology, citations, and logical structure.",
+                effectKey: "features.items.deai.templates.academic.effect",
+                promptInstruction: "Rewrite the user's text for academic writing. Preserve rigor, terminology, citations, and logical structure. Reduce mechanical repetition and inflated phrasing while keeping the final text clear and grounded.",
                 gradient: "bg-gradient-to-br from-blue-900 via-indigo-800 to-violet-900",
             },
             {
@@ -603,6 +661,9 @@ export const features: Feature[] = [
                 titleKey: "features.items.deai.templates.business.title",
                 description: "Make marketing copy sound more natural",
                 descriptionKey: "features.items.deai.templates.business.description",
+                userFacingEffect: "Makes business copy sound more credible, direct, and specific without hype or generic marketing language.",
+                effectKey: "features.items.deai.templates.business.effect",
+                promptInstruction: "Rewrite the user's text as business copy. Keep it credible, specific, and direct. Remove hype, generic marketing claims, and artificial friendliness while preserving the core message.",
                 gradient: "bg-gradient-to-br from-emerald-900 via-teal-800 to-cyan-900",
             },
             {
@@ -611,6 +672,9 @@ export const features: Feature[] = [
                 titleKey: "features.items.deai.templates.news.title",
                 description: "Convert text into a newsroom style",
                 descriptionKey: "features.items.deai.templates.news.description",
+                userFacingEffect: "Makes article-style writing more factual, concise, and editorial while avoiding robotic phrasing.",
+                effectKey: "features.items.deai.templates.news.effect",
+                promptInstruction: "Rewrite the user's text in a newsroom style. Keep it factual, concise, and editorial. Avoid opinionated hype, vague transitions, and AI-sounding filler.",
                 gradient: "bg-gradient-to-br from-slate-800 via-zinc-700 to-neutral-800",
             },
             {
@@ -619,6 +683,9 @@ export const features: Feature[] = [
                 titleKey: "features.items.deai.templates.social.title",
                 description: "Make posts sound more human-written",
                 descriptionKey: "features.items.deai.templates.social.description",
+                userFacingEffect: "Makes social posts feel conversational, clear, and natural while keeping the user's point intact.",
+                effectKey: "features.items.deai.templates.social.effect",
+                promptInstruction: "Rewrite the user's text as a natural social post. Keep it conversational and easy to read. Preserve the user's point, remove generic AI phrasing, and avoid forced enthusiasm.",
                 gradient: "bg-gradient-to-br from-pink-800 via-fuchsia-700 to-purple-800",
             },
             {
@@ -627,6 +694,9 @@ export const features: Feature[] = [
                 titleKey: "features.items.deai.templates.email.title",
                 description: "Humanize business email conversations",
                 descriptionKey: "features.items.deai.templates.email.description",
+                userFacingEffect: "Makes emails clearer, warmer, and more respectful without sounding overly formal or robotic.",
+                effectKey: "features.items.deai.templates.email.effect",
+                promptInstruction: "Rewrite the user's text as an email. Keep it clear, respectful, and natural. Avoid stiff corporate phrasing, over-apologies, and unnecessary filler.",
                 gradient: "bg-gradient-to-br from-amber-900 via-orange-800 to-red-900",
             },
             {
@@ -635,6 +705,9 @@ export const features: Feature[] = [
                 titleKey: "features.items.deai.templates.creative.title",
                 description: "Polish literary writing style",
                 descriptionKey: "features.items.deai.templates.creative.description",
+                userFacingEffect: "Makes creative writing more vivid and human while preserving voice, rhythm, and emotional intent.",
+                effectKey: "features.items.deai.templates.creative.effect",
+                promptInstruction: "Rewrite the user's text as creative writing. Preserve voice, rhythm, and emotional intent. Improve natural flow and imagery without making the prose overwritten or generic.",
                 gradient: "bg-gradient-to-br from-violet-900 via-purple-800 to-indigo-900",
             },
         ],

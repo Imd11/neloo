@@ -390,38 +390,38 @@
                 "title": "提示詞優化",
                 "placeholder": "輸入你想要優化的提示詞...",
                 "templates": {
-                    "image": { "title": "圖像生成", "description": "優化AI繪圖提示詞" },
-                    "copy": { "title": "文案寫作", "description": "優化行銷文案提示詞" },
-                    "code": { "title": "程式碼生成", "description": "優化程式設計相關提示詞" },
-                    "roleplay": { "title": "角色扮演", "description": "優化AI角色設定詞" },
-                    "data": { "title": "資料分析", "description": "優化資料處理提示詞" },
-                    "general": { "title": "通用優化", "description": "全面提升提示詞品質" }
+                    "image": { "title": "圖像生成", "description": "優化AI繪圖提示詞", "effect": "把粗略的圖像想法改成包含主體、構圖、光線、風格、鏡頭、比例和限制條件的詳細提示詞。" },
+                    "copy": { "title": "文案寫作", "description": "優化行銷文案提示詞", "effect": "把模糊的文案需求整理成清晰 brief，包含受眾、賣點、語氣、證據、異議和輸出格式。" },
+                    "code": { "title": "程式碼生成", "description": "優化程式設計相關提示詞", "effect": "把程式需求改成可執行提示詞，補齊上下文、限制、邊界情況、相關檔案和驗證步驟。" },
+                    "roleplay": { "title": "角色扮演", "description": "優化AI角色設定詞", "effect": "把角色想法整理成穩定的人設指令，包含範圍、行為規則、邊界和回覆風格。" },
+                    "data": { "title": "資料分析", "description": "優化資料處理提示詞", "effect": "把分析想法改成結構化提示詞，包含資料背景、假設、方法、輸出和品質檢查。" },
+                    "general": { "title": "通用優化", "description": "全面提升提示詞品質", "effect": "把粗略指令改成更清楚的提示詞，包含角色、任務、上下文、限制和輸出格式。" }
                 }
             },
             "fortune": {
                 "title": "五行算命",
                 "placeholder": "輸入你的出生年月日時...",
                 "templates": {
-                    "bazi": { "title": "八字全解", "description": "綜合排盤、格局、用神、喜忌分析" },
-                    "annual": { "title": "流年運勢", "description": "今年運勢、近年走向預測" },
-                    "relationship": { "title": "姻緣桃花", "description": "感情婚姻、配偶特徵分析" },
-                    "career": { "title": "事業發展", "description": "職業方向、升遷、適合產業" },
-                    "wealth": { "title": "財運分析", "description": "正財偏財、投資理財指引" },
-                    "health": { "title": "健康指引", "description": "身體注意事項、養生建議" },
-                    "personality": { "title": "性格天賦", "description": "性格特徵、天賦優勢分析" },
-                    "family": { "title": "子女親緣", "description": "與家人的緣分、子女運勢" }
+                    "bazi": { "title": "八字全解", "description": "綜合排盤、格局、用神、喜忌分析", "effect": "提供完整八字分析，涵蓋命盤結構、用神喜忌、十神配置、大運走勢和整體方向。" },
+                    "annual": { "title": "流年運勢", "description": "今年運勢、近年走向預測", "effect": "聚焦今年運勢、關鍵月份、近期機會，以及需要謹慎的時間段。" },
+                    "relationship": { "title": "姻緣桃花", "description": "感情婚姻、配偶特徵分析", "effect": "聚焦感情時機、婚戀傾向、伴侶特徵和關係中的風險點。" },
+                    "career": { "title": "事業發展", "description": "職業方向、升遷、適合產業", "effect": "聚焦職業方向、適合產業、升遷時機和職場風險。" },
+                    "wealth": { "title": "財運分析", "description": "正財偏財、投資理財指引", "effect": "聚焦收入、偏財傾向、投資謹慎點、財富時機和守財能力。" },
+                    "health": { "title": "健康指引", "description": "身體注意事項、養生建議", "effect": "聚焦五行平衡、健康注意點、養生方向和需要額外留意的年份。" },
+                    "personality": { "title": "性格天賦", "description": "性格特徵、天賦優勢分析", "effect": "聚焦性格特點、天賦優勢、盲點、潛能和人際模式。" },
+                    "family": { "title": "子女親緣", "description": "與家人的緣分、子女運勢", "effect": "聚焦家庭關係、父母兄弟緣分、子女緣和家庭和諧度。" }
                 }
             },
             "deai": {
                 "title": "去AI化",
                 "placeholder": "貼上需要去AI化的文字...",
                 "templates": {
-                    "academic": { "title": "學術論文", "description": "論文降重與人性化改寫" },
-                    "business": { "title": "商業文案", "description": "行銷文案自然化處理" },
-                    "news": { "title": "新聞稿件", "description": "新聞報導風格轉換" },
-                    "social": { "title": "社交媒體", "description": "讓貼文更像真人撰寫" },
-                    "email": { "title": "郵件往來", "description": "商務郵件人性化改寫" },
-                    "creative": { "title": "創意寫作", "description": "文學作品風格潤色" }
+                    "academic": { "title": "學術論文", "description": "論文降重與人性化改寫", "effect": "讓學術文字更自然，同時保留嚴謹性、術語、引用和邏輯結構。" },
+                    "business": { "title": "商業文案", "description": "行銷文案自然化處理", "effect": "讓商業文案更可信、直接、具體，去掉誇張和套路化行銷語言。" },
+                    "news": { "title": "新聞稿件", "description": "新聞報導風格轉換", "effect": "讓文章表達更事實、簡潔、有編輯感，避免機械化措辭。" },
+                    "social": { "title": "社交媒體", "description": "讓貼文更像真人撰寫", "effect": "讓社群內容更口語、清楚、自然，同時保留使用者原本的重點。" },
+                    "email": { "title": "郵件往來", "description": "商務郵件人性化改寫", "effect": "讓郵件更清楚、溫和、得體，同時避免過度正式或機械。" },
+                    "creative": { "title": "創意寫作", "description": "文學作品風格潤色", "effect": "讓創意寫作更生動、更像真人表達，同時保留聲音、節奏和情緒意圖。" }
                 }
             },
             "translate": {
