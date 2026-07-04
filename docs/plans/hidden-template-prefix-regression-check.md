@@ -45,6 +45,17 @@ If Supabase is configured, inspect the newest `chat_messages` row for the tested
 4. Confirm returned shared human `content` fields contain only visible user text.
 5. If any `additional_kwargs.neloo_hidden_prompt` exists, confirm it contains only non-secret `context` and `visibleContent`, not full hidden prompt text.
 
+### Automated Backend Persistence Check
+
+Run:
+
+```bash
+cd backend
+python3.13 scripts/check_hidden_prompt_persistence.py --base-url http://127.0.0.1:2024
+```
+
+This must pass before marking history/share/fork hidden prompt persistence as verified. If it reports that durable persistence is unavailable, configure a reachable `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, and required migrations before marking those flows as passed.
+
 ## Execution Results - 2026-07-05
 
 - Frontend URL: `http://localhost:3000`
