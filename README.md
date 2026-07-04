@@ -247,6 +247,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 - Rotate any key that has ever been committed, even if it has since been removed.
 - Do not publish `.env`, `.env.local`, `.env.production`, `.mcp.json`, `.vercel/`, Supabase temp folders, or local databases.
 - Treat every `NEXT_PUBLIC_*` value as public. Never put service-role keys or unrestricted model keys there.
+- Template instructions are hidden from visible chat UI, copy, history, and share output, but current realtime generation still sends model-facing prompt content through the browser-to-LangGraph stream. Do not treat template prompts as secrets from a user inspecting their own network traffic.
 - Restrict public Google and Supabase browser keys in their provider dashboards.
 - Prefer backend proxy routes for paid model APIs in production.
 - Run a secret scanner before publishing:
