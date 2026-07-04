@@ -61,6 +61,7 @@ This must pass before marking history/share/fork hidden prompt persistence as ve
 - Frontend URL: `http://localhost:3000`
 - Backend URL: `http://127.0.0.1:2024`
 - Supabase durable persistence configured: NO. `POST /api/threads` now returns `503 Service Unavailable` with `Durable thread persistence is unavailable. Check SUPABASE_URL, SUPABASE_SERVICE_KEY, network access, and required Supabase migrations.` The local `SUPABASE_URL` host could not be resolved by DNS in this environment.
+- Backend API test env isolation: PASS. `tests/test_hidden_prompt_api_flows.py` now sets deterministic dummy model env defaults before importing the app and does not load a private `.env`; it intentionally does not set dummy Supabase env values.
 - Homepage load: PASS. `curl -I http://localhost:3000` returned `HTTP/1.1 200 OK`.
 - Homepage forbidden strings: PASS. `curl http://localhost:3000` did not contain `You are a senior prompt engineer.`, `Act like a professional content writer`, `Analysis direction:`, or `[System: You are now acting as the agent`.
 - Backend persistence script: SKIP. `python3.13 scripts/check_hidden_prompt_persistence.py --base-url http://127.0.0.1:2024` reported durable thread persistence unavailable and exited with code `2`; this is the expected non-pass state until Supabase is reachable.
