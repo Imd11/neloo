@@ -44,3 +44,19 @@ If Supabase is configured, inspect the newest `chat_messages` row for the tested
 3. Call the share endpoint for a shared conversation.
 4. Confirm returned shared human `content` fields contain only visible user text.
 5. If any `additional_kwargs.neloo_hidden_prompt` exists, confirm it contains only non-secret `context` and `visibleContent`, not full hidden prompt text.
+
+## Execution Results - 2026-07-05
+
+- Frontend URL: `http://localhost:3000`
+- Backend URL: `http://127.0.0.1:2024`
+- Homepage load: PASS. The page loaded with backend connected, and visible page text did not include `You are a senior prompt engineer.`, `Act like a professional content writer`, `Analysis direction:`, or `[System: You are now acting as the agent`.
+- Prompt Optimize submit: PASS for visible UI. Submitted `make a landing page hero prompt`; the user bubble showed only that text, the assistant response rendered normally, and visible page text did not include hidden template prefixes.
+- Prompt Optimize refresh/history response: SKIPPED/PARTIAL. Reloading the generated `threadId` showed `未找到对话` because the local thread persistence API could not create a durable thread in this environment. Observed `/api/threads` responses did not contain hidden prompt prefixes.
+- Humanize submit/history: PASS for visible UI. Submitted `This innovative solution leverages cutting-edge technology to enhance productivity.`; the user bubble showed only that text, and visible page text did not include the humanize system prompt.
+- Fortune submit/history: PARTIAL. The UI blocked submission with `请先填写完整的出生信息再发送。`; no model request was sent, and visible page text did not include `Analysis direction:`.
+- Regenerate: PASS for visible UI. Regenerated a Prompt Optimize response; the user bubble still showed only the original user text, and visible page text did not include hidden template prefixes.
+- Fork/regenerate: SKIPPED. The local thread persistence API returned `500` for thread creation and `404` for the generated thread IDs, so a durable fork target was unavailable.
+- Share page/API: SKIPPED/PARTIAL. The share flow could not complete because the local thread persistence API returned `500` for `/api/threads` and `404` for the generated thread. Captured thread API responses did not contain hidden prompt prefixes.
+- DB spot check: SKIPPED. The local persistence layer did not create durable thread rows in this environment, so there was no reliable DB row to inspect.
+- Model stream note: The LangGraph realtime `/runs/stream` response includes the model-facing hidden prompt during generation. This is expected with the current architecture because the browser submits model input to the LangGraph stream, but it is not persisted in the frontend DB save path and was not visible in chat bubbles, copy-visible text, regenerate-visible text, or thread API error/history responses observed here.
+- Blockers or skipped checks: Durable refresh/history, fork/regenerate, share page, and DB spot checks were blocked by local thread persistence failures: `/api/threads` returned `500: Failed to create thread`, and generated thread IDs returned `404: Thread not found`.
