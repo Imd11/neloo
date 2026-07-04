@@ -628,12 +628,13 @@ export function useChat({
     (content: string, hiddenPrompt?: HiddenPromptEnvelope) => {
       const displayContent = content;
 
-      const displayMessage: Message = { id: uuidv4(), type: "human", content: displayContent };
+      const messageId = uuidv4();
+      const displayMessage: Message = { id: messageId, type: "human", content: displayContent };
       let backendMessage: Message = displayMessage;
 
       if (activeAgent?.systemPrompt) {
         const agentContext = `[System: You are now acting as the agent "${activeAgent.name}". Follow these instructions:\n${activeAgent.systemPrompt}\n---\nUser message:]\n`;
-        backendMessage = createHiddenPromptMessage(displayMessage.id, {
+        backendMessage = createHiddenPromptMessage(messageId, {
           visibleContent: displayContent,
           hiddenPrefix: agentContext,
           context: {
@@ -642,7 +643,7 @@ export function useChat({
           },
         });
       } else if (hiddenPrompt) {
-        backendMessage = createHiddenPromptMessage(displayMessage.id, hiddenPrompt);
+        backendMessage = createHiddenPromptMessage(messageId, hiddenPrompt);
       }
 
       const currentMessages = stream.messages ?? [];
