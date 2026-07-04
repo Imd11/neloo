@@ -20,7 +20,7 @@
 Run:
 
 ```bash
-cd /Users/yang/Desktop/agent/neloo
+cd <repo-root>
 git status --short
 git diff --stat
 ```
@@ -78,7 +78,7 @@ Expected: feature-button work starts from a clean or intentionally staged baseli
 Run:
 
 ```bash
-cd /Users/yang/Desktop/agent/neloo
+cd <repo-root>
 rg -n "selectedTemplateName|selectedTextTemplateId|selectedFortuneTemplateId|selectedSlidesPresetId|FeatureTemplateGrid|TemplatePromptInput|getHumanizePrompt|getPromptOptimizePrompt|getFortuneTemplatePrefix" frontend/src
 ```
 
@@ -286,7 +286,7 @@ Add locale entries for all new `effect`, `exampleInput`, and `exampleOutput` key
 Run:
 
 ```bash
-cd /Users/yang/Desktop/agent/neloo/frontend
+cd <repo-root>/frontend
 node -e "for (const f of ['src/locales/en.json','src/locales/zh-CN.json','src/locales/zh-TW.json','src/locales/ja.json']) JSON.parse(require('fs').readFileSync(f,'utf8'))"
 yarn i18n:audit
 npx eslint src/data/featureTemplates.ts src/data/featurePrompts.ts
@@ -396,7 +396,7 @@ with localized values in Chinese, Traditional Chinese, and Japanese.
 Run:
 
 ```bash
-cd /Users/yang/Desktop/agent/neloo/frontend
+cd <repo-root>/frontend
 npx eslint src/app/components/FeatureTemplateGrid.tsx src/app/components/TemplateCard.tsx src/app/components/PromptInput.tsx src/app/components/TemplatePromptInput.tsx
 yarn i18n:audit
 ```
@@ -651,8 +651,8 @@ Every Prompt Optimize, Humanize, and Fortune template must have a `previewImage`
 Run:
 
 ```bash
-cd /Users/yang/Desktop/agent/neloo
-rg -n "/Users/yang|Desktop|图片空间站|AI生图" frontend/src frontend/public/templates || true
+cd <repo-root>
+rg -n "LOCAL_PRIVATE_ASSET_PATTERN" frontend/src frontend/public/templates || true
 ```
 
 Expected: no matches.
@@ -759,7 +759,7 @@ In `Home`, when a preset is recommended but not explicitly selected, show "Recom
 Run:
 
 ```bash
-cd /Users/yang/Desktop/agent/neloo/frontend
+cd <repo-root>/frontend
 npx eslint src/app/components/slides/SlidesExperience.tsx src/app/components/slides/slidecraft/components/Home.tsx src/app/components/slides/slidecraft/components/SlideShow.tsx src/app/components/slides/slidecraft/services/geminiService.ts
 yarn build
 ```
@@ -788,7 +788,7 @@ git commit -m "fix: preserve slides preset and image provider flow"
 Run:
 
 ```bash
-cd /Users/yang/Desktop/agent/neloo/backend
+cd <repo-root>/backend
 langgraph dev --config langgraph.json
 ```
 
@@ -841,14 +841,14 @@ git commit -m "fix: allow guest feature API usage"
 Run:
 
 ```bash
-cd /Users/yang/Desktop/agent/neloo/backend
+cd <repo-root>/backend
 langgraph dev --config langgraph.json
 ```
 
 In another shell:
 
 ```bash
-cd /Users/yang/Desktop/agent/neloo/frontend
+cd <repo-root>/frontend
 yarn dev
 ```
 
@@ -910,7 +910,7 @@ git commit -m "test: document homepage feature button qa"
 **Step 1: Run targeted lint**
 
 ```bash
-cd /Users/yang/Desktop/agent/neloo/frontend
+cd <repo-root>/frontend
 npx eslint \
   src/app/page.tsx \
   src/data/featureTemplates.ts \
@@ -946,8 +946,8 @@ Expected: build succeeds.
 **Step 4: Check for local path leaks**
 
 ```bash
-cd /Users/yang/Desktop/agent/neloo
-rg -n "/Users/yang|Desktop|图片空间站|AI生图" frontend/src frontend/public/templates docs || true
+cd <repo-root>
+rg -n "LOCAL_PRIVATE_ASSET_PATTERN" frontend/src frontend/public/templates docs || true
 ```
 
 Expected: no product code or public asset metadata leaks local absolute paths. Plan/audit docs should also avoid local personal asset paths unless needed for internal notes.
