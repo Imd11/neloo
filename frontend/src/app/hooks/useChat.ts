@@ -18,10 +18,13 @@ import { useAgentContext } from "@/providers/AgentProvider";
 import { toast } from "sonner";
 import {
   createHiddenPromptMessage,
+  getVisibleHumanContent,
   sanitizeHiddenPromptMessageForPersistence,
   sanitizeHiddenPromptMessagesForPersistence,
   type HiddenPromptEnvelope,
 } from "@/app/utils/hiddenPromptEnvelope";
+import { getHumanizePrompt, getPromptOptimizePrompt } from "@/data/featurePrompts";
+import { getFortuneTemplatePrefix } from "@/data/fortuneTemplatePrefix";
 
 const SAVE_MESSAGE_MAX_RETRIES = 2;
 const SAVE_MESSAGE_RETRY_BASE_DELAY_MS = 500;
@@ -45,6 +48,51 @@ function isRetryableSaveStatus(status: number): boolean {
     return false;
   }
   return status >= 500 || status === 408;
+}
+
+function rebuildModelMessageForRegenerate(message: Message): Message {
+  if (message.type !== "human" || !message.id) return message;
+
+  const additional = (message as Message & {
+    additional_kwargs?: Record<string, unknown>;
+  }).additional_kwargs;
+  const payload = additional?.neloo_hidden_prompt;
+  if (!payload || typeof payload !== "object") return message;
+
+  const visibleContent = getVisibleHumanContent(message);
+  const context = (payload as { context?: unknown }).context;
+  if (!visibleContent || !context || typeof context !== "object") return message;
+
+  const feature = (context as { feature?: unknown }).feature;
+  const templateId = (context as { templateId?: unknown }).templateId;
+  const numericTemplateId = typeof templateId === "number" ? templateId : undefined;
+
+  if (feature === "prompt-optimize") {
+    return createHiddenPromptMessage(message.id, {
+      visibleContent,
+      hiddenPrefix: getPromptOptimizePrompt(numericTemplateId ?? null, undefined),
+      context: { feature: "prompt-optimize", templateId: numericTemplateId },
+    });
+  }
+
+  if (feature === "deai") {
+    return createHiddenPromptMessage(message.id, {
+      visibleContent,
+      hiddenPrefix: getHumanizePrompt(numericTemplateId ?? null, undefined),
+      context: { feature: "deai", templateId: numericTemplateId },
+    });
+  }
+
+  if (feature === "fortune") {
+    const fortuneTemplateId = numericTemplateId ?? 1;
+    return createHiddenPromptMessage(message.id, {
+      visibleContent,
+      hiddenPrefix: getFortuneTemplatePrefix(fortuneTemplateId),
+      context: { feature: "fortune", templateId: fortuneTemplateId },
+    });
+  }
+
+  return message;
 }
 
 // Helper to save a message to the database
@@ -834,19 +882,24 @@ export function useChat({
       return;
     }
 
-	    // Truncate: keep messages up to and including the last human message
-	    const truncatedMessages = sanitizeHiddenPromptMessagesForPersistence(
+	    // Truncate: keep messages up to and including the last human message.
+	    const sanitizedMessages = sanitizeHiddenPromptMessagesForPersistence(
 	      currentMessages.slice(0, lastHumanIndex + 1)
 	    );
+      const modelMessages = sanitizedMessages.map((message, index) =>
+        index === sanitizedMessages.length - 1
+          ? rebuildModelMessageForRegenerate(message)
+          : message
+      );
 
-    // Re-submit to generate a new response
-    stream.submit(
-      { messages: truncatedMessages },
-      {
-        optimisticValues: { messages: truncatedMessages },
-        config: { ...(activeAssistant?.config ?? {}), recursion_limit: 1000 },
-      }
-    );
+	    // Re-submit to generate a new response
+	    stream.submit(
+	      { messages: modelMessages },
+	      {
+	        optimisticValues: { messages: sanitizedMessages },
+	        config: { ...(activeAssistant?.config ?? {}), recursion_limit: 1000 },
+	      }
+	    );
 
     onHistoryRevalidate?.();
   }, [stream, activeAssistant?.config, onHistoryRevalidate]);
