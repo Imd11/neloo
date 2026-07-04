@@ -1,113 +1,100 @@
 /**
- * Fortune Template Prefix Configuration
- * 
- * 这些前缀会在用户发送消息时，由后端自动添加在用户输入之前，
- * 引导 AI 侧重分析特定方向。用户在前端看不到这些前缀。
+ * Hidden fortune prompt prefixes.
+ *
+ * These prefixes are prepended to the user's birth information before model
+ * submission. They must not be shown in visible chat history.
  */
 
 export const FORTUNE_TEMPLATE_PREFIX: Record<number, string> = {
-    // 八字全解 - 综合分析
-    1: `【分析方向：八字全解】
-请对这位用户进行全面的八字分析，包括：
-- 四柱排盘、天干地支
-- 格局判断（身强身弱、特殊格局）
-- 五行喜忌、用神分析
-- 十神配置与影响
-- 大运走势概览
+    1: `Analysis direction: Full BaZi reading.
+Provide a comprehensive BaZi analysis for the user, including:
+- Four pillars and heavenly stems / earthly branches
+- Chart structure and strength assessment
+- Five-element balance, useful element, and favorable / unfavorable elements
+- Ten-god configuration and its influence
+- Major luck cycle overview
 
-用户信息如下：
+User information:
 `,
 
-    // 流年运势 - 今年和近年运势
-    2: `【分析方向：流年运势】
-请重点分析这位用户的流年运势，包括：
-- 今年（2026年丙午年）的整体运势
-- 每月运势波动与关键月份
-- 近三年的运势走向
-- 大运与流年的交互影响
-- 需要注意的凶险时段
+    2: `Analysis direction: Annual luck.
+Focus on the user's annual and near-term luck, including:
+- Overall flow for 2026, the Bing-Wu year
+- Monthly changes and key months
+- The next three years of direction
+- Interaction between major luck cycles and annual luck
+- Periods that require caution
 
-用户信息如下：
+User information:
 `,
 
-    // 姻缘桃花 - 感情婚姻
-    3: `【分析方向：姻缘桃花】
-请重点分析这位用户的姻缘感情运势，包括：
-- 命中桃花运分析（桃花星、红鸾、天喜等）
-- 正缘出现的时间段
-- 配偶的大致特征（性格、方位、职业倾向）
-- 婚姻宫的状况
-- 感情中需要注意的问题
+    3: `Analysis direction: Relationship and romance.
+Focus on the user's relationship and marriage tendencies, including:
+- Romance indicators and peach-blossom signs
+- Likely timing for meaningful relationships
+- Potential partner traits, direction, and career tendency
+- Marriage palace condition
+- Relationship risks or patterns to watch
 
-用户信息如下：
+User information:
 `,
 
-    // 事业发展 - 职业方向
-    4: `【分析方向：事业发展】
-请重点分析这位用户的事业发展运势，包括：
-- 适合从事的行业类型（根据五行喜忌）
-- 官星、印星的配置与发展
-- 事业高峰期和低谷期
-- 创业还是就业的建议
-- 职场中需要注意的问题
+    4: `Analysis direction: Career.
+Focus on the user's career development, including:
+- Suitable industries based on five-element balance
+- Official-star and resource-star configuration
+- Career peak periods and lower periods
+- Employment vs entrepreneurship tendencies
+- Workplace risks and practical cautions
 
-用户信息如下：
+User information:
 `,
 
-    // 财运分析 - 财富积累
-    5: `【分析方向：财运分析】
-请重点分析这位用户的财运状况，包括：
-- 正财运（工资收入）分析
-- 偏财运（投资、意外之财）分析
-- 财库情况与守财能力
-- 发财的有利年份和方位
-- 破财风险与规避建议
+    5: `Analysis direction: Wealth.
+Focus on the user's wealth profile, including:
+- Regular income tendencies
+- Windfall, investment, and speculative money tendencies
+- Wealth storage and retention ability
+- Favorable years and directions for money opportunities
+- Money-loss risks and practical cautions
 
-用户信息如下：
+User information:
 `,
 
-    // 健康指引 - 身体健康
-    6: `【分析方向：健康指引】
-请重点分析这位用户的健康运势，包括：
-- 根据五行偏废判断身体弱项
-- 容易出现的健康问题类型
-- 需要特别注意的流年
-- 适合的养生方向（运动、饮食）
-- 有利于健康的方位和颜色
+    6: `Analysis direction: Health.
+Focus on the user's health tendencies, including:
+- Possible weak areas based on five-element imbalance
+- Types of health issues that deserve attention
+- Years or periods that require extra care
+- Suitable wellness directions for exercise and diet
+- Supportive directions and colors
 
-用户信息如下：
+User information:
 `,
 
-    // 性格天赋 - 个性分析
-    7: `【分析方向：性格天赋】
-请重点分析这位用户的性格特征和天赋能力，包括：
-- 根据日主和十神分析性格特点
-- 天赋优势和潜在能力
-- 性格中的优点和需要改进的地方
-- 适合的发展方向
-- 人际交往中的特点
+    7: `Analysis direction: Personality and talent.
+Focus on the user's personality and natural strengths, including:
+- Personality traits from day master and ten-god configuration
+- Natural strengths and potential abilities
+- Strengths and areas that may need adjustment
+- Suitable growth direction
+- Interpersonal style and recurring patterns
 
-用户信息如下：
+User information:
 `,
 
-    // 子女亲缘 - 家庭关系
-    8: `【分析方向：子女亲缘】
-请重点分析这位用户与家人的缘分关系，包括：
-- 六亲缘分分析（父母、兄弟姐妹）
-- 子女运势和子女缘
-- 与父母的关系状况
-- 家庭和谐度分析
-- 家庭中需要注意的问题
+    8: `Analysis direction: Family.
+Focus on the user's family relationships, including:
+- Affinity with parents, siblings, and close relatives
+- Child-related luck and family continuity
+- Relationship with parents
+- Household harmony
+- Family patterns and cautions
 
-用户信息如下：
+User information:
 `,
 };
 
-/**
- * 获取五行算命模板前缀
- * @param templateId 模板 ID (1-8)
- * @returns 前缀字符串，如果无匹配则返回空字符串
- */
 export function getFortuneTemplatePrefix(templateId: number): string {
-    return FORTUNE_TEMPLATE_PREFIX[templateId] || '';
+    return FORTUNE_TEMPLATE_PREFIX[templateId] || "";
 }

@@ -168,18 +168,16 @@ interface LandingViewProps {
 
 function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFortuneMode, enableWebDevMode, setActiveFeatureId, onEnterResumeEditMode, onEnterSlidesEditMode }: LandingViewProps) {
   const { t } = useLanguage();
-  // Track selected fortune template ID for prefix injection
-  const [selectedFortuneTemplateId, setSelectedFortuneTemplateId] = useState<number | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [selectedTemplateName, setSelectedTemplateName] = useState<string | null>(null);
   const [selectedSlidesPresetId, setSelectedSlidesPresetId] = useState<string | null>(null);
-  const [selectedTextTemplateId, setSelectedTextTemplateId] = useState<number | null>(null);
 
   // File upload state - use proper upload hook
   const { session } = useAuth();
   const [libraryDialogOpen, setLibraryDialogOpen] = useState(false);
 
   useEffect(() => {
-    setSelectedTextTemplateId(null);
+    setSelectedTemplate(null);
     setSelectedTemplateName(null);
   }, [selectedFeature?.id]);
 
@@ -224,8 +222,8 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
       setActiveFeatureId('fortune');
 
       // Get the prefix (hidden from user, sent to backend)
-      const prefix = selectedFortuneTemplateId
-        ? getFortuneTemplatePrefix(selectedFortuneTemplateId)
+      const prefix = selectedTemplate?.id
+        ? getFortuneTemplatePrefix(selectedTemplate.id)
         : getFortuneTemplatePrefix(1); // Default to bazi full analysis
 
       // Send user input for display, prefix as hidden for backend
@@ -250,11 +248,11 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
     } else if (selectedFeature?.id === 'prompt-optimize') {
       setFortuneMode(false);
       setActiveFeatureId('prompt-optimize');
-      onPromptSubmit(userInput, getPromptOptimizePrompt(selectedTextTemplateId));
+      onPromptSubmit(userInput, getPromptOptimizePrompt(selectedTemplate?.id ?? null, selectedTemplate?.promptInstruction));
     } else if (selectedFeature?.id === 'deai') {
       setFortuneMode(false);
       setActiveFeatureId('deai');
-      onPromptSubmit(userInput, getHumanizePrompt(selectedTextTemplateId));
+      onPromptSubmit(userInput, getHumanizePrompt(selectedTemplate?.id ?? null, selectedTemplate?.promptInstruction));
     } else if (selectedFeature) {
       // Other features (slides, prompt-optimize, deai)
       setFortuneMode(false);
@@ -271,14 +269,13 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
   // Handle template selection
   const handleSelectTemplate = (template: Template) => {
     // Save template name for display in input bar
+    setSelectedTemplate(template);
     setSelectedTemplateName(template.title);
 
     if (selectedFeature?.id === 'image') {
       // In image mode, templates are handled by the image experience UI.
       return;
     } else if (selectedFeature?.id === 'fortune') {
-      // For fortune templates, save the template ID for prefix injection
-      setSelectedFortuneTemplateId(template.id);
       console.log(`[Fortune] Selected template: ${template.title} (ID: ${template.id})`);
     } else if (selectedFeature?.id === 'slides') {
       const presetId = String((template as any).id);
@@ -286,10 +283,6 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
       setSelectedSlidesPresetId(presetId);
       setSelectedTemplateName(preset?.nameZh || preset?.name || template.title);
     } else {
-      // For text/chat features, we ideally start a new thread with this template
-      if (selectedFeature?.id === 'prompt-optimize' || selectedFeature?.id === 'deai') {
-        setSelectedTextTemplateId(template.id);
-      }
       console.log("Selected template:", template);
     }
   };
@@ -310,13 +303,18 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
               placeholder={t("chat.default_placeholder")}
               selectedFeature={selectedFeature}
               onClearFeature={() => onSelectFeature(null)}
+              selectedTemplateName={selectedTemplateName}
+              onClearTemplate={() => {
+                setSelectedTemplate(null);
+                setSelectedTemplateName(null);
+              }}
               onSubmit={handlePromptSubmit}
             />
           ) : (
             <PromptInput
               placeholder={t("chat.default_placeholder")}
               selectedFeature={selectedFeature}
-              onClearFeature={() => { onSelectFeature(null); setSelectedTemplateName(null); setSelectedTextTemplateId(null); }}
+              onClearFeature={() => { onSelectFeature(null); setSelectedTemplate(null); setSelectedTemplateName(null); }}
               onSubmit={handlePromptSubmit}
               disabled={false}
               onUploadClick={() => fileUpload.triggerFileSelect()}
@@ -332,6 +330,10 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
               }))}
               onRemoveFile={(fileId) => fileUpload.removeFile(fileId)}
               selectedTemplateName={selectedTemplateName}
+              onClearTemplate={() => {
+                setSelectedTemplate(null);
+                setSelectedTemplateName(null);
+              }}
             />
           )}
         </div>
@@ -367,6 +369,7 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
         ) : selectedFeature?.id !== 'resume' && (
           <FeatureTemplateGrid
             feature={selectedFeature}
+            selectedTemplateId={selectedTemplate?.id ?? null}
             onSelectTemplate={handleSelectTemplate}
           />
         )}
