@@ -8,11 +8,20 @@ interface PresetGridProps {
 }
 
 const PresetGrid: React.FC<PresetGridProps> = ({ selectedPresetId, onSelectPreset }) => {
+    const selectedPreset = PRESETS.find((preset) => preset.id === selectedPresetId);
+
     return (
         <div className="w-full max-w-5xl mx-auto px-4">
-            <h3 className="text-sm font-medium text-muted-foreground mb-4">
-                选择 Slide Craft 模板
-            </h3>
+            <div className="mb-4 flex items-center gap-2">
+                <h3 className="text-sm font-medium text-muted-foreground">
+                    选择 Slide Craft 模板
+                </h3>
+                {selectedPreset && (
+                    <span className="rounded-full bg-purple-500/10 px-2 py-0.5 text-[10px] text-purple-500 dark:text-purple-300">
+                        已选 {selectedPreset.nameZh || selectedPreset.name}
+                    </span>
+                )}
+            </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
                 {PRESETS.map((preset) => {
                     const isSelected = selectedPresetId === preset.id;
@@ -45,9 +54,14 @@ const PresetGrid: React.FC<PresetGridProps> = ({ selectedPresetId, onSelectPrese
                             </div>
 
                             {isSelected && (
-                                <div className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-purple-500 shadow-lg">
-                                    <Check size={12} className="text-white" />
-                                </div>
+                                <>
+                                    <span className="absolute left-2 top-2 rounded-md bg-purple-500 px-2 py-0.5 text-[9px] font-bold text-white shadow-lg">
+                                        已选
+                                    </span>
+                                    <div className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-purple-500 shadow-lg">
+                                        <Check size={12} className="text-white" />
+                                    </div>
+                                </>
                             )}
                         </button>
                     );
