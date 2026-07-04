@@ -263,20 +263,31 @@ export function ImageChatPanel({
                                     <button
                                         key={template.id}
                                         onClick={() => {
-                                            onSelectTemplate?.(template.description);
-                                            setInputValue(template.description);
+                                            const prompt = template.prompt || template.description;
+                                            onSelectTemplate?.(prompt);
+                                            setInputValue(prompt);
                                             setTemplateOpen(false);
                                         }}
                                         className={cn(
-                                            "relative overflow-hidden rounded-lg p-3 text-left transition-all",
+                                            "relative min-h-28 overflow-hidden rounded-lg p-3 text-left transition-all",
                                             "hover:ring-2 hover:ring-primary/50",
-                                            template.gradient
+                                            !template.previewImage && template.gradient
                                         )}
                                     >
-                                        <span className="text-xs font-medium text-white/90">
+                                        {template.previewImage && (
+                                            <>
+                                                <img
+                                                    src={template.previewImage}
+                                                    alt=""
+                                                    className="absolute inset-0 h-full w-full object-cover"
+                                                />
+                                                <span className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/5" />
+                                            </>
+                                        )}
+                                        <span className="relative z-10 text-xs font-medium text-white/90">
                                             {template.title}
                                         </span>
-                                        <p className="text-[10px] text-white/60 mt-0.5 line-clamp-2">
+                                        <p className="relative z-10 text-[10px] text-white/70 mt-0.5 line-clamp-2">
                                             {template.description}
                                         </p>
                                     </button>

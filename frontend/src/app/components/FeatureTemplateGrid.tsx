@@ -40,6 +40,7 @@ export function FeatureTemplateGrid({
                             title={template.title}
                             description={template.description}
                             gradient={template.gradient}
+                            previewImage={template.previewImage}
                             model={(template as any).model || "AI"}
                             onClick={() => onSelectTemplate?.(template)}
                         />

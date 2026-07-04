@@ -14,9 +14,10 @@ import { useLanguage } from "@/providers/LanguageProvider";
 interface TabbedTemplateGridProps {
     type?: "image";
     onSelectTemplate?: (template: Template) => void;
+    selectedTemplateId?: number | null;
 }
 
-export function TabbedTemplateGrid({ type = "image", onSelectTemplate }: TabbedTemplateGridProps) {
+export function TabbedTemplateGrid({ type = "image", onSelectTemplate, selectedTemplateId }: TabbedTemplateGridProps) {
     const { t } = useLanguage();
     const [activeCategory, setActiveCategory] = useState<TemplateCategory>("all");
 
@@ -61,7 +62,9 @@ export function TabbedTemplateGrid({ type = "image", onSelectTemplate }: TabbedT
                         title={template.title}
                         description={template.description}
                         gradient={template.gradient}
+                        previewImage={template.previewImage}
                         model={(template as any).model || "AI"}
+                        selected={selectedTemplateId === template.id}
                         onClick={() => onSelectTemplate?.(template)}
                     />
                 ))}

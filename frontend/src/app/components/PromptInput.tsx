@@ -40,6 +40,7 @@ interface PromptInputProps {
     resumeFile?: File | null;
     // Template name to display (selected externally from grid)
     selectedTemplateName?: string | null;
+    onClearTemplate?: () => void;
 }
 
 export function PromptInput({
@@ -57,6 +58,7 @@ export function PromptInput({
     onRemoveFile,
     resumeFile,
     selectedTemplateName,
+    onClearTemplate,
 }: PromptInputProps) {
     const { t } = useLanguage();
     const localizedFeature = useMemo(
@@ -67,11 +69,9 @@ export function PromptInput({
     const [isFocused, setIsFocused] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-    // Update value if initialValue changes
+    // Update value if an external template or preset changes the prompt.
     useEffect(() => {
-        if (initialValue) {
-            setValue(initialValue);
-        }
+        setValue(initialValue);
     }, [initialValue]);
 
 
@@ -339,6 +339,16 @@ export function PromptInput({
                         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm shrink-0 bg-muted/40 text-foreground">
                             <LayoutTemplate className="w-3.5 h-3.5 opacity-60" />
                             <span className="max-w-[140px] truncate">{selectedTemplateName}</span>
+                            {onClearTemplate && (
+                                <button
+                                    onClick={onClearTemplate}
+                                    type="button"
+                                    className="flex items-center justify-center w-4 h-4 rounded-full cursor-pointer transition-all duration-150 hover:bg-foreground/10 hover:scale-110"
+                                    aria-label={t("chat.clear_selected_template")}
+                                >
+                                    <X className="w-2.5 h-2.5 text-muted-foreground" />
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>

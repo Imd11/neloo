@@ -217,6 +217,7 @@
         "webdev_placeholder": "描述你想要開發的網頁...",
         "webdev_mode": "網頁開發",
         "clear_selected_feature": "清除已選功能",
+        "clear_selected_template": "清除已選範本",
         "add_from_google_drive": "從 Google Drive 檔案中新增",
         "choose_from_library": "從庫中選擇",
         "add_local_file": "從本地檔案中新增",
@@ -286,8 +287,10 @@
     "features": {
         "categories": {
             "all": "全部",
-            "portrait": "人像",
+            "portrait": "人像/電影",
             "product": "產品",
+            "city": "城市",
+            "infographic": "資訊圖",
             "landscape": "風景",
             "art": "藝術",
             "anime": "動漫",
@@ -322,18 +325,10 @@
             "required_error": "請先填寫完整的出生資訊再送出。"
         },
         "image_templates": {
-            "movie_poster": { "title": "電影海報", "description": "生成專業的電影海報風格圖片" },
-            "product_showcase": { "title": "產品展示", "description": "簡潔的產品展示背景與光效" },
-            "natural_landscape": { "title": "自然風光", "description": "壯觀的自然景觀與風景照片" },
-            "abstract_art": { "title": "抽象藝術", "description": "創意抽象藝術與幾何圖案" },
-            "portrait": { "title": "人物肖像", "description": "專業的人物肖像與頭像生成" },
-            "anime_style": { "title": "動漫風格", "description": "日式動漫與插畫風格" },
-            "architecture": { "title": "建築設計", "description": "現代建築與室內設計渲染" },
-            "scifi_scene": { "title": "科幻場景", "description": "未來科技與太空主題" },
-            "vintage": { "title": "復古懷舊", "description": "經典復古與膠片風格" },
-            "watercolor": { "title": "水彩畫", "description": "柔和的水彩藝術風格" },
-            "black_white": { "title": "黑白攝影", "description": "高對比度黑白藝術照片" },
-            "render_3d": { "title": "3D 渲染", "description": "逼真的 3D 模型與場景" }
+            "wong_kar_wai": { "title": "王家衛電影風", "description": "暖色膠片顆粒、運動模糊和電影感人像" },
+            "product_macro": { "title": "食品/產品微距展示", "description": "帶懸浮水花細節的超寫實商業產品圖" },
+            "city_promo": { "title": "超逼真城市宣傳", "description": "適合城市品牌和旅行宣傳的懸浮微縮島海報" },
+            "lazy_cooking": { "title": "懶人做飯指南", "description": "適合手機閱讀的新手做飯資訊圖" }
         },
         "video_templates": {
             "talking_portrait": { "title": "人物說話", "description": "讓靜態人物開口說話，口型同步" },

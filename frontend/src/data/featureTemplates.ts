@@ -1,4 +1,13 @@
-export type TemplateCategory = "all" | "portrait" | "product" | "landscape" | "art" | "anime" | "design";
+export type TemplateCategory =
+    | "all"
+    | "portrait"
+    | "product"
+    | "landscape"
+    | "art"
+    | "anime"
+    | "design"
+    | "city"
+    | "infographic";
 
 type Translate = (key: string) => string;
 
@@ -7,6 +16,8 @@ export interface Template {
     title: string;
     description: string;
     gradient: string;
+    prompt?: string;
+    previewImage?: string;
     titleKey?: string;
     descriptionKey?: string;
     model?: string;
@@ -66,12 +77,10 @@ export function localizeCategory(category: TemplateCategoryInfo, t: Translate): 
 
 export const imageCategories: TemplateCategoryInfo[] = [
     { id: "all", label: "All", labelKey: "features.categories.all" },
-    { id: "portrait", label: "Portrait", labelKey: "features.categories.portrait" },
+    { id: "portrait", label: "Portrait / Film", labelKey: "features.categories.portrait" },
     { id: "product", label: "Product", labelKey: "features.categories.product" },
-    { id: "landscape", label: "Landscape", labelKey: "features.categories.landscape" },
-    { id: "art", label: "Art", labelKey: "features.categories.art" },
-    { id: "anime", label: "Anime", labelKey: "features.categories.anime" },
-    { id: "design", label: "Design", labelKey: "features.categories.design" },
+    { id: "city", label: "City", labelKey: "features.categories.city" },
+    { id: "infographic", label: "Infographic", labelKey: "features.categories.infographic" },
 ];
 
 export const videoCategories: TemplateCategoryInfo[] = [
@@ -87,111 +96,47 @@ export const videoCategories: TemplateCategoryInfo[] = [
 export const imageTemplates: Template[] = [
     {
         id: 1,
-        title: "Movie Poster",
-        titleKey: "features.image_templates.movie_poster.title",
-        description: "Generate a professional movie poster style image",
-        descriptionKey: "features.image_templates.movie_poster.description",
+        title: "Wong Kar-wai Film Look",
+        titleKey: "features.image_templates.wong_kar_wai.title",
+        description: "Moody cinematic portrait with warm film grain and motion blur",
+        descriptionKey: "features.image_templates.wong_kar_wai.description",
         gradient: "bg-gradient-to-br from-rose-900 via-pink-800 to-purple-900",
-        category: "design",
+        previewImage: "/templates/image/wong-kar-wai-film.png",
+        prompt: `Use the uploaded image as a character reference. Create a Wong Kar-wai inspired cinematic portrait: warm low-saturation color, vintage film grain, soft focus, subtle double exposure, motion blur, and a dreamy night street atmosphere. The subject wears a fitted black long-sleeved dress and carries flowers beside an old newsstand. Use backlit hair, hazy shadows, rich story-driven composition, elegant melancholy, and a stylish editorial photography finish.`,
+        category: "portrait",
     },
     {
         id: 2,
-        title: "Product Showcase",
-        titleKey: "features.image_templates.product_showcase.title",
-        description: "Clean product backgrounds with polished lighting",
-        descriptionKey: "features.image_templates.product_showcase.description",
+        title: "Product Macro Showcase",
+        titleKey: "features.image_templates.product_macro.title",
+        description: "Hyper-real product shot with floating splash details",
+        descriptionKey: "features.image_templates.product_macro.description",
         gradient: "bg-gradient-to-br from-blue-900 via-indigo-800 to-violet-900",
+        previewImage: "/templates/image/product-macro-showcase.png",
+        prompt: `Create a hyper-realistic macro product photograph of [PRODUCT]. The product is tilted in the center, with splashes and small dynamic elements floating around it. Use a black background to highlight texture and details. Add dramatic backlighting, crisp reflections, sharp focus, high resolution, and an ultra-clean commercial photography style.`,
         category: "product",
     },
     {
         id: 3,
-        title: "Natural Landscape",
-        titleKey: "features.image_templates.natural_landscape.title",
-        description: "Dramatic natural scenery and landscape photos",
-        descriptionKey: "features.image_templates.natural_landscape.description",
+        title: "Ultra-real City Poster",
+        titleKey: "features.image_templates.city_promo.title",
+        description: "Floating miniature city island for travel and city branding",
+        descriptionKey: "features.image_templates.city_promo.description",
         gradient: "bg-gradient-to-br from-emerald-900 via-teal-800 to-cyan-900",
-        category: "landscape",
+        previewImage: "/templates/image/city-promo-island.png",
+        prompt: `Create an ultra-HD, hyper-realistic digital poster of a floating miniature island shaped like [CITY], resting on white clouds in the sky. Blend iconic landmarks, natural landscapes, and cultural elements unique to [COUNTRY]. Carve "[COUNTRY]" into the terrain using large white 3D letters. Add native birds, cinematic lighting, vivid colors, aerial perspective, sun reflections, and polished 4K travel-poster realism. Square 1080x1080 composition.`,
+        category: "city",
     },
     {
         id: 4,
-        title: "Abstract Art",
-        titleKey: "features.image_templates.abstract_art.title",
-        description: "Creative abstract art and geometric patterns",
-        descriptionKey: "features.image_templates.abstract_art.description",
+        title: "Lazy Cooking Guide",
+        titleKey: "features.image_templates.lazy_cooking.title",
+        description: "Clean mobile infographic for beginner-friendly cooking steps",
+        descriptionKey: "features.image_templates.lazy_cooking.description",
         gradient: "bg-gradient-to-br from-amber-900 via-orange-800 to-red-900",
-        category: "art",
-    },
-    {
-        id: 5,
-        title: "Portrait",
-        titleKey: "features.image_templates.portrait.title",
-        description: "Professional portraits and profile images",
-        descriptionKey: "features.image_templates.portrait.description",
-        gradient: "bg-gradient-to-br from-slate-800 via-zinc-700 to-neutral-800",
-        category: "portrait",
-    },
-    {
-        id: 6,
-        title: "Anime Style",
-        titleKey: "features.image_templates.anime_style.title",
-        description: "Japanese anime and illustration style",
-        descriptionKey: "features.image_templates.anime_style.description",
-        gradient: "bg-gradient-to-br from-pink-800 via-fuchsia-700 to-purple-800",
-        category: "anime",
-    },
-    {
-        id: 7,
-        title: "Architecture",
-        titleKey: "features.image_templates.architecture.title",
-        description: "Modern architecture and interior design renders",
-        descriptionKey: "features.image_templates.architecture.description",
-        gradient: "bg-gradient-to-br from-gray-800 via-stone-700 to-neutral-800",
-        category: "design",
-    },
-    {
-        id: 8,
-        title: "Sci-Fi Scene",
-        titleKey: "features.image_templates.scifi_scene.title",
-        description: "Future technology and outer-space themes",
-        descriptionKey: "features.image_templates.scifi_scene.description",
-        gradient: "bg-gradient-to-br from-cyan-900 via-blue-800 to-indigo-900",
-        category: "landscape",
-    },
-    {
-        id: 9,
-        title: "Vintage",
-        titleKey: "features.image_templates.vintage.title",
-        description: "Classic retro and film photography style",
-        descriptionKey: "features.image_templates.vintage.description",
-        gradient: "bg-gradient-to-br from-yellow-900 via-amber-800 to-orange-900",
-        category: "art",
-    },
-    {
-        id: 10,
-        title: "Watercolor",
-        titleKey: "features.image_templates.watercolor.title",
-        description: "Soft watercolor art style",
-        descriptionKey: "features.image_templates.watercolor.description",
-        gradient: "bg-gradient-to-br from-sky-800 via-cyan-700 to-teal-800",
-        category: "art",
-    },
-    {
-        id: 11,
-        title: "Black and White",
-        titleKey: "features.image_templates.black_white.title",
-        description: "High-contrast black-and-white art photography",
-        descriptionKey: "features.image_templates.black_white.description",
-        gradient: "bg-gradient-to-br from-zinc-900 via-neutral-800 to-gray-900",
-        category: "portrait",
-    },
-    {
-        id: 12,
-        title: "3D Render",
-        titleKey: "features.image_templates.render_3d.title",
-        description: "Realistic 3D models and scenes",
-        descriptionKey: "features.image_templates.render_3d.description",
-        gradient: "bg-gradient-to-br from-violet-900 via-purple-800 to-indigo-900",
-        category: "design",
+        previewImage: "/templates/image/lazy-cooking-guide.png",
+        prompt: `Create a Chinese-language "lazy cooking guide" infographic. Visual style: museum-quality, refined, elegant, warm, and practical. Use a warm palette with ivory, warm gray, and amber gold. Use minimal 2px line icons with rounded corners. Food ingredients and finished dishes should look photorealistic with natural light. All Chinese text in the image must be clear, accurate, and readable. Include dish type, regional cuisine, suitable audience, difficulty level, time range, 2-3 beginner-friendly dish recommendations, dish names, one-line selling points, cooking time, difficulty stars, ingredient lists, 3-5 illustrated steps, beginner mistakes to avoid, and optional nutrition values. Use a 1080px x 1920px vertical mobile infographic layout with generous spacing, clear cards, and a restrained elegant composition.`,
+        category: "infographic",
     },
 ];
 

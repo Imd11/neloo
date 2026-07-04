@@ -217,6 +217,7 @@
         "webdev_placeholder": "開発したい Web ページを説明してください...",
         "webdev_mode": "Web 開発",
         "clear_selected_feature": "選択した機能をクリア",
+        "clear_selected_template": "選択したテンプレートをクリア",
         "add_from_google_drive": "Google Drive から追加",
         "choose_from_library": "ライブラリから選択",
         "add_local_file": "ローカルファイルを追加",
@@ -286,8 +287,10 @@
     "features": {
         "categories": {
             "all": "すべて",
-            "portrait": "ポートレート",
+            "portrait": "人物 / 映画",
             "product": "製品",
+            "city": "都市",
+            "infographic": "インフォグラフィック",
             "landscape": "風景",
             "art": "アート",
             "anime": "アニメ",
@@ -322,18 +325,10 @@
             "required_error": "送信前に必須の出生情報をすべて入力してください。"
         },
         "image_templates": {
-            "movie_poster": { "title": "映画ポスター", "description": "プロ品質の映画ポスター風画像を生成" },
-            "product_showcase": { "title": "製品ショーケース", "description": "洗練された照明の製品背景" },
-            "natural_landscape": { "title": "自然風景", "description": "迫力ある自然風景と風景写真" },
-            "abstract_art": { "title": "抽象アート", "description": "創造的な抽象アートと幾何学模様" },
-            "portrait": { "title": "ポートレート", "description": "プロ向けポートレートとプロフィール画像" },
-            "anime_style": { "title": "アニメ風", "description": "日本アニメとイラスト風スタイル" },
-            "architecture": { "title": "建築デザイン", "description": "現代建築とインテリアデザインのレンダー" },
-            "scifi_scene": { "title": "SFシーン", "description": "未来技術と宇宙テーマ" },
-            "vintage": { "title": "ヴィンテージ", "description": "クラシックなレトロとフィルム風スタイル" },
-            "watercolor": { "title": "水彩画", "description": "やわらかな水彩アートスタイル" },
-            "black_white": { "title": "白黒写真", "description": "高コントラストの白黒アート写真" },
-            "render_3d": { "title": "3D レンダー", "description": "リアルな 3D モデルとシーン" }
+            "wong_kar_wai": { "title": "ウォン・カーウァイ映画風", "description": "暖かいフィルム粒子とモーションブラーの映画的人物写真" },
+            "product_macro": { "title": "食品/製品マクロ展示", "description": "浮遊する水しぶきがある超写実の商品写真" },
+            "city_promo": { "title": "超リアル都市ポスター", "description": "都市ブランディングや旅行宣伝向けの浮遊ミニチュア島ポスター" },
+            "lazy_cooking": { "title": "簡単料理ガイド", "description": "初心者向けのスマホで読みやすい料理インフォグラフィック" }
         },
         "video_templates": {
             "talking_portrait": { "title": "話すポートレート", "description": "静止人物をリップシンク付きで動かす" },

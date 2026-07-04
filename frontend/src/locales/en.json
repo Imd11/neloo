@@ -217,6 +217,7 @@
         "webdev_placeholder": "Describe the web page you want to build...",
         "webdev_mode": "Web Dev",
         "clear_selected_feature": "Clear selected feature",
+        "clear_selected_template": "Clear selected template",
         "add_from_google_drive": "Add from Google Drive",
         "choose_from_library": "Choose from library",
         "add_local_file": "Add local file",
@@ -286,8 +287,10 @@
     "features": {
         "categories": {
             "all": "All",
-            "portrait": "Portrait",
+            "portrait": "Portrait / Film",
             "product": "Product",
+            "city": "City",
+            "infographic": "Infographic",
             "landscape": "Landscape",
             "art": "Art",
             "anime": "Anime",
@@ -322,18 +325,10 @@
             "required_error": "Please fill in all required birth information before sending."
         },
         "image_templates": {
-            "movie_poster": { "title": "Movie Poster", "description": "Generate a professional movie poster style image" },
-            "product_showcase": { "title": "Product Showcase", "description": "Clean product backgrounds with polished lighting" },
-            "natural_landscape": { "title": "Natural Landscape", "description": "Dramatic natural scenery and landscape photos" },
-            "abstract_art": { "title": "Abstract Art", "description": "Creative abstract art and geometric patterns" },
-            "portrait": { "title": "Portrait", "description": "Professional portraits and profile images" },
-            "anime_style": { "title": "Anime Style", "description": "Japanese anime and illustration style" },
-            "architecture": { "title": "Architecture", "description": "Modern architecture and interior design renders" },
-            "scifi_scene": { "title": "Sci-Fi Scene", "description": "Future technology and outer-space themes" },
-            "vintage": { "title": "Vintage", "description": "Classic retro and film photography style" },
-            "watercolor": { "title": "Watercolor", "description": "Soft watercolor art style" },
-            "black_white": { "title": "Black and White", "description": "High-contrast black-and-white art photography" },
-            "render_3d": { "title": "3D Render", "description": "Realistic 3D models and scenes" }
+            "wong_kar_wai": { "title": "Wong Kar-wai Film Look", "description": "Moody cinematic portrait with warm film grain and motion blur" },
+            "product_macro": { "title": "Product Macro Showcase", "description": "Hyper-real product shot with floating splash details" },
+            "city_promo": { "title": "Ultra-real City Poster", "description": "Floating miniature city island for travel and city branding" },
+            "lazy_cooking": { "title": "Lazy Cooking Guide", "description": "Clean mobile infographic for beginner-friendly cooking steps" }
         },
         "video_templates": {
             "talking_portrait": { "title": "Talking Portrait", "description": "Animate a static person with lip sync" },

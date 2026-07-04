@@ -217,6 +217,7 @@
     "webdev_placeholder": "描述你想要开发的网页...",
     "webdev_mode": "网页开发",
     "clear_selected_feature": "清除已选功能",
+    "clear_selected_template": "清除已选模板",
     "add_from_google_drive": "从 Google Drive 文件中添加",
     "choose_from_library": "从库中选择",
     "add_local_file": "从本地文件中添加",
@@ -286,8 +287,10 @@
   "features": {
     "categories": {
       "all": "全部",
-      "portrait": "人像",
+      "portrait": "人像/电影",
       "product": "产品",
+      "city": "城市",
+      "infographic": "信息图",
       "landscape": "风景",
       "art": "艺术",
       "anime": "动漫",
@@ -322,18 +325,10 @@
       "required_error": "请先填写完整的出生信息再发送。"
     },
     "image_templates": {
-      "movie_poster": { "title": "电影海报", "description": "生成专业的电影海报风格图片" },
-      "product_showcase": { "title": "产品展示", "description": "简洁的产品展示背景与光效" },
-      "natural_landscape": { "title": "自然风光", "description": "壮观的自然景观与风景照片" },
-      "abstract_art": { "title": "抽象艺术", "description": "创意抽象艺术与几何图案" },
-      "portrait": { "title": "人物肖像", "description": "专业的人物肖像与头像生成" },
-      "anime_style": { "title": "动漫风格", "description": "日式动漫与插画风格" },
-      "architecture": { "title": "建筑设计", "description": "现代建筑与室内设计渲染" },
-      "scifi_scene": { "title": "科幻场景", "description": "未来科技与太空主题" },
-      "vintage": { "title": "复古怀旧", "description": "经典复古与胶片风格" },
-      "watercolor": { "title": "水彩画", "description": "柔和的水彩艺术风格" },
-      "black_white": { "title": "黑白摄影", "description": "高对比度黑白艺术照片" },
-      "render_3d": { "title": "3D 渲染", "description": "逼真的 3D 模型与场景" }
+      "wong_kar_wai": { "title": "王家卫电影风", "description": "暖色胶片颗粒、运动模糊和电影感人像" },
+      "product_macro": { "title": "食品/产品微距展示", "description": "带悬浮水花细节的超写实商业产品图" },
+      "city_promo": { "title": "超逼真城市宣传", "description": "适合城市品牌和旅行宣传的悬浮微缩岛海报" },
+      "lazy_cooking": { "title": "懒人做饭指南", "description": "适合手机阅读的新手做饭信息图" }
     },
     "video_templates": {
       "talking_portrait": { "title": "人物说话", "description": "让静态人物开口说话，口型同步" },

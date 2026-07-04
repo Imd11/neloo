@@ -77,6 +77,8 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
     const [resolution, setResolution] = useState<Resolution>("1k");
     const [ratio, setRatio] = useState<ImageRatio>("auto");
     const [searchQuery, setSearchQuery] = useState("");
+    const [selectedImageTemplate, setSelectedImageTemplate] = useState<Template | null>(null);
+    const [templateInputVersion, setTemplateInputVersion] = useState(0);
     const [flyingImage, setFlyingImage] = useState<{
         id: string;
         src: string;
@@ -302,7 +304,14 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
     }, [setCollapsed, messages, createImageThread, generateTitle, imageModel, ratio, resolution, t]);
 
     const handleSelectTemplate = (template: Template) => {
+        setSelectedImageTemplate(template);
+        setTemplateInputVersion((version) => version + 1);
         toast.info(`已选择模板: ${template.title}`);
+    };
+
+    const handleClearTemplate = () => {
+        setSelectedImageTemplate(null);
+        setTemplateInputVersion((version) => version + 1);
     };
 
     const handleImageGenerated = useCallback((imageUrl: string, imageElement: HTMLImageElement) => {
@@ -361,6 +370,8 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
     const handleNewConversation = useCallback(() => {
         setMessages([]);
         setCanvasImages([]);
+        setSelectedImageTemplate(null);
+        setTemplateInputVersion((version) => version + 1);
         toast.info("已开始新对话");
     }, []);
 
@@ -399,9 +410,13 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
                                 {/* Prompt Input */}
                                 <div className="w-full max-w-3xl mx-auto flex flex-col items-center gap-4">
                                     <PromptInput
+                                        key={`image-prompt-${templateInputVersion}`}
                                         placeholder="描述你要生成的图..."
+                                        initialValue={selectedImageTemplate?.prompt ?? ""}
                                         onSubmit={handleSubmit}
                                         selectedFeature={imageFeature}
+                                        selectedTemplateName={selectedImageTemplate?.title ?? null}
+                                        onClearTemplate={handleClearTemplate}
                                         onClearFeature={() => {
                                             if (onExit) {
                                                 onExit();
@@ -426,7 +441,11 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
                                 <h2 className="text-lg font-medium text-foreground mb-4">
                                     模板灵感
                                 </h2>
-                                <TabbedTemplateGrid type="image" onSelectTemplate={handleSelectTemplate} />
+                                <TabbedTemplateGrid
+                                    type="image"
+                                    onSelectTemplate={handleSelectTemplate}
+                                    selectedTemplateId={selectedImageTemplate?.id ?? null}
+                                />
                             </div>
                         </div>
                     </motion.div>
