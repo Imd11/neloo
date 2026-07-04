@@ -148,7 +148,7 @@ Slides text generation uses the backend-selected chat model through `/api/slides
 
 ## Supabase Configuration
 
-Supabase is optional, but it is recommended for persistent storage, file storage, and database-backed workflows.
+Supabase is optional for a minimal local chat run, but it is required for durable chat history, share links, fork/regenerate history, DB spot checks, persistent storage, file storage, and database-backed workflows. If `SUPABASE_URL` points to a deleted, mistyped, or unreachable project, the backend cannot create durable thread records.
 
 Backend variables:
 

@@ -2248,7 +2248,13 @@ async def create_thread_api(
             )
 
         if not thread_record:
-            raise HTTPException(status_code=500, detail="Failed to create thread")
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "Durable thread persistence is unavailable. Check SUPABASE_URL, "
+                    "SUPABASE_SERVICE_KEY, network access, and required Supabase migrations."
+                ),
+            )
 
         # Ensure LangGraph runtime thread exists for the same thread_id so historical
         # threads can continue chatting even after checkpoint loss.
@@ -2271,6 +2277,8 @@ async def create_thread_api(
             updated_at=thread_record["updated_at"],
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         # Return more detailed error for debugging
         raise HTTPException(status_code=500, detail=f"Failed to create thread: {str(e)}")

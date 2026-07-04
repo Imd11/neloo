@@ -141,6 +141,15 @@ export function hasValue(values, key) {
   return Boolean(values[key] && values[key].trim());
 }
 
+function hasValidUrl(value) {
+  try {
+    const parsed = new URL(value);
+    return Boolean(parsed.protocol === "http:" || parsed.protocol === "https:") && Boolean(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+
 function missingRequired(values, credential) {
   return (credential.required || []).filter((key) => !hasValue(values, key));
 }
@@ -250,6 +259,11 @@ export function analyzeEnvironment({ backend, frontend, profile = "local-minimal
     const hasSupabaseService = hasValue(backendValues, "SUPABASE_SERVICE_KEY");
     if (hasSupabaseUrl !== hasSupabaseService) {
       add(report, "warning", "partial-backend-supabase", "Backend Supabase storage/database usually needs both SUPABASE_URL and SUPABASE_SERVICE_KEY.", "backend/.env");
+    } else if (!hasSupabaseUrl && !hasSupabaseService) {
+      add(report, "warning", "no-durable-thread-persistence", "Durable chat history, share links, fork/regenerate history, and DB spot checks require SUPABASE_URL plus SUPABASE_SERVICE_KEY.", "backend/.env");
+    }
+    if (hasSupabaseUrl && !hasValidUrl(backendValues.SUPABASE_URL)) {
+      add(report, "warning", "invalid-backend-supabase-url", "SUPABASE_URL must be a full URL such as https://your-project-ref.supabase.co. Durable history/share/fork will fail until it points to a reachable Supabase project.", "backend/.env");
     }
 
     const isProductionProfile = profile === "production-railway-vercel";

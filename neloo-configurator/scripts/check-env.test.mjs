@@ -125,6 +125,24 @@ test("local profile warns but does not fail without DATABASE_URL", () => {
   assert.equal(hasCode(report, "no-persistent-database"), true);
 });
 
+test("local profile warns when durable thread persistence is not configured", () => {
+  const report = reportFor({ DEEPSEEK_API_KEY: "key" });
+
+  assert.equal(report.ok, true);
+  assert.equal(hasCode(report, "no-durable-thread-persistence"), true);
+});
+
+test("analyzeEnvironment warns when backend Supabase URL is malformed", () => {
+  const report = reportFor({
+    DEEPSEEK_API_KEY: "key",
+    SUPABASE_URL: "your-project-ref",
+    SUPABASE_SERVICE_KEY: "service-key",
+  });
+
+  assert.equal(report.ok, true);
+  assert.equal(hasCode(report, "invalid-backend-supabase-url"), true);
+});
+
 test("production profile fails without DATABASE_URL", () => {
   const report = analyzeEnvironment({
     profile: "production-railway-vercel",

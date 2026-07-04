@@ -86,6 +86,33 @@ def test_create_thread_api_returns_durable_thread(monkeypatch):
     assert response.json()["user_id"] == "hidden-prompt-test-user"
 
 
+def test_create_thread_api_reports_persistence_unavailable(monkeypatch):
+    client = make_client(monkeypatch)
+
+    async def fake_get_thread_by_langgraph_id(_thread_id):
+        return None
+
+    async def fake_create_thread(**_kwargs):
+        return None
+
+    monkeypatch.setattr(webapp, "get_thread_by_langgraph_id", fake_get_thread_by_langgraph_id)
+    monkeypatch.setattr(webapp, "create_thread", fake_create_thread)
+
+    response = client.post(
+        "/api/threads",
+        headers={"x-user-id": "hidden-prompt-test-user"},
+        json={
+            "langgraph_thread_id": "thread-1",
+            "title": "Hidden prompt regression",
+            "mode": "default",
+            "model_id": "deepseek",
+        },
+    )
+
+    assert response.status_code == 503
+    assert "SUPABASE_URL" in response.json()["detail"]
+
+
 def test_save_thread_message_sanitizes_hidden_prompt_envelope(monkeypatch):
     client = make_client(monkeypatch)
     saved = {}

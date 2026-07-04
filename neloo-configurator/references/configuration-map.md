@@ -33,7 +33,7 @@ The frontend uses Yarn 1.x. `frontend/yarn.lock` is the canonical dependency loc
 | `CORS_ALLOWED_ORIGINS` | `backend/.env` | Recommended | Include every frontend origin. |
 | `SANDBOX_MODE` | `backend/.env` | Always | Use `local` for trusted local development. |
 | One chat model key | `backend/.env` | Always for chat | At least one key from the chat model provider table. |
-| `DATABASE_URL` | `backend/.env` | Production persistence only | Not required by the default local `backend/langgraph.json`; required by `backend/langgraph.production.json`. |
+| `DATABASE_URL` | `backend/.env` | Production checkpoint persistence only | Not required by the default local `backend/langgraph.json`; required by `backend/langgraph.production.json`. Durable app-level chat history, share links, fork/regenerate history, and DB spot checks are Supabase-backed and require `SUPABASE_URL` plus `SUPABASE_SERVICE_KEY`. |
 
 ## Backend Server Variables
 
@@ -104,6 +104,8 @@ Old graph IDs are hidden from the selector but kept so existing LangGraph graph 
 | `SUPABASE_DB_PASSWORD` | Backend | Supabase Postgres fallback | Secret | Database password. |
 | `NEXT_PUBLIC_SUPABASE_URL` | Frontend | Supabase browser features | Public browser value | Supabase client URL. |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Frontend | Supabase browser features | Public browser value | Public anon key; configure RLS. |
+
+Durable app-level chat history, share links, fork/regenerate history, and DB spot checks require a reachable `SUPABASE_URL` and a valid backend-only `SUPABASE_SERVICE_KEY`. Local chat can run without these values, but those durable workflows must be reported as unavailable rather than passed during verification.
 
 ## Persistence and Storage Variables
 
