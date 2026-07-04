@@ -16,7 +16,12 @@ import { getConfig } from "@/lib/config";
 import { useAuth } from "@/providers/AuthProvider";
 import { useAgentContext } from "@/providers/AgentProvider";
 import { toast } from "sonner";
-import { extractStringFromMessageContent } from "@/app/utils/utils";
+import {
+  createHiddenPromptMessage,
+  sanitizeHiddenPromptMessageForPersistence,
+  sanitizeHiddenPromptMessagesForPersistence,
+  type HiddenPromptEnvelope,
+} from "@/app/utils/hiddenPromptEnvelope";
 
 const SAVE_MESSAGE_MAX_RETRIES = 2;
 const SAVE_MESSAGE_RETRY_BASE_DELAY_MS = 500;
@@ -155,7 +160,7 @@ export function useChat({
   const [threadMode, setThreadMode] = useState<string>("default");
 
   // Active agent from shared context (for sidebar -> chat integration)
-  const { activeAgent, setActiveAgent, clearAgent } = useAgentContext();
+  const { activeAgent, setActiveAgent } = useAgentContext();
 
   // Generic active feature tracking (for slides, resume, prompt-optimize, deai, etc.)
   const [activeFeatureId, setActiveFeatureId] = useState<string | null>(null);
@@ -236,11 +241,12 @@ export function useChat({
         return true;
       }
 
+      const messageToPersist = sanitizeHiddenPromptMessageForPersistence(message);
       const saved = await saveMessageToDbWithRetry(
         { deploymentUrl },
         accessToken,
         targetThreadId,
-        message
+        messageToPersist
       );
 
       if (saved) {
@@ -251,7 +257,7 @@ export function useChat({
 
       pendingSaveMessagesRef.current.set(message.id, {
         threadId: targetThreadId,
-        message,
+        message: messageToPersist,
       });
       return false;
     },
@@ -268,7 +274,8 @@ export function useChat({
       }
 
       const tasks: Promise<boolean>[] = [];
-      for (const msg of messagesToSave) {
+      const sanitizedMessages = sanitizeHiddenPromptMessagesForPersistence(messagesToSave);
+      for (const msg of sanitizedMessages) {
         if (!msg.id || savedMessageIdsRef.current.has(msg.id)) {
           continue;
         }
@@ -618,25 +625,25 @@ export function useChat({
   });
 
   const sendMessage = useCallback(
-    (content: string, hiddenPrefix?: string) => {
-      // For display: only show user content
-      // For backend: prepend hiddenPrefix if provided, or activeAgent's systemPrompt
+    (content: string, hiddenPrompt?: HiddenPromptEnvelope) => {
       const displayContent = content;
 
-      // Build the backend content with agent context if active
-      let backendContent = content;
-      if (activeAgent?.systemPrompt) {
-        // Prepend agent context as hidden system instruction
-        const agentContext = `[System: You are now acting as the agent "${activeAgent.name}". Follow these instructions:\n${activeAgent.systemPrompt}\n---\nUser message:]\n`;
-        backendContent = agentContext + content;
-      } else if (hiddenPrefix) {
-        backendContent = hiddenPrefix + content;
-      }
-
-      // Create message with display content for UI
       const displayMessage: Message = { id: uuidv4(), type: "human", content: displayContent };
-      // Create message with full content for backend
-      const backendMessage: Message = { id: displayMessage.id, type: "human", content: backendContent };
+      let backendMessage: Message = displayMessage;
+
+      if (activeAgent?.systemPrompt) {
+        const agentContext = `[System: You are now acting as the agent "${activeAgent.name}". Follow these instructions:\n${activeAgent.systemPrompt}\n---\nUser message:]\n`;
+        backendMessage = createHiddenPromptMessage(displayMessage.id, {
+          visibleContent: displayContent,
+          hiddenPrefix: agentContext,
+          context: {
+            feature: "agent",
+            agentName: activeAgent.name,
+          },
+        });
+      } else if (hiddenPrompt) {
+        backendMessage = createHiddenPromptMessage(displayMessage.id, hiddenPrompt);
+      }
 
       const currentMessages = stream.messages ?? [];
       const isFirstMessage = currentMessages.length === 0;
@@ -823,10 +830,6 @@ export function useChat({
       console.error("[useChat] No human message found for regenerate");
       return;
     }
-
-    // Get the last human message content
-    const lastHumanMessage = currentMessages[lastHumanIndex];
-    const content = extractStringFromMessageContent(lastHumanMessage);
 
     // Truncate: keep messages up to and including the last human message
     const truncatedMessages = currentMessages.slice(0, lastHumanIndex + 1);

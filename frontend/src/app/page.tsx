@@ -45,6 +45,7 @@ import { getFortuneTemplatePrefix } from '@/data/fortuneTemplatePrefix';
 import { getHumanizePrompt, getPromptOptimizePrompt } from "@/data/featurePrompts";
 import { useLanguage } from "@/providers/LanguageProvider";
 import { Button } from "@/components/ui/button";
+import type { HiddenPromptEnvelope } from "@/app/utils/hiddenPromptEnvelope";
 
 type ThreadOpenProblemCode =
   | "not_found"
@@ -156,7 +157,7 @@ function ThreadOpenStateView({
 }
 
 interface LandingViewProps {
-  onPromptSubmit: (value: string, hiddenPrefix?: string) => void;
+  onPromptSubmit: (value: string, hiddenPrompt?: HiddenPromptEnvelope) => void;
   onSelectFeature: (feature: Feature | null) => void;
   selectedFeature: Feature | null;
   setFortuneMode: (mode: boolean) => void;
@@ -226,8 +227,11 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
         ? getFortuneTemplatePrefix(selectedTemplate.id)
         : getFortuneTemplatePrefix(1); // Default to bazi full analysis
 
-      // Send user input for display, prefix as hidden for backend
-      onPromptSubmit(userInput, prefix);
+      onPromptSubmit(userInput, {
+        visibleContent: userInput,
+        hiddenPrefix: prefix,
+        context: { feature: "fortune", templateId: selectedTemplate?.id ?? 1 },
+      });
     } else if (selectedFeature?.id === 'resume') {
       // Resume mode - use the first file from fileUpload (already uploaded to Supabase)
       const firstFile = fileUpload.files.length > 0 ? fileUpload.files[0].file : null;
@@ -248,11 +252,25 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
     } else if (selectedFeature?.id === 'prompt-optimize') {
       setFortuneMode(false);
       setActiveFeatureId('prompt-optimize');
-      onPromptSubmit(userInput, getPromptOptimizePrompt(selectedTemplate?.id ?? null, selectedTemplate?.promptInstruction));
+      onPromptSubmit(userInput, {
+        visibleContent: userInput,
+        hiddenPrefix: getPromptOptimizePrompt(selectedTemplate?.id ?? null, selectedTemplate?.promptInstruction),
+        context: {
+          feature: "prompt-optimize",
+          templateId: selectedTemplate?.id ?? undefined,
+        },
+      });
     } else if (selectedFeature?.id === 'deai') {
       setFortuneMode(false);
       setActiveFeatureId('deai');
-      onPromptSubmit(userInput, getHumanizePrompt(selectedTemplate?.id ?? null, selectedTemplate?.promptInstruction));
+      onPromptSubmit(userInput, {
+        visibleContent: userInput,
+        hiddenPrefix: getHumanizePrompt(selectedTemplate?.id ?? null, selectedTemplate?.promptInstruction),
+        context: {
+          feature: "deai",
+          templateId: selectedTemplate?.id ?? undefined,
+        },
+      });
     } else if (selectedFeature) {
       // Other features (slides, prompt-optimize, deai)
       setFortuneMode(false);
