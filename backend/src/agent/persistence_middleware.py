@@ -127,6 +127,7 @@ class MessagePersistenceMiddleware(AgentMiddleware):
         from .message_persistence import (
             serialize_message,
             persist_message_atomic,
+            sanitize_hidden_prompt_message_data,
         )
         
         # For human messages, we MUST use the frontend-provided id
@@ -149,6 +150,7 @@ class MessagePersistenceMiddleware(AgentMiddleware):
         # Ensure correct id and type
         message_data["id"] = msg_id
         message_data["type"] = "human"  # Ensure consistent type
+        message_data = sanitize_hidden_prompt_message_data(message_data)
         
         # DEBUG: Log before persist
         print(f"[PersistMiddleware:PERSIST] thread_id={_safe_prefix(thread_id)}, run_id={_safe_prefix(run_id)}, message_id={_safe_prefix(msg_id)}, role=user")

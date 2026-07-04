@@ -10,6 +10,8 @@ Provides production-grade message saving with:
 from typing import Any, Optional
 from langchain_core.runnables import RunnableConfig
 
+from ..hidden_prompt_sanitization import sanitize_hidden_prompt_message_data
+
 
 # =============================================================================
 # Message Serialization
@@ -290,6 +292,7 @@ async def persist_message(message: Any, config: RunnableConfig, index: int = 0) 
     
     # Ensure message_data has the stable id
     message_data["id"] = message_id
+    message_data = sanitize_hidden_prompt_message_data(message_data)
     
     # 4. Determine role
     msg_type = message_data.get("type", "unknown")

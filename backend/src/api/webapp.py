@@ -41,6 +41,7 @@ from .auth import (
 )
 from ..runtime_context import user_id_ctx, thread_id_ctx
 from ..model_ids import public_model_id
+from ..hidden_prompt_sanitization import sanitize_hidden_prompt_message_data
 
 # Import image storage
 from ..storage import get_image, get_image_storage
@@ -222,6 +223,7 @@ async def _load_db_messages_for_history(thread_id: str) -> list[dict]:
         message_data = row.get("message_data")
         if not isinstance(message_data, dict):
             continue
+        message_data = sanitize_hidden_prompt_message_data(message_data)
         normalized = _normalize_message_for_langgraph(
             message_data,
             fallback_role=row.get("role"),
@@ -2914,11 +2916,12 @@ async def get_shared_conversation(share_id: str):
         serialized_messages = []
         for msg in messages:
             if hasattr(msg, "dict"):
-                serialized_messages.append(msg.dict())
+                message_data = msg.dict()
             elif isinstance(msg, dict):
-                serialized_messages.append(msg)
+                message_data = msg
             else:
-                serialized_messages.append({"type": "unknown", "content": str(msg)})
+                message_data = {"type": "unknown", "content": str(msg)}
+            serialized_messages.append(sanitize_hidden_prompt_message_data(message_data))
         
         return SharedConversationResponse(
             title=thread_record.get("title", "Shared conversation"),
@@ -3286,11 +3289,12 @@ async def save_thread_message(
     if thread_record and thread_record.get("user_id") != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
     
+    message_data = sanitize_hidden_prompt_message_data(request.message_data)
     result = await save_chat_message(
         thread_id=thread_id,
         message_id=request.message_id,
         role=request.role,
-        message_data=request.message_data,
+        message_data=message_data,
     )
     
     if result:
