@@ -2,12 +2,17 @@ import os
 import sys
 from types import SimpleNamespace
 
-from dotenv import load_dotenv
 from fastapi.testclient import TestClient
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-load_dotenv(override=True)
+def set_test_env_default(name, value):
+    if not os.environ.get(name):
+        os.environ[name] = value
 
+
+set_test_env_default("DEEPSEEK_API_KEY", "test-deepseek-key")
+set_test_env_default("SANDBOX_MODE", "local")
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.api import webapp
 from src.storage import supabase_db
 
