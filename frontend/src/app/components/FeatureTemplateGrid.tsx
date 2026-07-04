@@ -6,11 +6,13 @@ import { useLanguage } from "@/providers/LanguageProvider";
 
 interface FeatureTemplateGridProps {
     feature: Feature | null;
+    selectedTemplateId?: number | null;
     onSelectTemplate?: (template: Template) => void;
 }
 
 export function FeatureTemplateGrid({
     feature,
+    selectedTemplateId,
     onSelectTemplate,
 }: FeatureTemplateGridProps) {
     const { t } = useLanguage();
@@ -19,6 +21,9 @@ export function FeatureTemplateGrid({
         [feature, t]
     );
     if (!localizedFeature) return null;
+    const selectedTemplate = localizedFeature.templates.find(
+        (template) => template.id === selectedTemplateId
+    );
 
     return (
         <AnimatePresence mode="wait">
@@ -42,10 +47,37 @@ export function FeatureTemplateGrid({
                             gradient={template.gradient}
                             previewImage={template.previewImage}
                             model={(template as any).model || "AI"}
+                            selected={selectedTemplateId === template.id}
                             onClick={() => onSelectTemplate?.(template)}
                         />
                     ))}
                 </div>
+                {selectedTemplate && selectedTemplate.userFacingEffect && (
+                    <div className="mt-4 rounded-xl border border-border bg-muted/30 p-4">
+                        <div className="text-sm font-medium text-foreground">
+                            {selectedTemplate.title}
+                        </div>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                            {selectedTemplate.userFacingEffect}
+                        </p>
+                        {selectedTemplate.exampleInput && (
+                            <div className="mt-3 text-xs text-muted-foreground">
+                                <span className="font-medium text-foreground">
+                                    {t("chat.template_example_input")}:{" "}
+                                </span>
+                                {selectedTemplate.exampleInput}
+                            </div>
+                        )}
+                        {selectedTemplate.exampleOutput && (
+                            <div className="mt-1 text-xs text-muted-foreground">
+                                <span className="font-medium text-foreground">
+                                    {t("chat.template_example_output")}:{" "}
+                                </span>
+                                {selectedTemplate.exampleOutput}
+                            </div>
+                        )}
+                    </div>
+                )}
             </motion.div>
         </AnimatePresence>
     );

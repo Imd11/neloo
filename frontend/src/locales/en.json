@@ -218,6 +218,8 @@
         "webdev_mode": "Web Dev",
         "clear_selected_feature": "Clear selected feature",
         "clear_selected_template": "Clear selected template",
+        "template_example_input": "Example input",
+        "template_example_output": "Example output",
         "add_from_google_drive": "Add from Google Drive",
         "choose_from_library": "Choose from library",
         "add_local_file": "Add local file",

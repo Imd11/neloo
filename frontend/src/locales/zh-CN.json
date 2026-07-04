@@ -218,6 +218,8 @@
     "webdev_mode": "网页开发",
     "clear_selected_feature": "清除已选功能",
     "clear_selected_template": "清除已选模板",
+    "template_example_input": "示例输入",
+    "template_example_output": "示例输出",
     "add_from_google_drive": "从 Google Drive 文件中添加",
     "choose_from_library": "从库中选择",
     "add_local_file": "从本地文件中添加",

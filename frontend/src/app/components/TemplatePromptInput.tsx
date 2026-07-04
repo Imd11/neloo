@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { Plus, Mic, ArrowUp, X } from "lucide-react";
+import { LayoutTemplate, Plus, Mic, ArrowUp, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Feature, localizeFeature } from "@/data/featureTemplates";
@@ -22,6 +22,8 @@ interface TemplatePromptInputProps {
     className?: string;
     selectedFeature?: Feature | null;
     onClearFeature?: () => void;
+    selectedTemplateName?: string | null;
+    onClearTemplate?: () => void;
     onPlusClick?: () => void;
 }
 
@@ -50,6 +52,8 @@ export function TemplatePromptInput({
     className,
     selectedFeature,
     onClearFeature,
+    selectedTemplateName,
+    onClearTemplate,
     onPlusClick,
 }: TemplatePromptInputProps) {
     const { t } = useLanguage();
@@ -241,6 +245,22 @@ export function TemplatePromptInput({
                                         <X className="w-2.5 h-2.5" />
                                     </button>
                                 </div>
+                                {selectedTemplateName && (
+                                    <div className="flex items-center gap-1.5 rounded-full bg-muted/40 px-3 py-1.5 text-sm text-foreground">
+                                        <LayoutTemplate className="h-3.5 w-3.5 opacity-60" />
+                                        <span className="max-w-[140px] truncate">{selectedTemplateName}</span>
+                                        {onClearTemplate && (
+                                            <button
+                                                onClick={onClearTemplate}
+                                                type="button"
+                                                className="flex h-4 w-4 cursor-pointer items-center justify-center rounded-full transition-all duration-150 hover:scale-110 hover:bg-foreground/10"
+                                                aria-label={t("chat.clear_selected_template")}
+                                            >
+                                                <X className="h-2.5 w-2.5 text-muted-foreground" />
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             {/* Structured template text */}

@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { Check } from "lucide-react";
 
 interface TemplateCardProps {
   title: string;
@@ -50,11 +51,17 @@ export function TemplateCard({
       )}
 
       {/* Model Badge */}
-      {(model || selected) && (
-        <div className="absolute top-2 right-2">
+      {model && (
+        <div className="absolute top-2 left-2">
           <span className="px-1.5 py-0.5 text-[10px] font-medium bg-background/80 backdrop-blur-sm rounded text-foreground/80">
             {model}
           </span>
+        </div>
+      )}
+
+      {selected && (
+        <div className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-background">
+          <Check className="h-3 w-3" />
         </div>
       )}
 

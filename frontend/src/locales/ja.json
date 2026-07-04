@@ -218,6 +218,8 @@
         "webdev_mode": "Web 開発",
         "clear_selected_feature": "選択した機能をクリア",
         "clear_selected_template": "選択したテンプレートをクリア",
+        "template_example_input": "入力例",
+        "template_example_output": "出力例",
         "add_from_google_drive": "Google Drive から追加",
         "choose_from_library": "ライブラリから選択",
         "add_local_file": "ローカルファイルを追加",

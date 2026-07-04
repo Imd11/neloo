@@ -218,6 +218,8 @@
         "webdev_mode": "網頁開發",
         "clear_selected_feature": "清除已選功能",
         "clear_selected_template": "清除已選範本",
+        "template_example_input": "範例輸入",
+        "template_example_output": "範例輸出",
         "add_from_google_drive": "從 Google Drive 檔案中新增",
         "choose_from_library": "從庫中選擇",
         "add_local_file": "從本地檔案中新增",
