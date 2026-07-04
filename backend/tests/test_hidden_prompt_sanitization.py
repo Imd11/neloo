@@ -54,3 +54,36 @@ def test_sanitize_legacy_fortune_prefix_best_effort():
     sanitized = sanitize_hidden_prompt_message_data(message)
 
     assert sanitized["content"] == "1990-01-01"
+
+
+def test_sanitize_legacy_agent_prefix_best_effort():
+    message = {
+        "id": "msg-agent",
+        "type": "human",
+        "content": (
+            "[System: You are now acting as the agent \"Writer\". Follow these instructions:\n"
+            "secret agent instruction"
+            "\n---\nUser message:]\n"
+            "draft this email"
+        ),
+    }
+
+    sanitized = sanitize_hidden_prompt_message_data(message)
+
+    assert sanitized["content"] == "draft this email"
+
+
+def test_sanitize_legacy_humanize_prefix_best_effort():
+    message = {
+        "id": "msg-humanize",
+        "type": "human",
+        "content": (
+            "Act like a professional content writer and communication strategist.\n\n"
+            "Rewrite the user's text. Return only the rewritten text."
+            "make this sound natural"
+        ),
+    }
+
+    sanitized = sanitize_hidden_prompt_message_data(message)
+
+    assert sanitized["content"] == "make this sound natural"
