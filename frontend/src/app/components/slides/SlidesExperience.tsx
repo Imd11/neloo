@@ -90,8 +90,8 @@ const SlidesExperience: React.FC<SlidesExperienceProps> = ({
                             topic: item.topic,
                             slides: item.slides as unknown as Slide[],
                             createdAt: new Date(item.created_at || item.updated_at || Date.now()).getTime(),
-                            style: undefined,
-                            presetId: undefined,
+                            style: item.style as StyleDimensions | undefined,
+                            presetId: item.preset_id || item.presetId,
                         }))
                     );
                 }
@@ -125,6 +125,8 @@ const SlidesExperience: React.FC<SlidesExperienceProps> = ({
                 setTopic(presentation.topic);
                 setAttachments((presentation.attachments as Attachment[]) || []);
                 setSlides((presentation.slides as unknown as Slide[]) || []);
+                setStyle(presentation.style as StyleDimensions | undefined);
+                setPresetId(presentation.preset_id || presentation.presetId);
                 setView(((presentation.slides?.length || 0) > 0 ? 'SLIDESHOW' : 'HOME'));
             } catch (error) {
                 console.error('[SlidesExperience] Failed to load PPT presentation:', error);
@@ -288,6 +290,8 @@ const SlidesExperience: React.FC<SlidesExperienceProps> = ({
                     topic: presentation.topic,
                     slides: currentSlides as any,
                     attachments,
+                    style: presentation.style,
+                    preset_id: presentation.presetId,
                 },
                 session?.access_token
             );

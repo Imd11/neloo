@@ -24,6 +24,9 @@ export interface PresentationData {
     title: string;
     slides: Slide[];
     attachments?: Attachment[];
+    style?: unknown;
+    preset_id?: string;
+    presetId?: string;
     created_at?: string;
     updated_at?: string;
 }

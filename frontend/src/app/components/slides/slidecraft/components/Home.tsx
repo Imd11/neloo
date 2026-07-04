@@ -32,9 +32,7 @@ const Home: React.FC<HomeProps> = ({
     const [topic, setTopic] = useState(initialTopic);
     const [attachments, setAttachments] = useState<Attachment[]>(initialAttachments);
     const [isDragging, setIsDragging] = useState(false);
-    const [selectedPresetId, setSelectedPresetId] = useState<string | null>(
-        initialTopic ? recommendPreset(initialTopic) : null
-    );
+    const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
     const fileInput = useRef<HTMLInputElement>(null);
 
     const handleFile = useCallback(async (file: File) => {
@@ -185,6 +183,11 @@ const Home: React.FC<HomeProps> = ({
                             已选 {PRESETS.find((item) => item.id === selectedPresetId)?.nameZh || selectedPresetId}
                         </span>
                     )}
+                    {!selectedPresetId && recommendedId && (
+                        <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-300">
+                            推荐 {PRESETS.find((item) => item.id === recommendedId)?.nameZh || recommendedId}
+                        </span>
+                    )}
                 </h2>
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
                     {PRESETS.map((preset) => {
@@ -221,7 +224,7 @@ const Home: React.FC<HomeProps> = ({
                                     <p className="mt-0.5 line-clamp-1 text-[10px] text-zinc-500">{preset.feel}</p>
                                 </div>
 
-                                {isRecommended && (
+                                {isRecommended && !isSelected && (
                                     <span className="absolute left-2 top-2 rounded-md bg-amber-500/90 px-2 py-0.5 text-[9px] font-bold text-black shadow-lg">
                                         ✨ 推荐
                                     </span>

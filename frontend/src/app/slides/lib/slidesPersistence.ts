@@ -32,6 +32,8 @@ export const savePresentation = async (
             topic: data.topic,
             slides: data.slides,
             attachments: data.attachments || [],
+            style: data.style,
+            preset_id: data.preset_id || data.presetId,
         }),
     });
 };
