@@ -794,9 +794,11 @@ export function useChat({
         return;
       }
 
-      // Truncate: keep messages before the edited one, then add the new message
-      const truncatedMessages = currentMessages.slice(0, messageIndex);
-      const newMessage: Message = { id: uuidv4(), type: "human", content: newContent };
+	      // Truncate: keep messages before the edited one, then add the new message
+	      const truncatedMessages = sanitizeHiddenPromptMessagesForPersistence(
+	        currentMessages.slice(0, messageIndex)
+	      );
+	      const newMessage: Message = { id: uuidv4(), type: "human", content: newContent };
 
       // Submit with the truncated history + new message
       stream.submit(
@@ -831,8 +833,10 @@ export function useChat({
       return;
     }
 
-    // Truncate: keep messages up to and including the last human message
-    const truncatedMessages = currentMessages.slice(0, lastHumanIndex + 1);
+	    // Truncate: keep messages up to and including the last human message
+	    const truncatedMessages = sanitizeHiddenPromptMessagesForPersistence(
+	      currentMessages.slice(0, lastHumanIndex + 1)
+	    );
 
     // Re-submit to generate a new response
     stream.submit(

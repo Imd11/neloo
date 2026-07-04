@@ -27,7 +27,6 @@ import {
 import { stripArtifacts, parseArtifacts, getStreamingArtifact } from "@/lib/artifactParser";
 import type { Artifact } from "@/lib/artifactParser";
 import { MessageAttachments } from "@/app/components/MessageAttachments";
-import { UserMessageBubble } from "@/app/components/UserMessageBubble";
 import { ArtifactCard } from "@/app/components/ArtifactCard";
 import { Copy, Check, Pencil, RefreshCw, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -39,6 +38,7 @@ import {
 } from "@/components/ui/tooltip";
 import { TypingIndicator } from "@/app/components/ui/TypingIndicator";
 import { useLanguage } from "@/providers/LanguageProvider";
+import { getVisibleHumanContent } from "@/app/utils/hiddenPromptEnvelope";
 
 interface ChatMessageProps {
   message: Message;
@@ -102,9 +102,12 @@ export const ChatMessage = React.memo<ChatMessageProps>(
   }) => {
     const [copied, setCopied] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
-    const { t } = useLanguage();
-    const isUser = message.type === "human";
-    const rawMessageContent = extractStringFromMessageContent(message);
+	    const { t } = useLanguage();
+	    const isUser = message.type === "human";
+	    const rawMessageContent = extractStringFromMessageContent(message);
+	    const visibleUserContent = isUser
+	      ? (getVisibleHumanContent(message) ?? rawMessageContent)
+	      : rawMessageContent;
 
     // Parse message content into structured blocks (for AI messages)
     // This handles both OpenAI format (<think> tags) and Anthropic format (thinking blocks)
@@ -139,9 +142,9 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     // For AI messages in webDevMode, strip artifact tags (code is shown in right panel)
     // For AI messages with content blocks, we use the blocks directly instead
     const messageContent = useMemo(() => {
-      if (isUser) {
-        return stripUploadedFilesAnnotation(rawMessageContent);
-      }
+	      if (isUser) {
+	        return stripUploadedFilesAnnotation(visibleUserContent);
+	      }
       // If we have content blocks (Anthropic format), extract only text blocks
       // The thinking blocks will be rendered separately
       if (contentBlocks.length > 0 && hasThinkingBlocks) {
@@ -163,11 +166,11 @@ export const ChatMessage = React.memo<ChatMessageProps>(
         content = stripArtifacts(content);
       }
       return content;
-    }, [isUser, rawMessageContent, webDevMode, contentBlocks, hasThinkingBlocks]);
+	    }, [isUser, visibleUserContent, rawMessageContent, webDevMode, contentBlocks, hasThinkingBlocks]);
 
-    const userAttachments = isUser
-      ? parseUploadedFilesAnnotation(rawMessageContent)
-      : [];
+	    const userAttachments = isUser
+	      ? parseUploadedFilesAnnotation(visibleUserContent)
+	      : [];
 
     // Parse artifacts from AI messages in Web Dev Mode
     const messageArtifacts = useMemo(() => {

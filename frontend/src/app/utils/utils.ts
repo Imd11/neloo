@@ -2,6 +2,7 @@ import { Message } from "@langchain/langgraph-sdk";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import type { ContentBlock } from "@/app/types/types";
+import { getVisibleHumanContent } from "@/app/utils/hiddenPromptEnvelope";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -225,6 +226,11 @@ function parseThinkTagsFromString(content: string): ContentBlock[] {
 }
 
 export function extractStringFromMessageContent(message: Message): string {
+  if (message.type === "human") {
+    const visibleContent = getVisibleHumanContent(message);
+    if (visibleContent !== null) return visibleContent;
+  }
+
   return typeof message.content === "string"
     ? message.content
     : Array.isArray(message.content)
@@ -307,7 +313,9 @@ export function formatMessageForLLM(message: Message): string {
   let contentText = "";
 
   // Extract content text
-  if (typeof message.content === "string") {
+  if (message.type === "human") {
+    contentText = extractStringFromMessageContent(message);
+  } else if (typeof message.content === "string") {
     contentText = message.content;
   } else if (Array.isArray(message.content)) {
     const textParts: string[] = [];
