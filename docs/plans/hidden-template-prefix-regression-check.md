@@ -56,18 +56,22 @@ python3.13 scripts/check_hidden_prompt_persistence.py --base-url http://127.0.0.
 
 This must pass before marking history/share/fork hidden prompt persistence as verified. If it reports that durable persistence is unavailable, configure a reachable `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, and required migrations before marking those flows as passed.
 
-## Execution Results - 2026-07-05
+## Execution Results - 2026-07-05 Repair Pass
 
 - Frontend URL: `http://localhost:3000`
 - Backend URL: `http://127.0.0.1:2024`
-- Homepage load: PASS. The page loaded with backend connected, and visible page text did not include `You are a senior prompt engineer.`, `Act like a professional content writer`, `Analysis direction:`, or `[System: You are now acting as the agent`.
-- Prompt Optimize submit: PASS for visible UI. Submitted `make a landing page hero prompt`; the user bubble showed only that text, the assistant response rendered normally, and visible page text did not include hidden template prefixes.
-- Prompt Optimize refresh/history response: SKIPPED/PARTIAL. Reloading the generated `threadId` showed `未找到对话` because the local thread persistence API could not create a durable thread in this environment. Observed `/api/threads` responses did not contain hidden prompt prefixes.
-- Humanize submit/history: PASS for visible UI. Submitted `This innovative solution leverages cutting-edge technology to enhance productivity.`; the user bubble showed only that text, and visible page text did not include the humanize system prompt.
-- Fortune submit/history: PARTIAL. The UI blocked submission with `请先填写完整的出生信息再发送。`; no model request was sent, and visible page text did not include `Analysis direction:`.
-- Regenerate: PASS for visible UI. Regenerated a Prompt Optimize response; the user bubble still showed only the original user text, and visible page text did not include hidden template prefixes.
-- Fork/regenerate: SKIPPED. The local thread persistence API returned `500` for thread creation and `404` for the generated thread IDs, so a durable fork target was unavailable.
-- Share page/API: SKIPPED/PARTIAL. The share flow could not complete because the local thread persistence API returned `500` for `/api/threads` and `404` for the generated thread. Captured thread API responses did not contain hidden prompt prefixes.
-- DB spot check: SKIPPED. The local persistence layer did not create durable thread rows in this environment, so there was no reliable DB row to inspect.
-- Model stream note: The LangGraph realtime `/runs/stream` response includes the model-facing hidden prompt during generation. This is expected with the current architecture because the browser submits model input to the LangGraph stream, but it is not persisted in the frontend DB save path and was not visible in chat bubbles, copy-visible text, regenerate-visible text, or thread API error/history responses observed here.
-- Blockers or skipped checks: Durable refresh/history, fork/regenerate, share page, and DB spot checks were blocked by local thread persistence failures: `/api/threads` returned `500: Failed to create thread`, and generated thread IDs returned `404: Thread not found`.
+- Supabase durable persistence configured: NO. `POST /api/threads` now returns `503 Service Unavailable` with `Durable thread persistence is unavailable. Check SUPABASE_URL, SUPABASE_SERVICE_KEY, network access, and required Supabase migrations.` The local `SUPABASE_URL` host could not be resolved by DNS in this environment.
+- Homepage load: PASS. `curl -I http://localhost:3000` returned `HTTP/1.1 200 OK`.
+- Homepage forbidden strings: PASS. `curl http://localhost:3000` did not contain `You are a senior prompt engineer.`, `Act like a professional content writer`, `Analysis direction:`, or `[System: You are now acting as the agent`.
+- Backend persistence script: SKIP. `python3.13 scripts/check_hidden_prompt_persistence.py --base-url http://127.0.0.1:2024` reported durable thread persistence unavailable and exited with code `2`; this is the expected non-pass state until Supabase is reachable.
+- Prompt Optimize submit: PASS for frontend hidden-prompt display logic by existing visible UI regression and frontend sanitizer script. Full durable refresh/history verification is SKIPPED until Supabase is reachable.
+- Prompt Optimize refresh/history response: SKIP. Requires durable Supabase thread persistence.
+- Humanize submit/history: SKIP for durable history. Requires durable Supabase thread persistence.
+- Fortune submit/history: SKIP for durable history. Requires durable Supabase thread persistence and complete birth information for a model request.
+- Regenerate: PASS for code-level coverage. `regenerateLastResponse` uses sanitized optimistic UI messages and rebuilds model-facing hidden prompts only in memory for known template features.
+- Fork/regenerate: SKIP. Requires durable Supabase thread persistence and saved `chat_messages` rows.
+- Share page/API: SKIP. Requires durable Supabase thread persistence and a saved `shared_conversations` row.
+- DB spot check: SKIP. Requires reachable Supabase and completed migrations.
+- Forbidden visible/API strings: PASS for automated backend route tests and static homepage check. Backend API tests cover save-message and share serialization sanitization with monkeypatched storage/LangGraph state; homepage HTML did not contain forbidden markers.
+- Model stream note: The LangGraph realtime `/runs/stream` response still includes the model-facing hidden prompt during generation. This remains an explicit architecture decision item and must not be described as secret from a user inspecting their own network traffic.
+- Blockers or skipped checks: Durable refresh/history, fork/regenerate, share page, and DB spot checks are explicitly unavailable in this local environment because Supabase thread persistence is not reachable. They must be rerun after setting a valid `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, and migrations.
