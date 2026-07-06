@@ -10,7 +10,7 @@ import uuid
 import os
 from supabase import create_client, Client
 
-from .auth import get_current_user
+from .auth import get_current_user, get_user_id
 
 # Initialize Supabase client
 def get_supabase() -> Client:
@@ -89,7 +89,7 @@ def calculate_next_run(cron_expression: str, timezone: str) -> datetime:
 async def list_triggers(user: dict = Depends(get_current_user)):
     """List all scheduled triggers for the current user"""
     supabase = get_supabase()
-    user_id = user["id"]
+    user_id = get_user_id(user)
     
     # Query triggers with agent info
     result = supabase.table("scheduled_triggers").select(
@@ -112,7 +112,7 @@ async def list_triggers(user: dict = Depends(get_current_user)):
 async def get_trigger(trigger_id: str, user: dict = Depends(get_current_user)):
     """Get a specific trigger by ID"""
     supabase = get_supabase()
-    user_id = user["id"]
+    user_id = get_user_id(user)
     
     result = supabase.table("scheduled_triggers").select(
         "*, agents(name, icon)"
@@ -133,7 +133,7 @@ async def get_trigger(trigger_id: str, user: dict = Depends(get_current_user)):
 async def create_trigger(request: CreateTriggerRequest, user: dict = Depends(get_current_user)):
     """Create a new scheduled trigger for an agent"""
     supabase = get_supabase()
-    user_id = user["id"]
+    user_id = get_user_id(user)
     
     # Verify the user owns the agent
     agent_result = supabase.table("agents").select("id, user_id, name, icon").eq("id", request.agent_id).single().execute()
@@ -181,7 +181,7 @@ async def update_trigger(
 ):
     """Update a scheduled trigger"""
     supabase = get_supabase()
-    user_id = user["id"]
+    user_id = get_user_id(user)
     
     # Check ownership
     existing = supabase.table("scheduled_triggers").select("id, user_id, timezone").eq("id", trigger_id).single().execute()
@@ -224,7 +224,7 @@ async def update_trigger(
 async def delete_trigger(trigger_id: str, user: dict = Depends(get_current_user)):
     """Delete a scheduled trigger"""
     supabase = get_supabase()
-    user_id = user["id"]
+    user_id = get_user_id(user)
     
     # Check ownership
     existing = supabase.table("scheduled_triggers").select("id, user_id").eq("id", trigger_id).single().execute()
@@ -247,7 +247,7 @@ async def get_trigger_logs(
 ):
     """Get execution logs for a trigger"""
     supabase = get_supabase()
-    user_id = user["id"]
+    user_id = get_user_id(user)
     
     # Verify ownership via trigger
     trigger = supabase.table("scheduled_triggers").select("id, user_id").eq("id", trigger_id).single().execute()
@@ -267,53 +267,12 @@ async def get_trigger_logs(
 
 @trigger_router.post("/{trigger_id}/run")
 async def run_trigger_now(trigger_id: str, user: dict = Depends(get_current_user)):
-    """Manually trigger an agent execution (for testing)"""
-    supabase = get_supabase()
-    user_id = user["id"]
-    
-    # Get trigger with agent info
-    trigger = supabase.table("scheduled_triggers").select(
-        "*, agents(id, name, system_prompt, tools)"
-    ).eq("id", trigger_id).single().execute()
-    
-    if not trigger.data:
-        raise HTTPException(status_code=404, detail="Trigger not found")
-    
-    if trigger.data["user_id"] != user_id:
-        raise HTTPException(status_code=403, detail="Not authorized")
-    
-    # Create execution log
-    run_id = str(uuid.uuid4())[:8]
-    log_data = {
-        "id": str(uuid.uuid4()),
-        "trigger_id": trigger_id,
-        "run_id": run_id,
-        "status": "pending",
-    }
-    supabase.table("trigger_execution_logs").insert(log_data).execute()
-    
-    # Update trigger status
-    supabase.table("scheduled_triggers").update({
-        "status": "running",
-        "last_run": datetime.utcnow().isoformat(),
-    }).eq("id", trigger_id).execute()
-    
-    # TODO: Actually execute the agent via LangGraph
-    # For now, just mark as success and return
-    agent = trigger.data.get("agents", {})
-    
-    # Simulate execution completion
-    supabase.table("trigger_execution_logs").update({
-        "status": "success",
-        "completed_at": datetime.utcnow().isoformat(),
-    }).eq("run_id", run_id).eq("trigger_id", trigger_id).execute()
-    
-    supabase.table("scheduled_triggers").update({
-        "status": "idle",
-    }).eq("id", trigger_id).execute()
-    
-    return {
-        "message": "Trigger executed successfully",
-        "run_id": run_id,
-        "agent_name": agent.get("name"),
-    }
+    """Manual trigger execution is not yet available.
+
+    The trigger CRUD/scheduling surface is exposed, but actual agent execution
+    on a schedule is intentionally disabled in this release (see plan D2).
+    """
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Trigger execution is not yet available (planned for a future release).",
+    )

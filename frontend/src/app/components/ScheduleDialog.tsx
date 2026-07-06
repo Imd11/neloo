@@ -168,13 +168,10 @@ export function ScheduleDialog({ open, onOpenChange, agentId, agentName }: Sched
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => handleRunNow(trigger.id)}
-                                            disabled={runningId === trigger.id}
+                                            disabled
+                                            title="定时执行功能即将推出（Coming soon）"
                                         >
-                                            {runningId === trigger.id ? (
-                                                <Loader2 className="w-4 h-4 animate-spin" />
-                                            ) : (
-                                                <Play className="w-4 h-4" />
-                                            )}
+                                            <Play className="w-4 h-4 opacity-40" />
                                         </Button>
                                         <Button
                                             variant="ghost"
