@@ -29,25 +29,18 @@ def test_build_child_env_keeps_safe_keys(monkeypatch):
     assert env["TZ"] == "Asia/Shanghai"
 
 
-def test_local_mode_guard_requires_opt_in(monkeypatch):
-    monkeypatch.setenv("SANDBOX_MODE", "local")
+def test_local_execute_guard_requires_opt_in(monkeypatch):
+    # Construction is allowed; running untrusted code is blocked without opt-in.
     monkeypatch.delenv("ALLOW_ANONYMOUS", raising=False)
     monkeypatch.delenv("ALLOW_LOCAL_SANDBOX", raising=False)
-    ex._executor = None
-    try:
-        with pytest.raises(RuntimeError):
-            ex.get_executor()
-    finally:
-        ex._executor = None
+    executor = ex.LocalSubprocessExecutor()
+    with pytest.raises(RuntimeError):
+        executor.execute("print(1)")
 
 
-def test_local_mode_allowed_with_opt_in(monkeypatch):
-    monkeypatch.setenv("SANDBOX_MODE", "local")
+def test_local_execute_allowed_with_opt_in(monkeypatch):
     monkeypatch.setenv("ALLOW_LOCAL_SANDBOX", "true")
     monkeypatch.delenv("ALLOW_ANONYMOUS", raising=False)
-    ex._executor = None
-    try:
-        executor = ex.get_executor()
-        assert executor.__class__.__name__ == "LocalSubprocessExecutor"
-    finally:
-        ex._executor = None
+    executor = ex.LocalSubprocessExecutor()
+    result = executor.execute("print(1)")
+    assert result.success is True

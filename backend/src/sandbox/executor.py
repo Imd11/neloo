@@ -1223,6 +1223,22 @@ class LocalSubprocessExecutor(SandboxExecutor):
         thread_id: Optional[str] = None,
     ) -> ExecutionResult:
         """Execute code locally via subprocess with image capture support"""
+        # Security gate: LocalSubprocessExecutor runs user code directly on the
+        # host with no isolation. Require explicit opt-in so a public deployment
+        # that happens to set SANDBOX_MODE=local doesn't run untrusted code on
+        # the server. Checked at execute() (not construction) so module import
+        # and graph build never crash on this policy.
+        opt_in = (
+            os.environ.get("ALLOW_ANONYMOUS", "false").lower() == "true"
+            or os.environ.get("ALLOW_LOCAL_SANDBOX", "false").lower() == "true"
+        )
+        if not opt_in:
+            raise RuntimeError(
+                "SANDBOX_MODE=local runs code on the host with no isolation. "
+                "Set ALLOW_LOCAL_SANDBOX=true to acknowledge local-dev-only use, "
+                "or use SANDBOX_MODE=e2b for shared/public deployments."
+            )
+
         # Auto-sync Supabase files to local before execution
         # This ensures all user-uploaded files are available in the local sandbox
         try:
@@ -1506,20 +1522,6 @@ def get_executor() -> SandboxExecutor:
     mode = os.environ.get("SANDBOX_MODE", "e2b").lower()
 
     if mode == "local":
-        # LocalSubprocessExecutor runs user code directly on the host with no
-        # isolation. Require an explicit opt-in so a public deployment that
-        # happens to set SANDBOX_MODE=local doesn't silently execute untrusted
-        # code on the server.
-        opt_in = (
-            os.environ.get("ALLOW_ANONYMOUS", "false").lower() == "true"
-            or os.environ.get("ALLOW_LOCAL_SANDBOX", "false").lower() == "true"
-        )
-        if not opt_in:
-            raise RuntimeError(
-                "SANDBOX_MODE=local runs code on the host with no isolation. "
-                "Set ALLOW_LOCAL_SANDBOX=true to acknowledge local-dev-only use, "
-                "or use SANDBOX_MODE=e2b for shared/public deployments."
-            )
         _executor = LocalSubprocessExecutor()
     elif mode == "docker":
         _executor = DockerExecutor()
