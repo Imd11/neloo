@@ -118,3 +118,6 @@ frontend-old/
 # =============================================================================
 *.onnx
 backend/src/resume/models/
+
+# Internal planning notes — not part of the public release.
+docs/plans/
