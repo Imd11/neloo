@@ -496,6 +496,23 @@ def get_local_storage_path(user_id: str) -> Path:
     return LOCAL_STORAGE_DIR
 
 
+def _safe_join(base_dir: Path, filename: str) -> Path:
+    """Join filename under base_dir, rejecting any path traversal.
+
+    Local storage is shared (single-user by convention); this hardens file
+    routes against malicious filenames like '../../etc/passwd'.
+    """
+    if not filename or "/" in filename or "\\" in filename or ".." in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    if filename.startswith("/"):
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    base = base_dir.resolve()
+    target = (base / filename).resolve()
+    if target != base and not str(target).startswith(str(base) + os.sep):
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    return target
+
+
 async def _ensure_storage_dir() -> None:
     """Ensure local storage directory exists (runs in thread pool)."""
     await asyncio.to_thread(LOCAL_STORAGE_DIR.mkdir, parents=True, exist_ok=True)
@@ -1404,7 +1421,7 @@ async def delete_file(filename: str, user: dict = Depends(get_current_user)):
         if USE_LOCAL_STORAGE:
             # Local storage mode - use thread pool for file operations
             user_dir = get_local_storage_path(user_id)
-            local_file_path = user_dir / filename
+            local_file_path = _safe_join(user_dir, filename)
             await asyncio.to_thread(_delete_file_sync, local_file_path)
         else:
             # Supabase storage mode (async)
@@ -1436,7 +1453,7 @@ async def get_download_url(
         if USE_LOCAL_STORAGE:
             # Local storage mode - return file path
             user_dir = get_local_storage_path(user_id)
-            local_file_path = user_dir / filename
+            local_file_path = _safe_join(user_dir, filename)
             return DownloadUrlResponse(
                 url=f"file://{local_file_path}",
                 expires_in=expires_in,
@@ -1662,17 +1679,8 @@ async def download_sandbox_file(filename: str):
     """
     from fastapi.responses import FileResponse
 
-    # Get the sandbox data directory
-    local_file_path = LOCAL_STORAGE_DIR / filename
-
-    # Security check: prevent path traversal
-    try:
-        # Resolve the path and ensure it's within LOCAL_STORAGE_DIR
-        resolved_path = local_file_path.resolve()
-        if not str(resolved_path).startswith(str(LOCAL_STORAGE_DIR.resolve())):
-            raise HTTPException(status_code=403, detail="Access denied")
-    except Exception:
-        raise HTTPException(status_code=403, detail="Invalid file path")
+    # Resolve within LOCAL_STORAGE_DIR, rejecting path traversal.
+    local_file_path = _safe_join(LOCAL_STORAGE_DIR, filename)
 
     if not local_file_path.exists():
         raise HTTPException(status_code=404, detail="File not found")
