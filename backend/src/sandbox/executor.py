@@ -1509,7 +1509,7 @@ def get_executor() -> SandboxExecutor:
       - "e2b-async": Async E2B cloud sandbox (experimental).
                      Uses asyncio.Lock for true parallel SubAgent execution.
       - "local"    : Local subprocess (development only, no isolation)
-      - "docker"   : Docker container (self-hosted, secure)
+      - "docker"   : Not yet implemented (planned).
 
     Returns:
         SandboxExecutor instance
@@ -1524,7 +1524,10 @@ def get_executor() -> SandboxExecutor:
     if mode == "local":
         _executor = LocalSubprocessExecutor()
     elif mode == "docker":
-        _executor = DockerExecutor()
+        raise RuntimeError(
+            "SANDBOX_MODE=docker is not yet implemented. "
+            "Use 'e2b' (cloud) or 'local' (local-dev only) for now."
+        )
     elif mode in ("e2b", "e2b-sync"):
         # Sync executor with threading.Lock (stable default)
         _executor = E2BSandboxExecutor()
@@ -1532,8 +1535,10 @@ def get_executor() -> SandboxExecutor:
         # Async executor with asyncio.Lock for parallel SubAgent execution (experimental)
         _executor = AsyncE2BSandboxExecutor()
     else:
-        # Backwards-compatible fallback: treat unknown as sync E2B to avoid async event loop issues.
-        _executor = E2BSandboxExecutor()
+        raise RuntimeError(
+            f"Unknown SANDBOX_MODE={mode!r}; expected one of: e2b, e2b-sync, "
+            "e2b-async, local. ('docker' is planned but not implemented.)"
+        )
 
     return _executor
 

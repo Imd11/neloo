@@ -44,3 +44,23 @@ def test_local_execute_allowed_with_opt_in(monkeypatch):
     executor = ex.LocalSubprocessExecutor()
     result = executor.execute("print(1)")
     assert result.success is True
+
+
+def test_docker_mode_rejected(monkeypatch):
+    monkeypatch.setenv("SANDBOX_MODE", "docker")
+    ex._executor = None
+    try:
+        with pytest.raises(RuntimeError):
+            ex.get_executor()
+    finally:
+        ex._executor = None
+
+
+def test_unknown_mode_rejected(monkeypatch):
+    monkeypatch.setenv("SANDBOX_MODE", "kubernetes")
+    ex._executor = None
+    try:
+        with pytest.raises(RuntimeError):
+            ex.get_executor()
+    finally:
+        ex._executor = None

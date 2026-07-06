@@ -208,10 +208,10 @@ Common modes:
 | Mode | Use case |
 | --- | --- |
 | `local` | Local trusted development only. Code executes on your machine. |
-| `docker` | Local container isolation when Docker is available. |
 | `e2b` | Recommended cloud sandbox mode for production. |
 | `e2b-sync` | Alias-style sync E2B mode. |
 | `e2b-async` | Experimental async E2B mode. |
+| `docker` | Planned — not implemented in this release. |
 
 ## File and Image Storage
 
