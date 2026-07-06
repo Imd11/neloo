@@ -1208,7 +1208,7 @@ async def cancel_upload(
 
 
 @app.post("/uploads/cleanup")
-async def cleanup_uploads():
+async def cleanup_uploads(user: dict = Depends(get_current_user)):
     """
     Clean up expired upload sessions (admin endpoint).
 
@@ -1633,7 +1633,7 @@ async def delete_image(
 
 
 @app.post("/images/cleanup")
-async def cleanup_images(max_age_hours: int = 24):
+async def cleanup_images(max_age_hours: int = 24, user: dict = Depends(get_current_user)):
     """
     Clean up old images (admin endpoint).
 
@@ -1859,7 +1859,7 @@ async def list_user_generated_files(
 
 
 @app.post("/generated-files/cleanup")
-async def cleanup_generated_files(max_age_hours: int = 72):
+async def cleanup_generated_files(max_age_hours: int = 72, user: dict = Depends(get_current_user)):
     """
     Clean up old generated files (admin endpoint).
 
