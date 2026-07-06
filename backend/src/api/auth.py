@@ -21,7 +21,6 @@ from functools import lru_cache
 # =============================================================================
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET")
 
 # JWT algorithm used by Supabase
 JWT_ALGORITHM = "HS256"
@@ -33,8 +32,19 @@ JWT_ALGORITHM = "HS256"
 
 @lru_cache(maxsize=1)
 def get_jwt_secret() -> Optional[str]:
-    """Get JWT secret (cached)."""
-    return SUPABASE_JWT_SECRET
+    """Supabase JWT secret (read live from env, cached). Clear cache to refresh."""
+    return os.environ.get("SUPABASE_JWT_SECRET")
+
+
+@lru_cache(maxsize=1)
+def allow_anonymous() -> bool:
+    """True only when the operator explicitly opts into unauthenticated local mode.
+
+    When False (default), authenticated routes require a valid Supabase JWT.
+    When True, requests without a token are accepted as a local user — intended
+    ONLY for single-user local development, never for public deployments.
+    """
+    return os.environ.get("ALLOW_ANONYMOUS", "false").lower() == "true"
 
 
 def verify_jwt_token(token: str) -> dict:
@@ -50,15 +60,20 @@ def verify_jwt_token(token: str) -> dict:
     Raises:
         HTTPException: If token is invalid or expired
     """
-    if token in {"anonymous", "default", "local-dev"}:
+    # Magic tokens are only honored in explicit anonymous (local-dev) mode.
+    if allow_anonymous() and token in {"anonymous", "default", "local-dev"}:
         return {"sub": "default", "email": "guest@local"}
 
     secret = get_jwt_secret()
 
     if not secret:
-        # If no JWT secret is configured, skip verification (development mode)
-        # This allows the API to work without authentication in local dev
-        return {"sub": "anonymous", "email": "anonymous@local"}
+        if allow_anonymous():
+            return {"sub": "anonymous", "email": "anonymous@local"}
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication required: configure SUPABASE_JWT_SECRET, "
+            "or set ALLOW_ANONYMOUS=true for local development only.",
+        )
 
     try:
         # Decode and verify the JWT
@@ -122,8 +137,8 @@ async def get_current_user(
 
     Authentication methods (in order of priority):
     1. Bearer token in Authorization header (production)
-    2. x-user-id header (development fallback)
-    3. Anonymous user (if no JWT secret configured)
+    2. x-user-id header (anonymous local-dev mode only, via ALLOW_ANONYMOUS=true)
+    3. Rejected with 401 otherwise
 
     Returns:
         User info dict with at least "sub" (user ID) field
@@ -138,20 +153,17 @@ async def get_current_user(
         # Verify the JWT token
         return verify_jwt_token(token)
 
-    # Fallback: Check if JWT secret is configured
-    if not get_jwt_secret():
-        # Development mode: use x-user-id header or default
+    # No token: allow only in explicit anonymous (local-dev) mode.
+    if allow_anonymous():
         return {
             "sub": x_user_id or "default",
             "email": f"{x_user_id or 'default'}@local",
         }
 
-    # Auth has been disabled for local standalone use. Treat missing tokens as
-    # the default local user even when a Supabase JWT secret is configured.
-    return {
-        "sub": x_user_id or "default",
-        "email": f"{x_user_id or 'default'}@local",
-    }
+    raise HTTPException(
+        status_code=401,
+        detail="Authentication required",
+    )
 
 
 async def get_optional_user(

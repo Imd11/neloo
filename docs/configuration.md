@@ -276,6 +276,7 @@ node neloo-configurator/scripts/check-env.mjs
 
 ## Security Checklist
 
+- By default, authenticated backend routes require a valid Supabase JWT (`SUPABASE_JWT_SECRET`). `ALLOW_ANONYMOUS=true` disables authentication for single-user local development only — **never enable it on a public deployment**.
 - Do not commit `.env`, `.env.local`, `.env.production`, `.mcp.json`, `.vercel/`, or local databases.
 - Treat every `NEXT_PUBLIC_*` variable as public.
 - Keep model provider keys, Supabase service keys, E2B keys, and database passwords on the server side.

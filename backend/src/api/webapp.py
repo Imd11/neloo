@@ -37,6 +37,7 @@ from .auth import (
     get_jwt_secret,
     get_optional_user,
     verify_jwt_token,
+    allow_anonymous,
     get_user_id as auth_get_user_id,
 )
 from ..runtime_context import user_id_ctx, thread_id_ctx
@@ -374,6 +375,13 @@ app = FastAPI(
     description="File upload API for the Data Analyst Agent",
     version="1.0.0",
 )
+
+if allow_anonymous():
+    print(
+        "\n*** WARNING: ALLOW_ANONYMOUS=true — authentication is DISABLED. "
+        "Intended for localhost-only local development; NEVER enable on a public "
+        "deployment. ***\n"
+    )
 
 # =============================================================================
 # Include Routers
