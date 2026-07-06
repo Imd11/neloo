@@ -29,6 +29,26 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 
+# Environment variables considered safe to pass to the local-subprocess sandbox.
+# Everything else (API keys, secrets, tokens, database URLs) is stripped so that
+# untrusted user code executed by LocalSubprocessExecutor cannot read host secrets.
+_SAFE_CHILD_ENV_KEYS = frozenset({
+    "PATH", "HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "LC_CTYPE",
+    "TMPDIR", "TMP", "TEMP", "SYSTEMROOT", "APPDATA", "PATHEXT",
+    "TZ",  # timezone — pandas/matplotlib date display depends on it
+    "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY",  # corporate egress proxies
+    "SSL_CERT_FILE",  # enterprise CA bundles
+})
+
+
+def _build_child_env() -> dict:
+    """Build a minimal, secret-free environment for the local subprocess sandbox."""
+    env = {k: v for k, v in os.environ.items() if k in _SAFE_CHILD_ENV_KEYS}
+    env["PYTHONIOENCODING"] = "utf-8"
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
+    return env
+
+
 @dataclass
 class ExecutionResult:
     """Result of code execution"""
@@ -1288,7 +1308,7 @@ for fig_num in plt.get_fignums():
                 text=True,
                 timeout=timeout,
                 cwd=temp_dir,
-                env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+                env=_build_child_env(),
             )
 
             results = []
@@ -1486,6 +1506,20 @@ def get_executor() -> SandboxExecutor:
     mode = os.environ.get("SANDBOX_MODE", "e2b").lower()
 
     if mode == "local":
+        # LocalSubprocessExecutor runs user code directly on the host with no
+        # isolation. Require an explicit opt-in so a public deployment that
+        # happens to set SANDBOX_MODE=local doesn't silently execute untrusted
+        # code on the server.
+        opt_in = (
+            os.environ.get("ALLOW_ANONYMOUS", "false").lower() == "true"
+            or os.environ.get("ALLOW_LOCAL_SANDBOX", "false").lower() == "true"
+        )
+        if not opt_in:
+            raise RuntimeError(
+                "SANDBOX_MODE=local runs code on the host with no isolation. "
+                "Set ALLOW_LOCAL_SANDBOX=true to acknowledge local-dev-only use, "
+                "or use SANDBOX_MODE=e2b for shared/public deployments."
+            )
         _executor = LocalSubprocessExecutor()
     elif mode == "docker":
         _executor = DockerExecutor()
