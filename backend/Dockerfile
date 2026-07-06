@@ -59,5 +59,6 @@ ENV PORT=8000
 # 暴露端口
 EXPOSE 8000
 
-# 启动命令 - 使用 langgraph 生产服务器
-CMD ["python", "start.py"]
+# 启动命令 - 通过 LangGraph CLI 加载生产配置（与根 Dockerfile 一致）。
+# 需要 sh -c 以展开 Railway 注入的 ${PORT}。
+CMD ["sh", "-c", "exec python -m langgraph_cli dev --config langgraph.production.json --no-reload --port ${PORT:-8000} --host 0.0.0.0 --allow-blocking"]

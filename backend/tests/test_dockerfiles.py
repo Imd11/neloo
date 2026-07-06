@@ -25,4 +25,8 @@ def test_root_dockerfile_uses_production_langgraph_config():
     dockerfile = (REPO_ROOT / "Dockerfile").read_text()
 
     assert "COPY backend/ ." in dockerfile
-    assert '--config", "langgraph.production.json' in dockerfile
+    # Intent: the root Dockerfile launches LangGraph against the production
+    # config. We check the config reference format-agnostically because the CMD
+    # uses sh -c (needed to expand Railway's ${PORT}).
+    assert "langgraph.production.json" in dockerfile
+    assert "langgraph_cli" in dockerfile
