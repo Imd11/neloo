@@ -1404,6 +1404,22 @@ def get_default_model_id() -> str | None:
     return None
 
 
+# Every chat-model provider key the registry knows how to read. Surfaced in
+# the no-key error so users see the full menu, not just four examples.
+_SUPPORTED_PROVIDER_KEY_VARS = (
+    "DEEPSEEK_API_KEY",
+    "QWEN_API_KEY",
+    "OPENAI_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "GEMINI_API_KEY",
+    "MINIMAX_API_KEY",
+    "ZHIPU_API_KEY",
+    "OPENROUTER_API_KEY",
+    "CUSTOM_OPENAI_API_KEY",
+    "CUSTOM_ANTHROPIC_API_KEY",
+)
+
+
 def get_model(model_id: str | None = None):
     """
     Initialize the language model.
@@ -1424,8 +1440,9 @@ def get_model(model_id: str | None = None):
 
     if not model_id:
         raise ValueError(
-            "No API key found. Set one of: "
-            "DEEPSEEK_API_KEY, QWEN_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY"
+            "No LLM provider key configured. Set at least one of: "
+            + ", ".join(_SUPPORTED_PROVIDER_KEY_VARS)
+            + ". See backend/.env.example."
         )
 
     # Get model configuration
@@ -1597,7 +1614,20 @@ _MODEL_GRAPHS = _build_model_graphs() if BUILD_ALL_MODEL_GRAPHS else {}
 
 # Default graph (for backwards compatibility with LangGraph Server)
 # Uses the default model based on priority.
-graph = _MODEL_GRAPHS.get(get_default_model_id()) or build_graph()
+try:
+    graph = _MODEL_GRAPHS.get(get_default_model_id()) or build_graph()
+except Exception as _e:
+    # No provider key configured (or another build error). LangGraph needs a
+    # graph object at import, so we cannot fully boot keyless — but print a
+    # clear, actionable banner instead of letting a raw traceback fly.
+    print("\n" + "=" * 72)
+    print("Neloo backend: cannot build the default chat graph.")
+    print("Most likely no chat-model provider key is configured. Set at least one of:")
+    print("  " + ", ".join(_SUPPORTED_PROVIDER_KEY_VARS))
+    print("Copy backend/.env.example -> backend/.env and fill in a key, then restart.")
+    print(f"Original error: {_e}")
+    print("=" * 72 + "\n")
+    raise
 
 # Data Analyst mode variants (for when baseId is "data_analyst").
 # In fast local dev mode, alias variants to the default graph so LangGraph can
