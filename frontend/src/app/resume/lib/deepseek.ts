@@ -69,7 +69,7 @@ Response rules:
 - JSON must be wrapped in \`\`\`json fences.`;
 
 // Backend URL for API proxy
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 export async function sendMessage(
     messages: ChatMessage[],

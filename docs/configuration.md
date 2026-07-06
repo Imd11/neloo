@@ -94,10 +94,10 @@ Configure these in `frontend/.env.local` for local development or in Vercel for 
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `NEXT_PUBLIC_API_URL` | Yes | Backend URL used by the browser. |
+| `NEXT_PUBLIC_API_URL` | Yes | Backend URL used by the browser and by the resume module's server-side proxy calls. |
 | `NEXT_PUBLIC_ASSISTANT_ID` | Recommended | LangGraph assistant ID. Default is `data_analyst`. |
 | `NEXT_PUBLIC_LANGSMITH_API_KEY` | Optional | Public LangSmith key for deployed LangGraph clients. |
-| `NEXT_PUBLIC_BACKEND_URL` | Optional | Historical resume-module backend URL. Set it to the same value as `NEXT_PUBLIC_API_URL` if resume routes need it. |
+| `NEXT_PUBLIC_BACKEND_URL` | Deprecated | Old resume-module backend URL. No longer read; set `NEXT_PUBLIC_API_URL` instead. |
 
 ## Chat Model Configuration
 

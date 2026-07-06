@@ -5,7 +5,7 @@
 import type { ResumeData } from '../types/resume';
 
 // Backend URL - uses Next.js environment variable or defaults to backend origin
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 /**
  * Parse a resume PDF using the SmartResume backend
