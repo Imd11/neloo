@@ -1,7 +1,15 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isSupabaseConfigured } from "./client";
 
 export async function updateSession(request: NextRequest) {
+  // If Supabase isn't configured (local-only / anonymous mode), skip session
+  // refresh entirely. createServerClient + getUser() would throw and 500 every
+  // request, which white-screens the app.
+  if (!isSupabaseConfigured()) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   });

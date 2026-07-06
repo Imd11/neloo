@@ -1,7 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { isSupabaseConfigured } from "./client";
 
-export async function createServerSupabaseClient() {
+type ServerClient = ReturnType<typeof createServerClient>;
+
+export async function createServerSupabaseClient(): Promise<ServerClient | null> {
+  if (!isSupabaseConfigured()) return null;
+
   const cookieStore = await cookies();
 
   return createServerClient(

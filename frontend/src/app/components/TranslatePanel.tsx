@@ -86,7 +86,7 @@ export function TranslatePanel({ onBack, modelId }: TranslatePanelProps) {
 
             // Get auth token
             const supabase = getSupabaseClient();
-            const { data: { session } } = await supabase.auth.getSession();
+            const session = supabase ? (await supabase.auth.getSession()).data.session : null;
 
             const response = await fetch(`${baseUrl}/api/translate`, {
                 method: "POST",

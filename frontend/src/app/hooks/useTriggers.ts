@@ -56,7 +56,7 @@ function getBaseUrl(): string {
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
     const supabase = getSupabaseClient();
-    const { data: { session } } = await supabase.auth.getSession();
+    const session = supabase ? (await supabase.auth.getSession()).data.session : null;
     const headers: Record<string, string> = {
         "Content-Type": "application/json",
     };
