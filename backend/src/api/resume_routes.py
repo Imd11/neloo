@@ -4,17 +4,19 @@ Resume Parsing API Routes
 Provides endpoints for PDF resume parsing using YOLOv10 layout detection.
 """
 
-from fastapi import APIRouter, File, UploadFile, HTTPException
+from fastapi import APIRouter, File, UploadFile, HTTPException, Depends
 from typing import Dict, Any
 
 from src.resume import parse_resume
+from .auth import get_current_user
 
 router = APIRouter(prefix="/api/resume", tags=["resume"])
 
 
 @router.post("/parse")
 async def parse_resume_endpoint(
-    file: UploadFile = File(..., description="PDF resume file to parse")
+    file: UploadFile = File(..., description="PDF resume file to parse"),
+    user: dict = Depends(get_current_user),
 ) -> Dict[str, Any]:
     """
     Parse a resume PDF file using YOLOv10 layout detection and LLM extraction.

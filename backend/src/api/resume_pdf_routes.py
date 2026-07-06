@@ -8,11 +8,13 @@ This generates vector PDFs with selectable text, making them ATS-compatible.
 import asyncio
 import tempfile
 import os
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from typing import Optional
 import io
+
+from .auth import get_current_user
 
 router = APIRouter(prefix="/api/resume", tags=["resume-pdf"])
 
@@ -83,7 +85,7 @@ async def generate_pdf_with_playwright(html: str) -> bytes:
 
 
 @router.post("/pdf")
-async def export_pdf(request: PDFRequest) -> StreamingResponse:
+async def export_pdf(request: PDFRequest, user: dict = Depends(get_current_user)) -> StreamingResponse:
     """
     Generate PDF from HTML content.
     

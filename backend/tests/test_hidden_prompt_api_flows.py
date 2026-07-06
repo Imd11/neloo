@@ -11,6 +11,10 @@ def set_test_env_default(name, value):
 
 set_test_env_default("DEEPSEEK_API_KEY", "test-deepseek-key")
 set_test_env_default("SANDBOX_MODE", "local")
+# These tests exercise prompt/thread flows (not auth) via TestClient; enable the
+# anonymous local-dev path so authenticated routes accept the requests.
+set_test_env_default("ALLOW_ANONYMOUS", "true")
+set_test_env_default("ALLOW_LOCAL_SANDBOX", "true")
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.api import webapp

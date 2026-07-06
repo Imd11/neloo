@@ -7,9 +7,11 @@ Uses DeepSeek API via backend proxy.
 
 import os
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Optional
+
+from .auth import get_current_user
 
 router = APIRouter(prefix="/api/resume", tags=["resume-ai"])
 
@@ -78,7 +80,7 @@ Response rules:
 
 
 @router.post("/optimize")
-async def optimize_resume(request: OptimizeRequest) -> OptimizeResponse:
+async def optimize_resume(request: OptimizeRequest, user: dict = Depends(get_current_user)) -> OptimizeResponse:
     """
     AI-powered resume optimization endpoint.
     
