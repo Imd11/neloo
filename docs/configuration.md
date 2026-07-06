@@ -235,6 +235,8 @@ SUPABASE_SERVICE_KEY=your-service-role-key
 
 Do not leave `FILE_SECRET_KEY` or `IMAGE_SECRET_KEY` as the example `change-me` values in production.
 
+**Signed download URLs are bearer tokens.** Generated-file and image downloads are gated by an HMAC signature over the file id (derived from `FILE_SECRET_KEY` / `IMAGE_SECRET_KEY`). Anyone who has the full URL — including the `?sig=...` portion — can download that specific file until the secret rotates. The signature prevents forging URLs for *other* files. Set stable, high-entropy values for `FILE_SECRET_KEY` / `IMAGE_SECRET_KEY` in production so signatures both survive restarts and resist guessing.
+
 ## Search, Tools, and Observability
 
 Configure these in `backend/.env` or Railway:
