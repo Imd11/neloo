@@ -96,9 +96,13 @@ pip install -e .
 Edit `backend/.env` and set at least one model key. For local development, start with:
 
 ```env
-SANDBOX_MODE=local
 DEEPSEEK_API_KEY=your-key
+ALLOW_ANONYMOUS=true
+SANDBOX_MODE=local
+ALLOW_LOCAL_SANDBOX=true
 ```
+
+`ALLOW_ANONYMOUS=true` enables single-user local mode without Supabase login (the frontend has no login screen in this mode). `SANDBOX_MODE=local` runs data-analysis code on your own machine; `ALLOW_LOCAL_SANDBOX=true` acknowledges that (it has no isolation, so only use it locally). Chat, file upload, and data analysis all work in this mode.
 
 Then run:
 
@@ -107,6 +111,8 @@ langgraph dev --host 127.0.0.1 --port 2024
 ```
 
 The default `backend/langgraph.json` is local-development oriented and does not require `DATABASE_URL`. Thread history may be ephemeral unless you configure production persistence.
+
+> **Production deployments:** do **not** set `ALLOW_ANONYMOUS`. With it off, backend routes require a valid Supabase JWT — but the frontend in this release does not yet attach JWTs to its backend calls (anonymous local mode is the supported path). Full production Supabase auth (frontend token injection + rate limiting) is planned. See `docs/configuration.md`.
 
 ### 2. Frontend
 
@@ -153,6 +159,8 @@ Codex/Copilot/Cursor-style tools can discover the same assistant through `.agent
 - [Architecture](./ARCHITECTURE.md): main components and data flow.
 - [Deployment guide](./DEPLOY.md): Railway, Vercel, Postgres, E2B, Docker/Railway verification, and secret-safe Docker build contexts.
 
+**Translations:** [简体中文](./docs/readme/README.zh-CN.md) · [Español](./docs/readme/README.es.md) · [العربية](./docs/readme/README.ar.md) · [Bahasa Indonesia](./docs/readme/README.id.md) · [Português (Brasil)](./docs/readme/README.pt-BR.md). Translations may lag this English README; treat the English version as authoritative.
+
 Manual configuration starts with:
 
 ```bash
@@ -168,7 +176,7 @@ cp frontend/.env.example frontend/.env.local
 | LangGraph | `LANGGRAPH_API_URL`, `LANGGRAPH_INTERNAL_URL`, `LANGGRAPH_DEFAULT_GRAPH_ID` | Default graph ID is currently `data_analyst`. |
 | Model providers | `DEEPSEEK_API_KEY`, `QWEN_API_KEY`, `MINIMAX_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `ZHIPU_API_KEY`, `OPENROUTER_API_KEY`, `CUSTOM_OPENAI_API_KEY`, `CUSTOM_ANTHROPIC_API_KEY` | Configure one or more. The selector labels concrete default models such as DeepSeek V4 Pro, Claude Opus 4.8, GPT-5.5, and Llama 4 Maverick. |
 | Model names and base URLs | `*_MODEL`, `*_BASE_URL` variables such as `DEEPSEEK_MODEL`, `QWEN_MODEL`, `QWEN_BASE_URL`, `OPENAI_MODEL`, `GEMINI_BASE_URL`, `CUSTOM_OPENAI_MODEL` | Use these to choose the exact model and endpoint. Empty values and obvious placeholders are treated as unconfigured. |
-| Sandbox | `SANDBOX_MODE`, `E2B_API_KEY` | Use `local` only for trusted local development. Use `e2b` or `docker` for stronger isolation. |
+| Sandbox | `SANDBOX_MODE`, `E2B_API_KEY`, `ALLOW_LOCAL_SANDBOX` | `local` (trusted local dev only, needs `ALLOW_LOCAL_SANDBOX=true`) or `e2b` (recommended for shared/production). `docker` is planned, not implemented. |
 | Supabase | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_JWT_SECRET`, `SUPABASE_DB_HOST`, `SUPABASE_DB_PASSWORD` | Service role keys are server-only secrets. Durable chat history, share links, fork/regenerate history, and DB spot checks require a reachable Supabase project plus service role key. |
 | Persistence | `DATABASE_URL` | Not required for the default local `backend/langgraph.json`. Required for durable production checkpoints with `backend/langgraph.production.json`. |
 | Storage signing | `FILE_SECRET_KEY`, `IMAGE_SECRET_KEY`, `FILE_USE_LOCAL_STORAGE`, `IMAGE_USE_LOCAL_STORAGE` | Use stable random secrets in production. |

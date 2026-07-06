@@ -3362,8 +3362,5 @@ app.include_router(slides_router)
 # Resume Parsing Routes
 # =============================================================================
 
-from .resume_routes import router as resume_router
-app.include_router(resume_router)
-
 from .resume_ai_routes import router as resume_ai_router
 app.include_router(resume_ai_router)

@@ -280,6 +280,7 @@ node neloo-configurator/scripts/check-env.mjs
 
 - By default, authenticated backend routes require a valid Supabase JWT (`SUPABASE_JWT_SECRET`). `ALLOW_ANONYMOUS=true` disables authentication for single-user local development only — **never enable it on a public deployment**.
 - **Rate limiting is not bundled.** For any public deployment, add per-user/per-IP rate limiting on the LLM-proxy routes (`/api/resume/*`, `/api/translate`, `/api/slides/*`) and the PDF/Chromium route. `slowapi` is a common choice; remember to parse `X-Forwarded-For` behind Railway/Cloudflare so limits key on the real client.
+- **Hidden/system prompts are sanitized from persisted thread state, but are still visible in the live stream response.** If you depend on prompt confidentiality, treat the streaming channel as exposing the system prompt.
 - Do not commit `.env`, `.env.local`, `.env.production`, `.mcp.json`, `.vercel/`, or local databases.
 - Treat every `NEXT_PUBLIC_*` variable as public.
 - Keep model provider keys, Supabase service keys, E2B keys, and database passwords on the server side.
