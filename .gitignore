@@ -121,3 +121,7 @@ backend/src/resume/models/
 
 # Internal planning notes — not part of the public release.
 docs/plans/
+
+# Internal audit / review artifacts — not part of the public release.
+.claude/audits/
+audit-report-*.html

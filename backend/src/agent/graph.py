@@ -1070,7 +1070,7 @@ AVAILABLE_MODELS = {
     # top-left selector; users choose the concrete model with *_MODEL env vars.
     "deepseek": {
         "display_name": "DeepSeek V4 Pro",
-        "model_name": "deepseek-v4-pro",
+        "model_name": "deepseek-chat",
         "model_env": "DEEPSEEK_MODEL",
         "provider": "deepseek",
         "env_key": "DEEPSEEK_API_KEY",

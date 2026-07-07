@@ -109,7 +109,7 @@ A complete backend chat model provider configuration means the backend can build
 
 | UI model | Key variable | Base URL variable | Model variable | Notes |
 | --- | --- | --- | --- | --- |
-| DeepSeek V4 Pro | `DEEPSEEK_API_KEY` | None | `DEEPSEEK_MODEL` | Default: `deepseek-v4-pro`. |
+| DeepSeek V4 Pro | `DEEPSEEK_API_KEY` | None | `DEEPSEEK_MODEL` | Default: `deepseek-chat` (override with your gateway's model if needed). |
 | Qwen3 Max | `QWEN_API_KEY` | `QWEN_BASE_URL` | `QWEN_MODEL` | `QWEN_BASE_URL` must be set, commonly `https://dashscope.aliyuncs.com/compatible-mode/v1`; default model: `qwen3-max`. |
 | MiniMax M2.1 | `MINIMAX_API_KEY` | `MINIMAX_ANTHROPIC_BASE_URL` | `MINIMAX_MODEL` | Requires `MINIMAX_ANTHROPIC_BASE_URL` for an Anthropic-compatible MiniMax endpoint. |
 | Claude Opus 4.8 | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` | `ANTHROPIC_MODEL` | Native Anthropic. `NEWAPI_API_KEY` + `NEWAPI_ANTHROPIC_BASE_URL` remains available for custom deployments. |
@@ -212,6 +212,12 @@ Common modes:
 | `e2b-sync` | Alias-style sync E2B mode. |
 | `e2b-async` | Experimental async E2B mode. |
 | `docker` | Planned — not implemented in this release. |
+
+`SANDBOX_MODE=local` runs untrusted user code directly on the host with no isolation. Starting a local execution requires an explicit opt-in: set `ALLOW_LOCAL_SANDBOX=true` (or `ALLOW_ANONYMOUS=true`, which implies it) in `backend/.env`. This is intentional so a public deployment that accidentally sets `SANDBOX_MODE=local` does not silently execute user code on the server. Use `e2b` for any shared or public deployment.
+
+## Hidden System Prompt
+
+The agent assembles a hidden system prompt (tool inventory, context, policy) that is prepended to conversations but is intentionally kept out of the visible chat surface. **Known limitation:** during streaming, the assembled prompt envelope is currently visible in the raw stream until the first user-facing token arrives. Sanitization at rest and in stored thread state is covered by tests; full stream-time hiding is tracked as follow-up work. Do not put secrets in the hidden prompt.
 
 ## File and Image Storage
 
