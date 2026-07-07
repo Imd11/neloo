@@ -79,13 +79,14 @@ Configure these in `backend/.env` for local development or in Railway for produc
 | `PORT` | Local optional | Backend port. Local LangGraph usually uses `2024`; Railway sets this automatically. |
 | `API_BASE_URL` | Recommended | Public backend URL used for callbacks and generated links. |
 | `FRONTEND_URL` | Recommended | Public frontend URL. |
-| `CORS_ALLOWED_ORIGINS` | Recommended | Comma-separated frontend origins allowed to call the backend. |
+| `CORS_ALLOWED_ORIGINS` | Recommended | Comma-separated frontend origins allowed to call the backend. Defaults to `http://localhost:3000,http://localhost:3001`. |
 | `LANGGRAPH_API_URL` | Optional | LangGraph API URL. Usually the same as the backend URL. |
 | `LANGGRAPH_INTERNAL_URL` | Optional | Internal LangGraph URL for server-to-server calls. |
 | `LANGGRAPH_DEFAULT_GRAPH_ID` | Recommended | Default assistant graph. Keep `data_analyst` unless you change graph IDs. |
 | `NELOO_BUILD_ALL_MODEL_GRAPHS` | Optional | When `false`, Neloo still registers public model graph exports and builds configured public provider graphs as needed during startup. Set `true` only to eagerly build every configured canonical and hidden legacy model graph. |
 | `NELOO_BUILD_VARIANT_GRAPHS` | Optional | Set `true` to build real `-web-dev` and `-fortune` graph variants. When `false`, variant graph IDs fall back to the base graph. |
 | `ENABLE_HITL` | Optional | Enables human-in-the-loop behavior when supported. |
+| `MINIMAX_BASE_URL` | Legacy optional | Legacy MiniMax-compatible base URL. New deployments should use `MINIMAX_ANTHROPIC_BASE_URL`. |
 
 ## Frontend Service Variables
 
