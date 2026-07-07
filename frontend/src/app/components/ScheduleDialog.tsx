@@ -35,7 +35,7 @@ interface ScheduleDialogProps {
 }
 
 export function ScheduleDialog({ open, onOpenChange, agentId, agentName }: ScheduleDialogProps) {
-    const { triggers, loading, fetchTriggers, createTrigger, updateTrigger, deleteTrigger, toggleTrigger, runTrigger, getExecutionLogs } = useTriggers(agentId);
+    const { triggers, loading, fetchTriggers, createTrigger, updateTrigger, deleteTrigger, toggleTrigger, getExecutionLogs } = useTriggers(agentId);
 
     const [showCreate, setShowCreate] = useState(false);
     const [selectedPreset, setSelectedPreset] = useState("");
@@ -43,7 +43,6 @@ export function ScheduleDialog({ open, onOpenChange, agentId, agentName }: Sched
     const [defaultPrompt, setDefaultPrompt] = useState("");
     const [notificationMethod, setNotificationMethod] = useState<"in_app" | "email" | "none">("in_app");
     const [saving, setSaving] = useState(false);
-    const [runningId, setRunningId] = useState<string | null>(null);
 
     // Fetch triggers when dialog opens
     useEffect(() => {
@@ -91,20 +90,6 @@ export function ScheduleDialog({ open, onOpenChange, agentId, agentName }: Sched
     const handleToggle = async (triggerId: string, enabled: boolean) => {
         if (await toggleTrigger(triggerId, enabled)) {
             toast.success(enabled ? "已启用定时任务" : "已暂停定时任务");
-        }
-    };
-
-    const handleRunNow = async (triggerId: string) => {
-        setRunningId(triggerId);
-        try {
-            const result = await runTrigger(triggerId);
-            if (result.success) {
-                toast.success("任务已执行");
-            } else {
-                toast.error("执行失败");
-            }
-        } finally {
-            setRunningId(null);
         }
     };
 
@@ -167,7 +152,6 @@ export function ScheduleDialog({ open, onOpenChange, agentId, agentName }: Sched
                                         <Button
                                             variant="ghost"
                                             size="icon"
-                                            onClick={() => handleRunNow(trigger.id)}
                                             disabled
                                             title="定时执行功能即将推出（Coming soon）"
                                         >
