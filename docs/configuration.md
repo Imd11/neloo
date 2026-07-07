@@ -119,6 +119,8 @@ A complete backend chat model provider configuration means the backend can build
 | Custom OpenAI-compatible | `CUSTOM_OPENAI_API_KEY` | `CUSTOM_OPENAI_BASE_URL` | `CUSTOM_OPENAI_MODEL` | Both base URL and model are required for self-hosted or third-party OpenAI-compatible gateways. |
 | Custom Anthropic-compatible | `CUSTOM_ANTHROPIC_API_KEY` | `CUSTOM_ANTHROPIC_BASE_URL` | `CUSTOM_ANTHROPIC_MODEL` | Both base URL and model are required for self-hosted or third-party Anthropic-compatible gateways. |
 
+**Gemini routing:** This release routes Gemini through an OpenAI-compatible endpoint (`GEMINI_BASE_URL` + `GEMINI_API_KEY`), which works with both Google AI Studio's OpenAI-compat surface and gateways. Native `langchain-google-genai` support is tracked as future work; for now set `GEMINI_BASE_URL` to your provider's OpenAI-compatible endpoint.
+
 Old graph IDs such as `deepseek-chat`, `qwen3-max`, `gpt-5-thinking`, and `claude-opus-right` are hidden from the selector but kept so existing LangGraph graph IDs and older stored thread values do not crash. The thread API normalizes old stored `model_id` values to the canonical public ID for display and future updates. If you need a different exact model choice, set the canonical provider's model variable, for example `DEEPSEEK_MODEL=deepseek-v4-flash`, `QWEN_MODEL=qwen-plus`, or `OPENAI_MODEL=gpt-5.5`.
 
 `NEWAPI_BASE_URL` remains a legacy compatibility variable for old direct graph IDs. It does not make the canonical `OpenAI` selector entry available by itself; use `OPENAI_API_KEY` or `CUSTOM_OPENAI_*` for the public selector.
