@@ -21,7 +21,6 @@ import os
 import base64
 import secrets
 import hashlib
-import hmac
 import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -30,6 +29,7 @@ from abc import ABC, abstractmethod
 
 # Import database operations
 from .supabase_db import save_file_record, FileType, USE_SUPABASE_DB
+from .signing import generate_url_signature, verify_url_signature
 
 
 # =============================================================================
@@ -47,9 +47,6 @@ FILE_TTL_HOURS = 72  # 3 days for generated files
 
 # Maximum file size (50 MB)
 MAX_FILE_SIZE = 50 * 1024 * 1024
-
-# Secret key for URL signing
-FILE_SECRET_KEY = os.environ.get("FILE_SECRET_KEY", secrets.token_hex(32))
 
 # Check storage mode
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
@@ -101,21 +98,6 @@ def generate_file_id(
         return f"{user_id}/{timestamp}_{random_part}_{thread_hash}_{safe_filename}"
 
     return f"{user_id}/{timestamp}_{random_part}_{safe_filename}"
-
-
-def generate_url_signature(file_id: str) -> str:
-    """Generate HMAC signature for file URL."""
-    return hmac.new(
-        FILE_SECRET_KEY.encode(),
-        file_id.encode(),
-        hashlib.sha256
-    ).hexdigest()[:16]
-
-
-def verify_url_signature(file_id: str, signature: str) -> bool:
-    """Verify HMAC signature for file URL."""
-    expected = generate_url_signature(file_id)
-    return hmac.compare_digest(expected, signature)
 
 
 def parse_file_timestamp(file_id: str) -> Optional[datetime]:

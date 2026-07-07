@@ -51,7 +51,6 @@ DATABASE_URL=postgresql://...
 SANDBOX_MODE=e2b
 E2B_API_KEY=your-e2b-api-key
 FILE_SECRET_KEY=replace-with-a-random-secret
-IMAGE_SECRET_KEY=replace-with-a-random-secret
 DEEPSEEK_API_KEY=your-model-key
 ```
 
@@ -225,7 +224,6 @@ Configure these in `backend/.env` or Railway:
 
 ```env
 FILE_SECRET_KEY=replace-with-a-random-secret
-IMAGE_SECRET_KEY=replace-with-a-random-secret
 FILE_USE_LOCAL_STORAGE=true
 IMAGE_USE_LOCAL_STORAGE=true
 ```
@@ -239,9 +237,9 @@ SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_KEY=your-service-role-key
 ```
 
-Do not leave `FILE_SECRET_KEY` or `IMAGE_SECRET_KEY` as the example `change-me` values in production.
+Do not leave `FILE_SECRET_KEY` as the example `change-me` value in production.
 
-**Signed download URLs are bearer tokens.** Generated-file and image downloads are gated by an HMAC signature over the file id (derived from `FILE_SECRET_KEY` / `IMAGE_SECRET_KEY`). Anyone who has the full URL — including the `?sig=...` portion — can download that specific file until the secret rotates. The signature prevents forging URLs for *other* files. Set stable, high-entropy values for `FILE_SECRET_KEY` / `IMAGE_SECRET_KEY` in production so signatures both survive restarts and resist guessing.
+**Signed download URLs are bearer tokens.** Generated-file and image downloads are gated by an HMAC signature over the file id derived from `FILE_SECRET_KEY`. Download URLs expire after 7 days by default. Anyone who has the full URL — including the `?sig=...` portion — can download that specific file until the URL expires or the secret rotates. The signature prevents forging URLs for *other* files. Set a stable, high-entropy `FILE_SECRET_KEY` in any multi-worker or production deployment; otherwise each worker generates its own random key and URLs fail to verify across workers. Rotate the key if a URL leaks.
 
 ## Search, Tools, and Observability
 

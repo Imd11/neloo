@@ -16,14 +16,14 @@ Features:
 import os
 import base64
 import secrets
-import hashlib
-import hmac
 import tempfile
 import asyncio
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 from abc import ABC, abstractmethod
+
+from .signing import generate_url_signature, verify_url_signature
 
 
 # =============================================================================
@@ -41,9 +41,6 @@ IMAGE_TTL_HOURS = 24
 
 # Maximum image size (5 MB)
 MAX_IMAGE_SIZE = 5 * 1024 * 1024
-
-# Secret key for URL signing (generate if not set)
-IMAGE_SECRET_KEY = os.environ.get("IMAGE_SECRET_KEY", secrets.token_hex(32))
 
 # Check storage mode
 # IMAGE_USE_LOCAL_STORAGE=true forces local storage even with Supabase configured
@@ -71,21 +68,6 @@ def generate_image_id(thread_id: Optional[str] = None) -> str:
     random_part = secrets.token_hex(3)  # 6 hex chars
     
     return f"chart_{date_part}_{random_part}"
-
-
-def generate_url_signature(image_id: str) -> str:
-    """Generate HMAC signature for image URL."""
-    return hmac.new(
-        IMAGE_SECRET_KEY.encode(),
-        image_id.encode(),
-        hashlib.sha256
-    ).hexdigest()[:16]
-
-
-def verify_url_signature(image_id: str, signature: str) -> bool:
-    """Verify HMAC signature for image URL."""
-    expected = generate_url_signature(image_id)
-    return hmac.compare_digest(expected, signature)
 
 
 def parse_image_timestamp(image_id: str) -> Optional[datetime]:
