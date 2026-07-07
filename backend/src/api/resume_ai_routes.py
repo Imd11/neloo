@@ -7,11 +7,12 @@ Uses DeepSeek API via backend proxy.
 
 import os
 import httpx
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request, Response
 from pydantic import BaseModel
 from typing import List, Optional
 
 from .auth import get_current_user
+from .ratelimit import limiter
 
 router = APIRouter(prefix="/api/resume", tags=["resume-ai"])
 
@@ -80,7 +81,13 @@ Response rules:
 
 
 @router.post("/optimize")
-async def optimize_resume(request: OptimizeRequest, user: dict = Depends(get_current_user)) -> OptimizeResponse:
+@limiter.limit("30/minute")
+async def optimize_resume(
+    request: Request,
+    response: Response,
+    payload: OptimizeRequest,
+    user: dict = Depends(get_current_user),
+) -> OptimizeResponse:
     """
     AI-powered resume optimization endpoint.
     
@@ -95,9 +102,9 @@ async def optimize_resume(request: OptimizeRequest, user: dict = Depends(get_cur
         )
     
     # Build messages with system prompt
-    system_prompt = request.system_prompt or RESUME_SYSTEM_PROMPT
+    system_prompt = payload.system_prompt or RESUME_SYSTEM_PROMPT
     messages = [{"role": "system", "content": system_prompt}]
-    messages.extend([{"role": m.role, "content": m.content} for m in request.messages])
+    messages.extend([{"role": m.role, "content": m.content} for m in payload.messages])
     
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:

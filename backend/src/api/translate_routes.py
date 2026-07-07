@@ -2,11 +2,12 @@
 
 import asyncio
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel
 
 from .auth import get_current_user
+from .ratelimit import limiter
 from ..agent.graph import get_model
 
 translate_router = APIRouter(prefix="/api", tags=["translate"])
@@ -52,14 +53,20 @@ Preserve tone, meaning, punctuation, emoji, and inline formatting. Return only t
 
 
 @translate_router.post("/translate", response_model=TranslateResponse)
-async def translate(request: TranslateRequest, user: dict = Depends(get_current_user)):
+@limiter.limit("30/minute")
+async def translate(
+    request: Request,
+    response: Response,
+    payload: TranslateRequest,
+    user: dict = Depends(get_current_user),
+):
     """Translate text with the currently selected model."""
 
-    if not request.text.strip():
+    if not payload.text.strip():
         raise HTTPException(status_code=400, detail="Text cannot be empty")
 
     try:
-        model = get_model(request.model_id or "deepseek")
+        model = get_model(payload.model_id or "deepseek")
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Selected model is not configured: {exc}") from exc
 
@@ -67,8 +74,8 @@ async def translate(request: TranslateRequest, user: dict = Depends(get_current_
         response = await asyncio.wait_for(
             model.ainvoke(
                 [
-                    SystemMessage(content=_build_system_prompt(request)),
-                    HumanMessage(content=request.text),
+                    SystemMessage(content=_build_system_prompt(payload)),
+                    HumanMessage(content=payload.text),
                 ]
             ),
             timeout=60,

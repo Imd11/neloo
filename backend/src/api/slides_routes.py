@@ -7,11 +7,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
 from .auth import get_current_user
+from .ratelimit import limiter
 from ..agent.graph import get_model
 from ..storage.supabase_db import USE_SUPABASE_DB, get_supabase_client
 
@@ -85,17 +86,23 @@ async def _save_presentation(record: PresentationRecord) -> PresentationRecord:
 
 
 @slides_router.post("/generate", response_model=SlidesLLMResponse)
-async def generate_slides_text(request: SlidesLLMRequest, user: dict = Depends(get_current_user)):
+@limiter.limit("30/minute")
+async def generate_slides_text(
+    request: Request,
+    response: Response,
+    payload: SlidesLLMRequest,
+    user: dict = Depends(get_current_user),
+):
     try:
-        model = get_model(request.model_id or "deepseek")
+        model = get_model(payload.model_id or "deepseek")
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Selected model is not configured: {exc}") from exc
 
     try:
         response = await asyncio.wait_for(
             model.ainvoke([
-                SystemMessage(content=request.system),
-                HumanMessage(content=request.prompt),
+                SystemMessage(content=payload.system),
+                HumanMessage(content=payload.prompt),
             ]),
             timeout=90,
         )

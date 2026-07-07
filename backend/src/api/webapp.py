@@ -29,6 +29,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, RedirectResponse
 from starlette.responses import StreamingResponse
 from pydantic import BaseModel
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 # Import authentication
 from .auth import (
@@ -40,6 +42,7 @@ from .auth import (
     allow_anonymous,
     get_user_id as auth_get_user_id,
 )
+from .ratelimit import limiter
 from ..runtime_context import user_id_ctx, thread_id_ctx
 from ..model_ids import public_model_id
 from ..hidden_prompt_sanitization import sanitize_hidden_prompt_message_data
@@ -375,6 +378,8 @@ app = FastAPI(
     description="File upload API for the Data Analyst Agent",
     version="1.0.0",
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 if allow_anonymous():
     print(
