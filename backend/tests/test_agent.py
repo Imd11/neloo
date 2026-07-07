@@ -16,12 +16,6 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
-load_dotenv(override=True)
-
-
-def _require_agent_integration_tests():
-    if os.environ.get("RUN_AGENT_INTEGRATION_TESTS", "").lower() != "true":
-        pytest.skip("requires RUN_AGENT_INTEGRATION_TESTS=true")
 
 
 def test_sandbox_execution():
@@ -29,8 +23,6 @@ def test_sandbox_execution():
     print("\n" + "=" * 60)
     print("[TEST 1] Sandbox Code Execution")
     print("=" * 60)
-
-    _require_agent_integration_tests()
 
     sandbox_mode = os.environ.get("SANDBOX_MODE", "e2b").lower()
     if sandbox_mode.startswith("e2b") and not os.environ.get("E2B_API_KEY"):
@@ -42,14 +34,21 @@ def test_sandbox_execution():
 
     from src.sandbox import execute_python
 
+    test_user_id = "test-agent-user"
+    test_thread_id = "test-agent-thread"
+
     # Test 1: Basic computation
     print("\n[1.1] Basic computation...")
-    result = execute_python("""
+    result = execute_python(
+        """
 import numpy as np
 x = np.array([1, 2, 3, 4, 5])
 print(f"Mean: {np.mean(x)}")
 print(f"Std: {np.std(x):.4f}")
-""")
+""",
+        user_id=test_user_id,
+        thread_id=test_thread_id,
+    )
 
     print(f"Success: {result['success']}")
     if result['success']:
@@ -59,7 +58,8 @@ print(f"Std: {np.std(x):.4f}")
 
     # Test 2: Pandas operations
     print("\n[1.2] Pandas operations...")
-    result = execute_python("""
+    result = execute_python(
+        """
 import pandas as pd
 import numpy as np
 
@@ -74,7 +74,10 @@ print("\\nCorrelation matrix:")
 print(df.corr())
 print("\\nDescriptive statistics:")
 print(df.describe())
-""")
+""",
+        user_id=test_user_id,
+        thread_id=test_thread_id,
+    )
 
     print(f"Success: {result['success']}")
     if result['success']:
@@ -84,7 +87,8 @@ print(df.describe())
 
     # Test 3: Regression with statsmodels
     print("\n[1.3] OLS Regression...")
-    result = execute_python("""
+    result = execute_python(
+        """
 import statsmodels.api as sm
 import numpy as np
 
@@ -97,7 +101,10 @@ X_const = sm.add_constant(X)
 model = sm.OLS(y, X_const).fit()
 
 print(model.summary())
-""")
+""",
+        user_id=test_user_id,
+        thread_id=test_thread_id,
+    )
 
     print(f"Success: {result['success']}")
     if result['success']:
@@ -113,8 +120,6 @@ def test_web_search():
     print("\n" + "=" * 60)
     print("[TEST 2] Web Search")
     print("=" * 60)
-
-    _require_agent_integration_tests()
 
     from src.tools.search import internet_search
 
@@ -139,28 +144,43 @@ def test_agent():
     print("[TEST 3] Full Agent Interaction")
     print("=" * 60)
 
-    _require_agent_integration_tests()
-
     # Check for API keys
+    def has_real_api_key(name: str) -> bool:
+        value = os.environ.get(name, "").strip()
+        return bool(value and not value.startswith("test-"))
+
     has_api_key = any([
-        os.environ.get("DEEPSEEK_API_KEY"),
-        os.environ.get("ANTHROPIC_API_KEY"),
-        os.environ.get("OPENAI_API_KEY"),
+        has_real_api_key("DEEPSEEK_API_KEY"),
+        has_real_api_key("ANTHROPIC_API_KEY"),
+        has_real_api_key("OPENAI_API_KEY"),
     ])
 
     if not has_api_key:
         pytest.skip("requires DEEPSEEK_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY")
 
-    from src.agent.graph import invoke
+    import asyncio
 
+    from langchain_core.messages import HumanMessage
+    from src.agent.graph import graph
+    from src.runtime_context import thread_id_ctx, user_id_ctx
+
+    query = "Calculate the mean and standard deviation of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] using Python"
     print("\nQuery: Calculate the mean and standard deviation of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]")
     print("-" * 60)
 
     try:
-        result = invoke(
-            "Calculate the mean and standard deviation of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] using Python",
-            thread_id="test-1"
-        )
+        user_token = user_id_ctx.set("test-agent-user")
+        thread_token = thread_id_ctx.set("test-1")
+        try:
+            result = asyncio.run(
+                graph.ainvoke(
+                    {"messages": [HumanMessage(content=query)]},
+                    config={"configurable": {"thread_id": "test-1"}},
+                )
+            )
+        finally:
+            thread_id_ctx.reset(thread_token)
+            user_id_ctx.reset(user_token)
 
         # Get the last AI message
         for msg in reversed(result["messages"]):
@@ -178,55 +198,9 @@ def test_agent():
 
 
 def main():
-    """Run all tests"""
-    print("\n" + "=" * 60)
-    print("Data Analyst Agent - Test Suite")
-    print("=" * 60)
-
-    # Show current configuration
-    print("\nConfiguration:")
-    print(f"  SANDBOX_MODE: {os.environ.get('SANDBOX_MODE', 'e2b (default)')}")
-    print(f"  DEEPSEEK_API_KEY: {'Set' if os.environ.get('DEEPSEEK_API_KEY') else 'Not set'}")
-    print(f"  ANTHROPIC_API_KEY: {'Set' if os.environ.get('ANTHROPIC_API_KEY') else 'Not set'}")
-    print(f"  OPENAI_API_KEY: {'Set' if os.environ.get('OPENAI_API_KEY') else 'Not set'}")
-    print(f"  E2B_API_KEY: {'Set' if os.environ.get('E2B_API_KEY') else 'Not set'}")
-    print(f"  TAVILY_API_KEY: {'Set' if os.environ.get('TAVILY_API_KEY') else 'Not set'}")
-
-    results = []
-
-    # Test 1: Sandbox
-    try:
-        results.append(("Sandbox Execution", test_sandbox_execution()))
-    except Exception as e:
-        print(f"\n[ERROR] Sandbox test failed: {e}")
-        results.append(("Sandbox Execution", False))
-
-    # Test 2: Web Search
-    try:
-        results.append(("Web Search", test_web_search()))
-    except Exception as e:
-        print(f"\n[ERROR] Web search test failed: {e}")
-        results.append(("Web Search", False))
-
-    # Test 3: Full Agent
-    try:
-        results.append(("Full Agent", test_agent()))
-    except Exception as e:
-        print(f"\n[ERROR] Agent test failed: {e}")
-        results.append(("Full Agent", False))
-
-    # Summary
-    print("\n" + "=" * 60)
-    print("Test Results Summary")
-    print("=" * 60)
-    for name, passed in results:
-        status = "PASS" if passed else "FAIL"
-        print(f"  {name}: [{status}]")
-
-    all_passed = all(r[1] for r in results)
-    print("\n" + ("All tests passed!" if all_passed else "Some tests failed."))
-
-    return 0 if all_passed else 1
+    """Run the agent integration tests through pytest."""
+    load_dotenv(override=True)
+    return pytest.main([__file__, "-v", "-s"])
 
 
 if __name__ == "__main__":
