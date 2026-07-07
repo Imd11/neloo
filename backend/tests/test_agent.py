@@ -10,6 +10,8 @@ This script tests the agent's core functionality:
 import os
 import sys
 
+import pytest
+
 # Add src to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -17,11 +19,26 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 
+def _require_agent_integration_tests():
+    if os.environ.get("RUN_AGENT_INTEGRATION_TESTS", "").lower() != "true":
+        pytest.skip("requires RUN_AGENT_INTEGRATION_TESTS=true")
+
+
 def test_sandbox_execution():
     """Test the sandbox executor"""
     print("\n" + "=" * 60)
     print("[TEST 1] Sandbox Code Execution")
     print("=" * 60)
+
+    _require_agent_integration_tests()
+
+    sandbox_mode = os.environ.get("SANDBOX_MODE", "e2b").lower()
+    if sandbox_mode.startswith("e2b") and not os.environ.get("E2B_API_KEY"):
+        pytest.skip("requires E2B_API_KEY")
+    if sandbox_mode == "local" and not (
+        os.environ.get("ALLOW_LOCAL_SANDBOX") or os.environ.get("ALLOW_ANONYMOUS")
+    ):
+        pytest.skip("requires ALLOW_LOCAL_SANDBOX")
 
     from src.sandbox import execute_python
 
@@ -88,7 +105,7 @@ print(model.summary())
     else:
         print(f"Error: {result['error']}")
 
-    return result['success']
+    assert result["success"]
 
 
 def test_web_search():
@@ -97,24 +114,23 @@ def test_web_search():
     print("[TEST 2] Web Search")
     print("=" * 60)
 
+    _require_agent_integration_tests()
+
     from src.tools.search import internet_search
 
     if not os.environ.get("TAVILY_API_KEY"):
-        print("[SKIP] TAVILY_API_KEY not set")
-        return True
+        pytest.skip("requires TAVILY_API_KEY")
 
     result = internet_search("Python statsmodels OLS regression tutorial", max_results=3)
 
     if "error" in result and result["error"]:
         print(f"Error: {result['error']}")
-        return False
+        assert not result["error"]
 
     print(f"Found {len(result.get('results', []))} results:")
     for i, item in enumerate(result.get("results", []), 1):
         print(f"\n{i}. {item.get('title', 'No title')}")
         print(f"   URL: {item.get('url', 'N/A')}")
-
-    return True
 
 
 def test_agent():
@@ -122,6 +138,8 @@ def test_agent():
     print("\n" + "=" * 60)
     print("[TEST 3] Full Agent Interaction")
     print("=" * 60)
+
+    _require_agent_integration_tests()
 
     # Check for API keys
     has_api_key = any([
@@ -131,8 +149,7 @@ def test_agent():
     ])
 
     if not has_api_key:
-        print("[SKIP] No LLM API key set (DEEPSEEK_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY)")
-        return True
+        pytest.skip("requires DEEPSEEK_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY")
 
     from src.agent.graph import invoke
 
@@ -153,13 +170,11 @@ def test_agent():
                     print(f"\nAI Response:\n{msg.content[:1500]}")
                     break
 
-        return True
-
     except Exception as e:
         print(f"Error: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        assert False, f"Agent invocation failed: {e}"
 
 
 def main():
