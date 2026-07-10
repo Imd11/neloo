@@ -128,7 +128,7 @@ cp frontend/.env.example frontend/.env.local
 | Backend | `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_ASSISTANT_ID` | Koneksi ke backend. |
 | Supabase | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Nilai publik; konfigurasikan RLS dengan benar. |
 | Google Drive | `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `NEXT_PUBLIC_GOOGLE_API_KEY` | Nilai publik; batasi origin dan referrer. |
-| Gambar | `NANOBANANA_IMAGE_API_KEY`, `NANOBANANA_IMAGE_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_IMAGE_MODEL` | `NANOBANANA_IMAGE_API_KEY` adalah server-side. |
+| Gambar | `GEMINI_IMAGE_API_KEY`, `GEMINI_IMAGE_MODEL`, `OPENAI_API_KEY`, `OPENAI_IMAGE_MODEL` | Nano Banana 2 memakai `gemini-3.1-flash-image` secara default; semuanya server-side. |
 
 ## Supabase
 

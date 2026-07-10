@@ -85,6 +85,7 @@ export const CHAT_MODEL_CONFIGS = [
 
 export const SERVER_ONLY_KEYS = [
   ...CHAT_MODEL_KEYS,
+  "GEMINI_IMAGE_API_KEY",
   "SUPABASE_SERVICE_KEY",
   "SUPABASE_JWT_SECRET",
   "DATABASE_URL",
@@ -294,10 +295,10 @@ export function analyzeEnvironment({ backend, frontend, profile = "local-minimal
       add(report, "warning", "partial-frontend-supabase", "Frontend Supabase usually needs both NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.", "frontend/.env.local");
     }
 
-    const hasNanoBananaKey = hasValue(frontendValues, "NANOBANANA_IMAGE_API_KEY");
-    const hasNanoBananaBaseUrl = hasValue(frontendValues, "NANOBANANA_IMAGE_BASE_URL");
-    if (hasNanoBananaKey !== hasNanoBananaBaseUrl) {
-      add(report, "warning", "partial-nanobanana-image-config", "Nano Banana image generation needs both NANOBANANA_IMAGE_API_KEY and NANOBANANA_IMAGE_BASE_URL.", "frontend/.env.local");
+    const hasGeminiImageKey = hasValue(frontendValues, "GEMINI_IMAGE_API_KEY")
+      || hasValue(frontendValues, "GEMINI_API_KEY");
+    if (hasValue(frontendValues, "GEMINI_IMAGE_MODEL") && !hasGeminiImageKey) {
+      add(report, "warning", "partial-gemini-image-config", "Nano Banana 2 needs GEMINI_IMAGE_API_KEY or GEMINI_API_KEY when GEMINI_IMAGE_MODEL is configured.", "frontend/.env.local");
     }
 
     if (hasValue(frontendValues, "OPENAI_IMAGE_MODEL") && !hasValue(frontendValues, "OPENAI_API_KEY")) {

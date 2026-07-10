@@ -51,12 +51,13 @@ export function TopBar({ hideUserActions = false, currentModelId, onModelSelect,
                 const fetchedModels: ModelInfo[] = (data.models || []).map((model: {
                     id: string;
                     display_name: string;
+                    model_name?: string | null;
                     available: boolean;
                 }) => {
                     const localModel = CHAT_MODEL_BY_ID[model.id];
                     return {
                         id: model.id,
-                        name: model.display_name || localModel?.name || model.id,
+                        name: model.model_name || model.display_name || localModel?.name || model.id,
                         logo: localModel?.logo || "/logos/openai.png",
                         provider: localModel?.provider || "Model",
                         available: model.available,
@@ -92,8 +93,12 @@ export function TopBar({ hideUserActions = false, currentModelId, onModelSelect,
                 const availability = new Map<string, boolean>(
                     (data.models || []).map((model: { id: string; available: boolean }) => [model.id, model.available])
                 );
+                const modelNames = new Map<string, string>(
+                    (data.models || []).map((model: { id: string; model_name?: string }) => [model.id, model.model_name || ""])
+                );
                 const fetchedModels = IMAGE_MODELS.map((model) => ({
                     ...model,
+                    name: modelNames.get(model.id) || model.name,
                     available: availability.get(model.id) ?? false,
                 }));
 
@@ -113,7 +118,8 @@ export function TopBar({ hideUserActions = false, currentModelId, onModelSelect,
     }, [isImagePage]);
 
     // Select model list based on current page
-    const models = isImagePage ? imageModels : (backendModels.length > 0 ? backendModels : CHAT_MODELS);
+    const fallbackChatModels = CHAT_MODELS.map((model) => ({ ...model, available: false }));
+    const models = isImagePage ? imageModels : (backendModels.length > 0 ? backendModels : fallbackChatModels);
 
     // Derived state from props or default
     const currentModel = models.find(m => m.id === currentModelId) || models[0];

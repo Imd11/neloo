@@ -1,9 +1,56 @@
 import { resolveImageProvider } from "./image-generator";
+import {
+    buildGeminiImageEditRequest,
+    type GeminiImageInput,
+    type ImageSize,
+    type ResolutionTier,
+} from "./image-provider";
 
 interface EditImageOptions {
     model?: string;
     resolution?: string;
     size?: string;
+}
+
+function parseDataUrl(value: string): GeminiImageInput | null {
+    const match = value.match(/^data:([^;]+);base64,(.+)$/);
+    if (!match) return null;
+    return {
+        type: "image",
+        mime_type: match[1],
+        data: match[2],
+    };
+}
+
+async function toGeminiImageInput(value: string): Promise<GeminiImageInput> {
+    const inlineImage = parseDataUrl(value);
+    if (inlineImage) return inlineImage;
+
+    const response = await fetch(value);
+    if (!response.ok) {
+        throw new Error(`Unable to fetch image for editing: ${response.status}`);
+    }
+
+    const mimeType = response.headers.get("content-type")?.split(";")[0] || "image/png";
+    const data = Buffer.from(await response.arrayBuffer()).toString("base64");
+    return { type: "image", mime_type: mimeType, data };
+}
+
+function extractGeminiImages(raw: any): string[] {
+    const outputImage = raw?.output_image;
+    if (typeof outputImage?.data === "string") {
+        return [`data:${outputImage.mime_type || "image/png"};base64,${outputImage.data}`];
+    }
+
+    const images: string[] = [];
+    for (const step of raw?.steps || []) {
+        for (const content of step?.content || []) {
+            if (content?.type === "image" && typeof content?.data === "string") {
+                images.push(`data:${content.mime_type || "image/png"};base64,${content.data}`);
+            }
+        }
+    }
+    return images;
 }
 
 /**
@@ -44,6 +91,41 @@ Important constraints:
 4. The edit must blend naturally into the original image.`;
 
     try {
+        if (provider.provider === "gemini") {
+            const [originalImage, markedImage] = await Promise.all([
+                toGeminiImageInput(originalImageUrl),
+                toGeminiImageInput(markedImageDataUrl),
+            ]);
+            const resolution = (["1k", "2k", "4k"] as const).includes(options.resolution as ResolutionTier)
+                ? options.resolution as ResolutionTier
+                : "1k";
+            const response = await fetch(`${provider.baseUrl}/interactions`, {
+                method: "POST",
+                headers: {
+                    "x-goog-api-key": provider.apiKey,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(buildGeminiImageEditRequest(
+                    userPrompt,
+                    [originalImage, markedImage],
+                    resolution,
+                    options.size as ImageSize | undefined,
+                    provider.model
+                )),
+            });
+
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(`Gemini image edit failed: ${response.status} ${text}`);
+            }
+
+            const images = extractGeminiImages(await response.json());
+            if (!images.length) {
+                throw new Error("No image returned from Gemini");
+            }
+            return images;
+        }
+
         console.log("[AI Edit] Sending two-image request to", provider.baseUrl);
         console.log("[AI Edit] Original image URL:", originalImageUrl.substring(0, 100) + "...");
         console.log("[AI Edit] Marked image Data URL length:", markedImageDataUrl.length);

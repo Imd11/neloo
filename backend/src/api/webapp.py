@@ -1490,6 +1490,7 @@ class ModelInfo(BaseModel):
     """Model information for frontend display."""
     id: str
     display_name: str
+    model_name: str | None = None
     available: bool
 
 
@@ -2556,34 +2557,9 @@ async def _generate_title_with_llm(user_message: str) -> str:
     Falls back to truncating the message if LLM fails.
     """
     try:
-        from langchain.chat_models import init_chat_model
+        from ..agent.graph import get_model
 
-        # Use a fast, cheap model for title generation
-        if os.environ.get("DEEPSEEK_API_KEY"):
-            model = init_chat_model(
-                "deepseek-chat",
-                model_provider="deepseek",
-                api_key=os.environ.get("DEEPSEEK_API_KEY"),
-                timeout=30,
-            )
-        elif os.environ.get("ANTHROPIC_API_KEY"):
-            model = init_chat_model(
-                "claude-3-5-haiku-latest",
-                model_provider="anthropic",
-                api_key=os.environ.get("ANTHROPIC_API_KEY"),
-                base_url=os.environ.get("ANTHROPIC_BASE_URL"),
-                timeout=30,
-            )
-        elif os.environ.get("OPENAI_API_KEY"):
-            model = init_chat_model(
-                "gpt-4o-mini",
-                model_provider="openai",
-                api_key=os.environ.get("OPENAI_API_KEY"),
-                timeout=30,
-            )
-        else:
-            # No LLM available, fallback to truncation
-            return _truncate_message(user_message)
+        model = get_model()
 
         # Generate title
         from langchain_core.messages import SystemMessage, HumanMessage
@@ -2714,34 +2690,10 @@ async def _generate_suggested_questions(ai_response: str, context: str = "") -> 
     Returns a list of 3 questions, or empty list on failure.
     """
     try:
-        from langchain.chat_models import init_chat_model
         from langchain_core.messages import SystemMessage, HumanMessage
+        from ..agent.graph import get_model
 
-        # Use a fast, cheap model
-        if os.environ.get("DEEPSEEK_API_KEY"):
-            model = init_chat_model(
-                "deepseek-chat",
-                model_provider="deepseek",
-                api_key=os.environ.get("DEEPSEEK_API_KEY"),
-                timeout=30,
-            )
-        elif os.environ.get("ANTHROPIC_API_KEY"):
-            model = init_chat_model(
-                "claude-3-5-haiku-latest",
-                model_provider="anthropic",
-                api_key=os.environ.get("ANTHROPIC_API_KEY"),
-                base_url=os.environ.get("ANTHROPIC_BASE_URL"),
-                timeout=30,
-            )
-        elif os.environ.get("OPENAI_API_KEY"):
-            model = init_chat_model(
-                "gpt-4o-mini",
-                model_provider="openai",
-                api_key=os.environ.get("OPENAI_API_KEY"),
-                timeout=30,
-            )
-        else:
-            return []
+        model = get_model()
 
         # Truncate context if too long
         max_context = 2000

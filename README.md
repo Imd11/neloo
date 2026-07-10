@@ -174,7 +174,7 @@ cp frontend/.env.example frontend/.env.local
 | --- | --- | --- |
 | Server | `PORT`, `API_BASE_URL`, `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS` | Required for deployment URLs and browser access. |
 | LangGraph | `LANGGRAPH_API_URL`, `LANGGRAPH_INTERNAL_URL`, `LANGGRAPH_DEFAULT_GRAPH_ID` | Default graph ID is currently `data_analyst`. |
-| Model providers | `DEEPSEEK_API_KEY`, `QWEN_API_KEY`, `MINIMAX_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `ZHIPU_API_KEY`, `OPENROUTER_API_KEY`, `CUSTOM_OPENAI_API_KEY`, `CUSTOM_ANTHROPIC_API_KEY` | Configure one or more. The selector labels concrete default models such as DeepSeek V4 Pro, Claude Opus 4.8, GPT-5.5, and Llama 4 Maverick. |
+| Model providers | `DEEPSEEK_API_KEY`, `QWEN_API_KEY`, `MINIMAX_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `ZHIPU_API_KEY`, `OPENROUTER_API_KEY`, `CUSTOM_OPENAI_API_KEY`, `CUSTOM_ANTHROPIC_API_KEY` | Configure one or more. The selector labels current defaults such as DeepSeek V4 Pro, Claude Opus 4.8, GPT-5.5, Gemini 3.1 Pro Preview, and GLM-5.2. OpenRouter shows the exact model you configure. |
 | Model names and base URLs | `*_MODEL`, `*_BASE_URL` variables such as `DEEPSEEK_MODEL`, `QWEN_MODEL`, `QWEN_BASE_URL`, `OPENAI_MODEL`, `GEMINI_BASE_URL`, `CUSTOM_OPENAI_MODEL` | Use these to choose the exact model and endpoint. Empty values and obvious placeholders are treated as unconfigured. |
 | Sandbox | `SANDBOX_MODE`, `E2B_API_KEY`, `ALLOW_LOCAL_SANDBOX` | `local` (trusted local dev only, needs `ALLOW_LOCAL_SANDBOX=true`) or `e2b` (recommended for shared/production). `docker` is planned, not implemented. |
 | Supabase | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_JWT_SECRET`, `SUPABASE_DB_HOST`, `SUPABASE_DB_PASSWORD` | Service role keys are server-only secrets. Durable chat history, share links, fork/regenerate history, and DB spot checks require a reachable Supabase project plus service role key. |
@@ -193,7 +193,7 @@ For providers with a required base URL or custom model variable, the API key alo
 | LangSmith client | `NEXT_PUBLIC_LANGSMITH_API_KEY` | Optional for deployed LangGraph clients. |
 | Google Drive Picker | `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `NEXT_PUBLIC_GOOGLE_API_KEY` | Public browser values. Restrict by authorized origins and HTTP referrers. |
 | Slides and translation | Backend model provider variables such as `DEEPSEEK_API_KEY`, `OPENAI_API_KEY`, `QWEN_API_KEY`, and their required base URLs | Slides, Prompt Optimize, Humanize, Fortune, and Translate use the selected server-side chat model. |
-| Image API proxy | `NANOBANANA_IMAGE_API_KEY`, `NANOBANANA_IMAGE_BASE_URL`, `NANOBANANA_IMAGE_MODEL`, `OPENAI_API_KEY`, `OPENAI_IMAGE_MODEL` | Server-side only for Next.js API routes. Do not prefix provider secrets with `NEXT_PUBLIC_`. |
+| Image API proxy | `GEMINI_IMAGE_API_KEY`, `GEMINI_IMAGE_MODEL`, `OPENAI_API_KEY`, `OPENAI_IMAGE_MODEL` | Server-side only for Next.js API routes. Nano Banana 2 defaults to `gemini-3.1-flash-image`; GPT Image defaults to `gpt-image-2`. Do not prefix provider secrets with `NEXT_PUBLIC_`. |
 
 ## Supabase Setup
 

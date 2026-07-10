@@ -133,8 +133,10 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-google-client-id
 NEXT_PUBLIC_GOOGLE_API_KEY=your-google-browser-key
-NEXT_PUBLIC_IMAGE_API_URL=https://api.tu-zi.com
-NANOBANANA_IMAGE_API_KEY=your-server-side-image-key
+GEMINI_IMAGE_API_KEY=your-google-ai-studio-key
+GEMINI_IMAGE_MODEL=gemini-3.1-flash-image
+OPENAI_API_KEY=your-openai-key
+OPENAI_IMAGE_MODEL=gpt-image-2
 ```
 
 Do not place unrestricted provider keys in `NEXT_PUBLIC_*` variables for production. Values with the `NEXT_PUBLIC_` prefix are bundled into browser JavaScript.

@@ -46,7 +46,7 @@ class ResumeParser:
         self,
         api_key: Optional[str] = None,
         api_base: str = "https://api.deepseek.com/v1",
-        model: str = "deepseek-chat",
+        model: str = "deepseek-v4-pro",
         use_layout_detection: bool = True
     ):
         """

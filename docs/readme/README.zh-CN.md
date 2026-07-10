@@ -129,7 +129,7 @@ cp frontend/.env.example frontend/.env.local
 | 后端连接 | `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_ASSISTANT_ID` | 指向 LangGraph/FastAPI 后端。 |
 | Supabase 浏览器端 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | 公开值，但仍要正确配置 RLS 策略。 |
 | Google Drive | `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `NEXT_PUBLIC_GOOGLE_API_KEY` | 公开值，要限制来源域名和 OAuth origins。 |
-| 图片 API | `NANOBANANA_IMAGE_API_KEY`, `NANOBANANA_IMAGE_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_IMAGE_MODEL` | `NANOBANANA_IMAGE_API_KEY` 是 Next.js API route 的服务端变量。 |
+| 图片 API | `GEMINI_IMAGE_API_KEY`, `GEMINI_IMAGE_MODEL`, `OPENAI_API_KEY`, `OPENAI_IMAGE_MODEL` | Nano Banana 2 默认使用 `gemini-3.1-flash-image`；这些都是 Next.js API route 的服务端变量。 |
 
 ## Supabase 配置
 

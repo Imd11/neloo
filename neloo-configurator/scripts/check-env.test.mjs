@@ -205,6 +205,26 @@ test("public-prefixed server-only secrets still fail", () => {
   assert.equal(hasCode(report, "server-secret-in-frontend"), true);
 });
 
+test("analyzeEnvironment warns when Gemini image model has no server key", () => {
+  const report = reportFor(
+    { DEEPSEEK_API_KEY: "backend-key" },
+    { GEMINI_IMAGE_MODEL: "gemini-3.1-flash-image" }
+  );
+
+  assert.equal(report.ok, true);
+  assert.equal(hasCode(report, "partial-gemini-image-config"), true);
+});
+
+test("analyzeEnvironment rejects a public Gemini image key", () => {
+  const report = reportFor(
+    { DEEPSEEK_API_KEY: "backend-key" },
+    { NEXT_PUBLIC_GEMINI_IMAGE_API_KEY: "browser-key" }
+  );
+
+  assert.equal(report.ok, false);
+  assert.equal(hasCode(report, "server-secret-in-frontend"), true);
+});
+
 test("analyzeEnvironment passes local minimal config with warnings only", () => {
   const report = analyzeEnvironment({
     backend: {

@@ -68,7 +68,7 @@ NEXT_PUBLIC_ASSISTANT_ID=data_analyst
 | `backend/.env` | Local backend | Server URLs, model keys, model base URLs, optional Supabase service key, optional database URL, storage secrets, Tavily, Composio, LangSmith |
 | `frontend/.env.local` | Local frontend | Public backend URL, public Supabase anon key, Google browser keys, client-side image/slides keys |
 | Railway service variables | Production backend | Same values as `backend/.env` |
-| Vercel project variables | Production frontend and Next.js API routes | Same values as `frontend/.env.local`, plus server-side Next.js variables such as `NANOBANANA_IMAGE_API_KEY` |
+| Vercel project variables | Production frontend and Next.js API routes | Same values as `frontend/.env.local`, plus server-side Next.js variables such as `GEMINI_IMAGE_API_KEY` |
 
 ## Backend Service Variables
 
@@ -109,20 +109,20 @@ A complete backend chat model provider configuration means the backend can build
 
 | UI model | Key variable | Base URL variable | Model variable | Notes |
 | --- | --- | --- | --- | --- |
-| DeepSeek V4 Pro | `DEEPSEEK_API_KEY` | None | `DEEPSEEK_MODEL` | Default: `deepseek-chat` (override with your gateway's model if needed). |
-| Qwen3 Max | `QWEN_API_KEY` | `QWEN_BASE_URL` | `QWEN_MODEL` | `QWEN_BASE_URL` must be set, commonly `https://dashscope.aliyuncs.com/compatible-mode/v1`; default model: `qwen3-max`. |
-| MiniMax M2.1 | `MINIMAX_API_KEY` | `MINIMAX_ANTHROPIC_BASE_URL` | `MINIMAX_MODEL` | Requires `MINIMAX_ANTHROPIC_BASE_URL` for an Anthropic-compatible MiniMax endpoint. |
+| DeepSeek V4 Pro | `DEEPSEEK_API_KEY` | None | `DEEPSEEK_MODEL` | Default: `deepseek-v4-pro`. |
+| Qwen3.7 Max | `QWEN_API_KEY` | `QWEN_BASE_URL` | `QWEN_MODEL` | `QWEN_BASE_URL` must be set, commonly `https://dashscope.aliyuncs.com/compatible-mode/v1`; default model: `qwen3.7-max`. |
+| MiniMax M2.7 | `MINIMAX_API_KEY` | `MINIMAX_ANTHROPIC_BASE_URL` | `MINIMAX_MODEL` | Requires an Anthropic-compatible endpoint, commonly `https://api.minimax.io/anthropic`; default model: `MiniMax-M2.7`. |
 | Claude Opus 4.8 | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` | `ANTHROPIC_MODEL` | Native Anthropic. `NEWAPI_API_KEY` + `NEWAPI_ANTHROPIC_BASE_URL` remains available for custom deployments. |
 | GPT-5.5 | `OPENAI_API_KEY` | `OPENAI_BASE_URL` | `OPENAI_MODEL` | `OPENAI_BASE_URL` is optional for native OpenAI. |
-| Gemini 3 Pro | `GEMINI_API_KEY` | `GEMINI_BASE_URL` | `GEMINI_MODEL` | `GEMINI_BASE_URL` is required for OpenAI-compatible Gemini routing. |
-| GLM-4.7 | `ZHIPU_API_KEY` | `ZHIPU_BASE_URL` | `ZHIPU_MODEL` | Requires `ZHIPU_BASE_URL` for a Zhipu OpenAI-compatible endpoint. |
-| Llama 4 Maverick | `OPENROUTER_API_KEY` | `OPENROUTER_BASE_URL` | `OPENROUTER_MODEL` | Meta Llama through OpenRouter. `OPENROUTER_BASE_URL` must be set, commonly `https://openrouter.ai/api/v1`; default model: `meta-llama/llama-4-maverick`. |
+| Gemini 3.1 Pro Preview | `GEMINI_API_KEY` | `GEMINI_BASE_URL` | `GEMINI_MODEL` | Uses Google's OpenAI-compatible endpoint by default: `https://generativelanguage.googleapis.com/v1beta/openai/`; default model: `gemini-3.1-pro-preview`. |
+| GLM-5.2 | `ZHIPU_API_KEY` | `ZHIPU_BASE_URL` | `ZHIPU_MODEL` | Uses Z.AI's OpenAI-compatible endpoint, commonly `https://api.z.ai/api/paas/v4`; default model: `GLM-5.2`. |
+| OpenRouter | `OPENROUTER_API_KEY` | `OPENROUTER_BASE_URL` | `OPENROUTER_MODEL` | A multi-provider route. `OPENROUTER_BASE_URL` must be set, commonly `https://openrouter.ai/api/v1`; default is `meta-llama/llama-4-maverick`, but you can set any available OpenRouter model such as `z-ai/glm-5.2`. |
 | Custom OpenAI-compatible | `CUSTOM_OPENAI_API_KEY` | `CUSTOM_OPENAI_BASE_URL` | `CUSTOM_OPENAI_MODEL` | Both base URL and model are required for self-hosted or third-party OpenAI-compatible gateways. |
 | Custom Anthropic-compatible | `CUSTOM_ANTHROPIC_API_KEY` | `CUSTOM_ANTHROPIC_BASE_URL` | `CUSTOM_ANTHROPIC_MODEL` | Both base URL and model are required for self-hosted or third-party Anthropic-compatible gateways. |
 
-**Gemini routing:** This release routes Gemini through an OpenAI-compatible endpoint (`GEMINI_BASE_URL` + `GEMINI_API_KEY`), which works with both Google AI Studio's OpenAI-compat surface and gateways. Native `langchain-google-genai` support is tracked as future work; for now set `GEMINI_BASE_URL` to your provider's OpenAI-compatible endpoint.
+**Gemini routing:** Neloo uses Google's OpenAI-compatible endpoint (`GEMINI_BASE_URL` + `GEMINI_API_KEY`) by default. You can override the base URL for a compatible gateway when needed.
 
-Old graph IDs such as `deepseek-chat`, `qwen3-max`, `gpt-5-thinking`, and `claude-opus-right` are hidden from the selector but kept so existing LangGraph graph IDs and older stored thread values do not crash. The thread API normalizes old stored `model_id` values to the canonical public ID for display and future updates. If you need a different exact model choice, set the canonical provider's model variable, for example `DEEPSEEK_MODEL=deepseek-v4-flash`, `QWEN_MODEL=qwen-plus`, or `OPENAI_MODEL=gpt-5.5`.
+Old graph IDs such as `deepseek-chat`, `qwen3-max`, `gpt-5-thinking`, and `claude-opus-right` are hidden from the selector but kept so existing LangGraph graph IDs and older stored thread values do not crash. Neloo normalizes them to the canonical provider and uses that provider's current `*_MODEL` value. To choose an exact model, set the canonical provider's model variable, for example `DEEPSEEK_MODEL=deepseek-v4-flash`, `QWEN_MODEL=qwen3.7-max`, or `OPENROUTER_MODEL=z-ai/glm-5.2`.
 
 `NEWAPI_BASE_URL` remains a legacy compatibility variable for old direct graph IDs. It does not make the canonical `OpenAI` selector entry available by itself; use `OPENAI_API_KEY` or `CUSTOM_OPENAI_*` for the public selector.
 
@@ -138,9 +138,8 @@ The image page calls Next.js API routes that use a server-side key:
 
 | Variable | Location | Purpose |
 | --- | --- | --- |
-| `NANOBANANA_IMAGE_API_KEY` | `frontend/.env.local` or Vercel | Server-side Nano Banana key used by `frontend/src/app/api/generate-image/route.ts` and `frontend/src/app/api/edit/route.ts`. |
-| `NANOBANANA_IMAGE_BASE_URL` | `frontend/.env.local` or Vercel | Server-side Nano Banana OpenAI-compatible base URL. |
-| `NANOBANANA_IMAGE_MODEL` | `frontend/.env.local` or Vercel | Optional image model override. Defaults to `nano-banana`. |
+| `GEMINI_IMAGE_API_KEY` | `frontend/.env.local` or Vercel | Server-side Google AI Studio key for Nano Banana 2. `GEMINI_API_KEY` can be reused when appropriate. |
+| `GEMINI_IMAGE_MODEL` | `frontend/.env.local` or Vercel | Optional Nano Banana 2 override. Defaults to `gemini-3.1-flash-image`. |
 | `OPENAI_API_KEY` | `frontend/.env.local` or Vercel | Server-side OpenAI key for GPT Image 2. |
 | `OPENAI_IMAGE_MODEL` | `frontend/.env.local` or Vercel | Optional OpenAI image model override. Defaults to `gpt-image-2`. |
 

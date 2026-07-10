@@ -2,12 +2,12 @@
 Resume AI API Routes
 
 Provides endpoints for AI-powered resume optimization.
-Uses DeepSeek API via backend proxy.
+Uses the configured Neloo chat model through the backend registry.
 """
 
-import os
-import httpx
+import asyncio
 from fastapi import APIRouter, HTTPException, Depends, Request, Response
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from pydantic import BaseModel
 from typing import List, Optional
 
@@ -16,9 +16,11 @@ from .ratelimit import limiter
 
 router = APIRouter(prefix="/api/resume", tags=["resume-ai"])
 
-# DeepSeek API configuration
-DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
-DEEPSEEK_MODEL = "deepseek-chat"
+def get_model():
+    """Load the configured default chat model only when resume AI needs it."""
+    from ..agent.graph import get_model as get_configured_model
+
+    return get_configured_model()
 
 
 class ChatMessage(BaseModel):
@@ -90,54 +92,29 @@ async def optimize_resume(
 ) -> OptimizeResponse:
     """
     AI-powered resume optimization endpoint.
-    
-    Proxies requests to DeepSeek API using backend API key.
+
+    Runs resume optimization with the configured default chat model.
     """
-    api_key = os.environ.get("DEEPSEEK_API_KEY")
-    
-    if not api_key:
-        raise HTTPException(
-            status_code=500, 
-            detail="DeepSeek API key not configured on server"
-        )
-    
-    # Build messages with system prompt
-    system_prompt = payload.system_prompt or RESUME_SYSTEM_PROMPT
-    messages = [{"role": "system", "content": system_prompt}]
-    messages.extend([{"role": m.role, "content": m.content} for m in payload.messages])
-    
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(
-                DEEPSEEK_API_URL,
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": DEEPSEEK_MODEL,
-                    "messages": messages,
-                    "stream": False,
-                    "temperature": 0.7,
-                    "max_tokens": 2000
-                }
+        model = get_model()
+        system_prompt = payload.system_prompt or RESUME_SYSTEM_PROMPT
+        messages = [SystemMessage(content=system_prompt)]
+        for message in payload.messages:
+            if message.role == "assistant":
+                messages.append(AIMessage(content=message.content))
+            elif message.role == "system":
+                messages.append(SystemMessage(content=message.content))
+            else:
+                messages.append(HumanMessage(content=message.content))
+        model_response = await asyncio.wait_for(model.ainvoke(messages), timeout=60)
+        content = getattr(model_response, "content", "")
+        if isinstance(content, list):
+            content = "".join(
+                part.get("text", "") if isinstance(part, dict) else str(part)
+                for part in content
             )
-            
-            if response.status_code != 200:
-                error_text = response.text
-                print(f"❌ DeepSeek API error: {response.status_code} - {error_text}")
-                raise HTTPException(
-                    status_code=response.status_code,
-                    detail=f"DeepSeek API error: {error_text}"
-                )
-            
-            data = response.json()
-            content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-            
-            return OptimizeResponse(content=content, success=True)
-            
-    except httpx.TimeoutException:
-        raise HTTPException(status_code=504, detail="DeepSeek API timeout")
+        return OptimizeResponse(content=str(content).strip(), success=True)
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="Resume optimization timed out")
     except Exception as e:
-        print(f"❌ Resume optimize error: {e}")
         raise HTTPException(status_code=500, detail=str(e))

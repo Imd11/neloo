@@ -53,7 +53,7 @@ interface ModelInfo {
 }
 
 const imageModels: ModelInfo[] = [
-    { name: "Nano Banana", logo: nanoBananaLogo, available: false, modelId: "nano-banana" },
+    { name: "Nano Banana 2", logo: nanoBananaLogo, available: false, modelId: "gemini" },
     { name: "GPT Image 2", logo: openaiLogo, available: false, modelId: "gpt-image-2" },
 ];
 
@@ -99,8 +99,12 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
                 const availability = new Map<string, boolean>(
                     (data.models || []).map((model: { id: string; available: boolean }) => [model.id, model.available])
                 );
+                const modelNames = new Map<string, string>(
+                    (data.models || []).map((model: { id: string; model_name?: string }) => [model.id, model.model_name || ""])
+                );
                 const nextModels = imageModels.map((model) => ({
                     ...model,
+                    name: modelNames.get(model.modelId || "") || model.name,
                     available: availability.get(model.modelId || "") ?? false,
                 }));
 

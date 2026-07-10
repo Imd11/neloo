@@ -9,6 +9,7 @@ from typing import Optional, List
 from datetime import datetime, timezone
 from uuid import UUID
 from fastapi import APIRouter, HTTPException, Depends, Query
+from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 from supabase import create_client, Client
 
@@ -23,6 +24,53 @@ SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY")
 
 # Create router
 router = APIRouter(prefix="/api/agents", tags=["agents"])
+
+
+def get_model():
+    """Load the configured default chat model only when an AI route needs it."""
+    from ..agent.graph import get_model as get_configured_model
+
+    return get_configured_model()
+
+
+async def _generate_model_text(system_prompt: str, user_prompt: str) -> str:
+    model = get_model()
+    response = await model.ainvoke([
+        SystemMessage(content=system_prompt),
+        HumanMessage(content=user_prompt),
+    ])
+    content = getattr(response, "content", "")
+    if isinstance(content, list):
+        content = "".join(
+            part.get("text", "") if isinstance(part, dict) else str(part)
+            for part in content
+        )
+    return str(content).strip()
+
+
+def get_agent_icon_provider() -> dict[str, str] | None:
+    """Return the configured server-side image provider for agent icons."""
+    gemini_key = (
+        os.environ.get("GEMINI_IMAGE_API_KEY", "").strip()
+        or os.environ.get("GEMINI_API_KEY", "").strip()
+    )
+    if gemini_key:
+        return {
+            "provider": "gemini",
+            "api_key": gemini_key,
+            "model": os.environ.get("GEMINI_IMAGE_MODEL", "").strip() or "gemini-3.1-flash-image",
+        }
+
+    openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if openai_key:
+        return {
+            "provider": "openai",
+            "api_key": openai_key,
+            "base_url": os.environ.get("OPENAI_BASE_URL", "").strip().rstrip("/") or "https://api.openai.com",
+            "model": os.environ.get("OPENAI_IMAGE_MODEL", "").strip() or "gpt-image-2",
+        }
+
+    return None
 
 
 # =============================================================================
@@ -428,19 +476,12 @@ async def generate_prompt(
     user: dict = Depends(get_current_user),
 ) -> GeneratePromptResponse:
     """
-    Generate a system prompt using LLM (DeepSeek).
+    Generate a system prompt using the configured default chat model.
     
     - System Prompt = meta-prompt template with instructions for the LLM.
     - User Prompt = the user's requirements, including agent name, description, and tools.
     - LLM generates the final agent system prompt
     """
-    import httpx
-    
-    # Get DeepSeek API key
-    api_key = os.environ.get("DEEPSEEK_API_KEY", "")
-    if not api_key:
-        raise HTTPException(status_code=500, detail="DeepSeek API not configured")
-    
     # Tool descriptions for context
     tool_descriptions = {
         "search_web": "Search the web for current information.",
@@ -512,34 +553,12 @@ Generate a complete, customized, high-quality system prompt based on the provide
 Generate the complete system prompt based on the information above."""
 
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(
-                "https://api.deepseek.com/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "deepseek-chat",
-                    "messages": [
-                        {"role": "system", "content": meta_prompt_template},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    "temperature": 0.7,
-                    "max_tokens": 4096,
-                },
-            )
-            
-            if response.status_code != 200:
-                raise HTTPException(status_code=502, detail="Failed to generate prompt")
-            
-            result = response.json()
-            generated_prompt = result["choices"][0]["message"]["content"].strip()
-            
-            return GeneratePromptResponse(system_prompt=generated_prompt)
-            
-    except httpx.TimeoutException:
-        raise HTTPException(status_code=504, detail="Request timed out")
+        generated_prompt = await _generate_model_text(meta_prompt_template, user_prompt)
+        if not generated_prompt:
+            raise HTTPException(status_code=502, detail="Failed to generate prompt")
+        return GeneratePromptResponse(system_prompt=generated_prompt)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
 
@@ -569,16 +588,11 @@ async def generate_agent(
     """
     Generate both system prompt and icon in parallel.
     
-    - Uses DeepSeek for system prompt generation
+    - Uses the configured default chat model for system prompt generation
     - Uses the configured server-side image provider for icon generation
     """
     import httpx
     import asyncio
-    
-    deepseek_key = os.environ.get("DEEPSEEK_API_KEY", "")
-    
-    if not deepseek_key:
-        raise HTTPException(status_code=500, detail="DeepSeek API not configured")
     
     # Tool descriptions for context
     tool_descriptions = {
@@ -645,105 +659,83 @@ Requirements:
 - Square format, suitable as a 512x512 icon
 - Vibrant but not garish colors"""
 
-    async def generate_system_prompt(client: httpx.AsyncClient) -> str:
-        """Generate system prompt using DeepSeek."""
+    async def generate_system_prompt() -> str:
+        """Generate a system prompt with the configured default chat model."""
         try:
-            response = await client.post(
-                "https://api.deepseek.com/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {deepseek_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "deepseek-chat",
-                    "messages": [
-                        {"role": "system", "content": meta_prompt},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    "temperature": 0.7,
-                    "max_tokens": 4096,
-                },
-                timeout=60.0,
-            )
-            if response.status_code == 200:
-                result = response.json()
-                return result["choices"][0]["message"]["content"].strip()
-            return ""
+            return await _generate_model_text(meta_prompt, user_prompt)
         except Exception as e:
             print(f"Error generating prompt: {e}")
             return ""
 
     async def generate_icon(client: httpx.AsyncClient) -> str:
         """Generate icon using the configured server-side image provider."""
-        print(f"[Icon Generation] Starting icon generation...")
-        image_key = os.environ.get("NANOBANANA_IMAGE_API_KEY", "").strip()
-        image_base_url = os.environ.get("NANOBANANA_IMAGE_BASE_URL", "").strip().rstrip("/")
-        image_model = os.environ.get("NANOBANANA_IMAGE_MODEL", "nano-banana").strip()
-
-        if not image_key or not image_base_url:
-            image_key = os.environ.get("OPENAI_API_KEY", "").strip()
-            image_base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com").strip().rstrip("/")
-            image_model = os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-2").strip()
-
-        if not image_key or not image_base_url:
-            print("[Icon Generation] No server-side image provider configured.")
+        provider = get_agent_icon_provider()
+        if not provider:
             return ""
-        
+
         try:
+            if provider["provider"] == "gemini":
+                response = await client.post(
+                    "https://generativelanguage.googleapis.com/v1beta/interactions",
+                    headers={
+                        "x-goog-api-key": provider["api_key"],
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": provider["model"],
+                        "input": icon_prompt,
+                        "response_format": {
+                            "type": "image",
+                            "mime_type": "image/png",
+                            "aspect_ratio": "1:1",
+                            "image_size": "1K",
+                        },
+                    },
+                    timeout=120.0,
+                )
+                if response.status_code != 200:
+                    return ""
+                output_image = response.json().get("output_image", {})
+                image_data = output_image.get("data", "")
+                if not image_data:
+                    return ""
+                mime_type = output_image.get("mime_type", "image/png")
+                return f"data:{mime_type};base64,{image_data}"
+
             request_body = {
-                "model": image_model,
+                "model": provider["model"],
                 "prompt": icon_prompt,
                 "size": "1024x1024",
                 "n": 1,
-                "response_format": "b64_json"
+                "response_format": "b64_json",
             }
-            print(f"[Icon Generation] Request body: {request_body}")
-            
             response = await client.post(
-                f"{image_base_url}/v1/images/generations",
+                f"{provider['base_url']}/v1/images/generations",
                 headers={
-                    "Authorization": f"Bearer {image_key}",
+                    "Authorization": f"Bearer {provider['api_key']}",
                     "Content-Type": "application/json",
                 },
                 json=request_body,
                 timeout=120.0,
             )
-            
-            print(f"[Icon Generation] Response status: {response.status_code}")
-            
             if response.status_code == 200:
                 result = response.json()
-                print(f"[Icon Generation] Full response keys: {result.keys() if isinstance(result, dict) else 'not a dict'}")
-                
                 data = result.get("data", [])
                 if data and len(data) > 0:
                     b64_json = data[0].get("b64_json", "")
                     if b64_json:
-                        # Convert to data URL format
-                        image_url = f"data:image/png;base64,{b64_json}"
-                        print(f"[Icon Generation] Successfully got image, length: {len(b64_json)}")
-                        return image_url
-                    
-                    # Alternative: check for url field
+                        return f"data:image/png;base64,{b64_json}"
                     url = data[0].get("url", "")
                     if url:
-                        print(f"[Icon Generation] Got image URL: {url[:100]}...")
                         return url
-                
-                print(f"[Icon Generation] No valid image found in response: {result}")
-                return ""
-            else:
-                print(f"[Icon Generation] API error: {response.status_code} - {response.text}")
-                return ""
+            return ""
         except Exception as e:
             print(f"[Icon Generation] Exception: {e}")
-            import traceback
-            traceback.print_exc()
             return ""
 
     # Run both generations in parallel
     async with httpx.AsyncClient() as client:
-        prompt_task = generate_system_prompt(client)
+        prompt_task = generate_system_prompt()
         icon_task = generate_icon(client)
         
         system_prompt, icon_url = await asyncio.gather(prompt_task, icon_task)

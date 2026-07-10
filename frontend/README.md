@@ -39,7 +39,8 @@ Optional browser-facing integrations include Supabase anon access, Google Drive 
 Server-side Next.js API routes can also use non-public variables such as:
 
 ```env
-NANOBANANA_IMAGE_API_KEY=your-image-api-key
+GEMINI_IMAGE_API_KEY=your-google-ai-studio-key
+GEMINI_IMAGE_MODEL=gemini-3.1-flash-image
 ```
 
 For the complete variable matrix, see [`../docs/configuration.md`](../docs/configuration.md).

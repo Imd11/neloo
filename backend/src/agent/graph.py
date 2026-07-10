@@ -1039,25 +1039,17 @@ ENABLE_HITL = os.environ.get("ENABLE_HITL", "false").lower() == "true"
 # Model Selection
 # =============================================================================
 
-# Model context window sizes (adjusted for LangChain's token counting)
-#
-# IMPORTANT: LangChain uses 4 chars/token for non-Anthropic models, but DeepSeek
-# actually uses ~2.5 chars/token. This means LangChain UNDERESTIMATES token count.
-#
-# For DeepSeek (131K actual limit):
-#   - At 131K real tokens, LangChain thinks it's only ~82K tokens
-#   - We set max_input_tokens to 80K so trigger fires at 68K "LangChain tokens"
-#   - 68K * 4 chars = 272K chars, which is ~109K real DeepSeek tokens (safe!)
-#
+# Model context-window limits used by Deep Agents' fraction-based
+# SummarizationMiddleware. These values are provider model input-token limits.
 MODEL_PROFILES = {
-    "deepseek": {"max_input_tokens": 80000},      # Adjusted for LangChain's 4 chars/token counting
-    "anthropic": {"max_input_tokens": 180000},    # Claude: 200k context, leave buffer
-    "openai": {"max_input_tokens": 120000},       # GPT-4o: 128k context, leave buffer
-    "qwen": {"max_input_tokens": 120000},         # Qwen: 128k context, leave buffer
-    "minimax": {"max_input_tokens": 80000},       # MiniMax: estimate based on typical limits
-    "openrouter": {"max_input_tokens": 900000},   # Meta Llama via OpenRouter; keep a conservative high ceiling
-    "zhipu": {"max_input_tokens": 120000},        # GLM-4: 128k context, leave buffer
-    "google": {"max_input_tokens": 900000},       # Gemini: 1M context, leave buffer
+    "deepseek": {"max_input_tokens": 1_000_000},
+    "anthropic": {"max_input_tokens": 1_000_000},
+    "openai": {"max_input_tokens": 1_050_000},
+    "qwen": {"max_input_tokens": 1_000_000},
+    "minimax": {"max_input_tokens": 204_800},
+    "openrouter": {"max_input_tokens": 900000},
+    "zhipu": {"max_input_tokens": 198_000},
+    "google": {"max_input_tokens": 900000},
 }
 
 # =============================================================================
@@ -1070,7 +1062,7 @@ AVAILABLE_MODELS = {
     # top-left selector; users choose the concrete model with *_MODEL env vars.
     "deepseek": {
         "display_name": "DeepSeek V4 Pro",
-        "model_name": "deepseek-chat",
+        "model_name": "deepseek-v4-pro",
         "model_env": "DEEPSEEK_MODEL",
         "provider": "deepseek",
         "env_key": "DEEPSEEK_API_KEY",
@@ -1078,8 +1070,8 @@ AVAILABLE_MODELS = {
         "profile_key": "deepseek",
     },
     "qwen": {
-        "display_name": "Qwen3 Max",
-        "model_name": "qwen3-max",
+        "display_name": "Qwen3.7 Max",
+        "model_name": "qwen3.7-max",
         "model_env": "QWEN_MODEL",
         "provider": "openai",
         "env_key": "QWEN_API_KEY",
@@ -1088,8 +1080,8 @@ AVAILABLE_MODELS = {
         "profile_key": "qwen",
     },
     "minimax": {
-        "display_name": "MiniMax M2.1",
-        "model_name": "MiniMax-M2.1",
+        "display_name": "MiniMax M2.7",
+        "model_name": "MiniMax-M2.7",
         "model_env": "MINIMAX_MODEL",
         "provider": "anthropic",
         "env_key": "MINIMAX_API_KEY",
@@ -1119,8 +1111,8 @@ AVAILABLE_MODELS = {
         "profile_key": "openai",
     },
     "gemini": {
-        "display_name": "Gemini 3 Pro",
-        "model_name": "gemini-3-pro-preview",
+        "display_name": "Gemini 3.1 Pro Preview",
+        "model_name": "gemini-3.1-pro-preview",
         "model_env": "GEMINI_MODEL",
         "provider": "openai",
         "credentials": [
@@ -1129,8 +1121,8 @@ AVAILABLE_MODELS = {
         "profile_key": "google",
     },
     "zhipu": {
-        "display_name": "GLM-4.7",
-        "model_name": "glm-4.7",
+        "display_name": "GLM-5.2",
+        "model_name": "GLM-5.2",
         "model_env": "ZHIPU_MODEL",
         "provider": "openai",
         "env_key": "ZHIPU_API_KEY",
@@ -1139,7 +1131,7 @@ AVAILABLE_MODELS = {
         "profile_key": "zhipu",
     },
     "openrouter": {
-        "display_name": "Llama 4 Maverick",
+        "display_name": "OpenRouter",
         "model_name": "meta-llama/llama-4-maverick",
         "model_env": "OPENROUTER_MODEL",
         "provider": "openai",
@@ -1387,6 +1379,7 @@ def get_available_models() -> list[dict]:
         models.append({
             "id": model_id,
             "display_name": config["display_name"],
+            "model_name": _resolve_model_name(config),
             "available": _is_model_configured(config),
         })
     return models
@@ -1428,9 +1421,8 @@ def get_model(model_id: str | None = None):
         model_id: Specific model to use (e.g., "deepseek", "qwen").
                   If None, uses default based on available API keys.
 
-    IMPORTANT: Sets model.profile for SummarizationMiddleware to work correctly.
-    Without profile, the middleware falls back to 170k token threshold which
-    exceeds DeepSeek's 64k context window, causing context overflow.
+    Sets model.profile so SummarizationMiddleware can compact before the
+    configured provider's context limit is reached.
     """
     from langchain.chat_models import init_chat_model
 
@@ -1445,12 +1437,14 @@ def get_model(model_id: str | None = None):
             + ". See backend/.env.example."
         )
 
+    # Legacy graph IDs resolve to their canonical provider so old threads keep
+    # working without pinning users to retired provider model IDs.
+    normalized_model_id = public_model_id(model_id)
+    if normalized_model_id in PUBLIC_MODEL_IDS:
+        model_id = normalized_model_id
+
     # Get model configuration
     config = AVAILABLE_MODELS.get(model_id)
-    if not config:
-        normalized_model_id = public_model_id(model_id)
-        config = AVAILABLE_MODELS.get(normalized_model_id)
-        model_id = normalized_model_id or model_id
 
     if not config:
         raise ValueError(f"Unknown model: {model_id}. Available: {list(AVAILABLE_MODELS.keys())}")

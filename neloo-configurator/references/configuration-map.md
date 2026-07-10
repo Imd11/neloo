@@ -72,14 +72,14 @@ These are backend secrets. Configure them in `backend/.env` locally or Railway i
 | Claude | `anthropic` | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` | `ANTHROPIC_MODEL` | Secret |
 | OpenAI | `openai` | `OPENAI_API_KEY` | `OPENAI_BASE_URL` | `OPENAI_MODEL` | Secret |
 | Gemini | `gemini` | `GEMINI_API_KEY` | `GEMINI_BASE_URL` | `GEMINI_MODEL` | Secret |
-| GLM | `zhipu` | `ZHIPU_API_KEY` | `ZHIPU_BASE_URL` | `ZHIPU_MODEL` | Secret |
+| GLM-5.2 | `zhipu` | `ZHIPU_API_KEY` | `ZHIPU_BASE_URL` | `ZHIPU_MODEL` | Secret |
 | OpenRouter | `openrouter` | `OPENROUTER_API_KEY` | `OPENROUTER_BASE_URL` | `OPENROUTER_MODEL` | Secret |
 | Custom OpenAI-compatible | `custom-openai` | `CUSTOM_OPENAI_API_KEY` | `CUSTOM_OPENAI_BASE_URL` | `CUSTOM_OPENAI_MODEL` | Secret |
 | Custom Anthropic-compatible | `custom-anthropic` | `CUSTOM_ANTHROPIC_API_KEY` | `CUSTOM_ANTHROPIC_BASE_URL` | `CUSTOM_ANTHROPIC_MODEL` | Secret |
 
 Legacy `NEWAPI_*` and old graph IDs such as `deepseek-chat`, `qwen3-max`, and `claude-opus-right` remain supported for existing deployments, but new setup flows should guide users to the canonical entries above.
 
-Old graph IDs are hidden from the selector but kept so existing LangGraph graph IDs and older stored thread values do not crash. The thread API normalizes old stored `model_id` values to the canonical public ID for display and future updates. If users need the old exact model choice, guide them to set the canonical provider's model variable, for example `DEEPSEEK_MODEL=deepseek-reasoner`, `QWEN_MODEL=qwen3-max`, or `OPENAI_MODEL=gpt-5-thinking`.
+Old graph IDs are hidden from the selector but kept so existing LangGraph graph IDs and older stored thread values do not crash. Neloo normalizes them to the canonical provider and uses that provider's current `*_MODEL` value. For an exact model choice, set the canonical provider model variable, for example `DEEPSEEK_MODEL=deepseek-v4-flash`, `QWEN_MODEL=qwen3.7-max`, or `OPENROUTER_MODEL=z-ai/glm-5.2`.
 
 `NEWAPI_BASE_URL` remains a legacy compatibility variable for old direct graph IDs. It does not count as a complete canonical public provider route by itself; use `OPENAI_API_KEY` or `CUSTOM_OPENAI_*` for the public selector.
 
@@ -87,9 +87,8 @@ Old graph IDs are hidden from the selector but kept so existing LangGraph graph 
 
 | Variable | Location | Required when | Security | Feature |
 | --- | --- | --- | --- | --- |
-| `NANOBANANA_IMAGE_API_KEY` | Frontend environment / Vercel server-side | Using Nano Banana through `/api/generate-image` or `/api/edit` | Secret, do not prefix with `NEXT_PUBLIC_` | Next.js image generation and editing routes. |
-| `NANOBANANA_IMAGE_BASE_URL` | Frontend environment / Vercel server-side | Using Nano Banana | Secret-ish endpoint config | OpenAI-compatible Nano Banana base URL. |
-| `NANOBANANA_IMAGE_MODEL` | Frontend environment / Vercel server-side | Optional | Public config | Defaults to `nano-banana`. |
+| `GEMINI_IMAGE_API_KEY` | Frontend environment / Vercel server-side | Using Nano Banana 2 through `/api/generate-image` or `/api/edit` | Secret, do not prefix with `NEXT_PUBLIC_` | Google AI Studio key for Next.js image generation and editing routes. `GEMINI_API_KEY` can be reused when appropriate. |
+| `GEMINI_IMAGE_MODEL` | Frontend environment / Vercel server-side | Optional | Server configuration | Defaults to `gemini-3.1-flash-image`. |
 | `OPENAI_API_KEY` | Frontend environment / Vercel server-side | Using GPT Image 2 | Secret, do not prefix with `NEXT_PUBLIC_` | Server-side image provider key. |
 | `OPENAI_IMAGE_MODEL` | Frontend environment / Vercel server-side | Optional | Public config | Defaults to `gpt-image-2`. |
 

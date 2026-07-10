@@ -133,7 +133,7 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
             timezone: "Asia/Shanghai",
             defaultPrompt: "",
             notification: "in_app",
-            model: "deepseek-chat",
+            model: "deepseek",
         },
     });
     const [isGenerating, setIsGenerating] = useState(false);
@@ -262,7 +262,7 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
                 timezone: "Asia/Shanghai",
                 defaultPrompt: "",
                 notification: "in_app",
-                model: "deepseek-chat",
+                model: "deepseek",
             },
         });
         setActiveTab("create");
@@ -340,7 +340,7 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
                 timezone: "Asia/Shanghai",
                 defaultPrompt: "",
                 notification: "in_app",
-                model: "deepseek-chat",
+                model: "deepseek",
             },
         });
         setEditTab("info");
@@ -713,7 +713,7 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
                                         执行模型 <span className="text-destructive">*</span>
                                     </label>
                                     <Select
-                                        value={formData.schedule.model || "deepseek-chat"}
+                                        value={formData.schedule.model || "deepseek"}
                                         onValueChange={(v) => setFormData(prev => ({
                                             ...prev,
                                             schedule: { ...prev.schedule, model: v }

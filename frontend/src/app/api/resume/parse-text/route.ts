@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
         }
 
         const baseUrl = (process.env.QWEN_BASE_URL || "https://dashscope.aliyuncs.com/compatible-mode/v1").replace(/\/+$/, "");
-        const model = process.env.QWEN_MODEL || "qwen-plus";
+        const model = process.env.QWEN_MODEL || "qwen3.7-max";
         const response = await fetch(`${baseUrl}/chat/completions`, {
             method: "POST",
             headers: {

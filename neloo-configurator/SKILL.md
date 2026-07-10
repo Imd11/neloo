@@ -30,7 +30,7 @@ Use this skill to help users configure the Neloo repository for local developmen
 - Treat every `NEXT_PUBLIC_*` value as visible to browser users.
 - Do not place `SUPABASE_SERVICE_KEY`, `DATABASE_URL`, provider API keys, `E2B_API_KEY`, or database passwords in `NEXT_PUBLIC_*` variables.
 - The top-left chat model selector is powered by backend model availability from `backend/src/agent/graph.py`; configure chat model keys and base URLs on the backend.
-- Image generation uses server-side Next.js API route keys such as `NANOBANANA_IMAGE_API_KEY`, `NANOBANANA_IMAGE_BASE_URL`, `OPENAI_API_KEY`, and `OPENAI_IMAGE_MODEL`.
+- Image generation uses server-side Next.js API route keys such as `GEMINI_IMAGE_API_KEY`, `GEMINI_IMAGE_MODEL`, `OPENAI_API_KEY`, and `OPENAI_IMAGE_MODEL`. Nano Banana 2 defaults to `gemini-3.1-flash-image`.
 - Never commit generated `.env` files.
 
 ## Resources
