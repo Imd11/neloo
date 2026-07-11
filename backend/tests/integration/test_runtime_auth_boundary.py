@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
 import hmac
@@ -14,6 +15,7 @@ from uuid import uuid4
 
 import httpx
 import pytest
+from langgraph_sdk import get_client
 
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 TEST_SECRET = "test-anonymous-secret-at-least-32-bytes"  # gitleaks:allow
@@ -144,3 +146,66 @@ def test_runtime_accepts_guest_and_filters_threads_by_owner(runtime_url: str):
     )
     assert thread_id in {item["thread_id"] for item in own_search.json()}
     assert thread_id not in {item["thread_id"] for item in other_search.json()}
+
+    denied_requests = [
+        httpx.get(f"{runtime_url}/threads/{thread_id}", headers=headers_b, timeout=5),
+        httpx.patch(
+            f"{runtime_url}/threads/{thread_id}",
+            headers=headers_b,
+            json={"metadata": {"title": "hijacked"}},
+            timeout=5,
+        ),
+        httpx.delete(f"{runtime_url}/threads/{thread_id}", headers=headers_b, timeout=5),
+        httpx.post(
+            f"{runtime_url}/threads/{thread_id}/runs",
+            headers=headers_b,
+            json={
+                "assistant_id": "deepseek",
+                "input": {"messages": [{"role": "user", "content": "hijack"}]},
+            },
+            timeout=5,
+        ),
+    ]
+    assert all(response.status_code in {403, 404} for response in denied_requests)
+
+
+def test_runtime_isolates_store_namespaces(runtime_url: str):
+    guest_a = str(uuid4())
+    guest_b = str(uuid4())
+
+    async def exercise_store():
+        client_a = get_client(
+            url=runtime_url,
+            headers={"Authorization": f"Bearer {_guest_token(guest_a)}"},
+        )
+        client_b = get_client(
+            url=runtime_url,
+            headers={"Authorization": f"Bearer {_guest_token(guest_b)}"},
+        )
+        await client_a.store.put_item(("shared",), "secret", {"owner": "a"})
+        own_item = await client_a.store.get_item(("shared",), "secret")
+        other_item = await client_b.store.get_item(("shared",), "secret")
+        return own_item, other_item
+
+    own_item, other_item = asyncio.run(exercise_store())
+    assert own_item is not None
+    assert own_item["value"] == {"owner": "a"}
+    assert other_item is None
+
+
+def test_oauth_callback_requires_state_and_is_reachable(runtime_url: str):
+    missing_state = httpx.get(
+        f"{runtime_url}/api/integrations/callback",
+        params={"connectedAccountId": "account-1"},
+        timeout=5,
+    )
+    assert missing_state.status_code == 422
+
+    callback = httpx.get(
+        f"{runtime_url}/api/integrations/callback",
+        params={"connectedAccountId": "account-1", "state": "invalid-state"},
+        follow_redirects=False,
+        timeout=5,
+    )
+    assert callback.status_code == 302
+    assert "error=db_error" in callback.headers["location"]

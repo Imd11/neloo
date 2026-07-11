@@ -88,8 +88,11 @@ jobs:
 
   docker-readiness:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - run: node scripts/check-docker-release-readiness.mjs
       - run: docker build -f Dockerfile -t neloo-backend-root .
+      - run: bash scripts/smoke-docker-runtime.sh neloo-backend-root
       - run: docker build -f backend/Dockerfile -t neloo-backend-service backend
+      - run: bash scripts/smoke-docker-runtime.sh neloo-backend-service

@@ -1,14 +1,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from uuid import uuid4
 
 import pytest
+from langgraph_sdk import get_client
 
 from scripts.backfill_langgraph_thread_owners import (
     BackfillConflict,
     backfill_records,
     validate_internal_url,
 )
+from tests.integration.test_runtime_auth_boundary import _guest_token
+
+pytest_plugins = ("tests.integration.test_runtime_auth_boundary",)
 
 
 @dataclass
@@ -85,3 +90,22 @@ def test_remote_backfill_requires_explicit_opt_in(monkeypatch: pytest.MonkeyPatc
 
     monkeypatch.setenv("ALLOW_REMOTE_OWNER_BACKFILL", "true")
     validate_internal_url("https://api.example.com")
+
+
+@pytest.mark.asyncio
+async def test_backfill_uses_real_runtime_client(runtime_url: str):
+    owner = str(uuid4())
+    thread_id = str(uuid4())
+    client = get_client(
+        url=runtime_url,
+        headers={"Authorization": f"Bearer {_guest_token(owner)}"},
+    )
+    await client.threads.create(thread_id=thread_id)
+
+    result = await backfill_records(
+        [{"user_id": owner, "langgraph_thread_id": thread_id}],
+        client,
+        dry_run=False,
+    )
+
+    assert result == {"updated": 0, "skipped": 1, "failed": 0}
