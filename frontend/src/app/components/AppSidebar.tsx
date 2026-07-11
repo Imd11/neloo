@@ -661,7 +661,11 @@ export function AppSidebar({
           </div>
 
           {/* Share */}
-          <div className="block cursor-pointer">
+          <div
+            className={cn("block", activeThreadId ? "cursor-pointer" : "cursor-not-allowed opacity-50")}
+            onClick={() => activeThreadId && handleShareThread(activeThreadId)}
+            title={activeThreadId ? undefined : t("chat.share_no_conversation")}
+          >
             <div className="group relative flex items-center h-10 transition-colors text-sidebar-foreground">
               {!collapsed && (
                 <div

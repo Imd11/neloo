@@ -5,11 +5,12 @@ function getApiBaseUrl(): string {
     return (getConfig()?.deploymentUrl || process.env.NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(path: string, init?: RequestInit, accessToken?: string): Promise<T> {
     const response = await fetch(`${getApiBaseUrl()}${path}`, {
         ...init,
         headers: {
             "Content-Type": "application/json",
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
             ...init?.headers,
         },
     });
@@ -22,7 +23,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const savePresentation = async (
     data: Omit<PresentationData, "created_at" | "updated_at">,
-    _accessToken?: string
+    accessToken?: string
 ): Promise<PresentationData> => {
     return request<PresentationData>("/api/slides/presentations", {
         method: "POST",
@@ -35,15 +36,15 @@ export const savePresentation = async (
             style: data.style,
             preset_id: data.preset_id || data.presetId,
         }),
-    });
+    }, accessToken);
 };
 
 export const getPresentation = async (
     id: string,
-    _accessToken?: string
+    accessToken?: string
 ): Promise<PresentationData | null> => {
     try {
-        return await request<PresentationData>(`/api/slides/presentations/${encodeURIComponent(id)}`);
+        return await request<PresentationData>(`/api/slides/presentations/${encodeURIComponent(id)}`, undefined, accessToken);
     } catch (error) {
         if (error instanceof Error && error.message.includes("404")) return null;
         throw error;
@@ -52,45 +53,45 @@ export const getPresentation = async (
 
 export const getAllPresentations = async (
     _userId: string,
-    _accessToken?: string
+    accessToken?: string
 ): Promise<PresentationData[]> => {
-    return request<PresentationData[]>("/api/slides/presentations");
+    return request<PresentationData[]>("/api/slides/presentations", undefined, accessToken);
 };
 
 export const deletePresentation = async (
     id: string,
-    _accessToken?: string
+    accessToken?: string
 ): Promise<void> => {
     await request(`/api/slides/presentations/${encodeURIComponent(id)}`, {
         method: "DELETE",
-    });
+    }, accessToken);
 };
 
 export const updateSlideImage = async (
     presentationId: string,
     slideId: string,
     imageBase64: string,
-    _accessToken?: string
+    accessToken?: string
 ): Promise<void> => {
-    const presentation = await getPresentation(presentationId);
+    const presentation = await getPresentation(presentationId, accessToken);
     if (!presentation) return;
     const slides = updateSlide(presentation.slides, slideId, {
         imageBase64,
         isGeneratingImage: false,
     });
-    await savePresentation({ ...presentation, slides });
+    await savePresentation({ ...presentation, slides }, accessToken);
 };
 
 export const updateSlideContent = async (
     presentationId: string,
     slideId: string,
     updates: { title?: string; content?: string; customCanvasJson?: string },
-    _accessToken?: string
+    accessToken?: string
 ): Promise<void> => {
-    const presentation = await getPresentation(presentationId);
+    const presentation = await getPresentation(presentationId, accessToken);
     if (!presentation) return;
     const slides = updateSlide(presentation.slides, slideId, updates);
-    await savePresentation({ ...presentation, slides });
+    await savePresentation({ ...presentation, slides }, accessToken);
 };
 
 function updateSlide(slides: Slide[], slideId: string, updates: Partial<Slide>): Slide[] {

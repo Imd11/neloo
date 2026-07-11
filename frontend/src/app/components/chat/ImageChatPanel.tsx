@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Mic, ArrowUp, Square, LayoutGrid, X } from "lucide-react";
+import { ArrowUp, Square, LayoutGrid, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ImageMessage } from "@/types/imageChat";
@@ -176,9 +176,9 @@ export function ImageChatPanel({
                                                     onClick={(e) => handleImageClick(message.imageUrl!, e)}
                                                 />
                                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-md flex items-center justify-center">
-                                                    <span className="text-white text-xs font-medium">
-                                                        添加到画布
-                                                    </span>
+	                                                    <span className="text-white text-xs font-medium">
+	                                                        {t("chat.add_to_canvas")}
+	                                                    </span>
                                                 </div>
                                             </motion.div>
                                         )}
@@ -222,7 +222,7 @@ export function ImageChatPanel({
                             className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground border-dashed"
                         >
                             <LayoutGrid className="w-4 h-4" />
-                            <span className="text-sm">选择模板</span>
+	                            <span className="text-sm">{t("chat.select_template")}</span>
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent
@@ -308,14 +308,6 @@ export function ImageChatPanel({
                     )}
                 >
                     <div className="flex items-end gap-2 px-3 py-2.5">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="shrink-0 w-8 h-8 text-muted-foreground hover:text-foreground"
-                        >
-                            <Plus className="w-4 h-4" />
-                        </Button>
-
                         <textarea
                             ref={textareaRef}
                             value={inputValue}
@@ -323,19 +315,11 @@ export function ImageChatPanel({
                             onFocus={() => setIsFocused(true)}
                             onBlur={() => setIsFocused(false)}
                             onKeyDown={handleKeyDown}
-                            placeholder="继续描述或修改..."
-                            rows={1}
-                            aria-label="提示词输入"
+	                            placeholder={t("chat.continue_image_placeholder")}
+	                            rows={1}
+	                            aria-label={t("chat.prompt_input")}
                             className="flex-1 resize-none bg-transparent text-foreground placeholder:text-muted-foreground text-sm leading-5 outline-none min-w-0 max-h-[180px] overflow-y-auto py-1"
                         />
-
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="shrink-0 w-8 h-8 text-muted-foreground hover:text-foreground"
-                        >
-                            <Mic className="w-4 h-4" />
-                        </Button>
 
                         {isGenerating ? (
                             <Button

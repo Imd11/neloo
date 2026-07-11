@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Plus, Mic, ArrowUp, X, FolderOpen, FileText, Image, Music, Table, File, Presentation, Loader2, LayoutTemplate } from "lucide-react";
+import { Plus, ArrowUp, X, FolderOpen, FileText, Image, Music, Table, File, Presentation, Loader2, LayoutTemplate } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Feature, localizeFeature } from "@/data/featureTemplates";
@@ -355,15 +355,6 @@ export function PromptInput({
 
                 {/* Right side controls */}
                 <div className="flex items-center gap-1">
-                    {/* Voice Button */}
-                    <Button
-                        variant="icon"
-                        size="icon-sm"
-                        className="shrink-0 text-muted-foreground hover:text-foreground"
-                    >
-                        <Mic className="w-5 h-5" />
-                    </Button>
-
                     {/* Send Button */}
                     <Button
                         variant="send"

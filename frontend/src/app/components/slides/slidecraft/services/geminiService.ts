@@ -53,12 +53,31 @@ function getApiBaseUrl(): string {
     return (getConfig()?.deploymentUrl || process.env.NEXT_PUBLIC_API_URL || '').replace(/\/+$/, '');
 }
 
-async function generateSlidesText(system: string, prompt: string, signal?: AbortSignal, modelId?: string | null): Promise<string> {
+async function generateSlidesText(
+    system: string,
+    prompt: string,
+    signal?: AbortSignal,
+    modelId?: string | null,
+    attachments: Attachment[] = [],
+    accessToken?: string
+): Promise<string> {
     const baseUrl = getApiBaseUrl();
     const response = await fetch(`${baseUrl}/api/slides/generate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ system, prompt, model_id: modelId }),
+        headers: {
+            'Content-Type': 'application/json',
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        body: JSON.stringify({
+            system,
+            prompt,
+            model_id: modelId,
+            attachments: attachments.map((attachment) => ({
+                name: attachment.name,
+                mime_type: attachment.mimeType,
+                data: attachment.data,
+            })),
+        }),
         signal,
     });
 
@@ -122,11 +141,12 @@ export async function generateOutlineStream(
     onChunk: (text: string) => void,
     signal?: AbortSignal,
     presetId?: string,
-    modelId?: string | null
+    modelId?: string | null,
+    accessToken?: string
 ): Promise<string> {
     const presetContext = buildPresetPromptContext(presetId);
     const attachmentSummary = attachments.length > 0
-        ? `\n\nAttached files (names only; file contents are not sent in the DeepSeek text-only path):\n${attachments
+        ? `\n\nAttached files:\n${attachments
             .map(att => `- ${att.name} (${att.mimeType || 'unknown'})`)
             .join('\n')}`
         : '';
@@ -134,7 +154,9 @@ export async function generateOutlineStream(
         buildOutlineSystemPrompt(style, presetId),
         `Create a presentation about: ${topic || 'the provided content'}.${attachmentSummary}${presetContext ? `\n\n${presetContext}\n\nUse this preset faithfully in the deck's narrative, visual direction, layout choice, and information density.` : ''}`,
         signal,
-        modelId
+        modelId,
+        attachments,
+        accessToken
     );
     onChunk(fullText);
 
@@ -147,7 +169,8 @@ export async function generateSingleSlide(
     insertIndex: number,
     style?: StyleDimensions,
     presetId?: string,
-    modelId?: string | null
+    modelId?: string | null,
+    accessToken?: string
 ): Promise<Slide | null> {
     const styleBlock = style ? buildStyleInstructions(style, presetId) : '';
     const presetContext = buildPresetPromptContext(presetId);
@@ -161,7 +184,9 @@ Return a single JSON object with: title, content, visualDescription, slideType (
 Return ONLY JSON. No markdown.`,
         `Topic: ${topic}\n\nExisting outline:\n${context}\n\nGenerate a new slide for position ${insertIndex + 1}.${presetContext ? `\n\n${presetContext}` : ''}`,
         undefined,
-        modelId
+        modelId,
+        [],
+        accessToken
     );
     try {
         const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();

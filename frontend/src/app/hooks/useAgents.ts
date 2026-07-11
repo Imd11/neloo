@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { getConfig } from "@/lib/config";
-import { getSupabaseClient } from "@/lib/supabase/client";
+import { useAuth } from "@/providers/AuthProvider";
 
 // =============================================================================
 // Types
@@ -74,14 +74,12 @@ export interface UseAgentsResult {
 // Helper Functions
 // =============================================================================
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
-    const supabase = getSupabaseClient();
-    const session = supabase ? (await supabase.auth.getSession()).data.session : null;
+function getAuthHeaders(accessToken?: string): Record<string, string> {
     const headers: Record<string, string> = {
         "Content-Type": "application/json",
     };
-    if (session?.access_token) {
-        headers["Authorization"] = `Bearer ${session.access_token}`;
+    if (accessToken) {
+        headers["Authorization"] = `Bearer ${accessToken}`;
     }
     return headers;
 }
@@ -96,6 +94,7 @@ function getBaseUrl(): string {
 // =============================================================================
 
 export function useAgents(): UseAgentsResult {
+    const { session } = useAuth();
     // State for my agents
     const [myAgents, setMyAgents] = useState<Agent[]>([]);
     const [myAgentsLoading, setMyAgentsLoading] = useState(false);
@@ -116,13 +115,14 @@ export function useAgents(): UseAgentsResult {
         setMyAgentsLoading(true);
         setMyAgentsError(null);
         try {
-            const headers = await getAuthHeaders();
+            const headers = getAuthHeaders(session?.access_token);
             const response = await fetch(`${getBaseUrl()}/api/agents`, {
                 method: "GET",
                 headers,
             });
             if (!response.ok) {
-                throw new Error(`Failed to fetch agents: ${response.status}`);
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || `Failed to fetch agents: ${response.status}`);
             }
             const data = await response.json();
             setMyAgents(data.agents || []);
@@ -132,7 +132,7 @@ export function useAgents(): UseAgentsResult {
         } finally {
             setMyAgentsLoading(false);
         }
-    }, []);
+    }, [session?.access_token]);
 
     // Fetch store agents
     const refreshStoreAgents = useCallback(async (
@@ -142,7 +142,7 @@ export function useAgents(): UseAgentsResult {
         setStoreAgentsLoading(true);
         setStoreAgentsError(null);
         try {
-            const headers = await getAuthHeaders();
+            const headers = getAuthHeaders(session?.access_token);
             const params = new URLSearchParams({ sort_by: sortBy });
             if (search) {
                 params.set("search", search);
@@ -152,7 +152,8 @@ export function useAgents(): UseAgentsResult {
                 headers,
             });
             if (!response.ok) {
-                throw new Error(`Failed to fetch store agents: ${response.status}`);
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || `Failed to fetch store agents: ${response.status}`);
             }
             const data = await response.json();
             setStoreAgents(data.agents || []);
@@ -162,13 +163,13 @@ export function useAgents(): UseAgentsResult {
         } finally {
             setStoreAgentsLoading(false);
         }
-    }, []);
+    }, [session?.access_token]);
 
     // Create agent
     const createAgent = useCallback(async (data: AgentCreateInput): Promise<Agent | null> => {
         setIsCreating(true);
         try {
-            const headers = await getAuthHeaders();
+            const headers = getAuthHeaders(session?.access_token);
             const response = await fetch(`${getBaseUrl()}/api/agents`, {
                 method: "POST",
                 headers,
@@ -188,13 +189,13 @@ export function useAgents(): UseAgentsResult {
         } finally {
             setIsCreating(false);
         }
-    }, [refreshMyAgents]);
+    }, [refreshMyAgents, session?.access_token]);
 
     // Update agent
     const updateAgent = useCallback(async (id: string, data: AgentUpdateInput): Promise<Agent | null> => {
         setIsUpdating(true);
         try {
-            const headers = await getAuthHeaders();
+            const headers = getAuthHeaders(session?.access_token);
             const response = await fetch(`${getBaseUrl()}/api/agents/${id}`, {
                 method: "PUT",
                 headers,
@@ -214,13 +215,13 @@ export function useAgents(): UseAgentsResult {
         } finally {
             setIsUpdating(false);
         }
-    }, [refreshMyAgents]);
+    }, [refreshMyAgents, session?.access_token]);
 
     // Delete agent
     const deleteAgent = useCallback(async (id: string): Promise<boolean> => {
         setIsDeleting(true);
         try {
-            const headers = await getAuthHeaders();
+            const headers = getAuthHeaders(session?.access_token);
             const response = await fetch(`${getBaseUrl()}/api/agents/${id}`, {
                 method: "DELETE",
                 headers,
@@ -238,12 +239,12 @@ export function useAgents(): UseAgentsResult {
         } finally {
             setIsDeleting(false);
         }
-    }, [refreshMyAgents]);
+    }, [refreshMyAgents, session?.access_token]);
 
     // Copy agent from store
     const copyAgent = useCallback(async (id: string): Promise<Agent | null> => {
         try {
-            const headers = await getAuthHeaders();
+            const headers = getAuthHeaders(session?.access_token);
             const response = await fetch(`${getBaseUrl()}/api/agents/${id}/copy`, {
                 method: "POST",
                 headers,
@@ -260,12 +261,12 @@ export function useAgents(): UseAgentsResult {
             console.error("Error copying agent:", error);
             throw error;
         }
-    }, [refreshMyAgents]);
+    }, [refreshMyAgents, session?.access_token]);
 
     // Use agent (get system prompt for conversation)
     const useAgent = useCallback(async (id: string): Promise<{ system_prompt: string; tools: string[] } | null> => {
         try {
-            const headers = await getAuthHeaders();
+            const headers = getAuthHeaders(session?.access_token);
             const response = await fetch(`${getBaseUrl()}/api/agents/${id}/use`, {
                 method: "POST",
                 headers,
@@ -279,7 +280,7 @@ export function useAgents(): UseAgentsResult {
             console.error("Error using agent:", error);
             throw error;
         }
-    }, []);
+    }, [session?.access_token]);
 
     // Generate prompt from description
     const generatePrompt = useCallback(async (
@@ -288,7 +289,7 @@ export function useAgents(): UseAgentsResult {
         tools: string[]
     ): Promise<string | null> => {
         try {
-            const headers = await getAuthHeaders();
+            const headers = getAuthHeaders(session?.access_token);
             const response = await fetch(`${getBaseUrl()}/api/agents/generate-prompt`, {
                 method: "POST",
                 headers,
@@ -304,7 +305,7 @@ export function useAgents(): UseAgentsResult {
             console.error("Error generating prompt:", error);
             throw error;
         }
-    }, []);
+    }, [session?.access_token]);
 
     // Generate full agent (prompt + icon) from description
     const generateAgent = useCallback(async (
@@ -313,7 +314,7 @@ export function useAgents(): UseAgentsResult {
         tools: string[]
     ): Promise<{ system_prompt: string; icon_url: string } | null> => {
         try {
-            const headers = await getAuthHeaders();
+            const headers = getAuthHeaders(session?.access_token);
             const response = await fetch(`${getBaseUrl()}/api/agents/generate-agent`, {
                 method: "POST",
                 headers,
@@ -332,7 +333,7 @@ export function useAgents(): UseAgentsResult {
             console.error("Error generating agent:", error);
             throw error;
         }
-    }, []);
+    }, [session?.access_token]);
 
     // Initial data fetch
     useEffect(() => {
@@ -368,4 +369,3 @@ export function useAgents(): UseAgentsResult {
         isDeleting,
     };
 }
-

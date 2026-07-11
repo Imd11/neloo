@@ -151,6 +151,10 @@
         "regenerate": "Regenerate",
         "download_image": "Download Image",
         "delete_image": "Delete Image",
+        "select_tool": "Select",
+        "brush_tool_short": "Brush",
+        "eraser_tool_short": "Eraser",
+        "quota": "Quota",
         "confirm_delete_images": "Delete {count} images?",
         "error_regenerate_missing_params": "Cannot regenerate: missing original parameters",
         "error_regenerate_failed": "Regeneration failed",
@@ -171,7 +175,31 @@
         "loading_edit_desc": "Editing image, please wait",
         "downloading": "Downloading...",
         "download_complete": "Download Complete!",
-        "download_failed": "Download Failed"
+        "download_failed": "Download Failed",
+        "edit_prompt_required": "Enter the edit instructions",
+        "edit_complete": "Image edit complete!",
+        "edit_missing_image": "No edited image was returned",
+        "edit_failed": "Image edit failed"
+    },
+    "home": {
+        "guest_name": "Guest",
+        "headline_1": "Hello {name}, what can I help with?",
+        "headline_2": "Hello {name}, ready to get started?",
+        "headline_3": "{name}, what do you want to finish today?",
+        "headline_4": "Hello {name}, how can I help?",
+        "headline_5": "{name}, let's create something",
+        "headline_6": "Hello {name}, start your next project",
+        "headline_7": "{name}, need some ideas?",
+        "headline_8": "Hello {name}, turn ideas into reality",
+        "headline_9": "{name}, explore what is possible",
+        "headline_10": "Hello {name}, your creative assistant is ready",
+        "headline_11": "{name}, ask anything",
+        "headline_12": "Hello {name}, let's solve it together"
+    },
+    "image": {
+        "ratio": "Ratio",
+        "resolution": "Resolution",
+        "auto": "Auto"
     },
     "sidebar": {
         "new_chat": "New Chat",
@@ -284,7 +312,16 @@
         "feature_slides": "Slides",
         "feature_resume": "Resume",
         "feature_prompt_optimize": "Prompt Optimize",
-        "feature_deai": "DeAI"
+        "feature_deai": "DeAI",
+        "image_template_inspiration": "Template Inspiration",
+        "image_generation_complete": "Image generation complete!",
+        "image_generation_failed": "Image generation failed",
+        "image_load_failed": "Image failed to load",
+        "selected_template_toast": "Selected template: {name}",
+        "new_conversation_started": "Started a new chat",
+        "new_conversation_short": "New",
+        "add_to_canvas": "Add to canvas",
+        "continue_image_placeholder": "Continue describing or editing..."
     },
     "features": {
         "categories": {
@@ -327,10 +364,10 @@
             "required_error": "Please fill in all required birth information before sending."
         },
         "image_templates": {
-            "wong_kar_wai": { "title": "Wong Kar-wai Film Look", "description": "Moody cinematic portrait with warm film grain and motion blur" },
+            "giant_landmark": { "title": "Giant Landmark Object", "description": "Turn an everyday object into a massive real-world monument" },
             "product_macro": { "title": "Product Macro Showcase", "description": "Hyper-real product shot with floating splash details" },
             "city_promo": { "title": "Ultra-real City Poster", "description": "Floating miniature city island for travel and city branding" },
-            "lazy_cooking": { "title": "Lazy Cooking Guide", "description": "Clean mobile infographic for beginner-friendly cooking steps" }
+            "sports_poster": { "title": "Sports Graphic Poster", "description": "Editorial mixed-media poster for athletes and public figures" }
         },
         "video_templates": {
             "talking_portrait": { "title": "Talking Portrait", "description": "Animate a static person with lip sync" },

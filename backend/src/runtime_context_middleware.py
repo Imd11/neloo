@@ -17,7 +17,12 @@ from __future__ import annotations
 from typing import Callable, Awaitable
 
 from .runtime_context import user_id_ctx, thread_id_ctx
-from .api.auth import extract_token_from_header, get_jwt_secret, verify_jwt_token
+from .api.auth import (
+    allow_anonymous,
+    allow_insecure_local_tokens,
+    extract_token_from_header,
+    verify_jwt_token,
+)
 
 
 def _extract_thread_id_from_path(path: str) -> str | None:
@@ -54,11 +59,8 @@ class RuntimeContextASGIMiddleware:
                 user_id = payload.get("sub", "default")
             except Exception:
                 user_id = "default"
-        else:
-            if not get_jwt_secret():
-                user_id = headers.get("x-user-id") or "default"
-            else:
-                user_id = "anonymous"
+        elif allow_anonymous() and allow_insecure_local_tokens():
+            user_id = headers.get("x-user-id") or "default"
 
         user_token = user_id_ctx.set(user_id)
         thread_token = thread_id_ctx.set(thread_id)
@@ -67,4 +69,3 @@ class RuntimeContextASGIMiddleware:
         finally:
             user_id_ctx.reset(user_token)
             thread_id_ctx.reset(thread_token)
-

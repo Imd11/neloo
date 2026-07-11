@@ -28,6 +28,9 @@ CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
 LANGGRAPH_DEFAULT_GRAPH_ID=data_analyst
 SANDBOX_MODE=local
 DEEPSEEK_API_KEY=your-deepseek-key
+ALLOW_ANONYMOUS=true
+ALLOW_INSECURE_LOCAL_TOKENS=true
+ANONYMOUS_SESSION_SECRET=replace-with-a-random-32-byte-secret
 ```
 
 `frontend/.env.local`:
@@ -35,6 +38,7 @@ DEEPSEEK_API_KEY=your-deepseek-key
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:2024
 NEXT_PUBLIC_ASSISTANT_ID=data_analyst
+ANONYMOUS_SESSION_SECRET=replace-with-the-same-random-secret
 ```
 
 ### Production Setup
@@ -52,6 +56,9 @@ SANDBOX_MODE=e2b
 E2B_API_KEY=your-e2b-api-key
 FILE_SECRET_KEY=replace-with-a-random-secret
 DEEPSEEK_API_KEY=your-model-key
+ALLOW_ANONYMOUS=true
+ALLOW_INSECURE_LOCAL_TOKENS=false
+ANONYMOUS_SESSION_SECRET=replace-with-a-random-32-byte-secret
 ```
 
 Vercel frontend variables:
@@ -59,6 +66,7 @@ Vercel frontend variables:
 ```env
 NEXT_PUBLIC_API_URL=https://your-backend.up.railway.app
 NEXT_PUBLIC_ASSISTANT_ID=data_analyst
+ANONYMOUS_SESSION_SECRET=replace-with-the-same-random-secret
 ```
 
 ## Configuration Locations
@@ -98,6 +106,13 @@ Configure these in `frontend/.env.local` for local development or in Vercel for 
 | `NEXT_PUBLIC_ASSISTANT_ID` | Recommended | LangGraph assistant ID. Default is `data_analyst`. |
 | `NEXT_PUBLIC_LANGSMITH_API_KEY` | Optional | Public LangSmith key for deployed LangGraph clients. |
 | `NEXT_PUBLIC_BACKEND_URL` | Deprecated | Old resume-module backend URL. No longer read; set `NEXT_PUBLIC_API_URL` instead. |
+| `ANONYMOUS_SESSION_SECRET` | Required for production guest mode | Server-only value shared with backend. It signs isolated browser guest sessions; never use a `NEXT_PUBLIC_` prefix. |
+
+## Guest Sessions
+
+Neloo has no login flow. Instead, the frontend asks its own Next.js server for a signed guest session and sends that token to the backend. Set the same strong `ANONYMOUS_SESSION_SECRET` in the backend and frontend server environments. Each browser keeps its own guest identity and local files, history, and slides are isolated by that identity.
+
+`ALLOW_INSECURE_LOCAL_TOKENS=true` is only for localhost development when a shared secret is unavailable. Keep it `false` for a public deployment. Guest sessions are not account authentication: use explicit CORS origins, E2B rather than local code execution, and platform-level rate limits for any public instance.
 
 ## Chat Model Configuration
 
@@ -214,7 +229,7 @@ Common modes:
 | `e2b-async` | Experimental async E2B mode. |
 | `docker` | Planned — not implemented in this release. |
 
-`SANDBOX_MODE=local` runs untrusted user code directly on the host with no isolation. Starting a local execution requires an explicit opt-in: set `ALLOW_LOCAL_SANDBOX=true` (or `ALLOW_ANONYMOUS=true`, which implies it) in `backend/.env`. This is intentional so a public deployment that accidentally sets `SANDBOX_MODE=local` does not silently execute user code on the server. Use `e2b` for any shared or public deployment.
+`SANDBOX_MODE=local` runs untrusted user code directly on the host with no isolation. Starting a local execution requires the explicit `ALLOW_LOCAL_SANDBOX=true` opt-in in `backend/.env`; guest mode never enables host code execution. Use `e2b` for any shared or public deployment.
 
 ## Hidden System Prompt
 
@@ -251,6 +266,7 @@ Configure these in `backend/.env` or Railway:
 | --- | --- |
 | `TAVILY_API_KEY` | Web search. |
 | `COMPOSIO_API_KEY` | Optional third-party app integrations. |
+| `COMPOSIO_AUTH_CONFIGS_JSON` | Required with `COMPOSIO_API_KEY` | JSON map of app names to auth config IDs created in your own Composio workspace, for example `{"github":"ac_your_config"}`. |
 | `LANGSMITH_API_KEY` | LangSmith tracing. |
 | `LANGSMITH_TRACING_V2` | Enable or disable LangSmith tracing. |
 | `LANGSMITH_PROJECT` | LangSmith project name. |
@@ -284,7 +300,7 @@ node neloo-configurator/scripts/check-env.mjs
 
 ## Security Checklist
 
-- By default, authenticated backend routes require a valid Supabase JWT (`SUPABASE_JWT_SECRET`). `ALLOW_ANONYMOUS=true` disables authentication for single-user local development only — **never enable it on a public deployment**.
+- `ANONYMOUS_SESSION_SECRET` must be server-only and identical in the backend and frontend environments. Never expose it through a `NEXT_PUBLIC_` variable.
 - **Rate limiting is not bundled.** For any public deployment, add per-user/per-IP rate limiting on the LLM-proxy routes (`/api/resume/*`, `/api/translate`, `/api/slides/*`) and the PDF/Chromium route. `slowapi` is a common choice; remember to parse `X-Forwarded-For` behind Railway/Cloudflare so limits key on the real client.
 - **Hidden/system prompts are sanitized from persisted thread state, but are still visible in the live stream response.** If you depend on prompt confidentiality, treat the streaming channel as exposing the system prompt.
 - Do not commit `.env`, `.env.local`, `.env.production`, `.mcp.json`, `.vercel/`, or local databases.

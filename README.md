@@ -12,11 +12,11 @@ The project started with a data-analysis focus, so a few internal graph IDs stil
 - Multiple model providers through native and OpenAI-compatible APIs.
 - Tool calling, sub-agents, human-in-the-loop hooks, and artifact rendering.
 - File upload, generated-file downloads, and optional Supabase-backed storage.
-- Code execution through E2B, Docker, or local subprocess mode.
+- Code execution through E2B or local subprocess mode.
 - Web search through Tavily.
 - Optional Composio integrations for third-party apps.
 - Presentation, image, translation, and resume-related workflows.
-- Anonymous local mode for development without a required login flow.
+- Isolated guest sessions with no required login flow.
 
 ## Architecture
 
@@ -56,7 +56,7 @@ neloo/
 ├── backend/                 # Python backend, LangGraph app, API routes
 │   ├── src/agent/           # Agent graph, model registry, prompts
 │   ├── src/api/             # FastAPI routes used by the frontend
-│   ├── src/sandbox/         # E2B, Docker, and local execution
+│   ├── src/sandbox/         # E2B and local execution
 │   ├── src/storage/         # Local/Supabase storage adapters
 │   ├── supabase/migrations/ # Backend database migrations
 │   ├── langgraph.json       # LangGraph configuration
@@ -98,11 +98,12 @@ Edit `backend/.env` and set at least one model key. For local development, start
 ```env
 DEEPSEEK_API_KEY=your-key
 ALLOW_ANONYMOUS=true
+ANONYMOUS_SESSION_SECRET=replace-with-a-random-32-byte-secret
 SANDBOX_MODE=local
 ALLOW_LOCAL_SANDBOX=true
 ```
 
-`ALLOW_ANONYMOUS=true` enables single-user local mode without Supabase login (the frontend has no login screen in this mode). `SANDBOX_MODE=local` runs data-analysis code on your own machine; `ALLOW_LOCAL_SANDBOX=true` acknowledges that (it has no isolation, so only use it locally). Chat, file upload, and data analysis all work in this mode.
+`ALLOW_ANONYMOUS=true` enables login-free guest mode. `ANONYMOUS_SESSION_SECRET` must use the same server-only value in `backend/.env` and `frontend/.env.local`; it gives each browser a separate guest identity, so their local history, files, and slides do not use a shared `default` user. `SANDBOX_MODE=local` runs code on your own machine; it has no isolation and is for trusted local development only. Use E2B for a shared deployment.
 
 Then run:
 
@@ -112,7 +113,7 @@ langgraph dev --host 127.0.0.1 --port 2024
 
 The default `backend/langgraph.json` is local-development oriented and does not require `DATABASE_URL`. Thread history may be ephemeral unless you configure production persistence.
 
-> **Production deployments:** do **not** set `ALLOW_ANONYMOUS`. With it off, backend routes require a valid Supabase JWT — but the frontend in this release does not yet attach JWTs to its backend calls (anonymous local mode is the supported path). Full production Supabase auth (frontend token injection + rate limiting) is planned. See `docs/configuration.md`.
+> **Public deployments:** Neloo does not include account login. Configure a strong shared `ANONYMOUS_SESSION_SECRET` in both server environments, set explicit CORS origins, keep local code execution disabled, use E2B for code, and place the deployment behind your platform's rate limiting. Guest sessions isolate browser data but do not replace account-based authentication.
 
 ### 2. Frontend
 
@@ -180,7 +181,7 @@ cp frontend/.env.example frontend/.env.local
 | Supabase | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_JWT_SECRET`, `SUPABASE_DB_HOST`, `SUPABASE_DB_PASSWORD` | Service role keys are server-only secrets. Durable chat history, share links, fork/regenerate history, and DB spot checks require a reachable Supabase project plus service role key. |
 | Persistence | `DATABASE_URL` | Not required for the default local `backend/langgraph.json`. Required for durable production checkpoints with `backend/langgraph.production.json`. |
 | Storage signing | `FILE_SECRET_KEY`, `IMAGE_SECRET_KEY`, `FILE_USE_LOCAL_STORAGE`, `IMAGE_USE_LOCAL_STORAGE` | Use stable random secrets in production. |
-| Integrations | `TAVILY_API_KEY`, `COMPOSIO_API_KEY`, `LANGSMITH_API_KEY`, `LANGSMITH_TRACING_V2`, `LANGSMITH_PROJECT` | Optional feature-specific services. |
+| Integrations | `TAVILY_API_KEY`, `COMPOSIO_API_KEY`, `COMPOSIO_AUTH_CONFIGS_JSON`, `LANGSMITH_API_KEY`, `LANGSMITH_TRACING_V2`, `LANGSMITH_PROJECT` | Optional feature-specific services. |
 
 For providers with a required base URL or custom model variable, the API key alone is not enough; see [docs/configuration.md](./docs/configuration.md) for the complete provider combinations.
 

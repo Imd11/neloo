@@ -4,12 +4,6 @@ import { useState } from "react";
 import { useTheme } from "next-themes";
 import {
   Settings,
-  Bell,
-  Globe,
-  Palette,
-  Shield,
-  Database,
-  HelpCircle,
   ExternalLink,
   Sun,
   Moon,
@@ -54,12 +48,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   const settingsTabs = [
     { id: "general", label: t("settings.general"), icon: Settings },
-    { id: "notifications", label: t("settings.notifications"), icon: Bell },
     { id: "connected-apps", label: t("settings.connected_apps"), icon: Plug },
-    { id: "personalization", label: t("settings.personalization"), icon: Palette },
-    { id: "privacy", label: t("settings.privacy"), icon: Shield },
-    { id: "data", label: t("settings.data"), icon: Database },
-    { id: "help", label: t("settings.help"), icon: HelpCircle },
   ];
 
   const themeOptions: { value: ThemeOption; label: string; icon: typeof Sun }[] = [

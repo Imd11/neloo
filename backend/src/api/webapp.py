@@ -16,6 +16,7 @@ Routes:
 """
 
 import os
+import hashlib
 import json
 import uuid
 import tempfile
@@ -26,7 +27,7 @@ from typing import Optional
 
 from fastapi import FastAPI, File, UploadFile, HTTPException, Header, Query, Depends, Request, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response, RedirectResponse
+from fastapi.responses import FileResponse, Response, RedirectResponse
 from starlette.responses import StreamingResponse
 from pydantic import BaseModel
 from slowapi import _rate_limit_exceeded_handler
@@ -36,10 +37,10 @@ from slowapi.errors import RateLimitExceeded
 from .auth import (
     extract_token_from_header,
     get_current_user,
-    get_jwt_secret,
     get_optional_user,
     verify_jwt_token,
     allow_anonymous,
+    allow_insecure_local_tokens,
     get_user_id as auth_get_user_id,
 )
 from .ratelimit import limiter
@@ -435,10 +436,8 @@ async def _set_runtime_context(request: Request, call_next):
         except HTTPException:
             pass
     else:
-        if not get_jwt_secret():
+        if allow_anonymous() and allow_insecure_local_tokens():
             user_id = request.headers.get("x-user-id") or "default"
-        else:
-            user_id = "anonymous"
 
     user_token = user_id_ctx.set(user_id)
     thread_token = thread_id_ctx.set(thread_id)
@@ -493,12 +492,13 @@ async def get_supabase_client():
 def get_local_storage_path(user_id: str) -> Path:
     """Get local storage path for a user.
 
-    In local mode, files are stored directly in LOCAL_STORAGE_DIR (sandbox data dir)
-    without user subdirectories for simplicity.
+    Local files are grouped by a stable hash of the authenticated user ID. This
+    prevents guest sessions from reading or overwriting one another's files.
 
     Note: Caller must ensure directory exists via _ensure_storage_dir().
     """
-    return LOCAL_STORAGE_DIR
+    safe_user_id = hashlib.sha256(user_id.encode("utf-8")).hexdigest()
+    return LOCAL_STORAGE_DIR / safe_user_id
 
 
 def _safe_join(base_dir: Path, filename: str) -> Path:
@@ -2038,10 +2038,25 @@ async def list_files_api(
     types: Optional[str] = Query(None, description="Comma-separated file types to include"),
     user: dict = Depends(get_current_user),
 ):
-    """List user's files from the database (DB-driven library)."""
+    """List files from persistent storage or the isolated local fallback."""
     user_id = auth_get_user_id(user)
     if not USE_SUPABASE_DB:
-        return DatabaseFileListResponse(files=[], total=0, file_type=None)
+        user_dir = get_local_storage_path(user_id)
+        local_files = await asyncio.to_thread(_list_files_sync, user_dir)
+        files = [
+            DatabaseFileInfo(
+                id=item["name"],
+                filename=item["name"],
+                original_filename=item["name"].split("_", 3)[-1],
+                file_type="uploaded",
+                storage_path=f"{user_id}/{item['name']}",
+                download_url=f"/api/files/{item['name']}/download",
+                size=item["size"],
+                created_at=datetime.fromtimestamp(item["ctime"]).isoformat(),
+            )
+            for item in local_files
+        ]
+        return DatabaseFileListResponse(files=files, total=len(files), file_type=None)
     file_types: Optional[list[FileType]] = None
     if types:
         requested = [t.strip() for t in types.split(",") if t.strip()]
@@ -2102,7 +2117,11 @@ async def delete_file_global_api(
     """Delete a file globally: remove from storage + delete DB record (cascades thread_files)."""
     user_id = auth_get_user_id(user)
     if not USE_SUPABASE_DB:
-        raise HTTPException(status_code=503, detail="Database not configured")
+        local_path = _safe_join(get_local_storage_path(user_id), file_id)
+        deleted = await asyncio.to_thread(_delete_file_sync, local_path)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="File not found")
+        return {"success": True}
     record = await get_file_by_id(file_id)
     if not record:
         raise HTTPException(status_code=404, detail="File not found")
@@ -2146,7 +2165,10 @@ async def download_file_api(
     """
     user_id = auth_get_user_id(user)
     if not USE_SUPABASE_DB:
-        raise HTTPException(status_code=503, detail="Database not configured")
+        local_path = _safe_join(get_local_storage_path(user_id), file_id)
+        if not local_path.exists():
+            raise HTTPException(status_code=404, detail="File not found")
+        return FileResponse(local_path, filename=file_id)
     record = await get_file_by_id(file_id)
     if not record:
         raise HTTPException(status_code=404, detail="File not found")
@@ -2805,6 +2827,32 @@ class SharedConversationResponse(BaseModel):
     target_ai_message_id: Optional[str] = None  # If set, truncate display at this message
 
 
+def _message_identifier(message: dict) -> Optional[str]:
+    """Return the stable message ID used by share and regenerate actions."""
+    for candidate in (
+        message.get("message_id"),
+        message.get("id"),
+        (message.get("metadata") or {}).get("message_id"),
+        (message.get("additional_kwargs") or {}).get("message_id"),
+    ):
+        if candidate:
+            return str(candidate)
+    return None
+
+
+def _messages_for_share(messages: list[dict], target_ai_message_id: Optional[str]) -> list[dict]:
+    if not target_ai_message_id:
+        return messages
+
+    shared_messages = []
+    for message in messages:
+        shared_messages.append(message)
+        if _message_identifier(message) == target_ai_message_id:
+            return shared_messages
+
+    raise HTTPException(status_code=404, detail="Target shared message no longer exists")
+
+
 @app.post("/api/threads/{langgraph_thread_id}/share", response_model=ShareResponse)
 async def create_share_link(
     langgraph_thread_id: str,
@@ -2904,11 +2952,16 @@ async def get_shared_conversation(share_id: str):
                 message_data = {"type": "unknown", "content": str(msg)}
             serialized_messages.append(sanitize_hidden_prompt_message_data(message_data))
         
+        shared_messages = _messages_for_share(
+            serialized_messages,
+            share.get("target_ai_message_id"),
+        )
+
         return SharedConversationResponse(
             title=thread_record.get("title", "Shared conversation"),
-            messages=serialized_messages,
+            messages=shared_messages,
             shared_at=share["created_at"],
-            message_index=share.get("message_index"),  # For single message sharing
+            target_ai_message_id=share.get("target_ai_message_id"),
         )
     except Exception as e:
         print(f"[Share] Failed to get messages: {e}")

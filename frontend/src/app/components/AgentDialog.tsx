@@ -91,8 +91,10 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
     const {
         myAgents,
         myAgentsLoading,
+        myAgentsError,
         storeAgents,
         storeAgentsLoading,
+        storeAgentsError,
         refreshMyAgents,
         refreshStoreAgents,
         createAgent,
@@ -203,6 +205,10 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
     };
 
     const handleSaveAgent = async () => {
+        if (formData.schedule.enabled) {
+            toast.error("Scheduled execution is not available in this release.");
+            return;
+        }
         try {
             if (editingAgent) {
                 // Update existing agent
@@ -1001,11 +1007,23 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
         </div>
     );
 
+    const persistenceUnavailable = [myAgentsError, storeAgentsError].some((error) =>
+        error?.toLowerCase().includes("supabase")
+    );
+
 
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-7xl p-0 gap-0 bg-card border-border overflow-hidden">
+                {persistenceUnavailable ? (
+                    <div className="p-8 text-center">
+                        <h2 className="text-lg font-semibold">Agents need persistent storage</h2>
+                        <p className="mt-2 text-sm text-muted-foreground">
+                            Configure SUPABASE_URL and SUPABASE_SERVICE_KEY in the backend, then restart Neloo.
+                        </p>
+                    </div>
+                ) : (
                 <div className="flex h-[750px]">
                     {/* Sidebar */}
                     <div className="w-40 border-r border-border bg-sidebar p-4">
@@ -1039,6 +1057,7 @@ export function AgentDialog({ open, onOpenChange, onUseAgent }: AgentDialogProps
                         {activeTab === "create" && renderCreateContent()}
                     </div>
                 </div>
+                )}
             </DialogContent>
         </Dialog>
     );

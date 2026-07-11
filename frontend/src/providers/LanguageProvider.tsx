@@ -48,7 +48,11 @@ interface LanguageProviderProps {
 }
 
 export function LanguageProvider({ children, defaultLocale = "zh-CN" }: LanguageProviderProps) {
-    const [locale, setLocaleState] = useState<Locale>(defaultLocale);
+    const [locale, setLocaleState] = useState<Locale>(() => {
+        if (typeof window === "undefined") return defaultLocale;
+        const savedLocale = window.localStorage.getItem(LOCALE_STORAGE_KEY) as Locale | null;
+        return savedLocale && SUPPORTED_LOCALES.includes(savedLocale) ? savedLocale : defaultLocale;
+    });
     const [messages, setMessages] = useState<Messages>({});
     const [isLoading, setIsLoading] = useState(true);
 

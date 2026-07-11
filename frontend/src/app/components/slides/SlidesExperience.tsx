@@ -307,6 +307,7 @@ const SlidesExperience: React.FC<SlidesExperienceProps> = ({
                     presentation={presentation}
                     style={style}
                     modelId={modelId}
+                    accessToken={session?.access_token}
                     onBack={() => setView('OUTLINE')}
                     onSlidesUpdate={handleSlidesUpdate}
                 />
@@ -382,6 +383,7 @@ const SlidesExperience: React.FC<SlidesExperienceProps> = ({
                 style={style}
                 presetId={presetId}
                 modelId={modelId}
+                accessToken={session?.access_token}
                 onBack={onExit}
                 onGenerateSlides={handleGenerateSlides}
             />

@@ -3,8 +3,6 @@
 import { useState, useEffect } from "react";
 import {
     User,
-    CreditCard,
-    Sparkles,
     Edit2,
     Check,
     X,
@@ -29,9 +27,7 @@ interface UserProfileDialogProps {
 }
 
 const profileTabs = [
-    { id: "account", label: "账户", icon: User },
-    { id: "subscription", label: "套餐", icon: CreditCard },
-    { id: "usage", label: "使用情况", icon: Sparkles },
+    { id: "account", label: "Account", icon: User },
 ];
 
 // Simple Progress component inline since it might not exist
@@ -96,7 +92,7 @@ export function UserProfileDialog({
             case "account":
                 return (
                     <div className="space-y-6">
-                        <h3 className="text-lg font-medium text-foreground mb-4">账户信息</h3>
+                        <h3 className="text-lg font-medium text-foreground mb-4">Account</h3>
 
                         {/* Avatar & Name */}
                         <div className="flex items-center gap-4 p-4 bg-accent/50 rounded-xl">
@@ -112,7 +108,7 @@ export function UserProfileDialog({
                                             className="h-9 bg-background"
                                             autoFocus
                                         />
-                                        <Button size="icon" variant="ghost" onClick={handleSaveName}>
+                                        <Button size="icon" variant="ghost" onClick={handleSaveName} disabled={isSaving}>
                                             <Check className="w-4 h-4 text-green-500" />
                                         </Button>
                                         <Button size="icon" variant="ghost" onClick={handleCancelEdit}>
@@ -137,14 +133,14 @@ export function UserProfileDialog({
                         {/* Account Details */}
                         <div className="space-y-3">
                             <div className="flex items-center justify-between py-3 border-b border-border">
-                                <span className="text-sm text-muted-foreground">邮箱</span>
+                                <span className="text-sm text-muted-foreground">Email</span>
                                 <span className="text-sm text-foreground">{email}</span>
                             </div>
                             <div className="flex items-center justify-between py-3 border-b border-border">
-                                <span className="text-sm text-muted-foreground">账户状态</span>
+                                <span className="text-sm text-muted-foreground">Session</span>
                                 <span className="text-sm text-green-500 flex items-center gap-1">
                                     <span className="w-2 h-2 rounded-full bg-green-500" />
-                                    本地访客
+                                    Guest session
                                 </span>
                             </div>
                         </div>
@@ -275,7 +271,7 @@ export function UserProfileDialog({
                     {/* Sidebar */}
                     <div className="w-48 border-r border-border bg-sidebar p-4">
                         <DialogHeader className="mb-4">
-                            <DialogTitle className="text-lg text-foreground">个人中心</DialogTitle>
+                            <DialogTitle className="text-lg text-foreground">Profile</DialogTitle>
                         </DialogHeader>
 
                         <nav className="space-y-1">

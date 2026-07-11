@@ -151,6 +151,10 @@
         "regenerate": "再生成",
         "download_image": "画像をダウンロード",
         "delete_image": "画像を削除",
+        "select_tool": "選択",
+        "brush_tool_short": "ブラシ",
+        "eraser_tool_short": "消しゴム",
+        "quota": "クォータ",
         "confirm_delete_images": "{count} 枚の画像を削除しますか？",
         "error_regenerate_missing_params": "再生成できません：元のパラメータが不足しています",
         "error_regenerate_failed": "再生成失敗",
@@ -171,7 +175,31 @@
         "loading_edit_desc": "画像を編集中、お待ちください",
         "downloading": "ダウンロード中...",
         "download_complete": "ダウンロード完了！",
-        "download_failed": "ダウンロード失敗"
+        "download_failed": "ダウンロード失敗",
+        "edit_prompt_required": "編集内容を入力してください",
+        "edit_complete": "画像編集が完了しました！",
+        "edit_missing_image": "編集後の画像が返されませんでした",
+        "edit_failed": "画像編集に失敗しました"
+    },
+    "home": {
+        "guest_name": "Guest",
+        "headline_1": "こんにちは{name}、何をお手伝いしましょうか？",
+        "headline_2": "こんにちは{name}、始める準備はできていますか？",
+        "headline_3": "{name}、今日は何を終わらせたいですか？",
+        "headline_4": "こんにちは{name}、どうお手伝いしましょうか？",
+        "headline_5": "{name}、一緒に作りましょう",
+        "headline_6": "こんにちは{name}、次のプロジェクトを始めましょう",
+        "headline_7": "{name}、アイデアが必要ですか？",
+        "headline_8": "こんにちは{name}、アイデアを形にしましょう",
+        "headline_9": "{name}、可能性を探りましょう",
+        "headline_10": "こんにちは{name}、クリエイティブアシスタントの準備ができました",
+        "headline_11": "{name}、何でも聞いてください",
+        "headline_12": "こんにちは{name}、一緒に解決しましょう"
+    },
+    "image": {
+        "ratio": "比率",
+        "resolution": "解像度",
+        "auto": "自動"
     },
     "sidebar": {
         "new_chat": "新しいチャット",
@@ -284,7 +312,16 @@
         "feature_slides": "スライド",
         "feature_resume": "履歴書",
         "feature_prompt_optimize": "プロンプト最適化",
-        "feature_deai": "DeAI"
+        "feature_deai": "DeAI",
+        "image_template_inspiration": "テンプレートのヒント",
+        "image_generation_complete": "画像生成が完了しました！",
+        "image_generation_failed": "画像生成に失敗しました",
+        "image_load_failed": "画像の読み込みに失敗しました",
+        "selected_template_toast": "選択したテンプレート: {name}",
+        "new_conversation_started": "新しいチャットを開始しました",
+        "new_conversation_short": "新規",
+        "add_to_canvas": "キャンバスに追加",
+        "continue_image_placeholder": "説明や編集内容を続ける..."
     },
     "features": {
         "categories": {
@@ -327,10 +364,10 @@
             "required_error": "送信前に必須の出生情報をすべて入力してください。"
         },
         "image_templates": {
-            "wong_kar_wai": { "title": "ウォン・カーウァイ映画風", "description": "暖かいフィルム粒子とモーションブラーの映画的人物写真" },
+            "giant_landmark": { "title": "巨大ランドマーク化", "description": "日常の物体を実在感のある巨大な記念碑に変える" },
             "product_macro": { "title": "食品/製品マクロ展示", "description": "浮遊する水しぶきがある超写実の商品写真" },
             "city_promo": { "title": "超リアル都市ポスター", "description": "都市ブランディングや旅行宣伝向けの浮遊ミニチュア島ポスター" },
-            "lazy_cooking": { "title": "簡単料理ガイド", "description": "初心者向けのスマホで読みやすい料理インフォグラフィック" }
+            "sports_poster": { "title": "スポーツグラフィックポスター", "description": "アスリートや著名人向けのミックスメディア編集ポスター" }
         },
         "video_templates": {
             "talking_portrait": { "title": "話すポートレート", "description": "静止人物をリップシンク付きで動かす" },

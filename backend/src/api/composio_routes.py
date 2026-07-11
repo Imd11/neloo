@@ -6,6 +6,7 @@ Uses Composio Python SDK for OAuth flow management.
 """
 
 import os
+import json
 import secrets
 from datetime import datetime, timezone
 from typing import Optional
@@ -26,15 +27,21 @@ COMPOSIO_API_KEY = os.getenv("COMPOSIO_API_KEY")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
-# Auth Config ID whitelist (app_name -> auth_config_id)
-# Add more as you create them in Composio Dashboard
-APP_AUTH_CONFIGS = {
-    "twitter": "ac_Kw-txF63L-Wl",
-    "github": "ac_ryn4wsiWnK97",
-    "gmail": "ac_Y5OCECK93b-I",
-    "reddit": "ac_r9doEFEpEoJ8",
-    "youtube": "ac_gTLIcRbLXSNR",
-}
+def get_app_auth_configs() -> dict[str, str]:
+    """Read the operator's Composio auth-config IDs without shipping any owner's IDs."""
+    raw = os.getenv("COMPOSIO_AUTH_CONFIGS_JSON", "").strip()
+    if not raw:
+        return {}
+    try:
+        configs = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(503, "COMPOSIO_AUTH_CONFIGS_JSON must be valid JSON") from exc
+    if not isinstance(configs, dict) or not all(
+        isinstance(app, str) and isinstance(config_id, str) and config_id
+        for app, config_id in configs.items()
+    ):
+        raise HTTPException(503, "COMPOSIO_AUTH_CONFIGS_JSON must map app names to auth config IDs")
+    return {app.lower(): config_id for app, config_id in configs.items()}
 
 # Composio client singleton
 _composio_client = None
@@ -89,6 +96,10 @@ class StatusResponse(BaseModel):
     connected: bool = False
 
 
+class ConfiguredAppsResponse(BaseModel):
+    apps: list[str]
+
+
 class DisconnectResponse(BaseModel):
     status: str
     app: str
@@ -97,6 +108,11 @@ class DisconnectResponse(BaseModel):
 # =============================================================================
 # API Endpoints
 # =============================================================================
+
+@router.get("/configured-apps", response_model=ConfiguredAppsResponse)
+async def get_configured_apps():
+    """Expose only configured app names so the UI can disable unavailable OAuth buttons."""
+    return {"apps": sorted(get_app_auth_configs())}
 
 @router.get("/connections", response_model=ConnectionsResponse)
 async def get_connections(user: dict = Depends(get_current_user)):
@@ -145,9 +161,9 @@ async def connect_app(
     app_name = request.app_name.lower()
     
     # Validate app is in whitelist
-    auth_config_id = APP_AUTH_CONFIGS.get(app_name)
+    auth_config_id = get_app_auth_configs().get(app_name)
     if not auth_config_id:
-        raise HTTPException(400, f"Unsupported app: {app_name}")
+        raise HTTPException(503, f"{app_name} is not configured for this Neloo instance")
     
     # Generate cryptographic state for CSRF protection and user binding
     oauth_state = secrets.token_urlsafe(32)

@@ -33,6 +33,7 @@ export function ConnectedAppsTab() {
     const [selectedCategory, setSelectedCategory] = useState<AppCategory | "all">("all");
     const [connectedAppIds, setConnectedAppIds] = useState<Set<string>>(new Set());
     const [pendingAppIds, setPendingAppIds] = useState<Set<string>>(new Set());
+    const [configuredAppIds, setConfiguredAppIds] = useState<Set<string> | null>(null);
 
     const localizedApps = useMemo(() => {
         return apps.map((app) => {
@@ -80,6 +81,21 @@ export function ConnectedAppsTab() {
     useEffect(() => {
         fetchConnections();
     }, [fetchConnections]);
+
+    useEffect(() => {
+        if (!apiUrl) return;
+        const loadConfiguredApps = async () => {
+            try {
+                const response = await fetch(`${apiUrl}/api/integrations/configured-apps`);
+                if (!response.ok) return;
+                const data = await response.json();
+                setConfiguredAppIds(new Set(data.apps || []));
+            } catch (error) {
+                console.error('[ConnectedApps] Failed to load configured apps:', error);
+            }
+        };
+        void loadConfiguredApps();
+    }, [apiUrl]);
 
     // Poll for pending connections
     useEffect(() => {
@@ -281,8 +297,9 @@ export function ConnectedAppsTab() {
                                         app={app}
                                         isConnected={true}
                                         onConnect={handleConnect}
-                                        onDisconnect={handleDisconnect}
-                                        onManage={handleManage}
+                                    onDisconnect={handleDisconnect}
+                                    onManage={handleManage}
+                                    isConfigured={configuredAppIds === null || configuredAppIds.has(app.id)}
                                     />
                                 ))}
                             </div>
@@ -322,8 +339,9 @@ export function ConnectedAppsTab() {
                                                     app={app}
                                                     isConnected={false}
                                                     onConnect={handleConnect}
-                                                    onDisconnect={handleDisconnect}
-                                                    onManage={handleManage}
+                                            onDisconnect={handleDisconnect}
+                                            onManage={handleManage}
+                                            isConfigured={configuredAppIds === null || configuredAppIds.has(app.id)}
                                                 />
                                             ))}
                                         </div>

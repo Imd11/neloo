@@ -17,7 +17,7 @@ interface SharedConversation {
     title: string;
     messages: SharedMessage[];
     shared_at: string;
-    message_index?: number | null;  // If set, only show this message pair
+    target_ai_message_id?: string | null;
 }
 
 function extractMessageContent(msg: SharedMessage): string {
@@ -137,7 +137,7 @@ export default function SharePage() {
                     {/* Title section */}
                     <div className="mb-8 border-b border-border pb-6">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <span>{conversation!.message_index !== null && conversation!.message_index !== undefined ? "📌 分享的消息" : "📤 分享的对话"}</span>
+                            <span>{conversation!.target_ai_message_id ? "📌 分享的消息" : "📤 分享的对话"}</span>
                             <span>•</span>
                             <span>
                                 {new Date(conversation!.shared_at).toLocaleDateString("zh-CN", {
@@ -154,19 +154,7 @@ export default function SharePage() {
 
                     {/* Messages */}
                     <div className="space-y-6">
-                        {(() => {
-                            // Filter messages based on message_index
-                            let displayMessages = conversation!.messages;
-
-                            if (conversation!.message_index !== null && conversation!.message_index !== undefined) {
-                                // Single message sharing: show the AI response at message_index
-                                // and the user question before it (message_index - 1)
-                                const msgIdx = conversation!.message_index;
-                                const startIdx = Math.max(0, msgIdx - 1);  // Include user question if exists
-                                displayMessages = conversation!.messages.slice(startIdx, msgIdx + 1);
-                            }
-
-                            return displayMessages.map((msg, index) => {
+                        {conversation!.messages.map((msg, index) => {
                                 const content = extractMessageContent(msg);
                                 if (!content) return null;
 
@@ -191,8 +179,7 @@ export default function SharePage() {
                                         </div>
                                     </div>
                                 );
-                            });
-                        })()}
+                            })}
                     </div>
 
                     {/* CTA */}

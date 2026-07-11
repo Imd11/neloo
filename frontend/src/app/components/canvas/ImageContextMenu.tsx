@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Trash2, Download, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 interface ImageContextMenuProps {
     x: number;
@@ -18,8 +19,9 @@ export function ImageContextMenu({
     onDelete,
     onDownload,
     onAIEdit,
-}: ImageContextMenuProps) {
-    const menuRef = useRef<HTMLDivElement>(null);
+	}: ImageContextMenuProps) {
+    const { t } = useLanguage();
+	    const menuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
@@ -44,11 +46,11 @@ export function ImageContextMenu({
     }, [onClose]);
 
     const menuItems = [
-        { icon: Wand2, label: "AI 改图", onClick: onAIEdit, highlight: true },
+        { icon: Wand2, label: t("canvas.ai_edit_image"), onClick: onAIEdit, highlight: true },
         { divider: true },
-        { icon: Download, label: "下载图片", onClick: onDownload },
+        { icon: Download, label: t("canvas.download_image"), onClick: onDownload },
         { divider: true },
-        { icon: Trash2, label: "删除", onClick: onDelete, danger: true },
+        { icon: Trash2, label: t("common.delete"), onClick: onDelete, danger: true },
     ];
 
     return (

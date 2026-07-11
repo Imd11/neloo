@@ -86,8 +86,8 @@ def get_supabase() -> Client:
     if _supabase_client is None:
         if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
             raise HTTPException(
-                status_code=500,
-                detail="Supabase not configured"
+                status_code=503,
+                detail="Agents require SUPABASE_URL and SUPABASE_SERVICE_KEY. Configure persistence, then restart the backend."
             )
         _supabase_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
     return _supabase_client

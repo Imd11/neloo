@@ -32,6 +32,9 @@ The frontend uses Yarn 1.x. `frontend/yarn.lock` is the canonical dependency loc
 | `FRONTEND_URL` | `backend/.env` | Recommended | Frontend URL, usually `http://localhost:3000` or `http://localhost:3001`. |
 | `CORS_ALLOWED_ORIGINS` | `backend/.env` | Recommended | Include every frontend origin. |
 | `SANDBOX_MODE` | `backend/.env` | Always | Use `local` for trusted local development. |
+| `ALLOW_ANONYMOUS` | `backend/.env` | Always | Enables Neloo's login-free guest sessions. |
+| `ANONYMOUS_SESSION_SECRET` | `backend/.env` and `frontend/.env.local` | Production guest mode | Server-only secret shared by both servers to sign isolated browser guest sessions. |
+| `ALLOW_INSECURE_LOCAL_TOKENS` | `backend/.env` | Local development only | Allows raw local development tokens when no shared guest-session secret exists. Keep `false` publicly. |
 | One chat model key | `backend/.env` | Always for chat | At least one key from the chat model provider table. |
 | `DATABASE_URL` | `backend/.env` | Production checkpoint persistence only | Not required by the default local `backend/langgraph.json`; required by `backend/langgraph.production.json`. Durable app-level chat history, share links, fork/regenerate history, and DB spot checks are Supabase-backed and require `SUPABASE_URL` plus `SUPABASE_SERVICE_KEY`. |
 
@@ -120,7 +123,7 @@ Durable app-level chat history, share links, fork/regenerate history, and DB spo
 
 | Variable | Location | Required when | Security | Feature |
 | --- | --- | --- | --- | --- |
-| `SANDBOX_MODE` | Backend | Always | Public config | `local`, `docker`, `e2b`, `e2b-sync`, or `e2b-async`. |
+| `SANDBOX_MODE` | Backend | Always | Public config | `local`, `e2b`, `e2b-sync`, or `e2b-async`. |
 | `E2B_API_KEY` | Backend | `SANDBOX_MODE` uses E2B | Secret | E2B cloud sandbox. |
 
 ## Tool and Observability Variables
@@ -129,6 +132,7 @@ Durable app-level chat history, share links, fork/regenerate history, and DB spo
 | --- | --- | --- | --- | --- |
 | `TAVILY_API_KEY` | Backend | Web search | Secret | Search tool. |
 | `COMPOSIO_API_KEY` | Backend | Composio integrations | Secret | Third-party app integrations. |
+| `COMPOSIO_AUTH_CONFIGS_JSON` | Backend | Composio integrations | Server configuration | JSON map of app names to auth config IDs from the operator's Composio workspace. |
 | `LANGSMITH_API_KEY` | Backend | Backend tracing | Secret | LangSmith tracing. |
 | `LANGSMITH_TRACING_V2` | Backend | Backend tracing | Public config | Enables tracing. |
 | `LANGSMITH_PROJECT` | Backend | Backend tracing | Public config | Project name. |

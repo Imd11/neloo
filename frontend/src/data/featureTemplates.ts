@@ -98,10 +98,9 @@ export function localizeCategory(category: TemplateCategoryInfo, t: Translate): 
 
 export const imageCategories: TemplateCategoryInfo[] = [
     { id: "all", label: "All", labelKey: "features.categories.all" },
-    { id: "portrait", label: "Portrait / Film", labelKey: "features.categories.portrait" },
     { id: "product", label: "Product", labelKey: "features.categories.product" },
     { id: "city", label: "City", labelKey: "features.categories.city" },
-    { id: "infographic", label: "Infographic", labelKey: "features.categories.infographic" },
+    { id: "design", label: "Design", labelKey: "features.categories.design" },
 ];
 
 export const videoCategories: TemplateCategoryInfo[] = [
@@ -117,14 +116,14 @@ export const videoCategories: TemplateCategoryInfo[] = [
 export const imageTemplates: Template[] = [
     {
         id: 1,
-        title: "Wong Kar-wai Film Look",
-        titleKey: "features.image_templates.wong_kar_wai.title",
-        description: "Moody cinematic portrait with warm film grain and motion blur",
-        descriptionKey: "features.image_templates.wong_kar_wai.description",
-        gradient: "bg-gradient-to-br from-rose-900 via-pink-800 to-purple-900",
-        previewImage: "/templates/image/wong-kar-wai-film.png",
-        prompt: `Use the uploaded image as a character reference. Create a Wong Kar-wai inspired cinematic portrait: warm low-saturation color, vintage film grain, soft focus, subtle double exposure, motion blur, and a dreamy night street atmosphere. The subject wears a fitted black long-sleeved dress and carries flowers beside an old newsstand. Use backlit hair, hazy shadows, rich story-driven composition, elegant melancholy, and a stylish editorial photography finish.`,
-        category: "portrait",
+        title: "Giant Landmark Object",
+        titleKey: "features.image_templates.giant_landmark.title",
+        description: "Turn an everyday object into a massive real-world monument",
+        descriptionKey: "features.image_templates.giant_landmark.description",
+        gradient: "bg-gradient-to-br from-zinc-900 via-stone-800 to-yellow-800",
+        previewImage: "/templates/image/giant-landmark-object.png",
+        prompt: `Transform [EVERYDAY OBJECT] into a massive real-world monument. Surface materials are physically accurate, with visible wear, scratches, dust, and scale references like people and vehicles. Shot from a low-angle cinematic perspective, realistic daylight, ultra-detailed textures.`,
+        category: "city",
     },
     {
         id: 2,
@@ -150,14 +149,26 @@ export const imageTemplates: Template[] = [
     },
     {
         id: 4,
-        title: "Lazy Cooking Guide",
-        titleKey: "features.image_templates.lazy_cooking.title",
-        description: "Clean mobile infographic for beginner-friendly cooking steps",
-        descriptionKey: "features.image_templates.lazy_cooking.description",
-        gradient: "bg-gradient-to-br from-amber-900 via-orange-800 to-red-900",
-        previewImage: "/templates/image/lazy-cooking-guide.png",
-        prompt: `Create a Chinese-language "lazy cooking guide" infographic. Visual style: museum-quality, refined, elegant, warm, and practical. Use a warm palette with ivory, warm gray, and amber gold. Use minimal 2px line icons with rounded corners. Food ingredients and finished dishes should look photorealistic with natural light. All Chinese text in the image must be clear, accurate, and readable. Include dish type, regional cuisine, suitable audience, difficulty level, time range, 2-3 beginner-friendly dish recommendations, dish names, one-line selling points, cooking time, difficulty stars, ingredient lists, 3-5 illustrated steps, beginner mistakes to avoid, and optional nutrition values. Use a 1080px x 1920px vertical mobile infographic layout with generous spacing, clear cards, and a restrained elegant composition.`,
-        category: "infographic",
+        title: "Sports Graphic Poster",
+        titleKey: "features.image_templates.sports_poster.title",
+        description: "Editorial mixed-media poster for athletes and public figures",
+        descriptionKey: "features.image_templates.sports_poster.description",
+        gradient: "bg-gradient-to-br from-neutral-900 via-zinc-700 to-slate-500",
+        previewImage: "/templates/image/sports-poster-grid.png",
+        prompt: `[PERSON NAME].
+Act as a high-end sports graphic designer creating a conceptual tribute poster. The style is a complex "dual exposure photo-grid composite" with mixed-media textures.
+CENTRAL STRUCTURE (THE VESSEL):
+The central focus is a large-scale, high-contrast black and white portrait silhouette of [PERSON NAME]. This main portrait acts as the container.
+THE GRID FILL & TEXTURES (MIXED MEDIA):
+The interior of the silhouette is populated by a dense "photo mosaic grid" of action shots from the person's career.
+CRITICAL TEXTURE INSTRUCTION: Do not just paste flat photos. Apply artistic textures to various grid cells to create a tactile, collage feel. Use effects like halftone dots, subtle fabric or embroidery texture, and film grain on selected high-contrast action shots.
+COLOR STRATEGY:
+The base is monochrome black and white. Use selective color overlays relevant to the team, brand, or flag only on specific grid cells to create rhythm.
+TYPOGRAPHY & BRANDING:
+Top left: write "[PERSON NAME]" in a small, discreet Inter Semibold style. It must occupy maximum 20% of the canvas width. Top right: place a small primary logo, team mark, brand symbol, or flag occupying maximum 10% of the canvas width.
+COMPOSITION & BACKGROUND:
+Use an off-white or light grey background with high-quality paper or concrete texture. Center the figure perfectly and keep wide negative space around the subject.`,
+        category: "design",
     },
 ];
 

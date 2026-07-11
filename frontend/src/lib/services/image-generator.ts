@@ -60,11 +60,14 @@ export async function generateImage(
     resolution: ResolutionTier = "1k",
     size?: ImageSize,
     timeoutMs = 120000,
-    model?: string
+    model?: string,
+    signal?: AbortSignal
 ): Promise<string[]> {
     const provider = resolveImageProvider(model);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    const abortFromCaller = () => controller.abort();
+    signal?.addEventListener("abort", abortFromCaller, { once: true });
 
     if (provider.provider === "gemini") {
         try {
@@ -90,6 +93,7 @@ export async function generateImage(
             return images;
         } finally {
             clearTimeout(timeoutId);
+            signal?.removeEventListener("abort", abortFromCaller);
         }
     }
 
@@ -126,5 +130,6 @@ export async function generateImage(
         return images;
     } finally {
         clearTimeout(timeoutId);
+        signal?.removeEventListener("abort", abortFromCaller);
     }
 }

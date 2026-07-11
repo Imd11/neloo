@@ -93,7 +93,9 @@ export const SERVER_ONLY_KEYS = [
   "E2B_API_KEY",
   "TAVILY_API_KEY",
   "COMPOSIO_API_KEY",
+  "COMPOSIO_AUTH_CONFIGS_JSON",
   "LANGSMITH_API_KEY",
+  "ANONYMOUS_SESSION_SECRET",
 ];
 
 const PUBLIC_FRONTEND_KEYS = [
@@ -215,6 +217,7 @@ export function analyzeEnvironment({ backend, frontend, profile = "local-minimal
   const report = { ok: true, items: [] };
   const backendValues = backend.values || {};
   const frontendValues = frontend.values || {};
+  const isProductionProfile = profile === "production-railway-vercel";
 
   if (!backend.exists) {
     add(report, "error", "missing-backend-env", "Missing backend/.env. Copy backend/.env.example first.", "backend/.env");
@@ -228,6 +231,13 @@ export function analyzeEnvironment({ backend, frontend, profile = "local-minimal
   }
 
   if (backend.exists) {
+    const anonymousEnabled = (backendValues.ALLOW_ANONYMOUS || "").toLowerCase() === "true";
+    if (!anonymousEnabled) {
+      add(report, "error", "anonymous-local-mode-disabled", "Neloo has no login screen. Set ALLOW_ANONYMOUS=true so the browser can use protected features.", "backend/.env");
+    }
+    if (isProductionProfile && !hasValue(backendValues, "ANONYMOUS_SESSION_SECRET")) {
+      add(report, "error", "missing-anonymous-session-secret", "Production guest mode requires ANONYMOUS_SESSION_SECRET. Use the same server-only value in backend/.env and frontend/.env.local.", "backend/.env");
+    }
     const hasAnyChatKey = CHAT_MODEL_KEYS.some((key) => hasValue(backendValues, key));
     const chatModelStatus = evaluateChatModelConfigs(backendValues);
 
@@ -267,7 +277,10 @@ export function analyzeEnvironment({ backend, frontend, profile = "local-minimal
       add(report, "warning", "invalid-backend-supabase-url", "SUPABASE_URL must be a full URL such as https://your-project-ref.supabase.co. Durable history/share/fork will fail until it points to a reachable Supabase project.", "backend/.env");
     }
 
-    const isProductionProfile = profile === "production-railway-vercel";
+    if (hasValue(backendValues, "COMPOSIO_API_KEY") && !hasValue(backendValues, "COMPOSIO_AUTH_CONFIGS_JSON")) {
+      add(report, "warning", "missing-composio-auth-configs", "COMPOSIO_API_KEY is set, but Connected Apps also needs COMPOSIO_AUTH_CONFIGS_JSON with auth config IDs from your Composio workspace.", "backend/.env");
+    }
+
     if (isProductionProfile && !hasValue(backendValues, "DATABASE_URL")) {
       add(report, "error", "missing-production-database-url", "DATABASE_URL is required for production persistence with backend/langgraph.production.json.", "backend/.env");
     } else if (!hasValue(backendValues, "DATABASE_URL") && !hasValue(backendValues, "SUPABASE_DB_PASSWORD")) {
@@ -276,6 +289,17 @@ export function analyzeEnvironment({ backend, frontend, profile = "local-minimal
   }
 
   if (frontend.exists) {
+    if (profile === "production-railway-vercel" && !hasValue(frontendValues, "ANONYMOUS_SESSION_SECRET")) {
+      add(report, "error", "missing-frontend-anonymous-session-secret", "Production guest mode requires ANONYMOUS_SESSION_SECRET in frontend/.env.local so the server can issue isolated guest sessions.", "frontend/.env.local");
+    }
+    if (
+      backend.exists &&
+      hasValue(backendValues, "ANONYMOUS_SESSION_SECRET") &&
+      hasValue(frontendValues, "ANONYMOUS_SESSION_SECRET") &&
+      backendValues.ANONYMOUS_SESSION_SECRET !== frontendValues.ANONYMOUS_SESSION_SECRET
+    ) {
+      add(report, "error", "anonymous-session-secret-mismatch", "ANONYMOUS_SESSION_SECRET must be identical in backend/.env and frontend/.env.local.", "backend/.env");
+    }
     for (const key of SERVER_ONLY_KEYS) {
       const publicKey = `NEXT_PUBLIC_${key}`;
       if (hasValue(frontendValues, publicKey) && !ALLOWED_PUBLIC_PROVIDER_KEYS.has(publicKey)) {

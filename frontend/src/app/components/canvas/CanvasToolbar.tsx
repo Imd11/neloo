@@ -14,6 +14,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 interface CanvasToolbarProps {
     activeTool: CanvasTool;
@@ -34,6 +35,7 @@ export function CanvasToolbar({
     onSubmit,
     onCancel
 }: CanvasToolbarProps) {
+    const { t } = useLanguage();
     // Only show toolbar when there's a selection (image on canvas)
     if (!hasSelection) return null;
 
@@ -58,7 +60,7 @@ export function CanvasToolbar({
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent side="top">
-                                <p>选择 (V)</p>
+                                <p>{t("canvas.select_tool")} (V)</p>
                             </TooltipContent>
                         </Tooltip>
 
@@ -77,7 +79,7 @@ export function CanvasToolbar({
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent side="top">
-                                <p>画笔 (B)</p>
+                                <p>{t("canvas.brush_tool_short")} (B)</p>
                             </TooltipContent>
                         </Tooltip>
 
@@ -96,7 +98,7 @@ export function CanvasToolbar({
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent side="top">
-                                <p>橡皮擦 (E)</p>
+                                <p>{t("canvas.eraser_tool_short")} (E)</p>
                             </TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
@@ -122,7 +124,7 @@ export function CanvasToolbar({
                     >
                         <div className="space-y-3">
                             <div className="flex items-center justify-between">
-                                <span className="text-sm text-canvas-muted">画笔大小</span>
+                                <span className="text-sm text-canvas-muted">{t("canvas.brush_size")}</span>
                                 <span className="text-sm text-canvas-foreground">{brushSize}px</span>
                             </div>
                             <Slider
@@ -155,7 +157,7 @@ export function CanvasToolbar({
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent side="top">
-                                <p>取消</p>
+                                <p>{t("common.cancel")}</p>
                             </TooltipContent>
                         </Tooltip>
 
@@ -171,7 +173,7 @@ export function CanvasToolbar({
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent side="top">
-                                <p>确认</p>
+                                <p>{t("common.confirm")}</p>
                             </TooltipContent>
                         </Tooltip>
                     </TooltipProvider>

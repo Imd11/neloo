@@ -86,6 +86,7 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
         generationParams?: CanvasImage["generationParams"];
     } | null>(null);
     const generationParamsByUrlRef = useRef<Map<string, CanvasImage["generationParams"]>>(new Map());
+    const generationAbortRef = useRef<AbortController | null>(null);
 
     useEffect(() => {
         let cancelled = false;
@@ -248,6 +249,8 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
         };
         setMessages(prev => [...prev, loadingMessage]);
         setIsGenerating(true);
+        const controller = new AbortController();
+        generationAbortRef.current = controller;
 
         try {
             // Call real API
@@ -259,7 +262,8 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
                     resolution: resolution,
                     ...(ratio !== "auto" && { size: ratio }),
                     ...(imageModel.modelId && { model: imageModel.modelId })
-                })
+                }),
+                signal: controller.signal,
             });
 
             if (!response.ok) {
@@ -293,24 +297,33 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
                         : msg
                 ));
                 setIsGenerating(false);
-                toast.success("图片生成完成!");
+                toast.success(t("chat.image_generation_complete"));
             };
             img.onerror = () => {
-                throw new Error("图片加载失败");
+                toast.error(t("chat.image_load_failed"));
+                setMessages(prev => prev.filter(msg => msg.id !== aiMessageId));
+                setIsGenerating(false);
             };
             img.src = generatedImageUrl;
         } catch (error) {
+            if (error instanceof DOMException && error.name === "AbortError") {
+                return;
+            }
             console.error("[ImagePage] Generation failed:", error);
             setMessages(prev => prev.filter(msg => msg.id !== aiMessageId));
             setIsGenerating(false);
-            toast.error(error instanceof Error ? error.message : "图片生成失败");
+            toast.error(error instanceof Error ? error.message : t("chat.image_generation_failed"));
+        } finally {
+            if (generationAbortRef.current === controller) {
+                generationAbortRef.current = null;
+            }
         }
     }, [setCollapsed, messages, createImageThread, generateTitle, imageModel, ratio, resolution, t]);
 
     const handleSelectTemplate = (template: Template) => {
         setSelectedImageTemplate(template);
         setTemplateInputVersion((version) => version + 1);
-        toast.info(`已选择模板: ${template.title}`);
+        toast.info(t("chat.selected_template_toast", { name: template.title }));
     };
 
     const handleClearTemplate = () => {
@@ -335,6 +348,8 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
     }, []);
 
     const handleStopGeneration = useCallback(() => {
+        generationAbortRef.current?.abort();
+        generationAbortRef.current = null;
         setIsGenerating(false);
         setMessages(prev => prev.filter(msg => !msg.isLoading));
     }, []);
@@ -376,13 +391,13 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
         setCanvasImages([]);
         setSelectedImageTemplate(null);
         setTemplateInputVersion((version) => version + 1);
-        toast.info("已开始新对话");
-    }, []);
+        toast.info(t("chat.new_conversation_started"));
+    }, [t]);
 
     // Handle template selection from chat panel
     const handleChatTemplateSelect = useCallback((prompt: string) => {
-        toast.info(`已选择模板`);
-    }, []);
+        toast.info(t("chat.selected_template_toast", { name: prompt.slice(0, 24) || t("chat.select_template") }));
+    }, [t]);
 
     return (
         <div className="h-full flex flex-col overflow-hidden">
@@ -415,7 +430,7 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
                                 <div className="w-full max-w-3xl mx-auto flex flex-col items-center gap-4">
                                     <PromptInput
                                         key={`image-prompt-${templateInputVersion}`}
-                                        placeholder="描述你要生成的图..."
+                                        placeholder={t("features.items.image.placeholder")}
                                         initialValue={selectedImageTemplate?.prompt ?? ""}
                                         onSubmit={handleSubmit}
                                         selectedFeature={imageFeature}
@@ -443,7 +458,7 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
                         <div className="flex-shrink-0 px-6 py-12">
                             <div className="max-w-4xl mx-auto">
                                 <h2 className="text-lg font-medium text-foreground mb-4">
-                                    模板灵感
+                                    {t("chat.image_template_inspiration")}
                                 </h2>
                                 <TabbedTemplateGrid
                                     type="image"
@@ -505,7 +520,7 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
                                                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                                     <input
                                                         type="text"
-                                                        placeholder="搜索模型..."
+                                                        placeholder={t("model_selector.search_placeholder")}
                                                         value={searchQuery}
                                                         onChange={(e) => setSearchQuery(e.target.value)}
                                                         className="w-full pl-8 pr-3 py-2 text-sm bg-input-bg border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
@@ -554,7 +569,7 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
                                             className="h-8 px-3 gap-1.5 text-muted-foreground hover:text-foreground border-border"
                                         >
                                             <MessageSquarePlus className="w-4 h-4" />
-                                            <span className="text-xs">新建</span>
+                                            <span className="text-xs">{t("chat.new_conversation_short")}</span>
                                         </Button>
                                     </div>
                                     <div className="flex-1 min-h-0">

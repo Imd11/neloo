@@ -5,6 +5,9 @@
  */
 
 import sharp from "sharp";
+import { assertSafeRemoteImageUrl } from "@/lib/server/image-request-guard";
+
+const MAX_SOURCE_IMAGE_BYTES = 15 * 1024 * 1024;
 
 export interface ResizeOptions {
     width: number;
@@ -59,11 +62,27 @@ export async function resizeImage(
 }
 
 export async function fetchImageBuffer(url: string): Promise<Buffer> {
-    const response = await fetch(url);
-    if (!response.ok) {
-        throw new Error(`Failed to fetch image: ${response.statusText}`);
+    assertSafeRemoteImageUrl(url);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15_000);
+    try {
+        const response = await fetch(url, { signal: controller.signal });
+        if (!response.ok) {
+            throw new Error(`Failed to fetch image: ${response.statusText}`);
+        }
+        if (!response.headers.get("content-type")?.startsWith("image/")) {
+            throw new Error("The remote URL did not return an image");
+        }
+        const contentLength = Number(response.headers.get("content-length") || 0);
+        if (contentLength > MAX_SOURCE_IMAGE_BYTES) {
+            throw new Error("The source image is too large");
+        }
+        const arrayBuffer = await response.arrayBuffer();
+        if (arrayBuffer.byteLength > MAX_SOURCE_IMAGE_BYTES) {
+            throw new Error("The source image is too large");
+        }
+        return Buffer.from(arrayBuffer);
+    } finally {
+        clearTimeout(timeoutId);
     }
-    const arrayBuffer = await response.arrayBuffer();
-    return Buffer.from(arrayBuffer);
 }
-

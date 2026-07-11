@@ -7,6 +7,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 // Ratio options matching the server-side image API size parameter.
 const ratios = [
@@ -40,8 +41,10 @@ export function ImageConfigBar({
     resolution = "1k",
     onResolutionChange
 }: ImageConfigBarProps) {
+    const { t } = useLanguage();
     const selectedRatio = ratios.find(r => r.value === ratio) || ratios[0];
     const selectedResolution = resolutions.find(r => r.value === resolution) || resolutions[0];
+    const ratioLabel = selectedRatio.value === "auto" ? t("image.auto") : selectedRatio.label;
 
     return (
         <div className="flex flex-wrap items-center gap-3 justify-center">
@@ -53,7 +56,7 @@ export function ImageConfigBar({
                         size="sm"
                         className="gap-2 bg-input-bg border-border hover:bg-hover-bg"
                     >
-                        比例: {selectedRatio.label}
+                        {t("image.ratio")}: {ratioLabel}
                         <ChevronDown className="w-4 h-4" />
                     </Button>
                 </DropdownMenuTrigger>
@@ -71,7 +74,7 @@ export function ImageConfigBar({
                                 selectedRatio.value === r.value && "bg-accent"
                             )}
                         >
-                            {r.label}
+                            {r.value === "auto" ? t("image.auto") : r.label}
                             {selectedRatio.value === r.value && (
                                 <Check className="w-4 h-4" />
                             )}
@@ -88,7 +91,7 @@ export function ImageConfigBar({
                         size="sm"
                         className="gap-2 bg-input-bg border-border hover:bg-hover-bg"
                     >
-                        清晰度: {selectedResolution.label}
+                        {t("image.resolution")}: {selectedResolution.label}
                         <ChevronDown className="w-4 h-4" />
                     </Button>
                 </DropdownMenuTrigger>

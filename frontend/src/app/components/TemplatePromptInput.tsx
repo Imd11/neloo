@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { LayoutTemplate, Plus, Mic, ArrowUp, X } from "lucide-react";
+import { LayoutTemplate, Plus, ArrowUp, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Feature, localizeFeature } from "@/data/featureTemplates";
@@ -338,18 +338,6 @@ export function TemplatePromptInput({
                         />
                     )}
                 </div>
-
-                {/* Voice Button */}
-                <Button
-                    variant="icon"
-                    size="icon-sm"
-                    className={cn(
-                        "shrink-0 text-muted-foreground hover:text-foreground",
-                        isFortuneMode && "mt-0.5"
-                    )}
-                >
-                    <Mic className="w-5 h-5" />
-                </Button>
 
                 {/* Send Button */}
                 <Button

@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchImageBuffer, resizeImage } from "@/lib/resize-service";
+import { rejectUnsafeImageRequest } from "@/lib/server/image-request-guard";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
     try {
+        const rejection = rejectUnsafeImageRequest(request, 40);
+        if (rejection) return rejection;
+
         const body = await request.json();
         const { imageUrl, width, height } = body;
 
@@ -16,7 +20,15 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        if (typeof width !== "number" || typeof height !== "number" || width <= 0 || height <= 0) {
+        if (
+            typeof width !== "number" ||
+            typeof height !== "number" ||
+            width <= 0 ||
+            height <= 0 ||
+            width > 8192 ||
+            height > 8192 ||
+            width * height > 40_000_000
+        ) {
             return NextResponse.json({ error: "Invalid dimensions" }, { status: 400 });
         }
 
@@ -41,4 +53,3 @@ export async function POST(request: NextRequest) {
         );
     }
 }
-

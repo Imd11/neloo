@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseEnvContent } from "./check-env.mjs";
@@ -16,6 +17,9 @@ const PROFILES = {
       SANDBOX_MODE: "local",
       FILE_USE_LOCAL_STORAGE: "true",
       IMAGE_USE_LOCAL_STORAGE: "true",
+      ALLOW_ANONYMOUS: "true",
+      ALLOW_INSECURE_LOCAL_TOKENS: "true",
+      ALLOW_LOCAL_SANDBOX: "true",
     },
     frontend: {
       NEXT_PUBLIC_API_URL: "http://localhost:2024",
@@ -33,6 +37,9 @@ const PROFILES = {
       SANDBOX_MODE: "local",
       FILE_USE_LOCAL_STORAGE: "true",
       IMAGE_USE_LOCAL_STORAGE: "true",
+      ALLOW_ANONYMOUS: "true",
+      ALLOW_INSECURE_LOCAL_TOKENS: "true",
+      ALLOW_LOCAL_SANDBOX: "true",
       LANGSMITH_TRACING_V2: "false",
       LANGSMITH_PROJECT: "neloo",
     },
@@ -48,6 +55,8 @@ const PROFILES = {
       SANDBOX_MODE: "e2b",
       FILE_USE_LOCAL_STORAGE: "false",
       IMAGE_USE_LOCAL_STORAGE: "false",
+      ALLOW_ANONYMOUS: "true",
+      ALLOW_INSECURE_LOCAL_TOKENS: "false",
       LANGSMITH_TRACING_V2: "false",
       LANGSMITH_PROJECT: "neloo",
     },
@@ -160,8 +169,21 @@ export function setupEnvironment({ root, profile, dryRun = false, force = false 
     ? fs.readFileSync(files.frontendEnv, "utf8")
     : fs.readFileSync(files.frontendExample, "utf8");
 
-  const backendUpdate = updateEnvContent(backendContent, selected.backend, { force });
-  const frontendUpdate = updateEnvContent(frontendContent, selected.frontend, { force });
+  const backendValues = parseEnvContent(backendContent);
+  const frontendValues = parseEnvContent(frontendContent);
+  const anonymousSessionSecret = backendValues.ANONYMOUS_SESSION_SECRET
+    || frontendValues.ANONYMOUS_SESSION_SECRET
+    || randomBytes(32).toString("hex");
+  const backendUpdate = updateEnvContent(
+    backendContent,
+    { ...selected.backend, ANONYMOUS_SESSION_SECRET: anonymousSessionSecret },
+    { force }
+  );
+  const frontendUpdate = updateEnvContent(
+    frontendContent,
+    { ...selected.frontend, ANONYMOUS_SESSION_SECRET: anonymousSessionSecret },
+    { force }
+  );
 
   if (!dryRun) {
     fs.writeFileSync(files.backendEnv, backendUpdate.content);

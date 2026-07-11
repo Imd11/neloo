@@ -3,6 +3,7 @@ import { MousePointer2, Hand, Bell, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CanvasTool } from "@/types/canvas";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 interface CanvasTopBarProps {
     activeTool: CanvasTool;
@@ -17,6 +18,7 @@ export function CanvasTopBar({
     scale,
     onScaleChange,
 }: CanvasTopBarProps) {
+    const { t } = useLanguage();
     const [pendingScale, setPendingScale] = useState<string | null>(null);
 
     const clampPercent = (value: number) => Math.min(300, Math.max(25, value));
@@ -107,7 +109,7 @@ export function CanvasTopBar({
                     size="sm"
                     className="text-muted-foreground hover:text-foreground text-sm h-8"
                 >
-                    额度
+                    {t("canvas.quota")}
                 </Button>
                 <Button variant="ghost" size="icon" className="w-8 h-8">
                     <User className="w-4 h-4" />

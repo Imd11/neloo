@@ -1143,33 +1143,33 @@ class LocalSubprocessExecutor(SandboxExecutor):
     def __init__(self):
         print("[WARNING] LocalSubprocessExecutor has NO security isolation!")
         print("[WARNING] Only use for local development and testing.")
-        self._data_dir = None
+        self._data_dirs: dict[str, str] = {}
 
-    def _get_data_dir(self) -> str:
+    def _get_data_dir(self, user_id: str) -> str:
         """Get or create the local data directory for file storage."""
-        if self._data_dir is None:
+        if user_id not in self._data_dirs:
             from .file_sync import get_local_data_dir
-            self._data_dir = str(get_local_data_dir())
-        return self._data_dir
+            self._data_dirs[user_id] = str(get_local_data_dir(user_id))
+        return self._data_dirs[user_id]
 
-    def _rewrite_paths(self, code: str) -> str:
+    def _rewrite_paths(self, code: str, user_id: str) -> str:
         """
         Rewrite /home/user/data/ paths to actual local data directory.
 
         This allows code written for E2B sandbox to work in local mode.
         """
-        local_data_dir = self._get_data_dir()
+        local_data_dir = self._get_data_dir(user_id)
         # Replace the sandbox path with local path
         return code.replace("/home/user/data/", f"{local_data_dir}/")
 
-    def _get_data_dir_snapshot(self) -> dict[str, float]:
+    def _get_data_dir_snapshot(self, user_id: str) -> dict[str, float]:
         """
         Get a snapshot of files in data directory with their modification times.
 
         Returns:
             Dict mapping filename to modification time
         """
-        data_dir = self._get_data_dir()
+        data_dir = self._get_data_dir(user_id)
         snapshot = {}
         try:
             for item in os.listdir(data_dir):
@@ -1184,6 +1184,7 @@ class LocalSubprocessExecutor(SandboxExecutor):
         self,
         before: dict[str, float],
         after: dict[str, float],
+        user_id: str,
     ) -> list[dict[str, Any]]:
         """
         Detect new or modified files by comparing snapshots.
@@ -1195,7 +1196,7 @@ class LocalSubprocessExecutor(SandboxExecutor):
         Returns:
             List of file info dicts with filename, size, and sandbox_path
         """
-        data_dir = self._get_data_dir()
+        data_dir = self._get_data_dir(user_id)
         new_files = []
 
         for filename, mtime in after.items():
@@ -1228,10 +1229,7 @@ class LocalSubprocessExecutor(SandboxExecutor):
         # that happens to set SANDBOX_MODE=local doesn't run untrusted code on
         # the server. Checked at execute() (not construction) so module import
         # and graph build never crash on this policy.
-        opt_in = (
-            os.environ.get("ALLOW_ANONYMOUS", "false").lower() == "true"
-            or os.environ.get("ALLOW_LOCAL_SANDBOX", "false").lower() == "true"
-        )
+        opt_in = os.environ.get("ALLOW_LOCAL_SANDBOX", "false").lower() == "true"
         if not opt_in:
             raise RuntimeError(
                 "SANDBOX_MODE=local runs code on the host with no isolation. "
@@ -1250,10 +1248,10 @@ class LocalSubprocessExecutor(SandboxExecutor):
             print(f"[LocalExecutor] Warning: Failed to sync files from storage: {e}")
 
         # Take snapshot of data directory before execution
-        files_before = self._get_data_dir_snapshot()
+        files_before = self._get_data_dir_snapshot(user_id)
 
         # Rewrite /home/user/data/ paths to local data directory
-        code = self._rewrite_paths(code)
+        code = self._rewrite_paths(code, user_id)
 
         # Create a temp directory for this execution
         temp_dir = tempfile.mkdtemp(prefix="sandbox_")
@@ -1349,8 +1347,8 @@ for fig_num in plt.get_fignums():
                         pass
 
             # Detect new files created during execution
-            files_after = self._get_data_dir_snapshot()
-            generated_files = self._detect_new_files(files_before, files_after)
+            files_after = self._get_data_dir_snapshot(user_id)
+            generated_files = self._detect_new_files(files_before, files_after, user_id)
             if generated_files:
                 print(f"[LocalExecutor] Detected {len(generated_files)} new/modified files")
 

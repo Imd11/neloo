@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Loader2, Eraser, Brush, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 interface InpaintEditorProps {
     imageUrl: string;
@@ -14,6 +15,7 @@ interface InpaintEditorProps {
 }
 
 export function InpaintEditor({ imageUrl, onClose, onSave, initialPrompt = "" }: InpaintEditorProps) {
+    const { t } = useLanguage();
     const [prompt, setPrompt] = useState(initialPrompt);
     const [brushSize, setBrushSize] = useState(30);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -109,7 +111,7 @@ export function InpaintEditor({ imageUrl, onClose, onSave, initialPrompt = "" }:
 
     const handleGenerate = async () => {
         if (!prompt.trim()) {
-            toast.error("请输入修改说明");
+            toast.error(t("canvas.edit_prompt_required"));
             return;
         }
         if (!canvasRef.current || !maskCanvasRef.current) return;
@@ -154,14 +156,14 @@ export function InpaintEditor({ imageUrl, onClose, onSave, initialPrompt = "" }:
             if (data.error) throw new Error(data.error);
 
             if (data.urls && data.urls.length > 0) {
-                toast.success("图片编辑完成！");
+                toast.success(t("canvas.edit_complete"));
                 onSave(data.urls[0]);
             } else {
-                throw new Error("未收到编辑后的图片");
+                throw new Error(t("canvas.edit_missing_image"));
             }
         } catch (error) {
             console.error("[InpaintEditor] Error:", error);
-            toast.error(error instanceof Error ? error.message : "图片编辑失败");
+            toast.error(error instanceof Error ? error.message : t("canvas.edit_failed"));
         } finally {
             setIsProcessing(false);
         }
@@ -229,7 +231,7 @@ export function InpaintEditor({ imageUrl, onClose, onSave, initialPrompt = "" }:
 
                         {/* Slider */}
                         <div className="bg-card border border-border rounded-full px-4 py-2 flex items-center gap-3 shadow-lg">
-                            <span className="text-xs text-muted-foreground whitespace-nowrap">画笔大小</span>
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">{t("canvas.brush_size")}</span>
                             <Slider
                                 value={[brushSize]}
                                 onValueChange={([v]: number[]) => setBrushSize(v)}
@@ -276,7 +278,7 @@ export function InpaintEditor({ imageUrl, onClose, onSave, initialPrompt = "" }:
                         <div className="flex-1">
                             <textarea
                                 className="w-full bg-input border border-border rounded-lg p-3 text-sm text-foreground focus:border-ring focus:outline-none h-[42px] min-h-[42px] resize-none leading-relaxed py-2.5"
-                                placeholder="描述您想要修改的内容..."
+                                placeholder={t("canvas.edit_placeholder")}
                                 value={prompt}
                                 onChange={(e) => setPrompt(e.target.value)}
                             />
@@ -289,7 +291,7 @@ export function InpaintEditor({ imageUrl, onClose, onSave, initialPrompt = "" }:
                                 className="h-10 px-4"
                                 onClick={onClose}
                             >
-                                取消
+                                {t("common.cancel")}
                             </Button>
                             <Button
                                 className="h-10 px-6"
@@ -299,10 +301,10 @@ export function InpaintEditor({ imageUrl, onClose, onSave, initialPrompt = "" }:
                                 {isProcessing ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        处理中...
+                                        {t("canvas.processing")}
                                     </>
                                 ) : (
-                                    "AI 改图"
+                                    t("canvas.ai_edit_image")
                                 )}
                             </Button>
                         </div>

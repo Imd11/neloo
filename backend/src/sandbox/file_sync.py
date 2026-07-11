@@ -16,6 +16,7 @@ Functions:
 """
 
 import os
+import hashlib
 import shutil
 import tempfile
 from pathlib import Path
@@ -41,24 +42,24 @@ LOCAL_STORAGE_DIR = Path(tempfile.gettempdir()) / "data-analyst-sandbox" / "data
 SANDBOX_DATA_DIR = "/home/user/data"
 
 # Local data directory for sandbox execution (persistent across executions)
-_LOCAL_DATA_DIR: Optional[Path] = None
-
-
-def get_local_data_dir() -> Path:
+def get_local_data_dir(user_id: str = "default") -> Path:
     """
     Get the local data directory for storing synced files in sandbox.
 
     This directory persists across multiple code executions in local sandbox mode.
     Files are stored here and referenced via SANDBOX_DATA_DIR paths in user code.
     """
-    global _LOCAL_DATA_DIR
+    safe_user_id = hashlib.sha256(user_id.encode("utf-8")).hexdigest()
+    data_dir = LOCAL_STORAGE_DIR / safe_user_id
+    data_dir.mkdir(parents=True, exist_ok=True)
+    return data_dir
 
-    if _LOCAL_DATA_DIR is None:
-        # Use a persistent directory in temp
-        _LOCAL_DATA_DIR = Path(tempfile.gettempdir()) / "data-analyst-sandbox" / "data"
-        _LOCAL_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-    return _LOCAL_DATA_DIR
+def _split_local_storage_path(storage_path: str) -> tuple[str, str]:
+    if "/" in storage_path:
+        user_id, filename = storage_path.split("/", 1)
+        return user_id, filename
+    return "default", storage_path
 
 
 # =============================================================================
@@ -91,9 +92,9 @@ def get_file_content(storage_path: str) -> Optional[bytes]:
     print(f"[FileSync] get_file_content called with storage_path={storage_path}")
 
     if USE_LOCAL_STORAGE:
-        # Local storage mode - read from local filesystem
-        # In local mode, files are stored directly in LOCAL_STORAGE_DIR without subdirectories
-        local_file_path = LOCAL_STORAGE_DIR / storage_path
+        # Local storage mode - read only from the owning guest's directory.
+        user_id, filename = _split_local_storage_path(storage_path)
+        local_file_path = get_local_data_dir(user_id) / filename
         print(f"[FileSync] Local mode: looking for file at {local_file_path}")
         try:
             if local_file_path.exists():
@@ -103,15 +104,6 @@ def get_file_content(storage_path: str) -> Optional[bytes]:
                     return content
             else:
                 print(f"[FileSync] File not found: {local_file_path}")
-                # Try without any path prefix (in case storage_path has user_id prefix)
-                filename = os.path.basename(storage_path)
-                alt_path = LOCAL_STORAGE_DIR / filename
-                if alt_path.exists():
-                    print(f"[FileSync] Found file at alternate path: {alt_path}")
-                    with open(alt_path, "rb") as f:
-                        content = f.read()
-                        print(f"[FileSync] Successfully read {len(content)} bytes from {alt_path}")
-                        return content
                 return None
         except Exception as e:
             print(f"[FileSync] Failed to read local file: {e}")
@@ -160,19 +152,22 @@ def sync_file_to_local(
     filename = os.path.basename(storage_path)
 
     # Determine local destination path - use persistent data directory
+    user_id, storage_filename = _split_local_storage_path(storage_path)
     if local_base_dir:
         base_dir = Path(local_base_dir)
     else:
-        base_dir = get_local_data_dir()
+        base_dir = get_local_data_dir(user_id)
 
     base_dir.mkdir(parents=True, exist_ok=True)
     local_path = base_dir / filename
 
     if USE_LOCAL_STORAGE:
         # Local storage mode - copy from webapp storage to sandbox data dir
-        source_path = LOCAL_STORAGE_DIR / storage_path
+        source_path = get_local_data_dir(user_id) / storage_filename
         try:
             if source_path.exists():
+                if source_path.resolve() == local_path.resolve():
+                    return str(source_path)
                 shutil.copy2(source_path, local_path)
                 print(f"[LocalStorage] Synced file: {source_path} -> {local_path}")
                 return str(local_path)
@@ -352,18 +347,17 @@ def list_supabase_files(user_id: str = "default") -> list[dict]:
     print(f"[FileSync] SUPABASE_SERVICE_KEY configured: {bool(SUPABASE_SERVICE_KEY)}")
 
     if USE_LOCAL_STORAGE:
-        # In local storage mode, list files from LOCAL_STORAGE_DIR
+        # In local storage mode, list only this guest's files.
         files = []
-        print(f"[FileSync] LOCAL_STORAGE_DIR={LOCAL_STORAGE_DIR}")
+        local_dir = get_local_data_dir(user_id)
+        print(f"[FileSync] LOCAL_STORAGE_DIR={local_dir}")
         try:
-            if LOCAL_STORAGE_DIR.exists():
-                for item in LOCAL_STORAGE_DIR.iterdir():
+            if local_dir.exists():
+                for item in local_dir.iterdir():
                     if item.is_file():
-                        # In local mode, files are stored directly without user_id subdirectory
-                        # So storage_path should just be the filename for get_file_content to work
                         files.append({
                             "name": item.name,
-                            "storage_path": item.name,  # Changed: no user_id prefix in local mode
+                            "storage_path": f"{user_id}/{item.name}",
                         })
                         print(f"[FileSync] Found local file: {item.name}")
             else:
@@ -423,7 +417,7 @@ def sync_all_supabase_files_to_local(user_id: str = "default") -> list[dict]:
     if USE_LOCAL_STORAGE:
         # In local storage mode, files are already in the right place
         # Just return the list of files
-        local_dir = get_local_data_dir()
+        local_dir = get_local_data_dir(user_id)
         files = []
         try:
             if local_dir.exists():
@@ -459,7 +453,7 @@ def sync_all_supabase_files_to_local(user_id: str = "default") -> list[dict]:
         filename = file_info["name"]
 
         # Check if file already exists locally
-        local_dir = get_local_data_dir()
+        local_dir = get_local_data_dir(user_id)
         local_path = local_dir / filename
 
         if local_path.exists():

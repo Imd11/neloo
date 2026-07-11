@@ -10,11 +10,12 @@ interface SlideShowProps {
     presentation: PresentationData;
     style?: StyleDimensions;
     modelId?: string | null;
+    accessToken?: string;
     onBack: () => void;
     onSlidesUpdate: (slides: Slide[]) => void;
 }
 
-const SlideShow: React.FC<SlideShowProps> = ({ presentation, style, modelId, onBack, onSlidesUpdate }) => {
+const SlideShow: React.FC<SlideShowProps> = ({ presentation, style, modelId, accessToken, onBack, onSlidesUpdate }) => {
     const [slides, setSlides] = useState<Slide[]>(presentation.slides);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isExporting, setIsExporting] = useState(false);
@@ -194,7 +195,7 @@ const SlideShow: React.FC<SlideShowProps> = ({ presentation, style, modelId, onB
     };
 
     const handleAddSlide = async (atIndex: number) => {
-        const newSlide = await generateSingleSlide(presentation.topic, slides, atIndex, style, presentation.presetId, modelId);
+        const newSlide = await generateSingleSlide(presentation.topic, slides, atIndex, style, presentation.presetId, modelId, accessToken);
         if (newSlide) {
             const newSlides = [...slides];
             newSlides.splice(atIndex, 0, newSlide);

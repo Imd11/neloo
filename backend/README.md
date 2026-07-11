@@ -63,7 +63,7 @@ backend/
 ├── src/
 │   ├── agent/          # LangGraph graph, prompts, model registry, middleware
 │   ├── api/            # FastAPI routes consumed by the frontend
-│   ├── sandbox/        # Local, Docker, and E2B code execution backends
+│   ├── sandbox/        # Local and E2B code execution backends
 │   ├── storage/        # File, image, Supabase, and database helpers
 │   └── tools/          # Agent tools for search, code, documents, and integrations
 ├── supabase/           # Backend-specific Supabase migrations

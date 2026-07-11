@@ -151,6 +151,10 @@
     "regenerate": "重新生成",
     "download_image": "下载图片",
     "delete_image": "删除图片",
+    "select_tool": "选择",
+    "brush_tool_short": "画笔",
+    "eraser_tool_short": "橡皮擦",
+    "quota": "额度",
     "confirm_delete_images": "确认删除 {count} 张图片？",
     "error_regenerate_missing_params": "无法重新生成：缺少原始参数",
     "error_regenerate_failed": "重新生成失败",
@@ -171,7 +175,31 @@
     "loading_edit_desc": "图片编辑中，请稍候",
     "downloading": "下载中...",
     "download_complete": "下载完成！",
-    "download_failed": "下载失败"
+    "download_failed": "下载失败",
+    "edit_prompt_required": "请输入修改说明",
+    "edit_complete": "图片编辑完成！",
+    "edit_missing_image": "未收到编辑后的图片",
+    "edit_failed": "图片编辑失败"
+  },
+  "home": {
+    "guest_name": "Guest",
+    "headline_1": "你好{name}，我能为你做什么？",
+    "headline_2": "你好{name}，准备好开始了吗？",
+    "headline_3": "{name}，今天想要完成什么？",
+    "headline_4": "你好{name}，有什么可以帮助你的？",
+    "headline_5": "{name}，让我们一起创造吧",
+    "headline_6": "你好{name}，开始你的下一个项目",
+    "headline_7": "{name}，需要灵感吗？",
+    "headline_8": "你好{name}，让想法变成现实",
+    "headline_9": "{name}，探索无限可能",
+    "headline_10": "你好{name}，你的创意助手已就绪",
+    "headline_11": "{name}，有问题尽管问",
+    "headline_12": "你好{name}，一起解决难题"
+  },
+  "image": {
+    "ratio": "比例",
+    "resolution": "清晰度",
+    "auto": "自动"
   },
   "sidebar": {
     "new_chat": "新建对话",
@@ -284,7 +312,16 @@
     "feature_slides": "制作幻灯片",
     "feature_resume": "制作简历",
     "feature_prompt_optimize": "提示词优化",
-    "feature_deai": "去AI化"
+    "feature_deai": "去AI化",
+    "image_template_inspiration": "模板灵感",
+    "image_generation_complete": "图片生成完成！",
+    "image_generation_failed": "图片生成失败",
+    "image_load_failed": "图片加载失败",
+    "selected_template_toast": "已选择模板：{name}",
+    "new_conversation_started": "已开始新对话",
+    "new_conversation_short": "新建",
+    "add_to_canvas": "添加到画布",
+    "continue_image_placeholder": "继续描述或修改..."
   },
   "features": {
     "categories": {
@@ -327,10 +364,10 @@
       "required_error": "请先填写完整的出生信息再发送。"
     },
     "image_templates": {
-      "wong_kar_wai": { "title": "王家卫电影风", "description": "暖色胶片颗粒、运动模糊和电影感人像" },
+      "giant_landmark": { "title": "普通物体巨型地标", "description": "把日常物体变成真实世界的巨型地标" },
       "product_macro": { "title": "食品/产品微距展示", "description": "带悬浮水花细节的超写实商业产品图" },
       "city_promo": { "title": "超逼真城市宣传", "description": "适合城市品牌和旅行宣传的悬浮微缩岛海报" },
-      "lazy_cooking": { "title": "懒人做饭指南", "description": "适合手机阅读的新手做饭信息图" }
+      "sports_poster": { "title": "高端体育平面海报", "description": "适合运动员和公众人物的混合媒介编辑海报" }
     },
     "video_templates": {
       "talking_portrait": { "title": "人物说话", "description": "让静态人物开口说话，口型同步" },

@@ -9,11 +9,12 @@ interface OutlineEditorProps {
     style?: StyleDimensions;
     presetId?: string;
     modelId?: string | null;
+    accessToken?: string;
     onBack: () => void;
     onGenerateSlides: (slides: Slide[]) => void;
 }
 
-const OutlineEditor: React.FC<OutlineEditorProps> = ({ topic, attachments, style, presetId, modelId, onBack, onGenerateSlides }) => {
+const OutlineEditor: React.FC<OutlineEditorProps> = ({ topic, attachments, style, presetId, modelId, accessToken, onBack, onGenerateSlides }) => {
     const [slides, setSlides] = useState<Slide[]>([]);
     const [isStreaming, setIsStreaming] = useState(false);
     const [streamText, setStreamText] = useState('');
@@ -70,7 +71,8 @@ const OutlineEditor: React.FC<OutlineEditorProps> = ({ topic, attachments, style
                 },
                 controller.signal,
                 presetId,
-                modelId
+                modelId,
+                accessToken
             );
 
             // Final parse

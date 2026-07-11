@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { ChevronDown, Bell, User, Check, Search, Menu } from "lucide-react";
+import { ChevronDown, Check, Search, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
     DropdownMenu,
@@ -15,14 +15,13 @@ import { CHAT_MODEL_BY_ID, CHAT_MODELS, IMAGE_MODELS, LIGHT_LOGOS, type ModelInf
 import { useLanguage } from "@/providers/LanguageProvider";
 
 interface TopBarProps {
-    hideUserActions?: boolean;
     currentModelId?: string;
     onModelSelect?: (modelId: string) => void;
     /** Override which model set to show (route-independent). */
     mode?: "chat" | "image" | "resume" | "slides";
 }
 
-export function TopBar({ hideUserActions = false, currentModelId, onModelSelect, mode }: TopBarProps) {
+export function TopBar({ currentModelId, onModelSelect, mode }: TopBarProps) {
     const { toggle } = useSidebar();
     const { t } = useLanguage();
     const [searchQuery, setSearchQuery] = useState("");
@@ -219,25 +218,6 @@ export function TopBar({ hideUserActions = false, currentModelId, onModelSelect,
             </div>
 
             {/* Right Section */}
-            {!hideUserActions && (
-                <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                        <Bell className="w-5 h-5" />
-                    </Button>
-                    <div className="hidden sm:flex items-center">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-muted-foreground hover:text-foreground text-sm font-normal"
-                        >
-                            {t("model_selector.quota")}
-                        </Button>
-                    </div>
-                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                        <User className="w-5 h-5" />
-                    </Button>
-                </div>
-            )}
         </header>
     );
 }

@@ -9,9 +9,15 @@ Environment Variables:
 - SUPABASE_JWT_SECRET: JWT secret from Supabase (Settings > API > JWT Secret)
 """
 
+import base64
+import hashlib
+import hmac
+import json
 import os
+import time
 import jwt
 from typing import Optional
+from uuid import UUID
 from fastapi import HTTPException, Header, Depends
 from functools import lru_cache
 
@@ -47,6 +53,39 @@ def allow_anonymous() -> bool:
     return os.environ.get("ALLOW_ANONYMOUS", "false").lower() == "true"
 
 
+def allow_insecure_local_tokens() -> bool:
+    """Allow raw local user IDs only for an explicitly local development setup."""
+    return os.environ.get("ALLOW_INSECURE_LOCAL_TOKENS", "false").lower() == "true"
+
+
+def _decode_anonymous_session(token: str) -> Optional[dict]:
+    """Verify a short-lived, server-signed guest session token."""
+    prefix = "neloo-anon-v1."
+    if not token.startswith(prefix):
+        return None
+
+    secret = os.environ.get("ANONYMOUS_SESSION_SECRET", "")
+    if not secret:
+        raise HTTPException(status_code=401, detail="Anonymous sessions are not configured")
+
+    try:
+        encoded_payload, signature = token[len(prefix):].split(".", 1)
+        expected = hmac.new(
+            secret.encode("utf-8"), encoded_payload.encode("ascii"), hashlib.sha256
+        ).hexdigest()
+        if not hmac.compare_digest(signature, expected):
+            raise ValueError("signature mismatch")
+
+        padding = "=" * (-len(encoded_payload) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(encoded_payload + padding))
+        user_id = str(UUID(str(payload["sub"])))
+        if int(payload["exp"]) <= int(time.time()):
+            raise ValueError("token expired")
+        return {"sub": user_id, "email": f"guest-{user_id}@local"}
+    except (KeyError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        raise HTTPException(status_code=401, detail="Invalid anonymous session") from exc
+
+
 def verify_jwt_token(token: str) -> dict:
     """
     Verify a Supabase JWT token.
@@ -60,15 +99,23 @@ def verify_jwt_token(token: str) -> dict:
     Raises:
         HTTPException: If token is invalid or expired
     """
-    # Magic tokens are only honored in explicit anonymous (local-dev) mode.
-    if allow_anonymous() and token in {"anonymous", "default", "local-dev"}:
-        return {"sub": "default", "email": "guest@local"}
+    if allow_anonymous():
+        anonymous_session = _decode_anonymous_session(token)
+        if anonymous_session:
+            return anonymous_session
+
+        if token.startswith("local-dev:"):
+            if not allow_insecure_local_tokens():
+                raise HTTPException(status_code=401, detail="Local development token is disabled")
+            try:
+                user_id = str(UUID(token.removeprefix("local-dev:")))
+            except ValueError as exc:
+                raise HTTPException(status_code=401, detail="Invalid local development token") from exc
+            return {"sub": user_id, "email": f"guest-{user_id}@local"}
 
     secret = get_jwt_secret()
 
     if not secret:
-        if allow_anonymous():
-            return {"sub": "anonymous", "email": "anonymous@local"}
         raise HTTPException(
             status_code=401,
             detail="Authentication required: configure SUPABASE_JWT_SECRET, "
@@ -153,8 +200,8 @@ async def get_current_user(
         # Verify the JWT token
         return verify_jwt_token(token)
 
-    # No token: allow only in explicit anonymous (local-dev) mode.
-    if allow_anonymous():
+    # Raw headers are allowed only for explicitly local development.
+    if allow_anonymous() and allow_insecure_local_tokens():
         return {
             "sub": x_user_id or "default",
             "email": f"{x_user_id or 'default'}@local",
@@ -187,7 +234,7 @@ async def get_optional_user(
         except HTTPException:
             return None
 
-    if x_user_id:
+    if x_user_id and allow_anonymous() and allow_insecure_local_tokens():
         return {"sub": x_user_id, "email": f"{x_user_id}@local"}
 
     return None

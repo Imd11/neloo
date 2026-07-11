@@ -43,7 +43,13 @@ test("setupEnvironment creates env files and prints concrete local next steps", 
   assert.match(output, /Frontend: `cd frontend && yarn dev`/);
   assert.match(backend, /^PORT=2024/m);
   assert.match(backend, /^SANDBOX_MODE=local/m);
+  assert.match(backend, /^ALLOW_ANONYMOUS=true/m);
+  assert.match(backend, /^ALLOW_LOCAL_SANDBOX=true/m);
   assert.match(frontend, /^NEXT_PUBLIC_API_URL=http:\/\/localhost:2024/m);
+  const backendSecret = backend.match(/^ANONYMOUS_SESSION_SECRET=(.+)$/m)?.[1];
+  const frontendSecret = frontend.match(/^ANONYMOUS_SESSION_SECRET=(.+)$/m)?.[1];
+  assert.match(backendSecret || "", /^[a-f0-9]{64}$/);
+  assert.equal(frontendSecret, backendSecret);
 });
 
 test("setupEnvironment gives production-specific next steps", () => {

@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { editImage } from "@/lib/services/image-editor";
+import { assertSafeRemoteImageUrl, rejectUnsafeImageRequest } from "@/lib/server/image-request-guard";
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
     try {
+        const rejection = rejectUnsafeImageRequest(req, 20);
+        if (rejection) return rejection;
+
         const formData = await req.formData();
         const originalImageUrl = formData.get("originalImageUrl") as string | null;
         const markedImageDataUrl = formData.get("markedImageDataUrl") as string | null;
@@ -14,11 +18,16 @@ export async function POST(req: NextRequest) {
         const resolution = formData.get("resolution");
         const size = formData.get("size");
 
-        if (!originalImageUrl || !markedImageDataUrl || !prompt) {
+        if (!originalImageUrl || !markedImageDataUrl || !prompt || prompt.length > 4_000) {
             return NextResponse.json(
                 { error: "Missing required fields: originalImageUrl, markedImageDataUrl, prompt" },
                 { status: 400 }
             );
+        }
+
+        assertSafeRemoteImageUrl(originalImageUrl);
+        if (!markedImageDataUrl.startsWith("data:image/") || markedImageDataUrl.length > 15_000_000) {
+            return NextResponse.json({ error: "Invalid marked image input" }, { status: 400 });
         }
 
         console.log("[API Edit] Received two-image request", {

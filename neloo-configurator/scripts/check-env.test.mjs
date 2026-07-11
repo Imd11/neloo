@@ -12,6 +12,7 @@ function reportFor(backendValues, frontendValues = {}) {
       exists: true,
       values: {
         SANDBOX_MODE: "local",
+        ALLOW_ANONYMOUS: "true",
         ...backendValues,
       },
     },
@@ -110,6 +111,7 @@ test("local profile warns but does not fail without DATABASE_URL", () => {
       values: {
         DEEPSEEK_API_KEY: "key",
         SANDBOX_MODE: "local",
+        ALLOW_ANONYMOUS: "true",
       },
     },
     frontend: {
@@ -123,6 +125,50 @@ test("local profile warns but does not fail without DATABASE_URL", () => {
   assert.equal(report.ok, true);
   assert.equal(hasCode(report, "missing-production-database-url"), false);
   assert.equal(hasCode(report, "no-persistent-database"), true);
+});
+
+test("local profile fails until anonymous local mode is explicitly enabled", () => {
+  const report = analyzeEnvironment({
+    profile: "local-minimal",
+    backend: {
+      exists: true,
+      values: {
+        DEEPSEEK_API_KEY: "key",
+        SANDBOX_MODE: "local",
+      },
+    },
+    frontend: {
+      exists: true,
+      values: { NEXT_PUBLIC_API_URL: "http://localhost:2024" },
+    },
+  });
+
+  assert.equal(report.ok, false);
+  assert.equal(hasCode(report, "anonymous-local-mode-disabled"), true);
+});
+
+test("analyzeEnvironment rejects guest-session secrets that do not match", () => {
+  const report = analyzeEnvironment({
+    backend: {
+      exists: true,
+      values: {
+        DEEPSEEK_API_KEY: "key",
+        SANDBOX_MODE: "local",
+        ALLOW_ANONYMOUS: "true",
+        ANONYMOUS_SESSION_SECRET: "backend-secret",
+      },
+    },
+    frontend: {
+      exists: true,
+      values: {
+        NEXT_PUBLIC_API_URL: "http://localhost:2024",
+        ANONYMOUS_SESSION_SECRET: "frontend-secret",
+      },
+    },
+  });
+
+  assert.equal(report.ok, false);
+  assert.equal(hasCode(report, "anonymous-session-secret-mismatch"), true);
 });
 
 test("local profile warns when durable thread persistence is not configured", () => {
@@ -152,6 +198,8 @@ test("production profile fails without DATABASE_URL", () => {
         DEEPSEEK_API_KEY: "key",
         SANDBOX_MODE: "e2b",
         E2B_API_KEY: "e2b-key",
+        ALLOW_ANONYMOUS: "true",
+        ANONYMOUS_SESSION_SECRET: "shared-secret",
       },
     },
     frontend: {
@@ -168,7 +216,7 @@ test("production profile fails without DATABASE_URL", () => {
 
 test("analyzeEnvironment allows Next.js server-route secrets in frontend env", () => {
   const report = analyzeEnvironment({
-    backend: { exists: true, values: { DEEPSEEK_API_KEY: "backend-key", SANDBOX_MODE: "local" } },
+    backend: { exists: true, values: { DEEPSEEK_API_KEY: "backend-key", SANDBOX_MODE: "local", ALLOW_ANONYMOUS: "true" } },
     frontend: {
       exists: true,
       values: {
@@ -232,6 +280,7 @@ test("analyzeEnvironment passes local minimal config with warnings only", () => 
       values: {
         DEEPSEEK_API_KEY: "key",
         SANDBOX_MODE: "local",
+        ALLOW_ANONYMOUS: "true",
         FILE_SECRET_KEY: "change-me-to-a-random-32-byte-secret",
         IMAGE_SECRET_KEY: "change-me-to-a-random-32-byte-secret",
       },

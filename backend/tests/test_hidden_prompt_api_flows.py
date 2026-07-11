@@ -14,6 +14,7 @@ set_test_env_default("SANDBOX_MODE", "local")
 # These tests exercise prompt/thread flows (not auth) via TestClient; enable the
 # anonymous local-dev path so authenticated routes accept the requests.
 set_test_env_default("ALLOW_ANONYMOUS", "true")
+set_test_env_default("ALLOW_INSECURE_LOCAL_TOKENS", "true")
 set_test_env_default("ALLOW_LOCAL_SANDBOX", "true")
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -212,6 +213,48 @@ def test_shared_conversation_sanitizes_langgraph_state(monkeypatch):
     body = response.json()
     assert body["messages"][0]["content"] == "make a hero prompt"
     assert "You are a senior prompt engineer" not in repr(body)
+
+
+def test_shared_single_message_truncates_messages_after_the_target(monkeypatch):
+    client = make_client(monkeypatch)
+
+    async def fake_get_share_by_id(_share_id):
+        return {
+            "share_id": "share-1",
+            "thread_id": "thread-1",
+            "user_id": "hidden-prompt-test-user",
+            "created_at": "2026-07-05T00:00:00Z",
+            "target_ai_message_id": "ai-1",
+        }
+
+    async def fake_get_thread_by_langgraph_id(thread_id):
+        return thread_record(thread_id)
+
+    class FakeThreads:
+        async def get_state(self, _thread_id):
+            return {
+                "values": {
+                    "messages": [
+                        {"id": "human-1", "type": "human", "content": "First question"},
+                        {"id": "ai-1", "type": "ai", "content": "First answer"},
+                        {"id": "human-2", "type": "human", "content": "Private follow-up"},
+                    ]
+                }
+            }
+
+    def fake_get_client(*_args, **_kwargs):
+        return SimpleNamespace(threads=FakeThreads())
+
+    monkeypatch.setattr(supabase_db, "get_share_by_id", fake_get_share_by_id)
+    monkeypatch.setattr(webapp, "get_thread_by_langgraph_id", fake_get_thread_by_langgraph_id)
+    monkeypatch.setattr("langgraph_sdk.get_client", fake_get_client)
+
+    response = client.get("/api/share/share-1")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [message["content"] for message in body["messages"]] == ["First question", "First answer"]
+    assert body["target_ai_message_id"] == "ai-1"
 
 
 def test_fork_thread_copies_sanitized_chat_messages(monkeypatch):

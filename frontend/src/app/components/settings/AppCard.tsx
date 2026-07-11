@@ -11,6 +11,7 @@ interface AppCardProps {
     onConnect: (appId: string) => void;
     onDisconnect: (appId: string) => void;
     onManage: (appId: string) => void;
+    isConfigured?: boolean;
 }
 
 export function AppCard({
@@ -19,6 +20,7 @@ export function AppCard({
     onConnect,
     onDisconnect,
     onManage,
+    isConfigured = true,
 }: AppCardProps) {
     const [imgError, setImgError] = useState(false);
     const { t } = useLanguage();
@@ -94,6 +96,8 @@ export function AppCard({
                         size="sm"
                         className="h-8 text-xs"
                         onClick={() => onConnect(app.id)}
+                        disabled={!isConfigured}
+                        title={isConfigured ? undefined : "This integration has not been configured by this Neloo instance."}
                     >
                         {t("settings.connect")}
                     </Button>
