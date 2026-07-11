@@ -589,5 +589,15 @@
     "confirm_delete_used": "此文件被 {count} 个对话使用，确认全局删除？",
     "library_title": "文件库",
     "library_select_title": "从库中选择文件"
+  },
+  "tool_approval": {
+    "required": "需要审批", "tool": "工具", "app": "应用", "action": "操作",
+    "risk": "风险", "unknown": "未知", "external_write": "外部写操作",
+    "external_impact": "批准后可能在已连接的应用中创建、修改、发送或删除数据。",
+    "edit_arguments": "编辑参数", "arguments": "参数", "rejection_message": "拒绝原因（可选）",
+    "rejection_placeholder": "说明拒绝此操作的原因...", "cancel": "取消",
+    "saving": "保存中...", "save_approve": "保存并批准", "rejecting": "拒绝中...",
+    "confirm_reject": "确认拒绝", "reject": "拒绝", "edit": "编辑",
+    "approving": "批准中...", "approve": "批准"
   }
 }

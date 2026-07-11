@@ -589,5 +589,15 @@
         "confirm_delete_used": "このファイルは {count} 件の会話で使用されています。グローバルに削除しますか？",
         "library_title": "ファイルライブラリ",
         "library_select_title": "ライブラリからファイルを選択"
+    },
+    "tool_approval": {
+        "required": "承認が必要です", "tool": "ツール", "app": "アプリ", "action": "操作",
+        "risk": "リスク", "unknown": "不明", "external_write": "外部への書き込み",
+        "external_impact": "承認すると、接続済みアプリでデータが作成、変更、送信、または削除される可能性があります。",
+        "edit_arguments": "引数を編集", "arguments": "引数", "rejection_message": "拒否理由（任意）",
+        "rejection_placeholder": "この操作を拒否する理由を入力してください...", "cancel": "キャンセル",
+        "saving": "保存中...", "save_approve": "保存して承認", "rejecting": "拒否中...",
+        "confirm_reject": "拒否を確定", "reject": "拒否", "edit": "編集",
+        "approving": "承認中...", "approve": "承認"
     }
 }

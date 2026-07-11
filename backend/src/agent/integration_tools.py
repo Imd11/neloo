@@ -7,10 +7,8 @@ Uses Runtime Dispatcher pattern for security, idempotency, and auditability.
 This solves the "Graph Lifecycle Paradox" where Composio tools can't be injected
 at graph build time (user_id='default') by deferring execution to runtime.
 
-NO ACTION WHITELIST: Once a user connects an app, the agent has full access
-to all operations within Composio's capabilities for that app.
-Action ownership validation ensures the requested action belongs to the
-connected app (prevents cross-app action leakage).
+Actions are denied unless the instance operator explicitly classifies the exact
+app/action pair as read or write in COMPOSIO_ALLOWED_ACTIONS_JSON.
 """
 
 import os
@@ -22,6 +20,7 @@ from langchain_core.runnables import RunnableConfig
 
 from ..runtime_context import thread_id_ctx, user_id_ctx, user_id_from_config
 from ..storage.supabase_db import get_supabase_client
+from .integration_policy import classify_action
 
 
 
@@ -207,11 +206,11 @@ async def integrations_list_actions(
         print(f"[integrations_list_actions] Error: {e}")
         return f"Error: Failed to fetch available actions for {app_name} - {e}"
 
-@tool
-async def integrations_execute(
+async def _invoke_allowed_action(
     app_name: Annotated[str, "App name, e.g. 'twitter'"],
     action: Annotated[str, "Action to execute, e.g. 'TWITTER_CREATION_OF_A_POST'"],
     params: Annotated[dict, "Action parameters as a dictionary"],
+    classification: str,
     config: RunnableConfig = None,  # type: ignore[assignment]
 ) -> dict:
     """
@@ -219,9 +218,6 @@ async def integrations_execute(
     
     This tool handles all third-party app integrations with security checks,
     idempotency protection, and audit logging.
-    
-    NO ACTION WHITELIST: If user has connected the app, the agent can perform
-    ANY action available in Composio for that app.
     
     Args:
         app_name: The app to use (e.g., 'twitter', 'notion')
@@ -280,8 +276,7 @@ async def integrations_execute(
         return {"status": "error", "message": f"Connection verification failed: {e}"}
     
     # ==========================================================================
-    # Step 3: Action ownership validation (dynamic - NO whitelist)
-    # Ensures the requested action belongs to the connected app
+    # Step 3: Fetch the exact action after the operator policy has allowed it
     # ==========================================================================
     app_tools = None
     tool_instance = None
@@ -320,8 +315,7 @@ async def integrations_execute(
             if action not in available_actions:
                 return {
                     "status": "error",
-                    "message": f"Action {action} is not available. Possible reasons: 1) the action does not belong to {app_name}; 2) Composio does not support this action yet. Known available actions ({len(available_actions)} total): {available_actions[:15]}...",
-                    "available_actions": available_actions,
+                    "message": f"The configured {app_name} action is unavailable.",
                 }
             else:
                 # Action is in list, find it
@@ -484,8 +478,57 @@ async def integrations_execute(
     }
 
 
+def _policy_denied(message: str) -> dict:
+    return {"status": "denied", "message": message}
+
+
+@tool
+async def integrations_query(
+    app_name: Annotated[str, "Connected app name, e.g. 'gmail'"],
+    action: Annotated[str, "Operator-allowed read action"],
+    params: Annotated[dict, "Action parameters as a dictionary"],
+    config: RunnableConfig = None,  # type: ignore[assignment]
+) -> dict:
+    """Run an operator-allowed, read-only action in a connected application."""
+    classification = classify_action(app_name, action)
+    if classification != "read":
+        return _policy_denied("This action is not allowed as a read operation.")
+    return await _invoke_allowed_action(
+        app_name.strip().lower(),
+        action.strip().upper(),
+        params,
+        classification,
+        config,
+    )
+
+
+@tool
+async def integrations_execute(
+    app_name: Annotated[str, "Connected app name, e.g. 'gmail'"],
+    action: Annotated[str, "Operator-allowed write action"],
+    params: Annotated[dict, "Action parameters as a dictionary"],
+    config: RunnableConfig = None,  # type: ignore[assignment]
+) -> dict:
+    """Execute an approved write action in a connected application."""
+    classification = classify_action(app_name, action)
+    if classification not in {"write", "sensitive"}:
+        return _policy_denied("This action is not allowed as a write operation.")
+    return await _invoke_allowed_action(
+        app_name.strip().lower(),
+        action.strip().upper(),
+        params,
+        classification,
+        config,
+    )
+
+
 # =============================================================================
 # Export
 # =============================================================================
 
-INTEGRATION_TOOLS = [integrations_list_apps, integrations_list_actions, integrations_execute]
+INTEGRATION_TOOLS = [
+    integrations_list_apps,
+    integrations_list_actions,
+    integrations_query,
+    integrations_execute,
+]

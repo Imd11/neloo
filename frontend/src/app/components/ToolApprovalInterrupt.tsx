@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertCircle, Check, X, Pencil } from "lucide-react";
 import type { ActionRequest, ReviewConfig } from "@/app/types/types";
+import { redactToolArgs } from "@/lib/redactToolArgs";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 interface ToolApprovalInterruptProps {
   actionRequest: ActionRequest;
@@ -20,6 +22,7 @@ export function ToolApprovalInterrupt({
   onResume,
   isLoading,
 }: ToolApprovalInterruptProps) {
+  const { t } = useLanguage();
   const [rejectionMessage, setRejectionMessage] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [editedArgs, setEditedArgs] = useState<Record<string, unknown>>({});
@@ -30,6 +33,10 @@ export function ToolApprovalInterrupt({
     "reject",
     "edit",
   ];
+  const redactedArgs = redactToolArgs(actionRequest.args);
+  const appName = typeof actionRequest.args.app_name === "string" ? actionRequest.args.app_name : null;
+  const actionName = typeof actionRequest.args.action === "string" ? actionRequest.args.action : actionRequest.name;
+  const isIntegrationWrite = actionRequest.name === "integrations_execute";
 
   const handleApprove = () => {
     onResume({
@@ -83,7 +90,7 @@ export function ToolApprovalInterrupt({
 
   const startEditing = () => {
     setIsEditing(true);
-    setEditedArgs(JSON.parse(JSON.stringify(actionRequest.args)));
+    setEditedArgs(structuredClone(actionRequest.args));
     setShowRejectionInput(false);
   };
 
@@ -113,7 +120,7 @@ export function ToolApprovalInterrupt({
           className="text-yellow-600 dark:text-yellow-400"
         />
         <span className="text-xs font-semibold uppercase tracking-wider">
-          Approval Required
+          {t("tool_approval.required")}
         </span>
       </div>
 
@@ -128,17 +135,26 @@ export function ToolApprovalInterrupt({
       <div className="mb-4 rounded-sm border border-border bg-background p-3">
         <div className="mb-2">
           <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Tool
+            {t("tool_approval.tool")}
           </span>
           <p className="mt-1 font-mono text-sm font-medium text-foreground">
             {actionRequest.name}
           </p>
         </div>
 
+        {isIntegrationWrite && (
+          <div className="mb-3 grid gap-2 text-sm sm:grid-cols-3">
+            <div><span className="text-muted-foreground">{t("tool_approval.app")}: </span>{appName || t("tool_approval.unknown")}</div>
+            <div><span className="text-muted-foreground">{t("tool_approval.action")}: </span>{actionName}</div>
+            <div><span className="text-muted-foreground">{t("tool_approval.risk")}: </span>{t("tool_approval.external_write")}</div>
+            <p className="sm:col-span-3 text-muted-foreground">{t("tool_approval.external_impact")}</p>
+          </div>
+        )}
+
         {isEditing ? (
           <div>
             <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Edit Arguments
+              {t("tool_approval.edit_arguments")}
             </span>
             <div className="mt-2 space-y-3">
               {Object.entries(actionRequest.args).map(([key, value]) => (
@@ -149,12 +165,12 @@ export function ToolApprovalInterrupt({
                   <Textarea
                     value={
                       editedArgs[key] !== undefined
-                        ? typeof editedArgs[key] === "string"
-                          ? (editedArgs[key] as string)
-                          : JSON.stringify(editedArgs[key], null, 2)
+                        ? typeof redactToolArgs({ [key]: editedArgs[key] })[key] === "string"
+                          ? (redactToolArgs({ [key]: editedArgs[key] })[key] as string)
+                          : JSON.stringify(redactToolArgs({ [key]: editedArgs[key] })[key], null, 2)
                         : typeof value === "string"
-                        ? value
-                        : JSON.stringify(value, null, 2)
+                        ? String(redactToolArgs({ [key]: value })[key])
+                        : JSON.stringify(redactToolArgs({ [key]: value })[key], null, 2)
                     }
                     onChange={(e) => updateEditedArg(key, e.target.value)}
                     className="font-mono text-xs"
@@ -170,10 +186,10 @@ export function ToolApprovalInterrupt({
         ) : (
           <div>
             <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Arguments
+              {t("tool_approval.arguments")}
             </span>
             <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all rounded-sm border border-border bg-muted/40 p-2 font-mono text-xs text-foreground">
-              {JSON.stringify(actionRequest.args, null, 2)}
+              {JSON.stringify(redactedArgs, null, 2)}
             </pre>
           </div>
         )}
@@ -183,12 +199,12 @@ export function ToolApprovalInterrupt({
       {showRejectionInput && !isEditing && (
         <div className="mb-4">
           <label className="mb-2 block text-xs font-medium text-foreground">
-            Rejection Message (optional)
+            {t("tool_approval.rejection_message")}
           </label>
           <Textarea
             value={rejectionMessage}
             onChange={(e) => setRejectionMessage(e.target.value)}
-            placeholder="Explain why you're rejecting this action..."
+            placeholder={t("tool_approval.rejection_placeholder")}
             className="text-sm"
             rows={2}
             disabled={isLoading}
@@ -206,7 +222,7 @@ export function ToolApprovalInterrupt({
               onClick={cancelEditing}
               disabled={isLoading}
             >
-              Cancel
+              {t("tool_approval.cancel")}
             </Button>
             <Button
               size="sm"
@@ -215,7 +231,7 @@ export function ToolApprovalInterrupt({
               className="bg-green-600 text-white hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
             >
               <Check size={14} />
-              {isLoading ? "Saving..." : "Save & Approve"}
+              {isLoading ? t("tool_approval.saving") : t("tool_approval.save_approve")}
             </Button>
           </>
         ) : showRejectionInput ? (
@@ -229,7 +245,7 @@ export function ToolApprovalInterrupt({
               }}
               disabled={isLoading}
             >
-              Cancel
+              {t("tool_approval.cancel")}
             </Button>
             <Button
               variant="destructive"
@@ -237,7 +253,7 @@ export function ToolApprovalInterrupt({
               onClick={handleRejectConfirm}
               disabled={isLoading}
             >
-              {isLoading ? "Rejecting..." : "Confirm Reject"}
+              {isLoading ? t("tool_approval.rejecting") : t("tool_approval.confirm_reject")}
             </Button>
           </>
         ) : (
@@ -251,7 +267,7 @@ export function ToolApprovalInterrupt({
                 className="text-destructive hover:bg-destructive/10"
               >
                 <X size={14} />
-                Reject
+                {t("tool_approval.reject")}
               </Button>
             )}
             {allowedDecisions.includes("edit") && (
@@ -262,7 +278,7 @@ export function ToolApprovalInterrupt({
                 disabled={isLoading}
               >
                 <Pencil size={14} />
-                Edit
+                {t("tool_approval.edit")}
               </Button>
             )}
             {allowedDecisions.includes("approve") && (
@@ -276,7 +292,7 @@ export function ToolApprovalInterrupt({
                 )}
               >
                 <Check size={14} />
-                {isLoading ? "Approving..." : "Approve"}
+                {isLoading ? t("tool_approval.approving") : t("tool_approval.approve")}
               </Button>
             )}
           </>

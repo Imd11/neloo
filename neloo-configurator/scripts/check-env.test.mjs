@@ -178,6 +178,33 @@ test("local profile warns when durable thread persistence is not configured", ()
   assert.equal(hasCode(report, "no-durable-thread-persistence"), true);
 });
 
+test("production rejects Composio without an action allowlist", () => {
+  const report = analyzeEnvironment({
+    profile: "production-railway-vercel",
+    backend: {
+      exists: true,
+      values: {
+        DEEPSEEK_API_KEY: "key",
+        SANDBOX_MODE: "e2b",
+        E2B_API_KEY: "e2b-key",
+        DATABASE_URL: "postgresql://example.test/db",
+        COMPOSIO_API_KEY: "composio-key",
+        COMPOSIO_AUTH_CONFIGS_JSON: '{"gmail":"ac_example"}',
+      },
+    },
+    frontend: {
+      exists: true,
+      values: {
+        NEXT_PUBLIC_API_URL: "https://api.example.test",
+        ANONYMOUS_SESSION_SECRET: "test-secret",
+      },
+    },
+  });
+
+  assert.equal(hasCode(report, "missing-composio-allowed-actions"), true);
+  assert.equal(report.ok, false);
+});
+
 test("analyzeEnvironment warns when backend Supabase URL is malformed", () => {
   const report = reportFor({
     DEEPSEEK_API_KEY: "key",

@@ -133,6 +133,7 @@ Durable app-level chat history, share links, fork/regenerate history, and DB spo
 | `TAVILY_API_KEY` | Backend | Web search | Secret | Search tool. |
 | `COMPOSIO_API_KEY` | Backend | Composio integrations | Secret | Third-party app integrations. |
 | `COMPOSIO_AUTH_CONFIGS_JSON` | Backend | Composio integrations | Server configuration | JSON map of app names to auth config IDs from the operator's Composio workspace. |
+| `COMPOSIO_ALLOWED_ACTIONS_JSON` | Backend | Composio integrations | Server policy | Exact per-app `read` and `write` action allowlist. Missing or invalid JSON denies all action execution. |
 | `LANGSMITH_API_KEY` | Backend | Backend tracing | Secret | LangSmith tracing. |
 | `LANGSMITH_TRACING_V2` | Backend | Backend tracing | Public config | Enables tracing. |
 | `LANGSMITH_PROJECT` | Backend | Backend tracing | Public config | Project name. |

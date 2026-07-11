@@ -589,5 +589,16 @@
         "confirm_delete_used": "This file is used by {count} conversations. Globally delete it?",
         "library_title": "File Library",
         "library_select_title": "Choose files from library"
+    },
+    "tool_approval": {
+        "required": "Approval required", "tool": "Tool", "app": "App", "action": "Action",
+        "risk": "Risk", "unknown": "Unknown", "external_write": "External write",
+        "external_impact": "Approving may create, change, send, or delete data in the connected application.",
+        "edit_arguments": "Edit arguments", "arguments": "Arguments",
+        "rejection_message": "Rejection message (optional)",
+        "rejection_placeholder": "Explain why you are rejecting this action...",
+        "cancel": "Cancel", "saving": "Saving...", "save_approve": "Save and approve",
+        "rejecting": "Rejecting...", "confirm_reject": "Confirm reject", "reject": "Reject",
+        "edit": "Edit", "approving": "Approving...", "approve": "Approve"
     }
 }

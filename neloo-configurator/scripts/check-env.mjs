@@ -280,6 +280,15 @@ export function analyzeEnvironment({ backend, frontend, profile = "local-minimal
     if (hasValue(backendValues, "COMPOSIO_API_KEY") && !hasValue(backendValues, "COMPOSIO_AUTH_CONFIGS_JSON")) {
       add(report, "warning", "missing-composio-auth-configs", "COMPOSIO_API_KEY is set, but Connected Apps also needs COMPOSIO_AUTH_CONFIGS_JSON with auth config IDs from your Composio workspace.", "backend/.env");
     }
+    if (hasValue(backendValues, "COMPOSIO_API_KEY") && !hasValue(backendValues, "COMPOSIO_ALLOWED_ACTIONS_JSON")) {
+      add(
+        report,
+        isProductionProfile ? "error" : "warning",
+        "missing-composio-allowed-actions",
+        "Connected Apps denies execution until COMPOSIO_ALLOWED_ACTIONS_JSON classifies exact read and write actions.",
+        "backend/.env",
+      );
+    }
 
     if (isProductionProfile && !hasValue(backendValues, "DATABASE_URL")) {
       add(report, "error", "missing-production-database-url", "DATABASE_URL is required for production persistence with backend/langgraph.production.json.", "backend/.env");

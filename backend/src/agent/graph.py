@@ -1027,11 +1027,20 @@ INTERRUPT_ON_CONFIG = {
         "before": True,
         "description": "Editing existing files",
     },
+    "integrations_execute": {
+        "before": True,
+        "description": "Execute an action in a connected third-party application",
+    },
 }
 
 # Environment variable to control HITL behavior
-# Set ENABLE_HITL=true to enable human-in-the-loop approval
-ENABLE_HITL = os.environ.get("ENABLE_HITL", "false").lower() == "true"
+# Production cannot disable approval for tools with external side effects. Local
+# development can opt in with ENABLE_HITL=true or explicitly keep it disabled.
+ENABLE_HITL = (
+    True
+    if os.environ.get("ENVIRONMENT", "development").lower() == "production"
+    else os.environ.get("ENABLE_HITL", "false").lower() == "true"
+)
 
 
 # =============================================================================

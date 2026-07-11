@@ -589,5 +589,15 @@
         "confirm_delete_used": "此檔案被 {count} 個對話使用，確認全域刪除？",
         "library_title": "檔案庫",
         "library_select_title": "從庫中選擇檔案"
+    },
+    "tool_approval": {
+        "required": "需要審批", "tool": "工具", "app": "應用程式", "action": "操作",
+        "risk": "風險", "unknown": "未知", "external_write": "外部寫入操作",
+        "external_impact": "批准後可能在已連接的應用程式中建立、修改、傳送或刪除資料。",
+        "edit_arguments": "編輯參數", "arguments": "參數", "rejection_message": "拒絕原因（可選）",
+        "rejection_placeholder": "說明拒絕此操作的原因...", "cancel": "取消",
+        "saving": "儲存中...", "save_approve": "儲存並批准", "rejecting": "拒絕中...",
+        "confirm_reject": "確認拒絕", "reject": "拒絕", "edit": "編輯",
+        "approving": "批准中...", "approve": "批准"
     }
 }
