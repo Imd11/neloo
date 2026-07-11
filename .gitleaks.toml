@@ -5,3 +5,8 @@ useDefault = true
 description = "Empty environment template entries are not credentials"
 regexTarget = "match"
 regexes = ['''TAVILY_API_KEY=\s*$''', '''LANGSMITH_API_KEY=\s*$''']
+
+[[allowlists]]
+description = "Fixed non-secret value used only to sign short-lived test fixtures"
+regexTarget = "secret"
+regexes = ['''^test-anonymous-secret-at-least-32-bytes$''']

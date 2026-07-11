@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: "20"
+          node-version: "22"
       - run: corepack enable && corepack prepare yarn@1.22.22 --activate
       - run: yarn install --frozen-lockfile
         working-directory: frontend
@@ -29,7 +29,13 @@ jobs:
       - run: python -m pip install uv pip-audit
       - run: uv export --frozen --no-dev --no-emit-project -o /tmp/requirements.txt
         working-directory: backend
-      - run: pip-audit -r /tmp/requirements.txt --disable-pip
+      - name: Audit exported production dependencies
+        run: |
+          for attempt in 1 2 3; do
+            pip-audit -r /tmp/requirements.txt --disable-pip && exit 0
+            if [ "$attempt" -lt 3 ]; then sleep $((attempt * 5)); fi
+          done
+          exit 1
 
   gitleaks:
     runs-on: ubuntu-latest

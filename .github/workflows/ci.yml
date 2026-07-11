@@ -37,7 +37,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: yarn
           cache-dependency-path: frontend/yarn.lock
       - run: corepack enable && corepack prepare yarn@1.22.22 --activate
@@ -54,7 +54,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: "20"
+          node-version: "22"
       - name: Start local Supabase database
         run: npx --yes supabase@2.109.1 start -x studio,imgproxy,inbucket,edge-runtime,logflare,vector,supavisor,realtime,storage-api,postgrest,gotrue
       - run: npx --yes supabase@2.109.1 db reset
@@ -81,7 +81,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: "20"
+          node-version: "22"
       - run: node neloo-configurator/scripts/setup-env.test.mjs
       - run: node neloo-configurator/scripts/check-env.test.mjs
       - run: node scripts/check-ci-contract.mjs
