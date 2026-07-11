@@ -20,6 +20,15 @@ cleanup() {
 }
 trap cleanup EXIT
 
+report_error() {
+  local status="$?"
+  local line="$1"
+  echo "Docker runtime smoke failed at line ${line} for ${image}" >&2
+  docker logs "$app" >&2 2>/dev/null || true
+  return "$status"
+}
+trap 'report_error $LINENO' ERR
+
 docker network create "$network" >/dev/null
 docker run -d --name "$postgres" --network "$network" \
   -e POSTGRES_PASSWORD=postgres \
@@ -34,35 +43,67 @@ for _ in $(seq 1 60); do
   sleep 1
 done
 docker exec "$postgres" pg_isready -U postgres -d neloo >/dev/null
-
-docker run -d --name "$app" --network "$network" -p 127.0.0.1::8000 \
-  -e PORT=8000 \
-  -e ENVIRONMENT=production \
-  -e DATABASE_URL="postgresql://postgres:postgres@${postgres}:5432/neloo" \
-  -e RATE_LIMIT_REDIS_URL="redis://${redis}:6379/0" \
-  -e ALLOW_ANONYMOUS=true \
-  -e ALLOW_INSECURE_LOCAL_TOKENS=false \
-  -e ANONYMOUS_SESSION_SECRET="$secret" \
-  -e DEEPSEEK_API_KEY=test-runtime-smoke-key \
-  -e FILE_SECRET_KEY=test-file-secret-at-least-32-bytes \
-  -e IMAGE_SECRET_KEY=test-image-secret-at-least-32-bytes \
-  "$image" >/dev/null
-
-host_port="$(docker inspect -f '{{(index (index .NetworkSettings.Ports "8000/tcp") 0).HostPort}}' "$app")"
-base_url="http://127.0.0.1:${host_port}"
-ready=false
-for _ in $(seq 1 120); do
-  if curl --silent --fail "${base_url}/live" >/dev/null 2>&1; then
-    ready=true
-    break
-  fi
-  if [[ "$(docker inspect -f '{{.State.Running}}' "$app")" != "true" ]]; then
+for _ in $(seq 1 30); do
+  if docker exec "$redis" redis-cli ping 2>/dev/null | grep -q PONG; then
     break
   fi
   sleep 1
 done
+docker exec "$redis" redis-cli ping | grep -q PONG
+
+ready=false
+base_url=""
+for attempt in 1 2; do
+  docker rm -f "$app" >/dev/null 2>&1 || true
+  if ! docker run -d --name "$app" --network "$network" -p 127.0.0.1::8000 \
+    -e PORT=8000 \
+    -e ENVIRONMENT=production \
+    -e DATABASE_URL="postgresql://postgres:postgres@${postgres}:5432/neloo" \
+    -e RATE_LIMIT_REDIS_URL="redis://${redis}:6379/0" \
+    -e ALLOW_ANONYMOUS=true \
+    -e ALLOW_INSECURE_LOCAL_TOKENS=false \
+    -e ANONYMOUS_SESSION_SECRET="$secret" \
+    -e DEEPSEEK_API_KEY=test-runtime-smoke-key \
+    -e FILE_SECRET_KEY=test-file-secret-at-least-32-bytes \
+    -e IMAGE_SECRET_KEY=test-image-secret-at-least-32-bytes \
+    "$image" >/dev/null; then
+    echo "Container failed to start on attempt ${attempt}" >&2
+    continue
+  fi
+
+  host_port=""
+  for _ in $(seq 1 10); do
+    host_port="$(docker port "$app" 8000/tcp 2>/dev/null | awk -F: 'NR == 1 {print $NF}' || true)"
+    if [[ -n "$host_port" ]]; then
+      break
+    fi
+    sleep 1
+  done
+  if [[ -z "$host_port" ]]; then
+    echo "Container port was not published on attempt ${attempt}" >&2
+    docker logs "$app" >&2 2>/dev/null || true
+    continue
+  fi
+
+  base_url="http://127.0.0.1:${host_port}"
+  for _ in $(seq 1 120); do
+    if curl --silent --fail "${base_url}/live" >/dev/null 2>&1; then
+      ready=true
+      break
+    fi
+    if [[ "$(docker inspect -f '{{.State.Running}}' "$app")" != "true" ]]; then
+      break
+    fi
+    sleep 1
+  done
+  if [[ "$ready" == "true" ]]; then
+    break
+  fi
+  echo "Container did not become live on attempt ${attempt}" >&2
+  docker logs "$app" >&2 2>/dev/null || true
+  sleep 1
+done
 if [[ "$ready" != "true" ]]; then
-  docker logs "$app" >&2
   echo "Container did not become live: $image" >&2
   exit 1
 fi
