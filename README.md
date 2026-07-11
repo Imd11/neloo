@@ -308,6 +308,8 @@ If this repository already has private commits containing secrets, publish from 
 
 ## Development Commands
 
+Pull requests to `main` are expected to pass these required checks: `backend-test`, `frontend-test`, `database-test`, `runtime-auth-smoke`, `configurator-test`, `docker-readiness`, `production-dependencies`, `python-audit`, and `gitleaks`. Run the equivalent commands from [docs/configuration.md](./docs/configuration.md) before opening a pull request.
+
 ```bash
 # Backend
 cd backend

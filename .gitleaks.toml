@@ -1,0 +1,7 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Empty environment template entries are not credentials"
+regexTarget = "match"
+regexes = ['''TAVILY_API_KEY=\s*$''', '''LANGSMITH_API_KEY=\s*$''']

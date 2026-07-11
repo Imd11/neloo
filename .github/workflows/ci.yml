@@ -1,10 +1,8 @@
-# Run frontend checks and repository spelling checks.
-
 name: CI
 
 on:
   push:
-    branches: ["main"]
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -13,111 +11,85 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  docker-railway-readiness:
-    name: Check Docker/Railway readiness
+  backend-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Use Node.js 20.x
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
-          node-version: 20.x
-      - name: Check Docker/Railway release readiness
-        run: node scripts/check-docker-release-readiness.mjs
-      - name: Build root backend image
-        run: docker build -f Dockerfile -t neloo-backend-root .
-      - name: Build backend service image
-        run: docker build -f backend/Dockerfile -t neloo-backend-service backend
+          python-version: "3.11"
+      - run: python -m pip install uv
+      - run: uv sync --frozen --all-extras
+        working-directory: backend
+      - run: .venv/bin/ruff check src tests
+        working-directory: backend
+      - run: .venv/bin/ruff format --check src tests
+        working-directory: backend
+      - run: .venv/bin/pytest -q
+        working-directory: backend
 
-  format:
-    name: Check frontend formatting
+  frontend-test:
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
-      - name: Use Node.js 20.x
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 20.x
-          cache: "yarn"
+          node-version: "20"
+          cache: yarn
           cache-dependency-path: frontend/yarn.lock
-      - name: Enable Corepack
-        run: corepack enable
-      - name: Use Yarn 1
-        run: corepack prepare yarn@1.22.22 --activate
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-      - name: Check formatting
-        continue-on-error: true
-        run: yarn format:check
+      - run: corepack enable && corepack prepare yarn@1.22.22 --activate
+      - run: yarn install --frozen-lockfile
+      - run: yarn lint
+      - run: npx tsc --noEmit
+      - run: yarn test
+      - run: yarn i18n:audit
+      - run: yarn build
 
-  lint:
-    name: Check frontend linting
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
-    steps:
-      - uses: actions/checkout@v4
-      - name: Use Node.js 20.x
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20.x
-          cache: "yarn"
-          cache-dependency-path: frontend/yarn.lock
-      - name: Enable Corepack
-        run: corepack enable
-      - name: Use Yarn 1
-        run: corepack prepare yarn@1.22.22 --activate
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-      - name: Check linting
-        continue-on-error: true
-        run: yarn run lint
-
-  build:
-    name: Build frontend
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
-    steps:
-      - uses: actions/checkout@v4
-      - name: Use Node.js 20.x
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20.x
-          cache: "yarn"
-          cache-dependency-path: frontend/yarn.lock
-      - name: Enable Corepack
-        run: corepack enable
-      - name: Use Yarn 1
-        run: corepack prepare yarn@1.22.22 --activate
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-      - name: Build
-        run: yarn build
-
-  readme-spelling:
-    name: Check README spelling
+  database-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: codespell-project/actions-codespell@v2
-        continue-on-error: true
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          ignore_words_file: frontend/.codespellignore
-          path: README.md
+          node-version: "20"
+      - name: Start local Supabase database
+        run: npx --yes supabase@2.109.1 start -x studio,imgproxy,inbucket,edge-runtime,logflare,vector,supavisor,realtime,storage-api,postgrest,gotrue
+      - run: npx --yes supabase@2.109.1 db reset
+      - run: npx --yes supabase@2.109.1 test db supabase/tests/schema_smoke.sql
+      - run: npx --yes supabase@2.109.1 test db supabase/tests/guest_data_rls.sql
+      - run: node scripts/check-migration-layout.mjs
+      - run: bash scripts/test-legacy-database-upgrade.sh
 
-  check-spelling:
-    name: Check frontend spelling
+  runtime-auth-smoke:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: codespell-project/actions-codespell@v2
-        continue-on-error: true
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
-          ignore_words_file: frontend/.codespellignore
-          path: frontend/src
+          python-version: "3.11"
+      - run: python -m pip install uv
+      - run: uv sync --frozen --all-extras
+        working-directory: backend
+      - run: bash scripts/check-runtime-auth.sh
+
+  configurator-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "20"
+      - run: node neloo-configurator/scripts/setup-env.test.mjs
+      - run: node neloo-configurator/scripts/check-env.test.mjs
+      - run: node scripts/check-ci-contract.mjs
+
+  docker-readiness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - run: node scripts/check-docker-release-readiness.mjs
+      - run: docker build -f Dockerfile -t neloo-backend-root .
+      - run: docker build -f backend/Dockerfile -t neloo-backend-service backend

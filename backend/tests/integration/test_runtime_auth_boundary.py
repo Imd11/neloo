@@ -27,7 +27,7 @@ def runtime_url():
         {
             "ALLOW_ANONYMOUS": "true",
             "ALLOW_INSECURE_LOCAL_TOKENS": "false",
-            "ANONYMOUS_SESSION_SECRET": "test-anonymous-secret-at-least-32-bytes",
+            "ANONYMOUS_SESSION_SECRET": "test-anonymous-secret-at-least-32-bytes",  # gitleaks:allow
             "DEEPSEEK_API_KEY": "test-runtime-auth-key",
         }
     )

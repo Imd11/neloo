@@ -42,10 +42,7 @@ dependencies = [
     # LangGraph Checkpoint Persistence (PostgreSQL)
     "langgraph-checkpoint-postgres>=2.0.0",
     "psycopg[binary,pool]>=3.1.0",
-    # RAG (Retrieval-Augmented Generation)
-    "langchain-chroma>=0.1.0",
     "langchain-text-splitters>=0.3.0",
-    "chromadb>=0.5.0",
     # Third-party App Integration (Composio)
     "composio>=0.10.8,<0.11",
     "composio-langchain>=0.10.8,<0.11",

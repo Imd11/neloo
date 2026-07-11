@@ -51,7 +51,7 @@ def _guest_token(identity: str, secret: str) -> str:
 def _anonymous_sessions(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("ALLOW_ANONYMOUS", "true")
     monkeypatch.setenv("ALLOW_INSECURE_LOCAL_TOKENS", "false")
-    monkeypatch.setenv("ANONYMOUS_SESSION_SECRET", "test-anonymous-secret-at-least-32-bytes")
+    monkeypatch.setenv("ANONYMOUS_SESSION_SECRET", "test-anonymous-secret-at-least-32-bytes")  # gitleaks:allow
     monkeypatch.delenv("SUPABASE_JWT_SECRET", raising=False)
     allow_anonymous.cache_clear()
     get_jwt_secret.cache_clear()

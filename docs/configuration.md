@@ -329,6 +329,10 @@ node neloo-configurator/scripts/check-env.mjs
 
 ## Security Checklist
 
+### Required CI checks
+
+Before publishing, run the same gates used by GitHub Actions: backend ruff and pytest; frontend lint, TypeScript, Vitest, i18n audit, and build; canonical fresh and legacy database migration tests; runtime auth/backfill tests; configurator tests; production dependency audits; secret scanning; and both Docker builds. `node scripts/check-ci-contract.mjs` verifies that required jobs remain blocking.
+
 - `ANONYMOUS_SESSION_SECRET` must be server-only and identical in the backend and frontend environments. Never expose it through a `NEXT_PUBLIC_` variable.
 - Shared rate limiting is built in for chat runs, image routes, Slides, translation, resume AI, E2B, and Connected Apps. Set the same server-only `RATE_LIMIT_REDIS_URL` and `RATE_LIMIT_NAMESPACE` in Railway and Vercel. Set `TRUSTED_PROXY_HOPS` to the number of trusted reverse proxies; do not blindly trust browser-supplied forwarding headers.
 - Configure `MODEL_RUNS_PER_10_MINUTES`, `IMAGE_RUNS_PER_10_MINUTES`, `E2B_RUNS_PER_10_MINUTES`, and `DAILY_BUDGET_UNITS` for your capacity. Production startup fails without Redis. `/live` checks only the process; `/ready` checks Redis, persistence configuration, and model-provider configuration without returning secrets.
