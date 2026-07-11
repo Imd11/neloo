@@ -34,7 +34,6 @@ function requireNotIncludes(file, content, snippets) {
 
 const rootDockerfile = read("Dockerfile");
 const backendDockerfile = read("backend/Dockerfile");
-const backendStart = read("backend/start.py");
 const rootDockerignore = read(".dockerignore");
 const backendDockerignore = read("backend/.dockerignore");
 
@@ -45,8 +44,12 @@ requireIncludes("Dockerfile", rootDockerfile, [
 ]);
 requireNotIncludes("Dockerfile", rootDockerfile, ['"--port", "8000"']);
 
-requireIncludes("backend/Dockerfile", backendDockerfile, ['CMD ["python", "start.py"]']);
-requireIncludes("backend/start.py", backendStart, ['os.environ.get("PORT", 8000)']);
+requireIncludes("backend/Dockerfile", backendDockerfile, [
+  "langgraph.production.json",
+  "${PORT:-8000}",
+  "0.0.0.0",
+]);
+requireNotIncludes("backend/Dockerfile", backendDockerfile, ['"--port", "8000"']);
 
 const requiredRootDockerignorePatterns = [
   ".env",

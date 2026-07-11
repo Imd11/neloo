@@ -63,7 +63,12 @@ reset role;
 
 set local role authenticated;
 select is((select count(*)::integer from storage.objects where name = 'rls-fixture.txt'), 0, 'authenticated cannot list storage objects');
-select lives_ok($$delete from storage.objects where name = 'rls-fixture.txt'$$, 'authenticated delete is filtered by RLS');
+select throws_ok(
+  $$delete from storage.objects where name = 'rls-fixture.txt'$$,
+  '42501',
+  'Direct deletion from storage tables is not allowed. Use the Storage API instead.',
+  'authenticated cannot delete storage objects directly'
+);
 reset role;
 
 select is((select count(*)::integer from storage.objects where name = 'rls-fixture.txt'), 1, 'browser role cannot remove storage objects');
