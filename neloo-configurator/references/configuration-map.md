@@ -113,7 +113,8 @@ Old graph IDs are hidden from the selector but kept so existing LangGraph graph 
 | --- | --- | --- | --- | --- |
 | `RATE_LIMIT_REDIS_URL` | Backend and frontend server environments | Every production deployment | Secret, never `NEXT_PUBLIC_` | Shared guest/IP windows, daily budgets, and concurrency leases. Use the same Redis service in Railway and Vercel. |
 | `RATE_LIMIT_NAMESPACE` | Backend and frontend server environments | Optional | Public config | Redis key prefix; defaults to `neloo`. Values must match. |
-| `TRUSTED_PROXY_HOPS` | Backend and frontend server environments | Behind a trusted proxy | Public config | Selects the trusted client address from the right side of the forwarding chain. |
+| `TRUSTED_PROXY_HOPS` | Backend and frontend server environments | Non-Vercel production behind a trusted proxy | Public config | Selects the trusted client address from the right side of a proxy chain that strips and replaces incoming forwarding headers. Vercel uses its overwritten platform header. |
+| `GUEST_SESSIONS_PER_DAY` | Frontend server environment | Optional | Public config | Maximum new anonymous identities per trusted client address in 24 hours; defaults to `2`. |
 | `MODEL_RUNS_PER_10_MINUTES` | Backend | Optional | Public config | Chat, Slides, translate, resume, and integration window. |
 | `IMAGE_RUNS_PER_10_MINUTES` | Frontend server environment | Optional | Public config | Generate, edit, and resize image window. |
 | `E2B_RUNS_PER_10_MINUTES` | Backend | Optional | Public config | E2B execution window. |

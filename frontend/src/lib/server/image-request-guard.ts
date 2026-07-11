@@ -1,25 +1,49 @@
+import { isIP } from "node:net";
 import { NextRequest, NextResponse } from "next/server";
 
 import {
+  DistributedLimitError,
   getDistributedRateLimiter,
   verifyGuestToken,
 } from "./distributed-rate-limit";
 
 export function clientKey(request: NextRequest): string | null {
-  const forwarded =
-    request.headers
-      .get("x-forwarded-for")
-      ?.split(",")
+  const parseAddresses = (value: string | null) =>
+    (value || "")
+      .split(",")
       .map((part) => part.trim())
-      .filter(Boolean) || [];
+      .filter((part) => isIP(part) !== 0);
+
+  if (process.env.VERCEL === "1") {
+    return (
+      parseAddresses(request.headers.get("x-vercel-forwarded-for"))[0] || null
+    );
+  }
+
+  if (process.env.NODE_ENV !== "production") {
+    const peer = request.headers.get("x-real-ip")?.trim();
+    if (peer && isIP(peer)) return peer;
+    return parseAddresses(request.headers.get("x-forwarded-for"))[0] || null;
+  }
+
   const hops = Math.max(
     0,
     Number.parseInt(process.env.TRUSTED_PROXY_HOPS || "0", 10)
   );
-  const peer = request.headers.get("x-real-ip");
-  if (!peer) return null;
-  const chain = [...forwarded, peer];
-  return chain.length > hops ? chain[chain.length - 1 - hops] : null;
+  if (hops === 0) return null;
+  const forwarded = parseAddresses(request.headers.get("x-forwarded-for"));
+  return forwarded.length >= hops ? forwarded[forwarded.length - hops] : null;
+}
+
+export function distributedLimitResponse(error: unknown): NextResponse | null {
+  if (!(error instanceof DistributedLimitError)) return null;
+  return NextResponse.json(
+    { error: error.message },
+    {
+      status: error.status,
+      headers: { "Retry-After": String(error.retryAfter) },
+    }
+  );
 }
 
 function authenticatedGuestId(request: NextRequest): string {

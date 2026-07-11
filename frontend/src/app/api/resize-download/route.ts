@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchImageBuffer, resizeImage } from "@/lib/resize-service";
 import {
+  distributedLimitResponse,
   rejectUnsafeImageRequest,
   runWithImageConcurrency,
 } from "@/lib/server/image-request-guard";
@@ -57,6 +58,8 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
+    const limited = distributedLimitResponse(error);
+    if (limited) return limited;
     console.error("Error resizing image:", error);
     return NextResponse.json(
       { error: "Failed to resize image. Please try again." },

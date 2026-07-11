@@ -309,6 +309,12 @@ export function analyzeEnvironment({ backend, frontend, profile = "local-minimal
       add(report, "error", "missing-frontend-rate-limit-redis", "Production image routes require server-only RATE_LIMIT_REDIS_URL in Vercel.", "frontend/.env.local");
     }
     if (
+      isProductionProfile &&
+      Number.parseInt(frontendValues.TRUSTED_PROXY_HOPS || "0", 10) < 1
+    ) {
+      add(report, "error", "missing-trusted-proxy-hops", "Production outside Vercel requires TRUSTED_PROXY_HOPS to match the number of proxies that strip and replace forwarding headers.", "frontend/.env.local");
+    }
+    if (
       hasValue(backendValues, "RATE_LIMIT_REDIS_URL") &&
       hasValue(frontendValues, "RATE_LIMIT_REDIS_URL") &&
       backendValues.RATE_LIMIT_REDIS_URL !== frontendValues.RATE_LIMIT_REDIS_URL

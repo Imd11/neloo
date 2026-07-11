@@ -29,6 +29,7 @@ const PROFILES = {
       NEXT_PUBLIC_ASSISTANT_ID: "data_analyst",
       RATE_LIMIT_NAMESPACE: "neloo",
       TRUSTED_PROXY_HOPS: "0",
+      GUEST_SESSIONS_PER_DAY: "2",
     },
   },
   "local-full": {
@@ -57,6 +58,7 @@ const PROFILES = {
       NEXT_PUBLIC_BACKEND_URL: "http://localhost:2024",
       RATE_LIMIT_NAMESPACE: "neloo",
       TRUSTED_PROXY_HOPS: "0",
+      GUEST_SESSIONS_PER_DAY: "2",
     },
   },
   "production-railway-vercel": {
@@ -81,6 +83,7 @@ const PROFILES = {
       NEXT_PUBLIC_ASSISTANT_ID: "data_analyst",
       RATE_LIMIT_NAMESPACE: "neloo",
       TRUSTED_PROXY_HOPS: "1",
+      GUEST_SESSIONS_PER_DAY: "2",
       GUEST_CONCURRENCY_LIMIT: "2",
       GLOBAL_CONCURRENCY_LIMIT: "20",
       CONCURRENCY_LEASE_SECONDS: "120",

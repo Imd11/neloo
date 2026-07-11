@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { editImage } from "@/lib/services/image-editor";
 import {
   assertSafeRemoteImageUrl,
+  distributedLimitResponse,
   rejectUnsafeImageRequest,
   runWithImageConcurrency,
 } from "@/lib/server/image-request-guard";
@@ -72,6 +73,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ urls });
   } catch (error) {
+    const limited = distributedLimitResponse(error);
+    if (limited) return limited;
     console.error("[API Edit] Error:", error);
     return NextResponse.json(
       {
