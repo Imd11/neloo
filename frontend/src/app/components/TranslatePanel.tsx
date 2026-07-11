@@ -13,9 +13,10 @@ import {
 import { ArrowLeftRight, ArrowLeft, Copy, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { getConfig } from "@/lib/config";
-import { getSupabaseClient } from "@/lib/supabase/client";
+import { buildBearerHeaders } from "@/lib/authHeaders";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/app/context/SidebarContext";
+import { useAuth } from "@/providers/AuthProvider";
 import { useLanguage } from "@/providers/LanguageProvider";
 
 const LANGUAGE_CODES = [
@@ -47,6 +48,7 @@ interface TranslatePanelProps {
 
 export function TranslatePanel({ onBack, modelId }: TranslatePanelProps) {
     const { t } = useLanguage();
+    const { session, loading: authLoading } = useAuth();
     const { collapsed, width, collapsedWidth } = useSidebar();
     const sidebarWidth = collapsed ? collapsedWidth : width;
 
@@ -76,6 +78,7 @@ export function TranslatePanel({ onBack, modelId }: TranslatePanelProps) {
             toast.error(t("translate.empty_error"));
             return;
         }
+        if (authLoading || !session.access_token) return;
 
         setLoading(true);
         setTranslatedText("");
@@ -84,16 +87,9 @@ export function TranslatePanel({ onBack, modelId }: TranslatePanelProps) {
             const config = getConfig();
             const baseUrl = config?.deploymentUrl || "";
 
-            // Get auth token
-            const supabase = getSupabaseClient();
-            const session = supabase ? (await supabase.auth.getSession()).data.session : null;
-
             const response = await fetch(`${baseUrl}/api/translate`, {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    ...(session?.access_token && { "Authorization": `Bearer ${session.access_token}` }),
-                },
+                headers: buildBearerHeaders(session.access_token),
                 body: JSON.stringify({
                     text: sourceText,
                     source_language: sourceLang,
@@ -116,7 +112,7 @@ export function TranslatePanel({ onBack, modelId }: TranslatePanelProps) {
         } finally {
             setLoading(false);
         }
-    }, [sourceText, sourceLang, targetLang, selectedStyle, modelId, t]);
+    }, [sourceText, sourceLang, targetLang, selectedStyle, modelId, t, authLoading, session.access_token]);
 
     const handleCopy = useCallback(async () => {
         if (!translatedText) return;
@@ -250,7 +246,7 @@ export function TranslatePanel({ onBack, modelId }: TranslatePanelProps) {
             {/* Translate Button */}
             <Button
                 onClick={handleTranslate}
-                disabled={loading || !sourceText.trim()}
+                disabled={loading || authLoading || !session.access_token || !sourceText.trim()}
                 className="px-12 py-4 text-lg bg-foreground text-background hover:bg-foreground/90 dark:bg-foreground dark:text-background dark:hover:bg-foreground/90"
             >
                 {loading ? (

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { getSupabaseClient } from "@/lib/supabase/client";
+import { buildBearerHeaders } from "@/lib/authHeaders";
 import { getConfig } from "@/lib/config";
+import { useAuth } from "@/providers/AuthProvider";
 
 export interface Trigger {
     id: string;
@@ -54,30 +55,21 @@ function getBaseUrl(): string {
     return config?.deploymentUrl || "";
 }
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
-    const supabase = getSupabaseClient();
-    const session = supabase ? (await supabase.auth.getSession()).data.session : null;
-    const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-    };
-    if (session?.access_token) {
-        headers["Authorization"] = `Bearer ${session.access_token}`;
-    }
-    return headers;
-}
-
 export function useTriggers(agentId?: string) {
+    const { session, loading: authLoading } = useAuth();
+    const accessToken = session.access_token;
     const [triggers, setTriggers] = useState<Trigger[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     // Fetch triggers for an agent
     const fetchTriggers = useCallback(async () => {
+        if (authLoading || !accessToken) return;
         setLoading(true);
         setError(null);
         try {
             const baseUrl = getBaseUrl();
-            const headers = await getAuthHeaders();
+            const headers = buildBearerHeaders(accessToken);
 
             const response = await fetch(`${baseUrl}/api/triggers`, { headers });
 
@@ -98,13 +90,14 @@ export function useTriggers(agentId?: string) {
         } finally {
             setLoading(false);
         }
-    }, [agentId]);
+    }, [agentId, authLoading, accessToken]);
 
     // Create a new trigger
     const createTrigger = useCallback(async (data: CreateTriggerData): Promise<Trigger | null> => {
+        if (authLoading || !accessToken) return null;
         try {
             const baseUrl = getBaseUrl();
-            const headers = await getAuthHeaders();
+            const headers = buildBearerHeaders(accessToken);
 
             const response = await fetch(`${baseUrl}/api/triggers`, {
                 method: "POST",
@@ -124,13 +117,14 @@ export function useTriggers(agentId?: string) {
             setError(err instanceof Error ? err.message : "Unknown error");
             return null;
         }
-    }, []);
+    }, [authLoading, accessToken]);
 
     // Update a trigger
     const updateTrigger = useCallback(async (triggerId: string, data: UpdateTriggerData): Promise<Trigger | null> => {
+        if (authLoading || !accessToken) return null;
         try {
             const baseUrl = getBaseUrl();
-            const headers = await getAuthHeaders();
+            const headers = buildBearerHeaders(accessToken);
 
             const response = await fetch(`${baseUrl}/api/triggers/${triggerId}`, {
                 method: "PUT",
@@ -149,13 +143,14 @@ export function useTriggers(agentId?: string) {
             setError(err instanceof Error ? err.message : "Unknown error");
             return null;
         }
-    }, []);
+    }, [authLoading, accessToken]);
 
     // Delete a trigger
     const deleteTrigger = useCallback(async (triggerId: string): Promise<boolean> => {
+        if (authLoading || !accessToken) return false;
         try {
             const baseUrl = getBaseUrl();
-            const headers = await getAuthHeaders();
+            const headers = buildBearerHeaders(accessToken);
 
             const response = await fetch(`${baseUrl}/api/triggers/${triggerId}`, {
                 method: "DELETE",
@@ -172,7 +167,7 @@ export function useTriggers(agentId?: string) {
             setError(err instanceof Error ? err.message : "Unknown error");
             return false;
         }
-    }, []);
+    }, [authLoading, accessToken]);
 
     // Toggle trigger enabled/disabled
     const toggleTrigger = useCallback(async (triggerId: string, enabled: boolean): Promise<boolean> => {
@@ -182,9 +177,10 @@ export function useTriggers(agentId?: string) {
 
     // Get execution logs for a trigger
     const getExecutionLogs = useCallback(async (triggerId: string): Promise<ExecutionLog[]> => {
+        if (authLoading || !accessToken) return [];
         try {
             const baseUrl = getBaseUrl();
-            const headers = await getAuthHeaders();
+            const headers = buildBearerHeaders(accessToken);
 
             const response = await fetch(`${baseUrl}/api/triggers/${triggerId}/logs`, { headers });
 
@@ -197,13 +193,14 @@ export function useTriggers(agentId?: string) {
             console.error("Failed to fetch execution logs:", err);
             return [];
         }
-    }, []);
+    }, [authLoading, accessToken]);
 
     // Manually run a trigger
     const runTrigger = useCallback(async (triggerId: string): Promise<{ success: boolean; run_id?: string }> => {
+        if (authLoading || !accessToken) return { success: false };
         try {
             const baseUrl = getBaseUrl();
-            const headers = await getAuthHeaders();
+            const headers = buildBearerHeaders(accessToken);
 
             const response = await fetch(`${baseUrl}/api/triggers/${triggerId}/run`, {
                 method: "POST",
@@ -222,7 +219,7 @@ export function useTriggers(agentId?: string) {
             setError(err instanceof Error ? err.message : "Unknown error");
             return { success: false };
         }
-    }, [fetchTriggers]);
+    }, [authLoading, accessToken, fetchTriggers]);
 
     // Auto-fetch on mount if agentId provided
     useEffect(() => {
