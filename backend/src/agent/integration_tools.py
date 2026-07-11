@@ -14,12 +14,14 @@ app/action pair as read or write in COMPOSIO_ALLOWED_ACTIONS_JSON.
 import os
 import json
 import hashlib
+from datetime import datetime, timezone
 from typing import Annotated, Optional
 from langchain_core.tools import tool
 from langchain_core.runnables import RunnableConfig
 
 from ..runtime_context import thread_id_ctx, user_id_ctx, user_id_from_config
 from ..storage.supabase_db import get_supabase_client
+from ..identity import ensure_app_identity
 from .integration_policy import classify_action
 
 
@@ -82,7 +84,7 @@ async def _resolve_user_id_for_thread(thread_id: str) -> str | None:
     return None
 
 
-def _generate_idempotency_key(
+def _generate_legacy_idempotency_key(
     thread_id: str,
     run_id: str,
     action: str,
@@ -206,7 +208,7 @@ async def integrations_list_actions(
         print(f"[integrations_list_actions] Error: {e}")
         return f"Error: Failed to fetch available actions for {app_name} - {e}"
 
-async def _invoke_allowed_action(
+async def _invoke_allowed_action_legacy(
     app_name: Annotated[str, "App name, e.g. 'twitter'"],
     action: Annotated[str, "Action to execute, e.g. 'TWITTER_CREATION_OF_A_POST'"],
     params: Annotated[dict, "Action parameters as a dictionary"],
@@ -336,7 +338,7 @@ async def _invoke_allowed_action(
     # ==========================================================================
     # Step 4: Idempotency check
     # ==========================================================================
-    idem_key = _generate_idempotency_key(thread_id, run_id, action, params)
+    idem_key = _generate_legacy_idempotency_key(thread_id, run_id, action, params)
     
     try:
         existing = await supabase.table("integration_action_logs")\
@@ -475,6 +477,217 @@ async def _invoke_allowed_action(
         "result_id": result_id,
         "result_url": result_url,
         "message": f"{app_name} action executed successfully" + (f" - View: {result_url}" if result_url else ""),
+    }
+
+
+def _generate_idempotency_key(
+    user_id: str,
+    thread_id: str,
+    run_id: str,
+    app_name: str,
+    action: str,
+    params: dict,
+) -> str:
+    canonical = json.dumps(
+        {
+            "user_id": user_id,
+            "thread_id": thread_id,
+            "run_id": run_id,
+            "app": app_name.strip().lower(),
+            "action": action.strip().upper(),
+            "params": params,
+        },
+        sort_keys=True,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+async def _verify_connected_app(supabase, user_id: str, app_name: str) -> bool:
+    result = await (
+        supabase.table("user_integrations")
+        .select("composio_connection_id")
+        .eq("user_id", user_id)
+        .eq("app_name", app_name)
+        .eq("status", "connected")
+        .execute()
+    )
+    return bool(result.data)
+
+
+async def _reserve_integration_action(supabase, payload: dict) -> dict:
+    result = await supabase.rpc("reserve_integration_action", payload).execute()
+    if not result.data:
+        raise RuntimeError("Idempotency reservation returned no state")
+    return result.data[0]
+
+
+async def _update_integration_action(
+    supabase,
+    *,
+    user_id: str,
+    idempotency_key: str,
+    status: str,
+    **fields,
+) -> None:
+    payload = {
+        "status": status,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        **fields,
+    }
+    await (
+        supabase.table("integration_action_logs")
+        .update(payload)
+        .eq("user_id", user_id)
+        .eq("idempotency_key", idempotency_key)
+        .eq("status", "pending")
+        .execute()
+    )
+
+
+def _get_composio_tool(user_id: str, action: str):
+    from .composio_tools import get_composio_client
+
+    client = get_composio_client()
+    if not client:
+        return None
+    tools = client.tools.get(user_id=user_id, tools=[action])
+    return tools[0] if tools else None
+
+
+def _result_fields(result) -> tuple[str | None, str | None, dict]:
+    if isinstance(result, dict):
+        result_id = result.get("id") or result.get("result_id")
+        nested = result.get("data")
+        if not result_id and isinstance(nested, dict):
+            result_id = nested.get("id")
+        result_url = result.get("url") or result.get("link")
+        if not result_url and isinstance(nested, dict):
+            result_url = nested.get("url")
+        return str(result_id) if result_id else None, str(result_url) if result_url else None, result
+    if isinstance(result, str):
+        return None, None, {"raw_string": result}
+    return None, None, {"raw_value": str(result)}
+
+
+async def _invoke_allowed_action(
+    app_name: str,
+    action: str,
+    params: dict,
+    classification: str,
+    config: RunnableConfig = None,  # type: ignore[assignment]
+) -> dict:
+    user_id = _resolve_user_id_from_config(config) or user_id_ctx.get()
+    thread_id = _resolve_thread_id_from_config(config) or thread_id_ctx.get()
+    run_id = _resolve_run_id_from_config(config)
+    if not user_id or user_id in {"default", "anonymous"}:
+        return {"status": "error", "message": "Authenticated identity is required."}
+    if not thread_id or thread_id == "default":
+        return {"status": "error", "message": "A valid thread is required."}
+
+    try:
+        await ensure_app_identity(user_id, "guest")
+        supabase = await get_supabase_client()
+        if supabase is None:
+            raise RuntimeError("Database connection is unavailable")
+        if not await _verify_connected_app(supabase, user_id, app_name):
+            return {"status": "error", "message": f"Connect {app_name} in Settings first."}
+    except Exception:
+        return {"status": "error", "message": "Unable to verify the connected application."}
+
+    idempotency_key = None
+    if classification in {"write", "sensitive"}:
+        idempotency_key = _generate_idempotency_key(
+            user_id, thread_id, run_id, app_name, action, params
+        )
+        try:
+            reservation = await _reserve_integration_action(
+                supabase,
+                {
+                    "p_user_id": user_id,
+                    "p_thread_id": thread_id,
+                    "p_run_id": run_id,
+                    "p_app_name": app_name,
+                    "p_action": action,
+                    "p_params_hash": hashlib.sha256(
+                        json.dumps(params, sort_keys=True, ensure_ascii=False).encode("utf-8")
+                    ).hexdigest(),
+                    "p_idempotency_key": idempotency_key,
+                },
+            )
+        except Exception:
+            return {"status": "error", "message": "Action reservation failed; nothing was executed."}
+
+        if not reservation.get("created"):
+            status = reservation.get("status")
+            if status == "success":
+                return {
+                    "status": "cached",
+                    "result_id": reservation.get("result_id"),
+                    "result": reservation.get("raw_result"),
+                    "cached": True,
+                }
+            if status == "pending":
+                return {
+                    "status": "in_progress",
+                    "message": "This action is pending and requires reconciliation before any retry.",
+                }
+            return {
+                "status": "failed",
+                "message": "The previous action failed. Create a new explicit action to retry.",
+            }
+
+    provider_tool = _get_composio_tool(user_id, action)
+    if provider_tool is None:
+        if idempotency_key:
+            await _update_integration_action(
+                supabase,
+                user_id=user_id,
+                idempotency_key=idempotency_key,
+                status="failed",
+                error_message="Configured provider action is unavailable",
+            )
+        return {"status": "error", "message": "The configured provider action is unavailable."}
+
+    try:
+        result = await provider_tool.ainvoke(params)
+    except Exception as exc:
+        if idempotency_key:
+            await _update_integration_action(
+                supabase,
+                user_id=user_id,
+                idempotency_key=idempotency_key,
+                status="failed",
+                error_message=str(exc),
+            )
+        return {"status": "error", "message": "The connected application action failed."}
+
+    result_id, result_url, raw_result = _result_fields(result)
+    if idempotency_key:
+        try:
+            await _update_integration_action(
+                supabase,
+                user_id=user_id,
+                idempotency_key=idempotency_key,
+                status="success",
+                result_id=result_id,
+                result_url=result_url,
+                raw_result=raw_result,
+                error_message=None,
+            )
+        except Exception:
+            return {
+                "status": "error",
+                "message": "The action completed, but its audit result could not be saved. Do not retry automatically.",
+            }
+    return {
+        "status": "success",
+        "action": action,
+        "app_name": app_name,
+        "result_id": result_id,
+        "result_url": result_url,
+        "result": raw_result,
     }
 
 
