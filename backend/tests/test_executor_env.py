@@ -1,4 +1,5 @@
 """Tests for local sandbox secret-stripping and opt-in guard (Task 2)."""
+
 import os
 import sys
 

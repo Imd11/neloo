@@ -5,16 +5,16 @@ This module provides CRUD endpoints for custom agents.
 """
 
 import os
-from typing import Optional, List
-from datetime import datetime, timezone
-from uuid import UUID
-from fastapi import APIRouter, HTTPException, Depends, Query
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
-from supabase import create_client, Client
 
-from .auth import get_current_user, get_user_id
+from supabase import Client, create_client
+
 from ..identity import get_persistent_user
+from .auth import get_current_user, get_user_id
 
 # =============================================================================
 # Configuration
@@ -36,15 +36,16 @@ def get_model():
 
 async def _generate_model_text(system_prompt: str, user_prompt: str) -> str:
     model = get_model()
-    response = await model.ainvoke([
-        SystemMessage(content=system_prompt),
-        HumanMessage(content=user_prompt),
-    ])
+    response = await model.ainvoke(
+        [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=user_prompt),
+        ]
+    )
     content = getattr(response, "content", "")
     if isinstance(content, list):
         content = "".join(
-            part.get("text", "") if isinstance(part, dict) else str(part)
-            for part in content
+            part.get("text", "") if isinstance(part, dict) else str(part) for part in content
         )
     return str(content).strip()
 
@@ -67,7 +68,8 @@ def get_agent_icon_provider() -> dict[str, str] | None:
         return {
             "provider": "openai",
             "api_key": openai_key,
-            "base_url": os.environ.get("OPENAI_BASE_URL", "").strip().rstrip("/") or "https://api.openai.com",
+            "base_url": os.environ.get("OPENAI_BASE_URL", "").strip().rstrip("/")
+            or "https://api.openai.com",
             "model": os.environ.get("OPENAI_IMAGE_MODEL", "").strip() or "gpt-image-2",
         }
 
@@ -88,7 +90,7 @@ def get_supabase() -> Client:
         if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
             raise HTTPException(
                 status_code=503,
-                detail="Agents require SUPABASE_URL and SUPABASE_SERVICE_KEY. Configure persistence, then restart the backend."
+                detail="Agents require SUPABASE_URL and SUPABASE_SERVICE_KEY. Configure persistence, then restart the backend.",
             )
         _supabase_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
     return _supabase_client
@@ -98,8 +100,10 @@ def get_supabase() -> Client:
 # Request/Response Models
 # =============================================================================
 
+
 class AgentCreate(BaseModel):
     """Request model for creating an agent."""
+
     name: str = Field(..., min_length=1, max_length=100)
     # Can be an emoji (legacy) or an AI-generated image Data URL / URL.
     # Data URLs for 1024x1024 PNGs can be >1MB, so avoid tiny limits.
@@ -112,6 +116,7 @@ class AgentCreate(BaseModel):
 
 class AgentUpdate(BaseModel):
     """Request model for updating an agent."""
+
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     # Same format as AgentCreate.icon (emoji or image Data URL / URL).
     icon: Optional[str] = Field(None, max_length=6_000_000)
@@ -123,6 +128,7 @@ class AgentUpdate(BaseModel):
 
 class AgentResponse(BaseModel):
     """Response model for agent data."""
+
     id: str
     user_id: str
     name: str
@@ -140,12 +146,14 @@ class AgentResponse(BaseModel):
 
 class AgentListResponse(BaseModel):
     """Response model for agent list."""
+
     agents: List[AgentResponse]
     total: int
 
 
 class GeneratePromptRequest(BaseModel):
     """Request model for generating system prompt."""
+
     name: str
     description: str
     tools: List[str] = []
@@ -153,12 +161,14 @@ class GeneratePromptRequest(BaseModel):
 
 class GeneratePromptResponse(BaseModel):
     """Response model for generated prompt."""
+
     system_prompt: str
 
 
 # =============================================================================
 # Helper Functions
 # =============================================================================
+
 
 def row_to_agent(row: dict, creator_name: Optional[str] = None) -> AgentResponse:
     """Convert database row to AgentResponse."""
@@ -183,6 +193,7 @@ def row_to_agent(row: dict, creator_name: Optional[str] = None) -> AgentResponse
 # API Endpoints
 # =============================================================================
 
+
 @router.get("", response_model=AgentListResponse)
 async def list_my_agents(
     user: dict = Depends(get_persistent_user),
@@ -194,7 +205,7 @@ async def list_my_agents(
     """
     user_id = get_user_id(user)
     supabase = get_supabase()
-    
+
     # Get agents with pagination
     result = (
         supabase.table("agents")
@@ -204,10 +215,10 @@ async def list_my_agents(
         .range(offset, offset + limit - 1)
         .execute()
     )
-    
+
     agents = [row_to_agent(row) for row in result.data]
     total = result.count or len(agents)
-    
+
     return AgentListResponse(agents=agents, total=total)
 
 
@@ -222,44 +233,49 @@ async def list_store_agents(
     List public agents in the store with creator names.
     """
     supabase = get_supabase()
-    
+
     # Step 1: Get public agents
     query = supabase.table("agents").select("*", count="exact").eq("is_public", True)
-    
+
     # Apply search filter if provided
     if search:
         query = query.or_(f"name.ilike.%{search}%,description.ilike.%{search}%")
-    
+
     # Apply sorting
     if sort_by == "popular":
         query = query.order("usage_count", desc=True)
     else:  # newest
         query = query.order("created_at", desc=True)
-    
+
     # Apply pagination
     result = query.range(offset, offset + limit - 1).execute()
-    
+
     # Step 2: Batch fetch creator names from user_profiles
     user_ids = list(set(row["user_id"] for row in result.data if row.get("user_id")))
     creator_names_map = {}
-    
+
     if user_ids:
         try:
-            profiles_result = supabase.table("user_profiles").select("id, display_name").in_("id", user_ids).execute()
+            profiles_result = (
+                supabase.table("user_profiles")
+                .select("id, display_name")
+                .in_("id", user_ids)
+                .execute()
+            )
             for profile in profiles_result.data:
                 creator_names_map[profile["id"]] = profile.get("display_name")
         except Exception as e:
             # If user_profiles table doesn't exist or query fails, continue without creator names
             print(f"Warning: Could not fetch user profiles: {e}")
-    
+
     # Convert rows to AgentResponse with creator names
     agents = []
     for row in result.data:
         creator_name = creator_names_map.get(row.get("user_id"))
         agents.append(row_to_agent(row, creator_name=creator_name))
-    
+
     total = result.count or len(agents)
-    
+
     return AgentListResponse(agents=agents, total=total)
 
 
@@ -274,18 +290,18 @@ async def get_agent(
     """
     user_id = get_user_id(user)
     supabase = get_supabase()
-    
+
     result = supabase.table("agents").select("*").eq("id", agent_id).execute()
-    
+
     if not result.data:
         raise HTTPException(status_code=404, detail="Agent not found")
-    
+
     agent = result.data[0]
-    
+
     # Check access: must be owner or agent must be public
     if agent["user_id"] != user_id and not agent.get("is_public", False):
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     return row_to_agent(agent)
 
 
@@ -299,25 +315,27 @@ async def create_agent(
     """
     user_id = get_user_id(user)
     supabase = get_supabase()
-    
+
     # Insert agent
     result = (
         supabase.table("agents")
-        .insert({
-            "user_id": user_id,
-            "name": data.name,
-            "icon": data.icon,
-            "description": data.description,
-            "system_prompt": data.system_prompt,
-            "tools": data.tools,
-            "is_public": data.is_public,
-        })
+        .insert(
+            {
+                "user_id": user_id,
+                "name": data.name,
+                "icon": data.icon,
+                "description": data.description,
+                "system_prompt": data.system_prompt,
+                "tools": data.tools,
+                "is_public": data.is_public,
+            }
+        )
         .execute()
     )
-    
+
     if not result.data:
         raise HTTPException(status_code=500, detail="Failed to create agent")
-    
+
     return row_to_agent(result.data[0])
 
 
@@ -333,31 +351,26 @@ async def update_agent(
     """
     user_id = get_user_id(user)
     supabase = get_supabase()
-    
+
     # Check ownership
     existing = supabase.table("agents").select("user_id").eq("id", agent_id).execute()
     if not existing.data:
         raise HTTPException(status_code=404, detail="Agent not found")
     if existing.data[0]["user_id"] != user_id:
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     # Build update data (only non-None fields)
     update_data = {k: v for k, v in data.model_dump().items() if v is not None}
-    
+
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
-    
+
     # Update agent
-    result = (
-        supabase.table("agents")
-        .update(update_data)
-        .eq("id", agent_id)
-        .execute()
-    )
-    
+    result = supabase.table("agents").update(update_data).eq("id", agent_id).execute()
+
     if not result.data:
         raise HTTPException(status_code=500, detail="Failed to update agent")
-    
+
     return row_to_agent(result.data[0])
 
 
@@ -372,17 +385,17 @@ async def delete_agent(
     """
     user_id = get_user_id(user)
     supabase = get_supabase()
-    
+
     # Check ownership
     existing = supabase.table("agents").select("user_id").eq("id", agent_id).execute()
     if not existing.data:
         raise HTTPException(status_code=404, detail="Agent not found")
     if existing.data[0]["user_id"] != user_id:
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     # Delete agent (cascades to scheduled_triggers)
     supabase.table("agents").delete().eq("id", agent_id).execute()
-    
+
     return {"success": True, "message": "Agent deleted"}
 
 
@@ -397,45 +410,49 @@ async def copy_agent(
     """
     user_id = get_user_id(user)
     supabase = get_supabase()
-    
+
     # Get the source agent (must be public or owned by user)
     result = supabase.table("agents").select("*").eq("id", agent_id).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Agent not found")
-    
+
     source = result.data[0]
     if source["user_id"] != user_id and not source.get("is_public", False):
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     # Create a copy for the user
     copy_result = (
         supabase.table("agents")
-        .insert({
-            "user_id": user_id,
-            "name": source['name'],  # Keep original name without adding a copy suffix
-            "icon": source["icon"],
-            "description": source["description"],
-            "system_prompt": source["system_prompt"],
-            "tools": source.get("tools", []),
-            "is_public": False,  # Copies are private by default
-        })
+        .insert(
+            {
+                "user_id": user_id,
+                "name": source["name"],  # Keep original name without adding a copy suffix
+                "icon": source["icon"],
+                "description": source["description"],
+                "system_prompt": source["system_prompt"],
+                "tools": source.get("tools", []),
+                "is_public": False,  # Copies are private by default
+            }
+        )
         .execute()
     )
-    
+
     if not copy_result.data:
         raise HTTPException(status_code=500, detail="Failed to copy agent")
-    
+
     # Increment both usage_count and favorite_count on the source agent
     try:
         supabase.rpc("increment_agent_usage", {"agent_uuid": agent_id}).execute()
         supabase.rpc("increment_agent_favorite", {"agent_uuid": agent_id}).execute()
     except Exception:
         # If the RPC functions don't exist, fall back to direct update
-        supabase.table("agents").update({
-            "usage_count": source.get("usage_count", 0) + 1,
-            "favorite_count": source.get("favorite_count", 0) + 1,
-        }).eq("id", agent_id).execute()
-    
+        supabase.table("agents").update(
+            {
+                "usage_count": source.get("usage_count", 0) + 1,
+                "favorite_count": source.get("favorite_count", 0) + 1,
+            }
+        ).eq("id", agent_id).execute()
+
     return row_to_agent(copy_result.data[0])
 
 
@@ -450,19 +467,19 @@ async def use_agent(
     """
     user_id = get_user_id(user)
     supabase = get_supabase()
-    
+
     # Get the agent
     result = supabase.table("agents").select("*").eq("id", agent_id).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Agent not found")
-    
+
     agent = result.data[0]
     if agent["user_id"] != user_id and not agent.get("is_public", False):
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     # Increment usage count
     supabase.rpc("increment_agent_usage", {"agent_uuid": agent_id}).execute()
-    
+
     return {
         "agent_id": agent_id,
         "name": agent["name"],
@@ -478,7 +495,7 @@ async def generate_prompt(
 ) -> GeneratePromptResponse:
     """
     Generate a system prompt using the configured default chat model.
-    
+
     - System Prompt = meta-prompt template with instructions for the LLM.
     - User Prompt = the user's requirements, including agent name, description, and tools.
     - LLM generates the final agent system prompt
@@ -491,12 +508,15 @@ async def generate_prompt(
         "image_generation": "Generate AI images.",
         "browser": "Browse web pages and extract information.",
     }
-    
-    tools_info = "\n".join([
-        f"- {tool}: {tool_descriptions.get(tool, 'Available tool')}"
-        for tool in data.tools
-    ]) if data.tools else "No special tools"
-    
+
+    tools_info = (
+        "\n".join(
+            [f"- {tool}: {tool_descriptions.get(tool, 'Available tool')}" for tool in data.tools]
+        )
+        if data.tools
+        else "No special tools"
+    )
+
     # Meta-prompt template as System Prompt
     meta_prompt_template = """You are a professional AI prompt engineer. Your task is to generate a complete, professional system prompt based on the agent requirements provided by the user.
 
@@ -568,8 +588,10 @@ Generate the complete system prompt based on the information above."""
 # Generate Agent (Prompt + Icon in Parallel)
 # =============================================================================
 
+
 class GenerateAgentRequest(BaseModel):
     """Request model for generating full agent (prompt + icon)."""
+
     name: str = Field(..., min_length=1, max_length=100)
     description: str = Field(..., min_length=1, max_length=1000)
     tools: List[str] = []
@@ -577,6 +599,7 @@ class GenerateAgentRequest(BaseModel):
 
 class GenerateAgentResponse(BaseModel):
     """Response model for generated agent data."""
+
     system_prompt: str
     icon_url: str  # Data URL (base64) or empty string if failed
 
@@ -588,13 +611,14 @@ async def generate_agent(
 ) -> GenerateAgentResponse:
     """
     Generate both system prompt and icon in parallel.
-    
+
     - Uses the configured default chat model for system prompt generation
     - Uses the configured server-side image provider for icon generation
     """
-    import httpx
     import asyncio
-    
+
+    import httpx
+
     # Tool descriptions for context
     tool_descriptions = {
         "search_web": "Search the web for current information.",
@@ -603,12 +627,15 @@ async def generate_agent(
         "image_generation": "Generate AI images.",
         "browser": "Browse web pages and extract information.",
     }
-    
-    tools_info = "\n".join([
-        f"- {tool}: {tool_descriptions.get(tool, 'Available tool')}"
-        for tool in data.tools
-    ]) if data.tools else "No special tools"
-    
+
+    tools_info = (
+        "\n".join(
+            [f"- {tool}: {tool_descriptions.get(tool, 'Available tool')}" for tool in data.tools]
+        )
+        if data.tools
+        else "No special tools"
+    )
+
     # Meta-prompt for system prompt generation
     meta_prompt = """You are a professional AI prompt engineer. Your task is to generate a complete, professional system prompt based on the agent requirements provided by the user.
 
@@ -648,7 +675,7 @@ Generate a complete, customized, high-quality system prompt based on the provide
 Generate the complete system prompt based on the information above."""
 
     # Icon generation prompt
-    icon_prompt = f"""Create a simple, modern app icon for an AI assistant called "{data.name}". 
+    icon_prompt = f"""Create a simple, modern app icon for an AI assistant called "{data.name}".
 The assistant's purpose is: {data.description}
 
 Requirements:
@@ -738,13 +765,10 @@ Requirements:
     async with httpx.AsyncClient() as client:
         prompt_task = generate_system_prompt()
         icon_task = generate_icon(client)
-        
+
         system_prompt, icon_url = await asyncio.gather(prompt_task, icon_task)
-    
+
     if not system_prompt:
         raise HTTPException(status_code=502, detail="Failed to generate system prompt")
-    
-    return GenerateAgentResponse(
-        system_prompt=system_prompt,
-        icon_url=icon_url or ""
-    )
+
+    return GenerateAgentResponse(system_prompt=system_prompt, icon_url=icon_url or "")

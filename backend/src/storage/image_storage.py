@@ -13,18 +13,16 @@ Features:
 - Non-blocking async operations via thread pool
 """
 
-import os
 import base64
+import os
 import secrets
 import tempfile
-import asyncio
+from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
-from abc import ABC, abstractmethod
 
 from .signing import generate_url_signature, verify_url_signature
-
 
 # =============================================================================
 # Configuration
@@ -54,6 +52,7 @@ USE_LOCAL_STORAGE = FORCE_LOCAL_STORAGE or not (SUPABASE_URL and SUPABASE_SERVIC
 # Image ID Generation
 # =============================================================================
 
+
 def generate_image_id(thread_id: Optional[str] = None) -> str:
     """
     Generate a unique image ID.
@@ -61,12 +60,12 @@ def generate_image_id(thread_id: Optional[str] = None) -> str:
     Format: chart_{date}_{random}
     - date: YYYYMMDD for cleanup and sorting
     - random: 6 hex chars (16 million combinations per day)
-    
+
     Old format was ~60 chars, new format is ~22 chars.
     """
     date_part = datetime.now().strftime("%Y%m%d")
     random_part = secrets.token_hex(3)  # 6 hex chars
-    
+
     return f"chart_{date_part}_{random_part}"
 
 
@@ -82,6 +81,7 @@ def parse_image_timestamp(image_id: str) -> Optional[datetime]:
 # =============================================================================
 # Storage Backend Interface
 # =============================================================================
+
 
 class ImageStorageBackend(ABC):
     """Abstract base class for image storage backends."""
@@ -110,6 +110,7 @@ class ImageStorageBackend(ABC):
 # =============================================================================
 # Local Storage Backend
 # =============================================================================
+
 
 class LocalImageStorage(ImageStorageBackend):
     """Local filesystem storage for development."""
@@ -199,6 +200,7 @@ class LocalImageStorage(ImageStorageBackend):
 # Supabase Storage Backend
 # =============================================================================
 
+
 class SupabaseImageStorage(ImageStorageBackend):
     """Supabase Storage backend for production/E2B.
 
@@ -212,6 +214,7 @@ class SupabaseImageStorage(ImageStorageBackend):
         """Lazy initialization of Supabase client."""
         if self._client is None:
             from supabase import create_client
+
             self._client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
         return self._client
 
@@ -232,9 +235,7 @@ class SupabaseImageStorage(ImageStorageBackend):
             path = self._get_path(image_id)
 
             client.storage.from_(IMAGE_BUCKET_NAME).upload(
-                path=path,
-                file=data,
-                file_options={"content-type": "image/png"}
+                path=path, file=data, file_options={"content-type": "image/png"}
             )
             print(f"[ImageStorage] Saved image to Supabase: {path}")
             return True
@@ -327,6 +328,7 @@ class SupabaseImageStorage(ImageStorageBackend):
 # Unified ImageStorage Class
 # =============================================================================
 
+
 class ImageStorage:
     """
     Unified image storage interface.
@@ -380,10 +382,12 @@ class ImageStorage:
             # so we can safely use asyncio.run().
             try:
                 import os
+
                 supabase_url = os.environ.get("SUPABASE_URL")
                 if supabase_url:
-                    from .supabase_db import save_file_record
                     import asyncio
+
+                    from .supabase_db import save_file_record
 
                     # Determine storage path based on backend
                     if USE_LOCAL_STORAGE:
@@ -395,31 +399,39 @@ class ImageStorage:
                     try:
                         asyncio.get_running_loop()
                         # If we get here, we're in async context - log warning
-                        print(f"[ImageStorage] Warning: save_image called from async context for {image_id}.png")
+                        print(
+                            f"[ImageStorage] Warning: save_image called from async context for {image_id}.png"
+                        )
                     except RuntimeError:
                         # No running loop - safe to use asyncio.run()
                         pass
 
                     # Save to database synchronously
                     try:
-                        db_record = asyncio.run(save_file_record(
-                            user_id=user_id,
-                            filename=f"{image_id}.png",
-                            storage_path=storage_path,
-                            file_size=len(data),
-                            content_type="image/png",
-                            file_type="chart",
-                            thread_id=thread_id,
-                        ))
+                        db_record = asyncio.run(
+                            save_file_record(
+                                user_id=user_id,
+                                filename=f"{image_id}.png",
+                                storage_path=storage_path,
+                                file_size=len(data),
+                                content_type="image/png",
+                                file_type="chart",
+                                thread_id=thread_id,
+                            )
+                        )
                         if db_record:
                             print(f"[ImageStorage] ✓ Database record saved: {image_id}.png")
                         else:
-                            print(f"[ImageStorage] ✗ Database save returned None for: {image_id}.png")
+                            print(
+                                f"[ImageStorage] ✗ Database save returned None for: {image_id}.png"
+                            )
                     except Exception as e:
                         print(f"[ImageStorage] ✗ Database save failed for {image_id}.png: {e}")
             except Exception as db_error:
                 # Log database error but don't fail the image save
-                print(f"[ImageStorage] Warning: Database initialization error for {image_id}: {db_error}")
+                print(
+                    f"[ImageStorage] Warning: Database initialization error for {image_id}: {db_error}"
+                )
 
             return result
         return None

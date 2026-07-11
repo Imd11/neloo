@@ -4,9 +4,9 @@ Code Execution Tool
 Provides Python code execution in secure sandboxes.
 """
 
-from typing import Any, Optional
-from datetime import datetime
 import secrets
+from datetime import datetime
+from typing import Any, Optional
 
 from ..sandbox import execute_python
 
@@ -94,15 +94,17 @@ def execute_python_tool(
             if file_info:
                 generated_files = result.get("generated_files")
                 if isinstance(generated_files, list):
-                    generated_files.append({
-                        "filename": filename,
-                        "sandbox_path": f"/home/user/data/{filename}",
-                        "size": len(code_bytes),
-                        "download_url": file_info.get("download_url"),
-                        "file_id": file_info.get("file_id"),
-                        "content_type": file_info.get("content_type") or "text/x-python",
-                        "file_type": "code",
-                    })
+                    generated_files.append(
+                        {
+                            "filename": filename,
+                            "sandbox_path": f"/home/user/data/{filename}",
+                            "size": len(code_bytes),
+                            "download_url": file_info.get("download_url"),
+                            "file_id": file_info.get("file_id"),
+                            "content_type": file_info.get("content_type") or "text/x-python",
+                            "file_type": "code",
+                        }
+                    )
     except Exception:
         pass
 

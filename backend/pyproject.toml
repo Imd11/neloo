@@ -82,6 +82,11 @@ target-version = "py311"
 select = ["E", "F", "I", "W"]
 ignore = ["E501"]
 
+[tool.ruff.lint.per-file-ignores]
+"src/agent/graph.py" = ["E402"] # DeepSeek patch must run before provider imports.
+"src/api/webapp.py" = ["E402"] # Routers are registered after the shared app is initialized.
+"tests/test_hidden_prompt_api_flows.py" = ["E402"] # Test adjusts sys.path before app imports.
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]

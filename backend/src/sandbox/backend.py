@@ -13,18 +13,15 @@ This unifies the file system so that:
 All files in one place, solving the split between Files (State) and File Panel.
 """
 
-import base64
-import json
-from typing import Optional, Any
-from datetime import datetime
+from typing import Any, Optional
 
-from deepagents.backends.sandbox import BaseSandbox
 from deepagents.backends.protocol import (
     ExecuteResponse,
-    FileUploadResponse,
     FileDownloadResponse,
+    FileUploadResponse,
     WriteResult,
 )
+from deepagents.backends.sandbox import BaseSandbox
 
 
 class E2BSandboxBackend(BaseSandbox):
@@ -42,7 +39,13 @@ class E2BSandboxBackend(BaseSandbox):
     - Compatible with existing E2BSandboxExecutor per-user sandbox management
     """
 
-    def __init__(self, sandbox: Any, user_id: str, thread_id: Optional[str] = None, sync_to_storage: bool = True):
+    def __init__(
+        self,
+        sandbox: Any,
+        user_id: str,
+        thread_id: Optional[str] = None,
+        sync_to_storage: bool = True,
+    ):
         """
         Initialize E2B Sandbox Backend.
 
@@ -68,7 +71,7 @@ class E2BSandboxBackend(BaseSandbox):
     @property
     def id(self) -> str:
         """Unique identifier for the sandbox backend instance."""
-        return self.sandbox.id if hasattr(self.sandbox, 'id') else f"e2b-{self.user_id}"
+        return self.sandbox.id if hasattr(self.sandbox, "id") else f"e2b-{self.user_id}"
 
     def execute(self, command: str) -> ExecuteResponse:
         """
@@ -106,7 +109,7 @@ class E2BSandboxBackend(BaseSandbox):
 
         # Sync to Supabase Storage if enabled
         if self.sync_to_storage and result.path:
-            self._sync_file_to_storage(result.path, content.encode('utf-8'))
+            self._sync_file_to_storage(result.path, content.encode("utf-8"))
 
         return result
 
@@ -123,7 +126,7 @@ class E2BSandboxBackend(BaseSandbox):
             filename = sandbox_path.split("/")[-1]
 
             # Determine file type based on extension
-            if filename.endswith(('.png', '.jpg', '.jpeg', '.gif')):
+            if filename.endswith((".png", ".jpg", ".jpeg", ".gif")):
                 file_type = "chart"
             else:
                 file_type = "generated"
@@ -138,7 +141,9 @@ class E2BSandboxBackend(BaseSandbox):
             )
 
             if file_info:
-                print(f"[E2BSandboxBackend] Synced {sandbox_path} to storage: {file_info.get('download_url', 'N/A')}")
+                print(
+                    f"[E2BSandboxBackend] Synced {sandbox_path} to storage: {file_info.get('download_url', 'N/A')}"
+                )
 
         except Exception as e:
             print(f"[E2BSandboxBackend] Warning: Failed to sync {sandbox_path} to storage: {e}")
@@ -174,7 +179,9 @@ class E2BSandboxBackend(BaseSandbox):
                     self._sync_file_to_storage(path, content)
 
             except Exception as e:
-                error_type = "permission_denied" if "permission" in str(e).lower() else "invalid_path"
+                error_type = (
+                    "permission_denied" if "permission" in str(e).lower() else "invalid_path"
+                )
                 responses.append(FileUploadResponse(path=path, error=error_type))
 
         return responses
@@ -196,24 +203,16 @@ class E2BSandboxBackend(BaseSandbox):
                 # Read file from sandbox
                 content = self.sandbox.files.read(path, format="bytes")
                 content_bytes = bytes(content) if not isinstance(content, bytes) else content
-                responses.append(FileDownloadResponse(
-                    path=path,
-                    content=content_bytes,
-                    error=None
-                ))
+                responses.append(FileDownloadResponse(path=path, content=content_bytes, error=None))
             except FileNotFoundError:
-                responses.append(FileDownloadResponse(
-                    path=path,
-                    content=None,
-                    error="file_not_found"
-                ))
+                responses.append(
+                    FileDownloadResponse(path=path, content=None, error="file_not_found")
+                )
             except Exception as e:
-                error_type = "permission_denied" if "permission" in str(e).lower() else "file_not_found"
-                responses.append(FileDownloadResponse(
-                    path=path,
-                    content=None,
-                    error=error_type
-                ))
+                error_type = (
+                    "permission_denied" if "permission" in str(e).lower() else "file_not_found"
+                )
+                responses.append(FileDownloadResponse(path=path, content=None, error=error_type))
 
         return responses
 
@@ -245,8 +244,8 @@ def get_e2b_backend_factory(executor: Any):
             backend=backend_factory,
         )
     """
-    from .executor import E2BSandboxExecutor, AsyncE2BSandboxExecutor
-    from ..runtime_context import user_id_ctx, thread_id_ctx
+    from ..runtime_context import thread_id_ctx, user_id_ctx
+    from .executor import AsyncE2BSandboxExecutor, E2BSandboxExecutor
 
     def backend_factory(runtime):
         """
@@ -259,13 +258,13 @@ def get_e2b_backend_factory(executor: Any):
         thread_id = thread_id_ctx.get()
 
         # Fallback: try to get from runtime config if ContextVar not set
-        if user_id in ("", "default") and hasattr(runtime, 'config'):
-            config = getattr(runtime, 'config', {}) or {}
+        if user_id in ("", "default") and hasattr(runtime, "config"):
+            config = getattr(runtime, "config", {}) or {}
             if isinstance(config, dict):
-                configurable = config.get('configurable', {})
-                user_id = (configurable.get('user_id', user_id) or "").strip()
+                configurable = config.get("configurable", {})
+                user_id = (configurable.get("user_id", user_id) or "").strip()
                 if thread_id == "default":
-                    thread_id = configurable.get('thread_id', thread_id)
+                    thread_id = configurable.get("thread_id", thread_id)
 
         if user_id == "":
             # Normalize empty string to "default" to avoid creating a separate sandbox key.
@@ -294,13 +293,17 @@ def get_e2b_backend_factory(executor: Any):
             #
             # Use SANDBOX_MODE=e2b or SANDBOX_MODE=e2b-sync for stable, unified filesystem behavior.
             from deepagents.backends import StateBackend
-            print("[E2BSandboxBackend] Async executor selected; falling back to StateBackend. "
-                  "Set SANDBOX_MODE=e2b (sync) for stable E2B-backed file ops.")
+
+            print(
+                "[E2BSandboxBackend] Async executor selected; falling back to StateBackend. "
+                "Set SANDBOX_MODE=e2b (sync) for stable E2B-backed file ops."
+            )
             return StateBackend(runtime)
         else:
             # For non-E2B executors (local, docker), fall back to StateBackend
             from deepagents.backends import StateBackend
-            print(f"[E2BSandboxBackend] Non-E2B executor, falling back to StateBackend")
+
+            print("[E2BSandboxBackend] Non-E2B executor, falling back to StateBackend")
             return StateBackend(runtime)
 
     return backend_factory

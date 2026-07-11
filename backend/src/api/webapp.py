@@ -15,80 +15,78 @@ Routes:
 - GET /files/download-url/{filename} - Get signed download URL
 """
 
-import os
+import asyncio
 import hashlib
 import json
-import uuid
+import os
 import tempfile
-import asyncio
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, Header, Query, Depends, Request, Form
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
-from starlette.responses import StreamingResponse
 from pydantic import BaseModel
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from starlette.responses import StreamingResponse
 
-# Import authentication
-from .auth import (
-    authenticate_authorization_header,
-    extract_token_from_header,
-    get_current_user,
-    get_optional_user,
-    verify_jwt_token,
-    allow_anonymous,
-    allow_insecure_local_tokens,
-    get_user_id as auth_get_user_id,
-)
-from .ratelimit import limiter
-from ..runtime_context import user_id_ctx, thread_id_ctx
-from ..model_ids import public_model_id
 from ..hidden_prompt_sanitization import sanitize_hidden_prompt_message_data
-from ..usage_limits import get_usage_limiter, usage_store_ready
+from ..model_ids import public_model_id
+from ..runtime_context import thread_id_ctx, user_id_ctx
 
 # Import image storage
-from ..storage import get_image, get_image_storage
+from ..storage import get_image_storage
 
 # Import generated file storage
 from ..storage.file_storage import (
     get_file_storage,
-    get_generated_file,
-    list_generated_files,
     get_mime_type,
+    list_generated_files,
 )
 
 # Import database operations for file listing
 from ..storage.supabase_db import (
-    get_files_by_type,
-    get_user_files,
-    get_thread_files,
-    get_file_by_id,
+    USE_SUPABASE_DB,
+    FileType,
+    cleanup_expired_uploads,
+    commit_upload_session,
     count_file_thread_links,
+    create_thread,
+    # Upload session management
+    create_upload_session,
     delete_file_record,
     delete_thread_file_link,
     delete_thread_record,
-    create_thread,
-    get_user_threads,
+    get_chat_message_rows,
+    get_file_by_id,
+    get_files_by_type,
     get_thread_by_langgraph_id,
-    update_thread_title,
-    USE_SUPABASE_DB,
-    FileType,
-    # Upload session management
-    create_upload_session,
+    get_thread_files,
     get_upload_session,
-    update_upload_session_status,
-    commit_upload_session,
+    get_user_files,
     get_user_pending_uploads,
-    cleanup_expired_uploads,
+    get_user_threads,
     # Chat message persistence
     save_chat_message,
-    get_chat_messages,
-    get_chat_message_rows,
+    update_thread_title,
+    update_upload_session_status,
 )
+from ..usage_limits import get_usage_limiter, usage_store_ready
+
+# Import authentication
+from .auth import (
+    allow_anonymous,
+    allow_insecure_local_tokens,
+    authenticate_authorization_header,
+    get_current_user,
+)
+from .auth import (
+    get_user_id as auth_get_user_id,
+)
+from .ratelimit import limiter
 
 # =============================================================================
 # Configuration
@@ -138,7 +136,9 @@ def _resolve_runtime_graph_id(mode: Optional[str] = None, model_id: Optional[str
         normalized_model_id or os.environ.get("LANGGRAPH_DEFAULT_GRAPH_ID") or "data_analyst"
     ).strip() or "data_analyst"
     normalized_mode = (mode or "").strip().lower()
-    if normalized_mode in {"web-dev", "web_dev", "webdev"} and not base_graph_id.endswith("-web-dev"):
+    if normalized_mode in {"web-dev", "web_dev", "webdev"} and not base_graph_id.endswith(
+        "-web-dev"
+    ):
         return f"{base_graph_id}-web-dev"
     if normalized_mode == "fortune" and not base_graph_id.endswith("-fortune"):
         return f"{base_graph_id}-fortune"
@@ -242,7 +242,9 @@ async def _load_db_messages_for_history(thread_id: str) -> list[dict]:
     return normalized_messages
 
 
-def _select_history_messages(runtime_messages: list[dict], db_messages: list[dict]) -> tuple[list[dict], str]:
+def _select_history_messages(
+    runtime_messages: list[dict], db_messages: list[dict]
+) -> tuple[list[dict], str]:
     """
     Pick the more complete history source.
     """
@@ -282,15 +284,23 @@ async def _ensure_langgraph_runtime_thread(
                 timeout=10.0,
             )
             if create_resp.status_code not in (200, 201, 202, 409):
-                print(f"[runtime_recover] create thread returned {create_resp.status_code} for {thread_id[:8]}...")
+                print(
+                    f"[runtime_recover] create thread returned {create_resp.status_code} for {thread_id[:8]}..."
+                )
 
             # 1.5) Existing threads created in older versions may miss graph_id.
             if graph_id:
                 thread_resp = await client.get(f"{base_url}/threads/{thread_id}", timeout=10.0)
                 if thread_resp.status_code == 200:
                     thread_payload = thread_resp.json()
-                    metadata = thread_payload.get("metadata", {}) if isinstance(thread_payload, dict) else {}
-                    existing_graph_id = metadata.get("graph_id") if isinstance(metadata, dict) else None
+                    metadata = (
+                        thread_payload.get("metadata", {})
+                        if isinstance(thread_payload, dict)
+                        else {}
+                    )
+                    existing_graph_id = (
+                        metadata.get("graph_id") if isinstance(metadata, dict) else None
+                    )
                     if not existing_graph_id:
                         patch_resp = await client.patch(
                             f"{base_url}/threads/{thread_id}",
@@ -343,11 +353,14 @@ async def _ensure_langgraph_runtime_thread(
                 )
                 return False
 
-            print(f"[runtime_recover] Rehydrated runtime state for {thread_id[:8]}... from DB messages")
+            print(
+                f"[runtime_recover] Rehydrated runtime state for {thread_id[:8]}... from DB messages"
+            )
             return True
     except Exception as e:
         print(f"[runtime_recover] Failed to recover thread {thread_id[:8]}...: {e}")
         return False
+
 
 # Local storage directory - use the sandbox data directory for simplicity
 # This way uploaded files are directly available to the sandbox executor
@@ -357,13 +370,32 @@ LOCAL_STORAGE_DIR = Path(tempfile.gettempdir()) / "data-analyst-sandbox" / "data
 # Supported file extensions
 ALLOWED_EXTENSIONS = {
     # Data files
-    ".csv", ".xlsx", ".xls", ".dta", ".sav", ".parquet",
+    ".csv",
+    ".xlsx",
+    ".xls",
+    ".dta",
+    ".sav",
+    ".parquet",
     # Office documents
-    ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".txt", ".rtf",
+    ".pdf",
+    ".doc",
+    ".docx",
+    ".ppt",
+    ".pptx",
+    ".txt",
+    ".rtf",
     # Image files (for multimodal)
-    ".png", ".jpg", ".jpeg", ".gif", ".webp",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".webp",
     # Audio files (for slides/transcription)
-    ".mp3", ".wav", ".m4a", ".ogg", ".flac",
+    ".mp3",
+    ".wav",
+    ".m4a",
+    ".ogg",
+    ".flac",
 }
 
 # Maximum file size (100 MB)
@@ -400,8 +432,8 @@ if allow_anonymous():
 # =============================================================================
 
 # Resume routes (parsing and PDF export)
-from .resume_routes import router as resume_router
 from .resume_pdf_routes import router as resume_pdf_router
+from .resume_routes import router as resume_router
 
 app.include_router(resume_router)
 app.include_router(resume_pdf_router)
@@ -467,6 +499,7 @@ async def _set_runtime_context(request: Request, call_next):
     thread_id_ctx.reset(thread_token)
     return response
 
+
 # CORS configuration
 cors_origins = _parse_cors_origins()
 cors_allow_credentials = cors_origins != ["*"]
@@ -483,6 +516,7 @@ app.add_middleware(
 # Storage Backend
 # =============================================================================
 
+
 async def get_supabase_client():
     """Get async Supabase client instance (only when Supabase is configured)."""
     global _supabase_client
@@ -490,6 +524,7 @@ async def get_supabase_client():
         return None
     if _supabase_client is None:
         from supabase import acreate_client
+
         _supabase_client = await acreate_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
     return _supabase_client
 
@@ -550,11 +585,13 @@ def _list_files_sync(directory: Path) -> list:
         for item in directory.iterdir():
             if item.is_file():
                 stat = item.stat()
-                files.append({
-                    "name": item.name,
-                    "size": stat.st_size,
-                    "ctime": stat.st_ctime,
-                })
+                files.append(
+                    {
+                        "name": item.name,
+                        "size": stat.st_size,
+                        "ctime": stat.st_ctime,
+                    }
+                )
     return files
 
 
@@ -562,8 +599,10 @@ def _list_files_sync(directory: Path) -> list:
 # Response Models
 # =============================================================================
 
+
 class UploadResponse(BaseModel):
     """Response model for file upload."""
+
     success: bool
     filename: str
     original_filename: str
@@ -575,6 +614,7 @@ class UploadResponse(BaseModel):
 
 class FileInfo(BaseModel):
     """Information about an uploaded file."""
+
     filename: str
     original_filename: str
     storage_path: str
@@ -584,18 +624,21 @@ class FileInfo(BaseModel):
 
 class FileListResponse(BaseModel):
     """Response model for file list."""
+
     files: list[FileInfo]
     total: int
 
 
 class DeleteResponse(BaseModel):
     """Response model for file deletion."""
+
     success: bool
     message: str
 
 
 class DownloadUrlResponse(BaseModel):
     """Response model for download URL."""
+
     url: str
     expires_in: int
 
@@ -604,14 +647,17 @@ class DownloadUrlResponse(BaseModel):
 # Two-Phase Upload Models (Staging Area Pattern)
 # =============================================================================
 
+
 class UploadInitRequest(BaseModel):
     """Request model for initializing an upload session."""
+
     filename: str
     size: int  # Expected file size in bytes
 
 
 class UploadInitResponse(BaseModel):
     """Response model for upload initialization."""
+
     file_id: str
     upload_url: str  # URL to upload the file to
     ttl: int  # Time to live in seconds
@@ -620,11 +666,13 @@ class UploadInitResponse(BaseModel):
 
 class UploadCompleteRequest(BaseModel):
     """Request model for completing an upload."""
+
     file_id: str
 
 
 class UploadCompleteResponse(BaseModel):
     """Response model for upload completion."""
+
     file_id: str
     status: str  # 'uploaded' or 'error'
     filename: str
@@ -634,18 +682,21 @@ class UploadCompleteResponse(BaseModel):
 
 class CommitFilesRequest(BaseModel):
     """Request model for committing files to a thread."""
+
     file_ids: list[str]
     thread_id: str  # LangGraph thread ID
 
 
 class ImportFromLibraryRequest(BaseModel):
     """Request model for importing files from library."""
+
     file_ids: list[str]  # IDs of files in the library to import
 
 
 # =============================================================================
 # Helper Functions
 # =============================================================================
+
 
 def validate_file(file: UploadFile) -> None:
     """Validate uploaded file."""
@@ -682,6 +733,7 @@ def get_user_id_from_header(x_user_id: Optional[str]) -> str:
 # API Routes
 # =============================================================================
 
+
 @app.post("/files/upload", response_model=UploadResponse)
 async def upload_file(
     file: UploadFile = File(...),
@@ -711,7 +763,7 @@ async def upload_file(
     if file_size > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=400,
-            detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)} MB",
+            detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024 * 1024)} MB",
         )
 
     # Generate storage path using authenticated user ID
@@ -763,6 +815,7 @@ async def upload_file(
         if USE_SUPABASE_DB:
             try:
                 from ..storage.supabase_db import save_file_record
+
                 # Ensure thread record exists if the upload is associated with a thread.
                 # We bind uploads to the current conversation by linking to thread_files.
                 if langgraph_thread_id:
@@ -856,7 +909,7 @@ async def init_upload(
     if data.size > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=400,
-            detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)} MB",
+            detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024 * 1024)} MB",
         )
 
     # Generate unique file ID and storage path
@@ -864,7 +917,7 @@ async def init_upload(
     storage_filename = generate_storage_filename(data.filename)
     storage_path = f"{user_id}/{storage_filename}"
 
-    print(f"[Upload/Init] ========== UPLOAD DEBUG ==========")
+    print("[Upload/Init] ========== UPLOAD DEBUG ==========")
     print(f"[Upload/Init] user_id = '{user_id}'")
     print(f"[Upload/Init] filename = '{data.filename}'")
     print(f"[Upload/Init] storage_path = '{storage_path}'")
@@ -872,6 +925,7 @@ async def init_upload(
 
     # Calculate expiration
     from datetime import timedelta
+
     expires_at = datetime.now() + timedelta(seconds=UPLOAD_SESSION_TTL_SECONDS)
 
     # Create upload session in database
@@ -934,7 +988,7 @@ async def upload_file_data(
     if file_size > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=400,
-            detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)} MB",
+            detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024 * 1024)} MB",
         )
 
     storage_path = session["storage_path"]
@@ -961,7 +1015,7 @@ async def upload_file_data(
             }
             content_type = content_types.get(ext, "application/octet-stream")
 
-            print(f"[Upload/Data] ========== STORAGE UPLOAD DEBUG ==========")
+            print("[Upload/Data] ========== STORAGE UPLOAD DEBUG ==========")
             print(f"[Upload/Data] Uploading to bucket='{BUCKET_NAME}', path='{storage_path}'")
             print(f"[Upload/Data] File size: {len(content)} bytes, content_type: {content_type}")
 
@@ -970,7 +1024,7 @@ async def upload_file_data(
                 file=content,
                 file_options={"content-type": content_type},
             )
-            print(f"[Upload/Data] SUCCESS: File uploaded to Supabase Storage")
+            print("[Upload/Data] SUCCESS: File uploaded to Supabase Storage")
             sandbox_path = f"/home/user/data/{storage_filename}"
 
         # Update session status to uploaded
@@ -1031,6 +1085,7 @@ async def commit_uploads(
         # Create file record in files table
         if USE_SUPABASE_DB:
             from ..storage.supabase_db import save_file_record
+
             ext = os.path.splitext(session["filename"])[1].lower()
             content_types = {
                 ".csv": "text/csv",
@@ -1057,12 +1112,14 @@ async def commit_uploads(
         await commit_upload_session(file_id, data.thread_id)
 
         storage_filename = os.path.basename(session["storage_path"])
-        committed_files.append({
-            "file_id": file_id,
-            "filename": session["filename"],
-            "storage_path": session["storage_path"],
-            "sandbox_path": f"/home/user/data/{storage_filename}",
-        })
+        committed_files.append(
+            {
+                "file_id": file_id,
+                "filename": session["filename"],
+                "storage_path": session["storage_path"],
+                "sandbox_path": f"/home/user/data/{storage_filename}",
+            }
+        )
 
     return {
         "success": len(errors) == 0,
@@ -1102,7 +1159,9 @@ async def import_from_library(
                 continue
 
             # Get file details
-            filename = file_record.get("original_filename") or file_record.get("filename", "unknown")
+            filename = file_record.get("original_filename") or file_record.get(
+                "filename", "unknown"
+            )
             storage_path = file_record.get("storage_path", "")
             # DB column is file_size, not size
             file_size = file_record.get("file_size") or file_record.get("size") or 0
@@ -1131,14 +1190,16 @@ async def import_from_library(
             storage_filename = os.path.basename(storage_path) if storage_path else filename
             sandbox_path = f"/home/user/data/{storage_filename}"
 
-            imported_files.append({
-                "file_id": import_session_id,
-                "original_file_id": file_id,
-                "filename": filename,
-                "size": file_size,
-                "storage_path": storage_path,
-                "sandbox_path": sandbox_path,
-            })
+            imported_files.append(
+                {
+                    "file_id": import_session_id,
+                    "original_file_id": file_id,
+                    "filename": filename,
+                    "size": file_size,
+                    "storage_path": storage_path,
+                    "sandbox_path": sandbox_path,
+                }
+            )
 
         except Exception as e:
             errors.append({"file_id": file_id, "error": str(e)})
@@ -1245,8 +1306,10 @@ async def cleanup_uploads(user: dict = Depends(get_current_user)):
 # Instead of just passing file paths, the agent can now "see" the actual data.
 #
 
+
 class FilePreviewResponse(BaseModel):
     """Response model for file preview."""
+
     file_id: str
     filename: str
     preview: str  # Human-readable preview (first N rows as markdown/text)
@@ -1315,6 +1378,7 @@ async def get_file_preview(
 
         # Parse file based on extension
         import io
+
         import pandas as pd
 
         if ext == ".csv":
@@ -1323,6 +1387,7 @@ async def get_file_preview(
             df = pd.read_excel(io.BytesIO(file_content), nrows=max_rows + 1)
         elif ext == ".parquet":
             import pyarrow.parquet as pq
+
             table = pq.read_table(io.BytesIO(file_content))
             df = table.to_pandas().head(max_rows + 1)
         elif ext == ".dta":
@@ -1330,6 +1395,7 @@ async def get_file_preview(
             df = df.head(max_rows + 1)
         elif ext == ".sav":
             import pyreadstat
+
             df, meta = pyreadstat.read_sav(io.BytesIO(file_content))
             df = df.head(max_rows + 1)
         else:
@@ -1390,13 +1456,15 @@ async def list_files(user: dict = Depends(get_current_user)):
                 parts = item["name"].split("_", 3)
                 original_name = parts[3] if len(parts) > 3 else item["name"]
 
-                files.append(FileInfo(
-                    filename=item["name"],
-                    original_filename=original_name,
-                    storage_path=f"{user_id}/{item['name']}",
-                    size=item["size"],
-                    created_at=datetime.fromtimestamp(item["ctime"]).isoformat(),
-                ))
+                files.append(
+                    FileInfo(
+                        filename=item["name"],
+                        original_filename=original_name,
+                        storage_path=f"{user_id}/{item['name']}",
+                        size=item["size"],
+                        created_at=datetime.fromtimestamp(item["ctime"]).isoformat(),
+                    )
+                )
         else:
             # Supabase storage mode (async)
             supabase = await get_supabase_client()
@@ -1407,13 +1475,15 @@ async def list_files(user: dict = Depends(get_current_user)):
                     parts = item["name"].split("_", 3)
                     original_name = parts[3] if len(parts) > 3 else item["name"]
 
-                    files.append(FileInfo(
-                        filename=item["name"],
-                        original_filename=original_name,
-                        storage_path=f"{user_id}/{item['name']}",
-                        size=item.get("metadata", {}).get("size", 0),
-                        created_at=item.get("created_at", ""),
-                    ))
+                    files.append(
+                        FileInfo(
+                            filename=item["name"],
+                            original_filename=original_name,
+                            storage_path=f"{user_id}/{item['name']}",
+                            size=item.get("metadata", {}).get("size", 0),
+                            created_at=item.get("created_at", ""),
+                        )
+                    )
 
         return FileListResponse(files=files, total=len(files))
 
@@ -1494,12 +1564,23 @@ async def readiness_check():
     except Exception:
         checks["redis"] = False
 
-    database_configured = bool(os.environ.get("DATABASE_URL") or (SUPABASE_URL and SUPABASE_SERVICE_KEY))
-    checks["database"] = database_configured or os.environ.get("ENVIRONMENT", "development").lower() != "production"
+    database_configured = bool(
+        os.environ.get("DATABASE_URL") or (SUPABASE_URL and SUPABASE_SERVICE_KEY)
+    )
+    checks["database"] = (
+        database_configured or os.environ.get("ENVIRONMENT", "development").lower() != "production"
+    )
     provider_keys = (
-        "DEEPSEEK_API_KEY", "QWEN_API_KEY", "MINIMAX_API_KEY", "ANTHROPIC_API_KEY",
-        "OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY", "ZHIPU_API_KEY",
-        "CUSTOM_OPENAI_API_KEY", "CUSTOM_ANTHROPIC_API_KEY",
+        "DEEPSEEK_API_KEY",
+        "QWEN_API_KEY",
+        "MINIMAX_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "OPENAI_API_KEY",
+        "GEMINI_API_KEY",
+        "OPENROUTER_API_KEY",
+        "ZHIPU_API_KEY",
+        "CUSTOM_OPENAI_API_KEY",
+        "CUSTOM_ANTHROPIC_API_KEY",
     )
     checks["model_provider"] = any(os.environ.get(key, "").strip() for key in provider_keys)
     ready = all(checks.values())
@@ -1519,8 +1600,10 @@ async def health_check():
 # Model Configuration Routes
 # =============================================================================
 
+
 class ModelInfo(BaseModel):
     """Model information for frontend display."""
+
     id: str
     display_name: str
     model_name: str | None = None
@@ -1529,6 +1612,7 @@ class ModelInfo(BaseModel):
 
 class ModelsResponse(BaseModel):
     """Response for available models list."""
+
     models: list[ModelInfo]
     default_model: str | None
 
@@ -1542,7 +1626,8 @@ async def get_available_models():
     the required API key is configured.
     Frontend uses this to populate the model selector dropdown.
     """
-    from ..agent.graph import get_available_models as get_models, get_default_model_id
+    from ..agent.graph import get_available_models as get_models
+    from ..agent.graph import get_default_model_id
 
     models = get_models()
     default_model = get_default_model_id()
@@ -1556,6 +1641,7 @@ async def get_available_models():
 # =============================================================================
 # Image Serving Routes
 # =============================================================================
+
 
 @app.options("/images/{image_id}")
 async def image_options(image_id: str):
@@ -1628,7 +1714,7 @@ async def serve_image(
             "Access-Control-Allow-Methods": "GET, OPTIONS",
             "Access-Control-Allow-Headers": "*",
             # Allow download with correct filename
-            "Content-Disposition": f"inline; filename=\"figure_{image_id[:8]}.png\"",
+            "Content-Disposition": f'inline; filename="figure_{image_id[:8]}.png"',
         },
     )
 
@@ -1698,6 +1784,7 @@ async def cleanup_images(max_age_hours: int = 24, user: dict = Depends(get_curre
 # =============================================================================
 # Sandbox File Download Routes
 # =============================================================================
+
 
 @app.get("/sandbox/files/{filename}")
 async def download_sandbox_file(filename: str):
@@ -1772,12 +1859,14 @@ async def list_sandbox_files():
         for item in LOCAL_STORAGE_DIR.iterdir():
             if item.is_file():
                 stat = item.stat()
-                files.append({
-                    "filename": item.name,
-                    "size": stat.st_size,
-                    "modified": stat.st_mtime,
-                    "download_url": f"/sandbox/files/{item.name}",
-                })
+                files.append(
+                    {
+                        "filename": item.name,
+                        "size": stat.st_size,
+                        "modified": stat.st_mtime,
+                        "download_url": f"/sandbox/files/{item.name}",
+                    }
+                )
 
     return {"files": files, "total": len(files)}
 
@@ -1785,6 +1874,7 @@ async def list_sandbox_files():
 # =============================================================================
 # Generated Files Download Routes (for E2B / Production)
 # =============================================================================
+
 
 @app.options("/generated-files/{file_id:path}")
 async def generated_file_options(file_id: str):
@@ -1922,8 +2012,10 @@ async def cleanup_generated_files(max_age_hours: int = 72, user: dict = Depends(
 # Database-Driven File API Routes (for FilePanel categories)
 # =============================================================================
 
+
 class DatabaseFileInfo(BaseModel):
     """Information about a file from database."""
+
     id: str
     filename: str
     original_filename: Optional[str] = None
@@ -1937,6 +2029,7 @@ class DatabaseFileInfo(BaseModel):
 
 class DatabaseFileListResponse(BaseModel):
     """Response model for database file list."""
+
     files: list[DatabaseFileInfo]
     total: int
     file_type: Optional[str] = None
@@ -1944,7 +2037,9 @@ class DatabaseFileListResponse(BaseModel):
 
 @app.get("/api/files/by-type", response_model=DatabaseFileListResponse)
 async def get_files_by_type_api(
-    file_type: Optional[str] = Query(None, description="Filter by file type: uploaded, generated, chart, code"),
+    file_type: Optional[str] = Query(
+        None, description="Filter by file type: uploaded, generated, chart, code"
+    ),
     user: dict = Depends(get_current_user),
 ):
     """
@@ -1981,17 +2076,19 @@ async def get_files_by_type_api(
         # Convert to response format
         files = []
         for f in files_data:
-            files.append(DatabaseFileInfo(
-                id=f.get("id", ""),
-                filename=f.get("filename", ""),
-                original_filename=f.get("original_filename") or f.get("filename"),
-                file_type=f.get("file_type", "generated"),
-                storage_path=f.get("storage_path"),
-                download_url=f.get("download_url") or f"/api/files/{f.get('id','')}/download",
-                size=f.get("file_size"),
-                mime_type=f.get("content_type"),
-                created_at=f.get("created_at", ""),
-            ))
+            files.append(
+                DatabaseFileInfo(
+                    id=f.get("id", ""),
+                    filename=f.get("filename", ""),
+                    original_filename=f.get("original_filename") or f.get("filename"),
+                    file_type=f.get("file_type", "generated"),
+                    storage_path=f.get("storage_path"),
+                    download_url=f.get("download_url") or f"/api/files/{f.get('id', '')}/download",
+                    size=f.get("file_size"),
+                    mime_type=f.get("content_type"),
+                    created_at=f.get("created_at", ""),
+                )
+            )
 
         return DatabaseFileListResponse(
             files=files,
@@ -2044,17 +2141,19 @@ async def get_thread_files_api(
         # Convert to response format
         files = []
         for f in files_data:
-            files.append(DatabaseFileInfo(
-                id=f.get("id", ""),
-                filename=f.get("filename", ""),
-                original_filename=f.get("original_filename") or f.get("filename"),
-                file_type=f.get("file_type", "generated"),
-                storage_path=f.get("storage_path"),
-                download_url=f.get("download_url") or f"/api/files/{f.get('id','')}/download",
-                size=f.get("file_size"),
-                mime_type=f.get("content_type"),
-                created_at=f.get("created_at", ""),
-            ))
+            files.append(
+                DatabaseFileInfo(
+                    id=f.get("id", ""),
+                    filename=f.get("filename", ""),
+                    original_filename=f.get("original_filename") or f.get("filename"),
+                    file_type=f.get("file_type", "generated"),
+                    storage_path=f.get("storage_path"),
+                    download_url=f.get("download_url") or f"/api/files/{f.get('id', '')}/download",
+                    size=f.get("file_size"),
+                    mime_type=f.get("content_type"),
+                    created_at=f.get("created_at", ""),
+                )
+            )
 
         return DatabaseFileListResponse(
             files=files,
@@ -2097,17 +2196,19 @@ async def list_files_api(
     files_data = await get_user_files(user_id=user_id, file_types=file_types)
     files: list[DatabaseFileInfo] = []
     for f in files_data:
-        files.append(DatabaseFileInfo(
-            id=f.get("id", ""),
-            filename=f.get("filename", ""),
-            original_filename=f.get("original_filename") or f.get("filename"),
-            file_type=f.get("file_type", "generated"),
-            storage_path=f.get("storage_path"),
-            download_url=f.get("download_url") or f"/api/files/{f.get('id','')}/download",
-            size=f.get("file_size"),
-            mime_type=f.get("content_type"),
-            created_at=f.get("created_at", ""),
-        ))
+        files.append(
+            DatabaseFileInfo(
+                id=f.get("id", ""),
+                filename=f.get("filename", ""),
+                original_filename=f.get("original_filename") or f.get("filename"),
+                file_type=f.get("file_type", "generated"),
+                storage_path=f.get("storage_path"),
+                download_url=f.get("download_url") or f"/api/files/{f.get('id', '')}/download",
+                size=f.get("file_size"),
+                mime_type=f.get("content_type"),
+                created_at=f.get("created_at", ""),
+            )
+        )
     return DatabaseFileListResponse(files=files, total=len(files))
 
 
@@ -2243,8 +2344,10 @@ async def download_file_api(
 # Thread Management Routes
 # =============================================================================
 
+
 class ThreadCreate(BaseModel):
     """Request model for creating a thread."""
+
     langgraph_thread_id: str
     title: str = "New Task"
     mode: str = "default"  # "default" | "web-dev" | "fortune"
@@ -2253,6 +2356,7 @@ class ThreadCreate(BaseModel):
 
 class ThreadInfo(BaseModel):
     """Thread information response model."""
+
     id: str
     user_id: str
     title: str
@@ -2265,6 +2369,7 @@ class ThreadInfo(BaseModel):
 
 class ThreadListResponse(BaseModel):
     """Response model for thread list."""
+
     threads: list[ThreadInfo]
     total: int
     history_enabled: bool = True
@@ -2272,6 +2377,7 @@ class ThreadListResponse(BaseModel):
 
 class ThreadUpdateRequest(BaseModel):
     """Request model for updating thread."""
+
     title: Optional[str] = None
     model_id: Optional[str] = None  # Per-thread model preference
 
@@ -2310,6 +2416,7 @@ async def create_thread_api(
             thread_record = existing
             if data.model_id is not None and thread_record.get("model_id") != model_id_to_store:
                 from ..storage.supabase_db import update_thread_model_id
+
                 success = await update_thread_model_id(data.langgraph_thread_id, model_id_to_store)
                 if success:
                     refreshed_record = await get_thread_by_langgraph_id(data.langgraph_thread_id)
@@ -2341,7 +2448,9 @@ async def create_thread_api(
             preferred_graph_id=preferred_graph_id,
         )
         if not recovered:
-            print(f"[thread_create] runtime recovery skipped/failed for {data.langgraph_thread_id[:8]}...")
+            print(
+                f"[thread_create] runtime recovery skipped/failed for {data.langgraph_thread_id[:8]}..."
+            )
 
         return ThreadInfo(
             id=thread_record["id"],
@@ -2392,16 +2501,18 @@ async def list_threads_api(
 
         threads = []
         for t in threads_data:
-            threads.append(ThreadInfo(
-                id=t["id"],
-                user_id=t["user_id"],
-                title=t["title"],
-                langgraph_thread_id=t["langgraph_thread_id"],
-                mode=t.get("mode", "default"),
-                model_id=public_model_id(t.get("model_id")),
-                created_at=t["created_at"],
-                updated_at=t["updated_at"],
-            ))
+            threads.append(
+                ThreadInfo(
+                    id=t["id"],
+                    user_id=t["user_id"],
+                    title=t["title"],
+                    langgraph_thread_id=t["langgraph_thread_id"],
+                    mode=t.get("mode", "default"),
+                    model_id=public_model_id(t.get("model_id")),
+                    created_at=t["created_at"],
+                    updated_at=t["updated_at"],
+                )
+            )
 
         return ThreadListResponse(
             threads=threads,
@@ -2501,7 +2612,10 @@ async def update_thread_api(
         # Update model_id if provided (for per-thread model preference)
         if data.model_id is not None:
             from ..storage.supabase_db import update_thread_model_id
-            success = await update_thread_model_id(langgraph_thread_id, public_model_id(data.model_id))
+
+            success = await update_thread_model_id(
+                langgraph_thread_id, public_model_id(data.model_id)
+            )
             if not success:
                 raise HTTPException(status_code=500, detail="Failed to update thread model")
 
@@ -2528,7 +2642,9 @@ async def update_thread_api(
 @app.delete("/api/threads/{langgraph_thread_id}")
 async def delete_thread_api(
     langgraph_thread_id: str,
-    delete_orphan_files: bool = Query(False, description="If true, also delete files only used by this thread"),
+    delete_orphan_files: bool = Query(
+        False, description="If true, also delete files only used by this thread"
+    ),
     user: dict = Depends(get_current_user),
 ):
     """
@@ -2594,13 +2710,16 @@ async def delete_thread_api(
 # AI-Generated Thread Title
 # =============================================================================
 
+
 class GenerateTitleRequest(BaseModel):
     """Request model for generating thread title."""
+
     user_message: str  # The user's first message to generate title from
 
 
 class GenerateTitleResponse(BaseModel):
     """Response model for generated title."""
+
     title: str
     generated: bool
 
@@ -2617,10 +2736,12 @@ async def _generate_title_with_llm(user_message: str) -> str:
         model = get_model()
 
         # Generate title
-        from langchain_core.messages import SystemMessage, HumanMessage
+        from langchain_core.messages import HumanMessage, SystemMessage
 
-        response = await model.ainvoke([
-            SystemMessage(content="""Generate a concise but descriptive title for this conversation.
+        response = await model.ainvoke(
+            [
+                SystemMessage(
+                    content="""Generate a concise but descriptive title for this conversation.
 
 Rules:
 - Include both the action AND the subject/topic
@@ -2637,13 +2758,15 @@ Examples:
 - "Write a React component for login" → "React Login Component Development"
 - "Explain the principles of quantum computing" -> "Quantum Computing Principles"
 - "Translate and polish this article" -> "Article Translation and Polishing"
-"""),
-            HumanMessage(content=user_message),
-        ])
+"""
+                ),
+                HumanMessage(content=user_message),
+            ]
+        )
 
         title = response.content.strip()
         # Clean up: remove quotes if present
-        title = title.strip('"\'')
+        title = title.strip("\"'")
         # Limit length
         if len(title) > 50:
             title = title[:47] + "..."
@@ -2727,35 +2850,43 @@ async def generate_thread_title_api(
 # Suggested Follow-up Questions
 # =============================================================================
 
+
 class SuggestedQuestionsRequest(BaseModel):
     """Request model for generating suggested questions."""
+
     ai_response: str
     conversation_context: Optional[str] = None
 
 
 class SuggestedQuestionsResponse(BaseModel):
     """Response model for suggested questions."""
+
     questions: list[str]
 
 
 async def _generate_suggested_questions(ai_response: str, context: str = "") -> list[str]:
     """
     Use LLM to generate 3 suggested follow-up questions based on AI response.
-    
+
     Returns a list of 3 questions, or empty list on failure.
     """
     try:
-        from langchain_core.messages import SystemMessage, HumanMessage
+        from langchain_core.messages import HumanMessage, SystemMessage
+
         from ..agent.graph import get_model
 
         model = get_model()
 
         # Truncate context if too long
         max_context = 2000
-        truncated_response = ai_response[:max_context] if len(ai_response) > max_context else ai_response
+        truncated_response = (
+            ai_response[:max_context] if len(ai_response) > max_context else ai_response
+        )
 
-        response = await model.ainvoke([
-            SystemMessage(content="""Generate 3 follow-up questions the user may want to ask next based on the AI response.
+        response = await model.ainvoke(
+            [
+                SystemMessage(
+                    content="""Generate 3 follow-up questions the user may want to ask next based on the AI response.
 
 Rules:
 - The questions must be relevant to the AI response.
@@ -2768,14 +2899,16 @@ Rules:
 Example output:
 How does this method perform at larger scale?
 Can the same idea be implemented in another language?
-What security risks should this approach consider?"""),
-            HumanMessage(content=f"AI response:\n{truncated_response}"),
-        ])
+What security risks should this approach consider?"""
+                ),
+                HumanMessage(content=f"AI response:\n{truncated_response}"),
+            ]
+        )
 
         # Parse response into list of questions
         content = response.content.strip()
         lines = [line.strip() for line in content.split("\n") if line.strip()]
-        
+
         # Take first 3 non-empty lines
         questions = []
         for line in lines:
@@ -2785,7 +2918,7 @@ What security risks should this approach consider?"""),
                 questions.append(clean)
             if len(questions) >= 3:
                 break
-        
+
         return questions[:3]
 
     except Exception as e:
@@ -2793,7 +2926,10 @@ What security risks should this approach consider?"""),
         return []
 
 
-@app.post("/api/threads/{langgraph_thread_id}/generate-suggestions", response_model=SuggestedQuestionsResponse)
+@app.post(
+    "/api/threads/{langgraph_thread_id}/generate-suggestions",
+    response_model=SuggestedQuestionsResponse,
+)
 async def generate_suggested_questions_api(
     langgraph_thread_id: str,
     data: SuggestedQuestionsRequest,
@@ -2801,7 +2937,7 @@ async def generate_suggested_questions_api(
 ):
     """
     Generate suggested follow-up questions based on the AI's response.
-    
+
     This endpoint uses LLM to generate 3 relevant follow-up questions
     that the user might want to ask next.
     """
@@ -2822,8 +2958,7 @@ async def generate_suggested_questions_api(
 
         # Generate questions
         questions = await _generate_suggested_questions(
-            ai_response=data.ai_response,
-            context=data.conversation_context or ""
+            ai_response=data.ai_response, context=data.conversation_context or ""
         )
 
         return SuggestedQuestionsResponse(questions=questions)
@@ -2840,8 +2975,10 @@ async def generate_suggested_questions_api(
 # Share Link Endpoints
 # =============================================================================
 
+
 class ShareResponse(BaseModel):
     """Response model for share link creation."""
+
     share_id: str
     share_url: str
     created_at: str
@@ -2849,11 +2986,13 @@ class ShareResponse(BaseModel):
 
 class ShareRequest(BaseModel):
     """Request model for share link creation."""
+
     target_ai_message_id: Optional[str] = None  # If provided, share up to this AI message
 
 
 class SharedConversationResponse(BaseModel):
     """Response model for viewing a shared conversation."""
+
     title: str
     messages: list
     shared_at: str
@@ -2896,42 +3035,43 @@ async def create_share_link(
     """
     Create a share link for a thread or a specific AI message.
     Only the thread owner can create share links.
-    
+
     If target_ai_message_id is provided, the shared view will only show messages
     up to and including that AI message.
     """
     user_id = auth_get_user_id(user)
-    
+
     if not USE_SUPABASE_DB:
         raise HTTPException(status_code=503, detail="Database not configured")
-    
+
     # Verify thread exists and user owns it
     thread_record = await get_thread_by_langgraph_id(langgraph_thread_id)
     if not thread_record:
         raise HTTPException(status_code=404, detail="Thread not found")
     if thread_record.get("user_id") != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
-    
+
     # Get target_ai_message_id from request body if provided
     target_ai_message_id = body.target_ai_message_id if body else None
-    
+
     # Create the share
     from ..storage.supabase_db import create_share
+
     share = await create_share(
-        user_id=user_id, 
+        user_id=user_id,
         thread_id=langgraph_thread_id,
         target_ai_message_id=target_ai_message_id,
     )
-    
+
     if not share:
         raise HTTPException(status_code=500, detail="Failed to create share link")
-    
+
     # Build share URL
     # Use request origin or frontend URL
     base_url = str(request.base_url).rstrip("/")
     # For production, use the frontend URL pattern
     share_url = f"{base_url.replace('/api', '')}/share/{share['share_id']}"
-    
+
     return ShareResponse(
         share_id=share["share_id"],
         share_url=share_url,
@@ -2948,32 +3088,33 @@ async def get_shared_conversation(share_id: str):
     """
     if not USE_SUPABASE_DB:
         raise HTTPException(status_code=503, detail="Database not configured")
-    
+
     # Get the share record
     from ..storage.supabase_db import get_share_by_id
+
     share = await get_share_by_id(share_id)
-    
+
     if not share:
         raise HTTPException(status_code=404, detail="Share link does not exist")
-    
+
     # Check if the original thread still exists
     thread_record = await get_thread_by_langgraph_id(share["thread_id"])
     if not thread_record:
         raise HTTPException(status_code=404, detail="The original conversation has been deleted")
-    
+
     # Get messages from LangGraph
     try:
         from langgraph_sdk import get_client
-        
+
         # Use LANGGRAPH_API_URL if set, otherwise use localhost
         # In LangGraph Platform, the server runs on port 2024 by default
         langgraph_url = os.environ.get("LANGGRAPH_API_URL", "http://localhost:2024")
         client = get_client(url=langgraph_url)
-        
+
         # Get thread state which includes messages
         thread_state = await client.threads.get_state(share["thread_id"])
         messages = thread_state.get("values", {}).get("messages", [])
-        
+
         # Convert messages to serializable format
         serialized_messages = []
         for msg in messages:
@@ -2984,7 +3125,7 @@ async def get_shared_conversation(share_id: str):
             else:
                 message_data = {"type": "unknown", "content": str(msg)}
             serialized_messages.append(sanitize_hidden_prompt_message_data(message_data))
-        
+
         shared_messages = _messages_for_share(
             serialized_messages,
             share.get("target_ai_message_id"),
@@ -3011,16 +3152,17 @@ async def delete_share_link(
     Only the share owner can delete it.
     """
     user_id = auth_get_user_id(user)
-    
+
     if not USE_SUPABASE_DB:
         raise HTTPException(status_code=503, detail="Database not configured")
-    
+
     from ..storage.supabase_db import delete_share
+
     success = await delete_share(share_id=share_id, user_id=user_id)
-    
+
     if not success:
         raise HTTPException(status_code=500, detail="Failed to delete share link")
-    
+
     return {"success": True, "message": "Share link deleted"}
 
 
@@ -3028,13 +3170,16 @@ async def delete_share_link(
 # Fork (Regenerate) Endpoint
 # =============================================================================
 
+
 class ForkRequest(BaseModel):
     """Request model for forking a thread at a specific AI message."""
+
     fork_target_ai_message_id: str  # The AI message user wants to regenerate
 
 
 class ForkResponse(BaseModel):
     """Response model for fork operation."""
+
     new_thread_id: str
     fork_anchor_human_message_id: str
     messages_copied: int
@@ -3048,7 +3193,7 @@ async def fork_thread(
 ):
     """
     Fork a thread at a specific AI message for regeneration.
-    
+
     This is an atomic operation that:
     1. Finds the anchor human message (the one before the target AI)
     2. Creates a new thread with fork metadata
@@ -3056,51 +3201,53 @@ async def fork_thread(
     4. Returns the new thread ID so frontend can trigger regeneration
     """
     user_id = auth_get_user_id(user)
-    
+
     if not USE_SUPABASE_DB:
         raise HTTPException(status_code=503, detail="Database not configured")
-    
+
     # Verify thread exists and user owns it
     thread_record = await get_thread_by_langgraph_id(langgraph_thread_id)
     if not thread_record:
         raise HTTPException(status_code=404, detail="Thread not found")
     if thread_record.get("user_id") != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
-    
+
     # Get all messages for this thread
     from ..storage.supabase_db import get_chat_messages
+
     messages = await get_chat_messages(langgraph_thread_id)
-    
+
     if not messages:
         raise HTTPException(status_code=400, detail="Thread has no messages")
-    
+
     # Find the target AI message and its anchor human
     target_ai_seq = None
     anchor_human_message_id = None
     anchor_human_seq = None
-    
+
     for msg in messages:
         if msg.get("message_id") == body.fork_target_ai_message_id:
             target_ai_seq = msg.get("seq")
             break
-    
+
     if target_ai_seq is None:
         raise HTTPException(status_code=404, detail="Target AI message not found")
-    
+
     # Find the anchor human: the last human message before target AI
     for msg in reversed(messages):
         if msg.get("seq", 0) < target_ai_seq and msg.get("role") == "user":
             anchor_human_message_id = msg.get("message_id")
             anchor_human_seq = msg.get("seq")
             break
-    
+
     if anchor_human_message_id is None:
         raise HTTPException(status_code=400, detail="No human message found before target AI")
-    
+
     # Create new thread with fork metadata
-    from ..storage.supabase_db import create_thread_with_fork
     import uuid
-    
+
+    from ..storage.supabase_db import create_thread_with_fork
+
     new_thread_id = str(uuid.uuid4())
     new_thread = await create_thread_with_fork(
         langgraph_thread_id=new_thread_id,
@@ -3111,18 +3258,19 @@ async def fork_thread(
         fork_target_ai_message_id=body.fork_target_ai_message_id,
         fork_anchor_human_message_id=anchor_human_message_id,
     )
-    
+
     if not new_thread:
         raise HTTPException(status_code=500, detail="Failed to create forked thread")
-    
+
     # Copy messages up to and including anchor human (seq <= anchor_human_seq)
     from ..storage.supabase_db import copy_messages_to_thread
+
     messages_copied = await copy_messages_to_thread(
         source_thread_id=langgraph_thread_id,
         target_thread_id=new_thread_id,
         up_to_seq=anchor_human_seq,
     )
-    
+
     return ForkResponse(
         new_thread_id=new_thread_id,
         fork_anchor_human_message_id=anchor_human_message_id,
@@ -3134,6 +3282,7 @@ async def fork_thread(
 # Chat History Endpoint (LangGraph SDK Compatibility)
 # =============================================================================
 
+
 @app.get("/threads/{thread_id}/history")
 async def get_thread_history(
     thread_id: str,
@@ -3141,13 +3290,13 @@ async def get_thread_history(
 ):
     """
     Get chat history for a thread (LangGraph SDK compatible format).
-    
+
     This endpoint reads from LangGraph's internal checkpointer (via HTTP proxy),
     which automatically persists messages during graph execution.
-    
+
     Args:
         thread_id: The LangGraph thread ID
-        
+
     Returns:
         ThreadState[] format expected by SDK's fetchHistory()
     """
@@ -3168,20 +3317,22 @@ async def get_thread_history(
         if not db_messages:
             return []
         todos = extract_todos_from_messages(db_messages)
-        return [{
-            "values": {
-                "messages": db_messages,
-                "todos": todos,
-            },
-            "next": [],
-            "metadata": {
-                "history_source": "db",
-                "db_message_count": len(db_messages),
-                "runtime_message_count": 0,
-            },
-            "created_at": None,
-            "tasks": [],
-        }]
+        return [
+            {
+                "values": {
+                    "messages": db_messages,
+                    "todos": todos,
+                },
+                "next": [],
+                "metadata": {
+                    "history_source": "db",
+                    "db_message_count": len(db_messages),
+                    "runtime_message_count": 0,
+                },
+                "created_at": None,
+                "tasks": [],
+            }
+        ]
 
     internal_base_url = _get_langgraph_internal_base_url()
 
@@ -3218,7 +3369,9 @@ async def get_thread_history(
                         runtime_messages.append(normalized)
 
             db_messages = await _load_db_messages_for_history(thread_id)
-            selected_messages, selected_source = _select_history_messages(runtime_messages, db_messages)
+            selected_messages, selected_source = _select_history_messages(
+                runtime_messages, db_messages
+            )
 
             if not selected_messages:
                 return []
@@ -3242,16 +3395,20 @@ async def get_thread_history(
             metadata["db_message_count"] = len(db_messages)
             metadata["runtime_message_count"] = len(runtime_messages)
 
-            return [{
-                "values": {
-                    "messages": selected_messages,
-                    "todos": todos,
-                },
-                "next": [],
-                "metadata": metadata,
-                "created_at": state_data.get("created_at") if isinstance(state_data, dict) else None,
-                "tasks": [],
-            }]
+            return [
+                {
+                    "values": {
+                        "messages": selected_messages,
+                        "todos": todos,
+                    },
+                    "next": [],
+                    "metadata": metadata,
+                    "created_at": state_data.get("created_at")
+                    if isinstance(state_data, dict)
+                    else None,
+                    "tasks": [],
+                }
+            ]
 
     except Exception as e:
         print(f"[history] Error fetching from LangGraph state API: {e}")
@@ -3261,18 +3418,18 @@ async def get_thread_history(
 def extract_todos_from_messages(messages: list) -> list:
     """
     Extract todos from the last write_todos tool call in messages.
-    
+
     Supports both message structures:
     - msg.tool_calls / msg.additional_kwargs.tool_calls
     - content[] with tool_use blocks
     """
     todos = []
-    
+
     # Iterate in reverse to find the last write_todos call
     for msg in reversed(messages):
         if not isinstance(msg, dict):
             continue
-        
+
         # Check tool_calls
         tool_calls = msg.get("tool_calls") or msg.get("additional_kwargs", {}).get("tool_calls", [])
         for tc in tool_calls:
@@ -3285,18 +3442,21 @@ def extract_todos_from_messages(messages: list) -> list:
                         return args["todos"]
                 except (json.JSONDecodeError, TypeError):
                     pass
-        
+
         # Check content[] for tool_use blocks
         content = msg.get("content", [])
         if isinstance(content, list):
             for block in content:
-                if isinstance(block, dict) and block.get("type") == "tool_use" and block.get("name") == "write_todos":
+                if (
+                    isinstance(block, dict)
+                    and block.get("type") == "tool_use"
+                    and block.get("name") == "write_todos"
+                ):
                     args = block.get("input", {})
                     if args and "todos" in args:
                         return args["todos"]
-    
-    return todos
 
+    return todos
 
 
 @app.post("/threads/{thread_id}/history")
@@ -3315,8 +3475,10 @@ async def post_thread_history(
 # Save Message Endpoint (For Frontend to Save After Stream Completes)
 # =============================================================================
 
+
 class SaveMessageRequest(BaseModel):
     """Request body for saving a chat message."""
+
     message_id: str
     role: str  # 'user' | 'assistant' | 'tool'
     message_data: dict  # Complete message object
@@ -3330,32 +3492,32 @@ async def save_thread_message(
 ):
     """
     Save a chat message to the database.
-    
+
     This endpoint is called by the frontend after:
     1. User sends a message (save user message)
     2. AI stream completes (save assistant message with final content)
-    
+
     Uses idempotent upsert - safe to call multiple times with same message_id.
-    
+
     Args:
         thread_id: The LangGraph thread ID
         request: Message data including message_id, role, and message_data
-        
+
     Returns:
         Success status
     """
     if not USE_SUPABASE_DB:
         raise HTTPException(status_code=503, detail="Database not configured")
-    
+
     # Validate role
-    if request.role not in ('user', 'assistant', 'system', 'tool'):
+    if request.role not in ("user", "assistant", "system", "tool"):
         raise HTTPException(status_code=400, detail=f"Invalid role: {request.role}")
 
     user_id = auth_get_user_id(user)
     thread_record = await get_thread_by_langgraph_id(thread_id)
     if thread_record and thread_record.get("user_id") != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
-    
+
     message_data = sanitize_hidden_prompt_message_data(request.message_data)
     result = await save_chat_message(
         thread_id=thread_id,
@@ -3363,7 +3525,7 @@ async def save_thread_message(
         role=request.role,
         message_data=message_data,
     )
-    
+
     if result:
         return {"success": True, "seq": result.get("seq")}
     else:
@@ -3375,6 +3537,7 @@ async def save_thread_message(
 # =============================================================================
 
 from .composio_routes import router as composio_router
+
 app.include_router(composio_router)
 
 # =============================================================================
@@ -3382,6 +3545,7 @@ app.include_router(composio_router)
 # =============================================================================
 
 from .agent_routes import router as agent_router
+
 app.include_router(agent_router)
 
 # =============================================================================
@@ -3389,6 +3553,7 @@ app.include_router(agent_router)
 # =============================================================================
 
 from .trigger_routes import trigger_router
+
 app.include_router(trigger_router)
 
 # =============================================================================
@@ -3396,9 +3561,11 @@ app.include_router(trigger_router)
 # =============================================================================
 
 from .translate_routes import translate_router
+
 app.include_router(translate_router)
 
 from .slides_routes import slides_router
+
 app.include_router(slides_router)
 
 # =============================================================================
@@ -3406,4 +3573,5 @@ app.include_router(slides_router)
 # =============================================================================
 
 from .resume_ai_routes import router as resume_ai_router
+
 app.include_router(resume_ai_router)

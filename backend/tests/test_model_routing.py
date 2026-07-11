@@ -8,9 +8,7 @@ import pytest
 
 os.environ.setdefault("DEEPSEEK_API_KEY", "test-deepseek-key")
 
-from src.api import agent_routes
-from src.api import resume_ai_routes
-from src.api import webapp
+from src.api import agent_routes, resume_ai_routes, webapp
 
 graph_module = import_module("src.agent.graph")
 

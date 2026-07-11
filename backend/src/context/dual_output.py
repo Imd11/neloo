@@ -14,7 +14,6 @@ import re
 from dataclasses import dataclass
 from typing import Optional
 
-
 # =============================================================================
 # Configuration
 # =============================================================================
@@ -36,6 +35,7 @@ MAX_PREVIEW_COLS = 10
 # Dual-Form Result
 # =============================================================================
 
+
 @dataclass
 class DualFormResult:
     """
@@ -48,6 +48,7 @@ class DualFormResult:
         was_compressed: Whether compression was applied
         metadata: Additional info about the result
     """
+
     full_output: str
     summary_output: str
     file_path: Optional[str] = None
@@ -63,6 +64,7 @@ class DualFormResult:
 # Summarization Functions
 # =============================================================================
 
+
 def summarize_dataframe_output(output: str) -> str:
     """
     Summarize DataFrame-like output.
@@ -73,7 +75,7 @@ def summarize_dataframe_output(output: str) -> str:
     - First few rows preview
     - Statistics summary
     """
-    lines = output.strip().split('\n')
+    lines = output.strip().split("\n")
 
     # Check if this looks like a DataFrame output
     if len(lines) < 5:
@@ -82,26 +84,26 @@ def summarize_dataframe_output(output: str) -> str:
     summary_parts = []
 
     # Look for shape info
-    shape_match = re.search(r'\((\d+),?\s*(\d+)?\)', output)
+    shape_match = re.search(r"\((\d+),?\s*(\d+)?\)", output)
     if shape_match:
         rows = shape_match.group(1)
         cols = shape_match.group(2) or "?"
         summary_parts.append(f"[DataFrame: {rows} rows × {cols} columns]")
 
     # Extract column info if present (from .info() output)
-    dtypes_section = re.search(r'dtypes:(.+?)(?:memory|$)', output, re.DOTALL)
+    dtypes_section = re.search(r"dtypes:(.+?)(?:memory|$)", output, re.DOTALL)
     if dtypes_section:
         summary_parts.append(f"Types: {dtypes_section.group(1).strip()}")
 
     # Keep first few lines as preview
     preview_lines = lines[:MAX_PREVIEW_ROWS]
-    summary_parts.append("Preview:\n" + '\n'.join(preview_lines))
+    summary_parts.append("Preview:\n" + "\n".join(preview_lines))
 
     # If there are more lines, add truncation notice
     if len(lines) > MAX_PREVIEW_ROWS:
         summary_parts.append(f"... ({len(lines) - MAX_PREVIEW_ROWS} more lines)")
 
-    return '\n'.join(summary_parts)[:MAX_SUMMARY_SIZE]
+    return "\n".join(summary_parts)[:MAX_SUMMARY_SIZE]
 
 
 def summarize_regression_output(output: str) -> str:
@@ -117,33 +119,33 @@ def summarize_regression_output(output: str) -> str:
     summary_parts = []
 
     # Extract R-squared
-    r2_match = re.search(r'R-squared[:\s]+([0-9.]+)', output)
+    r2_match = re.search(r"R-squared[:\s]+([0-9.]+)", output)
     if r2_match:
         summary_parts.append(f"R² = {r2_match.group(1)}")
 
     # Extract Adjusted R-squared
-    adj_r2_match = re.search(r'Adj\.\s*R-squared[:\s]+([0-9.]+)', output)
+    adj_r2_match = re.search(r"Adj\.\s*R-squared[:\s]+([0-9.]+)", output)
     if adj_r2_match:
         summary_parts.append(f"Adj. R² = {adj_r2_match.group(1)}")
 
     # Extract F-statistic
-    f_match = re.search(r'F-statistic[:\s]+([0-9.]+)', output)
+    f_match = re.search(r"F-statistic[:\s]+([0-9.]+)", output)
     if f_match:
         summary_parts.append(f"F = {f_match.group(1)}")
 
     # Extract number of observations
-    nobs_match = re.search(r'No\.\s*Observations[:\s]+(\d+)', output)
+    nobs_match = re.search(r"No\.\s*Observations[:\s]+(\d+)", output)
     if nobs_match:
         summary_parts.append(f"N = {nobs_match.group(1)}")
 
     # Extract coefficient table (simplified)
-    coef_section = re.search(r'coef\s+std err(.+?)(?:==|Omnibus|$)', output, re.DOTALL)
+    coef_section = re.search(r"coef\s+std err(.+?)(?:==|Omnibus|$)", output, re.DOTALL)
     if coef_section:
-        coef_lines = coef_section.group(1).strip().split('\n')[:10]  # First 10 coefficients
-        summary_parts.append("Coefficients (top):\n" + '\n'.join(coef_lines))
+        coef_lines = coef_section.group(1).strip().split("\n")[:10]  # First 10 coefficients
+        summary_parts.append("Coefficients (top):\n" + "\n".join(coef_lines))
 
     if summary_parts:
-        return "[Regression Summary]\n" + '\n'.join(summary_parts)
+        return "[Regression Summary]\n" + "\n".join(summary_parts)
 
     # Fallback: just truncate
     return output[:MAX_SUMMARY_SIZE]
@@ -155,18 +157,18 @@ def summarize_error_output(output: str) -> str:
 
     Keeps the error type and message, removes redundant stack frames.
     """
-    lines = output.strip().split('\n')
+    lines = output.strip().split("\n")
 
     # Find the actual error message (usually at the end)
     error_lines = []
     for i, line in enumerate(reversed(lines)):
         error_lines.insert(0, line)
-        if line.strip().startswith(('Error:', 'Exception:', 'Traceback')):
+        if line.strip().startswith(("Error:", "Exception:", "Traceback")):
             break
         if len(error_lines) > 5:  # Keep last 5 lines max
             break
 
-    return '\n'.join(error_lines)
+    return "\n".join(error_lines)
 
 
 def summarize_for_llm(output: str, output_type: str = "auto") -> str:
@@ -187,7 +189,7 @@ def summarize_for_llm(output: str, output_type: str = "auto") -> str:
     if output_type == "auto":
         if "R-squared" in output or "OLS Regression" in output:
             output_type = "regression"
-        elif "DataFrame" in output or "dtype:" in output or re.search(r'\d+\s+\d+', output):
+        elif "DataFrame" in output or "dtype:" in output or re.search(r"\d+\s+\d+", output):
             output_type = "dataframe"
         elif "Error" in output or "Traceback" in output:
             output_type = "error"
@@ -210,6 +212,7 @@ def summarize_for_llm(output: str, output_type: str = "auto") -> str:
 # =============================================================================
 # Dual Output Creation
 # =============================================================================
+
 
 def create_dual_output(
     output: str,
@@ -247,7 +250,7 @@ def create_dual_output(
                 "summary_size": len(summary),
                 "compression_ratio": len(summary) / len(output) if output else 1.0,
                 "output_type": output_type,
-            }
+            },
         )
     else:
         return DualFormResult(
@@ -257,7 +260,7 @@ def create_dual_output(
             metadata={
                 "original_size": len(output),
                 "output_type": output_type,
-            }
+            },
         )
 
 
@@ -278,4 +281,4 @@ def format_llm_response(dual_result: DualFormResult) -> str:
     if dual_result.file_path:
         parts.append(f"\n[Full output saved to: {dual_result.file_path}]")
 
-    return '\n'.join(parts)
+    return "\n".join(parts)

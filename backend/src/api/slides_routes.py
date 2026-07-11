@@ -12,12 +12,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
-from .auth import get_current_user
-from ..identity import get_persistent_user
-from ..usage_limits import enforce_usage_limit
-from .ratelimit import limiter
 from ..agent.graph import get_model
+from ..identity import get_persistent_user
 from ..storage.supabase_db import USE_SUPABASE_DB, get_supabase_client
+from ..usage_limits import enforce_usage_limit
+from .auth import get_current_user
+from .ratelimit import limiter
 
 slides_router = APIRouter(prefix="/api/slides", tags=["slides"])
 
@@ -186,7 +186,9 @@ async def generate_slides_text(
     try:
         model = get_model(payload.model_id or "deepseek")
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Selected model is not configured: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Selected model is not configured: {exc}"
+        ) from exc
 
     try:
         attachment_context = build_attachment_context(payload.attachments)
@@ -195,10 +197,12 @@ async def generate_slides_text(
             prompt = f"{prompt}\n\nUse the following source material when it is relevant:\n{attachment_context}"
 
         response = await asyncio.wait_for(
-            model.ainvoke([
-                SystemMessage(content=payload.system),
-                HumanMessage(content=prompt),
-            ]),
+            model.ainvoke(
+                [
+                    SystemMessage(content=payload.system),
+                    HumanMessage(content=prompt),
+                ]
+            ),
             timeout=90,
         )
     except asyncio.TimeoutError as exc:
@@ -209,14 +213,15 @@ async def generate_slides_text(
     content = getattr(response, "content", "")
     if isinstance(content, list):
         content = "".join(
-            part.get("text", "") if isinstance(part, dict) else str(part)
-            for part in content
+            part.get("text", "") if isinstance(part, dict) else str(part) for part in content
         )
     return SlidesLLMResponse(text=str(content).strip())
 
 
 @slides_router.post("/presentations", response_model=PresentationRecord)
-async def save_presentation(payload: PresentationPayload, user: dict = Depends(get_persistent_user)):
+async def save_presentation(
+    payload: PresentationPayload, user: dict = Depends(get_persistent_user)
+):
     now = _now()
     user_id = _default_user_id(user)
     existing = await _find_presentation(payload.id)
@@ -241,7 +246,13 @@ async def list_presentations(user: dict = Depends(get_persistent_user)):
         try:
             supabase = await get_supabase_client()
             if supabase:
-                result = await supabase.table("slide_presentations").select("*").eq("user_id", user_id).order("updated_at", desc=True).execute()
+                result = (
+                    await supabase.table("slide_presentations")
+                    .select("*")
+                    .eq("user_id", user_id)
+                    .order("updated_at", desc=True)
+                    .execute()
+                )
                 return [PresentationRecord(**item) for item in (result.data or [])]
         except Exception as exc:
             print(f"[Slides] Supabase list failed; using local storage: {exc}")
@@ -273,7 +284,13 @@ async def delete_presentation(presentation_id: str, user: dict = Depends(get_per
         try:
             supabase = await get_supabase_client()
             if supabase:
-                await supabase.table("slide_presentations").delete().eq("id", presentation_id).eq("user_id", user_id).execute()
+                await (
+                    supabase.table("slide_presentations")
+                    .delete()
+                    .eq("id", presentation_id)
+                    .eq("user_id", user_id)
+                    .execute()
+                )
                 return {"ok": True}
         except Exception as exc:
             print(f"[Slides] Supabase delete failed; using local storage: {exc}")

@@ -5,7 +5,7 @@ Provides web search functionality using Tavily API.
 """
 
 import os
-from typing import Literal, Any
+from typing import Any, Literal
 
 
 def internet_search(

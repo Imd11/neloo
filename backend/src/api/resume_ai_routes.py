@@ -6,16 +6,18 @@ Uses the configured Neloo chat model through the backend registry.
 """
 
 import asyncio
-from fastapi import APIRouter, HTTPException, Depends, Request, Response
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-from pydantic import BaseModel, Field
 from typing import List, Optional
 
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from pydantic import BaseModel, Field
+
+from ..usage_limits import enforce_usage_limit
 from .auth import get_current_user
 from .ratelimit import limiter
-from ..usage_limits import enforce_usage_limit
 
 router = APIRouter(prefix="/api/resume", tags=["resume-ai"])
+
 
 def get_model():
     """Load the configured default chat model only when resume AI needs it."""
@@ -115,8 +117,7 @@ async def optimize_resume(
         content = getattr(model_response, "content", "")
         if isinstance(content, list):
             content = "".join(
-                part.get("text", "") if isinstance(part, dict) else str(part)
-                for part in content
+                part.get("text", "") if isinstance(part, dict) else str(part) for part in content
             )
         return OptimizeResponse(content=str(content).strip(), success=True)
     except asyncio.TimeoutError:

@@ -51,7 +51,7 @@ print(f"Std: {np.std(x):.4f}")
     )
 
     print(f"Success: {result['success']}")
-    if result['success']:
+    if result["success"]:
         print(f"Output:\n{result['stdout']}")
     else:
         print(f"Error: {result['error']}")
@@ -80,7 +80,7 @@ print(df.describe())
     )
 
     print(f"Success: {result['success']}")
-    if result['success']:
+    if result["success"]:
         print(f"Output:\n{result['stdout']}")
     else:
         print(f"Error: {result['error']}")
@@ -107,7 +107,7 @@ print(model.summary())
     )
 
     print(f"Success: {result['success']}")
-    if result['success']:
+    if result["success"]:
         print(f"Output:\n{result['stdout'][:2000]}...")
     else:
         print(f"Error: {result['error']}")
@@ -149,11 +149,13 @@ def test_agent():
         value = os.environ.get(name, "").strip()
         return bool(value and not value.startswith("test-"))
 
-    has_api_key = any([
-        has_real_api_key("DEEPSEEK_API_KEY"),
-        has_real_api_key("ANTHROPIC_API_KEY"),
-        has_real_api_key("OPENAI_API_KEY"),
-    ])
+    has_api_key = any(
+        [
+            has_real_api_key("DEEPSEEK_API_KEY"),
+            has_real_api_key("ANTHROPIC_API_KEY"),
+            has_real_api_key("OPENAI_API_KEY"),
+        ]
+    )
 
     if not has_api_key:
         pytest.skip("requires DEEPSEEK_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY")
@@ -161,10 +163,13 @@ def test_agent():
     import asyncio
 
     from langchain_core.messages import HumanMessage
+
     from src.agent.graph import graph
     from src.runtime_context import thread_id_ctx, user_id_ctx
 
-    query = "Calculate the mean and standard deviation of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] using Python"
+    query = (
+        "Calculate the mean and standard deviation of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] using Python"
+    )
     print("\nQuery: Calculate the mean and standard deviation of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]")
     print("-" * 60)
 
@@ -184,7 +189,7 @@ def test_agent():
 
         # Get the last AI message
         for msg in reversed(result["messages"]):
-            if hasattr(msg, 'content') and msg.content:
+            if hasattr(msg, "content") and msg.content:
                 msg_type = msg.__class__.__name__
                 if msg_type == "AIMessage":
                     print(f"\nAI Response:\n{msg.content[:1500]}")
@@ -193,6 +198,7 @@ def test_agent():
     except Exception as e:
         print(f"Error: {e}")
         import traceback
+
         traceback.print_exc()
         assert False, f"Agent invocation failed: {e}"
 

@@ -10,7 +10,6 @@ from pathlib import Path
 import httpx
 import pytest
 
-
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 
 

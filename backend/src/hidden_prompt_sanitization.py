@@ -32,7 +32,7 @@ def strip_legacy_hidden_prompt_prefix(content: str) -> str:
     for marker in markers:
         marker_index = stripped.find(marker)
         if marker_index >= 0:
-            return stripped[marker_index + len(marker):].lstrip()
+            return stripped[marker_index + len(marker) :].lstrip()
 
     return content
 

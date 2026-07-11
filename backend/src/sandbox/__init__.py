@@ -11,17 +11,17 @@ Also provides:
 - E2B Sandbox Backend for DeepAgents FilesystemMiddleware integration
 """
 
-from .executor import get_executor, execute_python
+from .backend import E2BSandboxBackend, get_e2b_backend_factory
+from .executor import execute_python, get_executor
 from .file_sync import (
     get_file_content,
-    sync_file_to_local,
-    sync_file_to_e2b,
-    sync_files_to_local,
-    sync_files_to_e2b,
-    get_sandbox_file_path,
     get_local_data_dir,
+    get_sandbox_file_path,
+    sync_file_to_e2b,
+    sync_file_to_local,
+    sync_files_to_e2b,
+    sync_files_to_local,
 )
-from .backend import E2BSandboxBackend, get_e2b_backend_factory
 
 __all__ = [
     "get_executor",

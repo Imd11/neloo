@@ -15,9 +15,15 @@ async def test_same_guest_limit_is_shared_between_instances():
     first = usage_limits.UsageLimiter(store, namespace="test")
     second = usage_limits.UsageLimiter(store, namespace="test")
 
-    assert (await first.consume("model", "guest-1", "192.0.2.1", limit=2, window_seconds=600)).allowed
-    assert (await second.consume("model", "guest-1", "192.0.2.1", limit=2, window_seconds=600)).allowed
-    assert not (await first.consume("model", "guest-1", "192.0.2.1", limit=2, window_seconds=600)).allowed
+    assert (
+        await first.consume("model", "guest-1", "192.0.2.1", limit=2, window_seconds=600)
+    ).allowed
+    assert (
+        await second.consume("model", "guest-1", "192.0.2.1", limit=2, window_seconds=600)
+    ).allowed
+    assert not (
+        await first.consume("model", "guest-1", "192.0.2.1", limit=2, window_seconds=600)
+    ).allowed
 
 
 @pytest.mark.asyncio
@@ -25,8 +31,12 @@ async def test_guest_and_ip_are_both_enforced():
     store = usage_limits.MemoryUsageStore()
     limiter = usage_limits.UsageLimiter(store, namespace="test")
 
-    assert (await limiter.consume("image", "guest-1", "192.0.2.1", limit=1, window_seconds=600)).allowed
-    assert not (await limiter.consume("image", "guest-2", "192.0.2.1", limit=1, window_seconds=600)).allowed
+    assert (
+        await limiter.consume("image", "guest-1", "192.0.2.1", limit=1, window_seconds=600)
+    ).allowed
+    assert not (
+        await limiter.consume("image", "guest-2", "192.0.2.1", limit=1, window_seconds=600)
+    ).allowed
 
 
 @pytest.mark.asyncio

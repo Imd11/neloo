@@ -17,9 +17,10 @@ from typing import Any
 def apply_patch():
     """Apply the reasoning_content preservation patch to langchain_deepseek."""
     try:
-        from langchain_deepseek.chat_models import ChatDeepSeek
-        from langchain_core.messages import BaseMessage, AIMessageChunk
         import time
+
+        from langchain_core.messages import AIMessageChunk, BaseMessage
+        from langchain_deepseek.chat_models import ChatDeepSeek
     except ImportError:
         # langchain_deepseek not installed, skip patch
         return
@@ -38,7 +39,7 @@ def apply_patch():
         # Get input messages before they're converted to dict
         if isinstance(input_, list):
             input_messages = input_
-        elif hasattr(input_, 'messages'):
+        elif hasattr(input_, "messages"):
             input_messages = input_.messages
         else:
             input_messages = []
@@ -60,9 +61,11 @@ def apply_patch():
                 message["content"] = json.dumps(message["content"])
             elif message["role"] == "assistant":
                 # Add reasoning_content if available and message has tool_calls
-                if (assistant_idx < len(reasoning_contents)
+                if (
+                    assistant_idx < len(reasoning_contents)
                     and reasoning_contents[assistant_idx]
-                    and message.get("tool_calls")):
+                    and message.get("tool_calls")
+                ):
                     message["reasoning_content"] = reasoning_contents[assistant_idx]
 
                 if isinstance(message["content"], list):
@@ -94,24 +97,24 @@ def apply_patch():
         start_time = time.time()
         last_reasoning_time = start_time
         has_reasoning = False
-        
+
         # Iterate through the original stream
         for chunk in _original_stream(self, input_, config=config, stop=stop, **kwargs):
             # Check for reasoning content in the chunk
             # Note: chunk is an AIMessageChunk
             reasoning = chunk.additional_kwargs.get("reasoning_content")
-            
+
             if reasoning:
                 has_reasoning = True
                 last_reasoning_time = time.time()
-            
+
             yield chunk
 
         # If we had reasoning content, inject the duration as a hidden tag
         if has_reasoning:
             # Calculate duration in milliseconds
             duration_ms = int((last_reasoning_time - start_time) * 1000)
-            
+
             # Create a final chunk with the metadata tag
             # We append it to 'content' so it persists in the message history text
             tag = f"\n\n<!-- think_duration: {duration_ms} -->"
@@ -120,4 +123,6 @@ def apply_patch():
     # Apply patches
     ChatDeepSeek._get_request_payload = _patched_get_request_payload
     ChatDeepSeek._stream = _patched_stream
-    print("[Patch] Applied deepseek_reasoning patch for reasoning_content preservation and timing injection")
+    print(
+        "[Patch] Applied deepseek_reasoning patch for reasoning_content preservation and timing injection"
+    )

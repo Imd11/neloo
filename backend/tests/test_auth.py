@@ -1,10 +1,11 @@
 """Tests for auth enforcement and ALLOW_ANONYMOUS gating (Task 1)."""
-import os
-import sys
+
 import base64
 import hashlib
 import hmac
 import json
+import os
+import sys
 import time
 
 import jwt
@@ -17,6 +18,7 @@ from src.api import auth
 
 def run(coro):
     import asyncio
+
     return asyncio.run(coro)
 
 
@@ -97,10 +99,16 @@ def test_signed_guest_session_authenticates_without_insecure_local_tokens(monkey
     monkeypatch.setenv("ALLOW_INSECURE_LOCAL_TOKENS", "false")
     monkeypatch.delenv("SUPABASE_JWT_SECRET", raising=False)
 
-    payload = base64.urlsafe_b64encode(
-        json.dumps({"sub": user_id, "exp": int(time.time()) + 60}).encode("utf-8")
-    ).decode("ascii").rstrip("=")
-    signature = hmac.new(secret.encode("utf-8"), payload.encode("ascii"), hashlib.sha256).hexdigest()
+    payload = (
+        base64.urlsafe_b64encode(
+            json.dumps({"sub": user_id, "exp": int(time.time()) + 60}).encode("utf-8")
+        )
+        .decode("ascii")
+        .rstrip("=")
+    )
+    signature = hmac.new(
+        secret.encode("utf-8"), payload.encode("ascii"), hashlib.sha256
+    ).hexdigest()
 
     assert auth.verify_jwt_token(f"neloo-anon-v1.{payload}.{signature}")["sub"] == user_id
 
@@ -108,7 +116,5 @@ def test_signed_guest_session_authenticates_without_insecure_local_tokens(monkey
 def test_valid_jwt_decodes_when_secret_set(monkeypatch):
     monkeypatch.setenv("SUPABASE_JWT_SECRET", "s3cret")
     monkeypatch.delenv("ALLOW_ANONYMOUS", raising=False)
-    token = jwt.encode(
-        {"sub": "user-123", "aud": "authenticated"}, "s3cret", algorithm="HS256"
-    )
+    token = jwt.encode({"sub": "user-123", "aud": "authenticated"}, "s3cret", algorithm="HS256")
     assert auth.verify_jwt_token(token)["sub"] == "user-123"

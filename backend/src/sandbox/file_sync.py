@@ -15,8 +15,8 @@ Functions:
 - get_local_data_dir: Get local data directory path
 """
 
-import os
 import hashlib
+import os
 import shutil
 import tempfile
 from pathlib import Path
@@ -40,6 +40,7 @@ LOCAL_STORAGE_DIR = Path(tempfile.gettempdir()) / "data-analyst-sandbox" / "data
 
 # Default sandbox data directory (used in E2B and as virtual path in local mode)
 SANDBOX_DATA_DIR = "/home/user/data"
+
 
 # Local data directory for sandbox execution (persistent across executions)
 def get_local_data_dir(user_id: str = "default") -> Path:
@@ -66,17 +67,20 @@ def _split_local_storage_path(storage_path: str) -> tuple[str, str]:
 # Supabase Client (only used when Supabase is configured)
 # =============================================================================
 
+
 def get_supabase_client():
     """Get Supabase client instance (only when Supabase is configured)."""
     if USE_LOCAL_STORAGE:
         return None
     from supabase import create_client
+
     return create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 
 # =============================================================================
 # File Operations
 # =============================================================================
+
 
 def get_file_content(storage_path: str) -> Optional[bytes]:
     """
@@ -100,7 +104,9 @@ def get_file_content(storage_path: str) -> Optional[bytes]:
             if local_file_path.exists():
                 with open(local_file_path, "rb") as f:
                     content = f.read()
-                    print(f"[FileSync] Successfully read {len(content)} bytes from {local_file_path}")
+                    print(
+                        f"[FileSync] Successfully read {len(content)} bytes from {local_file_path}"
+                    )
                     return content
             else:
                 print(f"[FileSync] File not found: {local_file_path}")
@@ -108,6 +114,7 @@ def get_file_content(storage_path: str) -> Optional[bytes]:
         except Exception as e:
             print(f"[FileSync] Failed to read local file: {e}")
             import traceback
+
             print(f"[FileSync] Traceback: {traceback.format_exc()}")
             return None
     else:
@@ -115,7 +122,7 @@ def get_file_content(storage_path: str) -> Optional[bytes]:
         print(f"[FileSync] Supabase mode: downloading {storage_path} from bucket {BUCKET_NAME}")
         client = get_supabase_client()
         if not client:
-            print(f"[FileSync] Failed to get Supabase client")
+            print("[FileSync] Failed to get Supabase client")
             return None
 
         try:
@@ -125,6 +132,7 @@ def get_file_content(storage_path: str) -> Optional[bytes]:
         except Exception as e:
             print(f"[FileSync] Failed to download from Supabase: {e}")
             import traceback
+
             print(f"[FileSync] Traceback: {traceback.format_exc()}")
             return None
 
@@ -193,7 +201,9 @@ def sync_file_to_local(
             return None
 
 
-def sync_file_to_e2b(sandbox, storage_path: str, sandbox_path: Optional[str] = None) -> Optional[str]:
+def sync_file_to_e2b(
+    sandbox, storage_path: str, sandbox_path: Optional[str] = None
+) -> Optional[str]:
     """
     Sync file from storage to E2B sandbox.
 
@@ -233,7 +243,7 @@ def sync_file_to_e2b(sandbox, storage_path: str, sandbox_path: Optional[str] = N
         # Note: E2B SDK v1 uses sandbox.files instead of sandbox.filesystem
         print(f"[sync_file_to_e2b] Creating directory {sandbox_dir} in sandbox")
         sandbox.files.make_dir(sandbox_dir)
-        print(f"[sync_file_to_e2b] Directory created successfully")
+        print("[sync_file_to_e2b] Directory created successfully")
     except Exception as e:
         print(f"[sync_file_to_e2b] Directory creation note: {e}")  # Directory might already exist
 
@@ -247,6 +257,7 @@ def sync_file_to_e2b(sandbox, storage_path: str, sandbox_path: Optional[str] = N
     except Exception as e:
         print(f"[sync_file_to_e2b] Failed to write file to E2B sandbox: {e}")
         import traceback
+
         print(f"[sync_file_to_e2b] Traceback: {traceback.format_exc()}")
         return None
 
@@ -331,6 +342,7 @@ def get_sandbox_file_path(storage_path: str) -> str:
 # Auto-sync Supabase files to Local
 # =============================================================================
 
+
 def list_supabase_files(user_id: str = "default") -> list[dict]:
     """
     List all files for a user in Supabase storage.
@@ -355,31 +367,36 @@ def list_supabase_files(user_id: str = "default") -> list[dict]:
             if local_dir.exists():
                 for item in local_dir.iterdir():
                     if item.is_file():
-                        files.append({
-                            "name": item.name,
-                            "storage_path": f"{user_id}/{item.name}",
-                        })
+                        files.append(
+                            {
+                                "name": item.name,
+                                "storage_path": f"{user_id}/{item.name}",
+                            }
+                        )
                         print(f"[FileSync] Found local file: {item.name}")
             else:
-                print(f"[FileSync] LOCAL_STORAGE_DIR does not exist")
+                print("[FileSync] LOCAL_STORAGE_DIR does not exist")
         except Exception as e:
             print(f"[FileSync] Failed to list local files: {e}")
             import traceback
+
             print(f"[FileSync] Traceback: {traceback.format_exc()}")
         print(f"[FileSync] Returning {len(files)} local files")
         return files
     else:
         # In Supabase mode, list files from bucket
-        print(f"[FileSync] ========== SUPABASE QUERY DEBUG ==========")
+        print("[FileSync] ========== SUPABASE QUERY DEBUG ==========")
         print(f"[FileSync] Bucket: {BUCKET_NAME}")
         print(f"[FileSync] Query path: '{user_id}'")
         client = get_supabase_client()
         if not client:
-            print(f"[FileSync] ERROR: Failed to get Supabase client!")
+            print("[FileSync] ERROR: Failed to get Supabase client!")
             return []
 
         try:
-            print(f"[FileSync] Calling client.storage.from_('{BUCKET_NAME}').list(path='{user_id}')")
+            print(
+                f"[FileSync] Calling client.storage.from_('{BUCKET_NAME}').list(path='{user_id}')"
+            )
             result = client.storage.from_(BUCKET_NAME).list(path=user_id)
             print(f"[FileSync] Raw result type: {type(result)}")
             print(f"[FileSync] Raw result count: {len(result) if result else 0}")
@@ -387,16 +404,19 @@ def list_supabase_files(user_id: str = "default") -> list[dict]:
             files = []
             for item in result:
                 if item.get("name"):
-                    files.append({
-                        "name": item["name"],
-                        "storage_path": f"{user_id}/{item['name']}",
-                    })
+                    files.append(
+                        {
+                            "name": item["name"],
+                            "storage_path": f"{user_id}/{item['name']}",
+                        }
+                    )
                     print(f"[FileSync] Found Supabase file: {user_id}/{item['name']}")
             print(f"[FileSync] Returning {len(files)} Supabase files")
             return files
         except Exception as e:
             print(f"[FileSync] Failed to list Supabase files: {e}")
             import traceback
+
             print(f"[FileSync] Traceback: {traceback.format_exc()}")
             return []
 
@@ -423,12 +443,14 @@ def sync_all_supabase_files_to_local(user_id: str = "default") -> list[dict]:
             if local_dir.exists():
                 for item in local_dir.iterdir():
                     if item.is_file():
-                        files.append({
-                            "name": item.name,
-                            "storage_path": f"{user_id}/{item.name}",
-                            "local_path": str(item),
-                            "sandbox_path": f"{SANDBOX_DATA_DIR}/{item.name}",
-                        })
+                        files.append(
+                            {
+                                "name": item.name,
+                                "storage_path": f"{user_id}/{item.name}",
+                                "local_path": str(item),
+                                "sandbox_path": f"{SANDBOX_DATA_DIR}/{item.name}",
+                            }
+                        )
             print(f"[LocalStorage] Found {len(files)} files already available locally")
         except Exception as e:
             print(f"[LocalStorage] Error listing local files: {e}")
@@ -459,25 +481,29 @@ def sync_all_supabase_files_to_local(user_id: str = "default") -> list[dict]:
         if local_path.exists():
             # File already synced
             print(f"[Supabase] File already exists locally: {filename}")
-            synced_files.append({
-                "name": filename,
-                "storage_path": storage_path,
-                "local_path": str(local_path),
-                "sandbox_path": f"{SANDBOX_DATA_DIR}/{filename}",
-                "synced": False,  # Already existed
-            })
+            synced_files.append(
+                {
+                    "name": filename,
+                    "storage_path": storage_path,
+                    "local_path": str(local_path),
+                    "sandbox_path": f"{SANDBOX_DATA_DIR}/{filename}",
+                    "synced": False,  # Already existed
+                }
+            )
         else:
             # Download from Supabase
             result_path = sync_file_to_local(storage_path)
             if result_path:
                 print(f"[Supabase] Synced file: {filename}")
-                synced_files.append({
-                    "name": filename,
-                    "storage_path": storage_path,
-                    "local_path": result_path,
-                    "sandbox_path": f"{SANDBOX_DATA_DIR}/{filename}",
-                    "synced": True,  # Newly downloaded
-                })
+                synced_files.append(
+                    {
+                        "name": filename,
+                        "storage_path": storage_path,
+                        "local_path": result_path,
+                        "sandbox_path": f"{SANDBOX_DATA_DIR}/{filename}",
+                        "synced": True,  # Newly downloaded
+                    }
+                )
             else:
                 print(f"[Supabase] Failed to sync file: {filename}")
 

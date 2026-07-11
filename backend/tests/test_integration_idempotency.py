@@ -8,7 +8,6 @@ os.environ.setdefault("DEEPSEEK_API_KEY", "test-deepseek-key")
 
 from src.agent import integration_tools
 
-
 CONFIG = {
     "run_id": "run-1",
     "configurable": {
@@ -83,7 +82,12 @@ async def test_duplicate_pending_action_is_not_executed(monkeypatch):
 async def test_duplicate_success_returns_cached_result(monkeypatch):
     result, provider, _ = await invoke(
         monkeypatch,
-        {"created": False, "status": "success", "result_id": "cached-1", "raw_result": {"ok": True}},
+        {
+            "created": False,
+            "status": "success",
+            "result_id": "cached-1",
+            "raw_result": {"ok": True},
+        },
     )
     assert result["status"] == "cached"
     assert result["result_id"] == "cached-1"

@@ -1,13 +1,13 @@
 """Shared rate windows, daily budgets, and token-safe concurrency leases."""
 
 import asyncio
-from dataclasses import dataclass
-from datetime import datetime, timezone
 import ipaddress
 import os
 import secrets
-import time
 import threading
+import time
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Protocol
 
 from fastapi import HTTPException, Request
@@ -20,7 +20,9 @@ class LimitDecision:
 
 
 class UsageStore(Protocol):
-    async def increment_window(self, keys: list[str], limit: int, window_seconds: int) -> LimitDecision: ...
+    async def increment_window(
+        self, keys: list[str], limit: int, window_seconds: int
+    ) -> LimitDecision: ...
     async def reserve_budget(self, key: str, units: int, limit: int, ttl_seconds: int) -> bool: ...
     async def acquire_lease(self, key: str, token: str, ttl_seconds: int) -> bool: ...
     async def release_lease(self, key: str, token: str) -> bool: ...
@@ -33,7 +35,9 @@ class MemoryUsageStore:
         self._values: dict[str, tuple[int | str, float]] = {}
         self._lock = asyncio.Lock()
 
-    async def increment_window(self, keys: list[str], limit: int, window_seconds: int) -> LimitDecision:
+    async def increment_window(
+        self, keys: list[str], limit: int, window_seconds: int
+    ) -> LimitDecision:
         async with self._lock:
             now = time.monotonic()
             counts = []
@@ -110,7 +114,9 @@ return 0
     def __init__(self, client):
         self.client = client
 
-    async def increment_window(self, keys: list[str], limit: int, window_seconds: int) -> LimitDecision:
+    async def increment_window(
+        self, keys: list[str], limit: int, window_seconds: int
+    ) -> LimitDecision:
         allowed, retry = await self.client.eval(
             self._WINDOW_SCRIPT, len(keys), *keys, limit, window_seconds
         )
@@ -165,7 +171,9 @@ class UsageLimiter:
         key = self._key("window", capability, "ip", ip_address, window)
         return await self.store.increment_window([key], limit, window_seconds)
 
-    async def acquire_lease(self, capability: str, guest_id: str, *, ttl_seconds: int) -> str | None:
+    async def acquire_lease(
+        self, capability: str, guest_id: str, *, ttl_seconds: int
+    ) -> str | None:
         token = secrets.token_urlsafe(24)
         key = self._key("lease", capability, guest_id)
         return token if await self.store.acquire_lease(key, token, ttl_seconds) else None
@@ -321,14 +329,18 @@ def enforce_e2b_usage_limit_sync(guest_id: str, *, units: int = 1) -> None:
         from redis import Redis
 
         client = Redis.from_url(redis_url, decode_responses=True)
-        allowed, retry = client.eval(RedisUsageStore._WINDOW_SCRIPT, 1, window_key, limit, window_seconds)
+        allowed, retry = client.eval(
+            RedisUsageStore._WINDOW_SCRIPT, 1, window_key, limit, window_seconds
+        )
         if not allowed:
             raise HTTPException(
                 status_code=429,
                 detail="Usage limit exceeded",
                 headers={"Retry-After": str(max(1, int(retry)))},
             )
-        if not client.eval(RedisUsageStore._BUDGET_SCRIPT, 1, budget_key, units, budget_limit, 172800):
+        if not client.eval(
+            RedisUsageStore._BUDGET_SCRIPT, 1, budget_key, units, budget_limit, 172800
+        ):
             raise HTTPException(
                 status_code=429,
                 detail="Daily usage budget exceeded",

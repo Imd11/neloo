@@ -13,12 +13,12 @@ Reference: Peak's Context Engineering talk
 
 from .dual_output import DualFormResult, create_dual_output, summarize_for_llm
 from .file_storage import (
-    save_result_to_file,
-    load_result_from_file,
-    get_result_file_path,
-    should_save_to_file,
-    format_file_reference,
     RESULTS_DIR,
+    format_file_reference,
+    get_result_file_path,
+    load_result_from_file,
+    save_result_to_file,
+    should_save_to_file,
 )
 
 __all__ = [

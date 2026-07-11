@@ -14,14 +14,14 @@ syncing and thread/file association.
 
 from __future__ import annotations
 
-from typing import Callable, Awaitable
+from typing import Awaitable, Callable
 
-from .runtime_context import user_id_ctx, thread_id_ctx
 from .api.auth import (
-    authenticate_authorization_header,
     allow_anonymous,
     allow_insecure_local_tokens,
+    authenticate_authorization_header,
 )
+from .runtime_context import thread_id_ctx, user_id_ctx
 
 
 def _extract_thread_id_from_path(path: str) -> str | None:

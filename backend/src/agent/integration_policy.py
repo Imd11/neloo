@@ -4,7 +4,6 @@ import json
 import os
 from typing import Literal
 
-
 ActionClass = Literal["read", "write", "sensitive"]
 _SENSITIVE_MARKERS = ("DELETE", "REMOVE", "PAY", "PURCHASE", "TRANSFER")
 

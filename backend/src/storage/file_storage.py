@@ -17,20 +17,19 @@ This module handles files generated during code execution (reports, processed da
 Unlike image_storage.py which is for chart images, this handles downloadable artifacts.
 """
 
-import os
-import base64
-import secrets
 import hashlib
+import os
+import secrets
 import tempfile
+from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional, List, Dict, Any, Literal
-from abc import ABC, abstractmethod
+from typing import Any, Dict, List, Optional
 
-# Import database operations
-from .supabase_db import save_file_record, FileType, USE_SUPABASE_DB
 from .signing import generate_url_signature, verify_url_signature
 
+# Import database operations
+from .supabase_db import USE_SUPABASE_DB, FileType, save_file_record
 
 # =============================================================================
 # Configuration
@@ -77,10 +76,9 @@ MIME_TYPES = {
 # File ID Generation
 # =============================================================================
 
+
 def generate_file_id(
-    filename: str,
-    user_id: str = "default",
-    thread_id: Optional[str] = None
+    filename: str, user_id: str = "default", thread_id: Optional[str] = None
 ) -> str:
     """
     Generate a unique file ID.
@@ -123,6 +121,7 @@ def get_mime_type(filename: str) -> str:
 # Storage Backend Interface
 # =============================================================================
 
+
 class FileStorageBackend(ABC):
     """Abstract base class for file storage backends."""
 
@@ -155,6 +154,7 @@ class FileStorageBackend(ABC):
 # =============================================================================
 # Local Storage Backend
 # =============================================================================
+
 
 class LocalFileStorage(FileStorageBackend):
     """Local filesystem storage for development."""
@@ -223,13 +223,19 @@ class LocalFileStorage(FileStorageBackend):
                 for path in user_dir.iterdir():
                     if path.is_file():
                         file_id = f"{user_id}/{path.name}"
-                        files.append({
-                            "file_id": file_id,
-                            "filename": path.name.split("_", 3)[-1] if "_" in path.name else path.name,
-                            "size": path.stat().st_size,
-                            "created_at": datetime.fromtimestamp(path.stat().st_ctime).isoformat(),
-                            "content_type": get_mime_type(path.name),
-                        })
+                        files.append(
+                            {
+                                "file_id": file_id,
+                                "filename": path.name.split("_", 3)[-1]
+                                if "_" in path.name
+                                else path.name,
+                                "size": path.stat().st_size,
+                                "created_at": datetime.fromtimestamp(
+                                    path.stat().st_ctime
+                                ).isoformat(),
+                                "content_type": get_mime_type(path.name),
+                            }
+                        )
         except Exception as e:
             print(f"[FileStorage] List error: {e}")
 
@@ -271,6 +277,7 @@ class LocalFileStorage(FileStorageBackend):
 # Supabase Storage Backend
 # =============================================================================
 
+
 class SupabaseFileStorage(FileStorageBackend):
     """Supabase Storage backend for production."""
 
@@ -281,6 +288,7 @@ class SupabaseFileStorage(FileStorageBackend):
         """Lazy initialization of Supabase client."""
         if self._client is None:
             from supabase import create_client
+
             self._client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
         return self._client
 
@@ -294,10 +302,7 @@ class SupabaseFileStorage(FileStorageBackend):
                 return True
             except Exception:
                 # Bucket doesn't exist, create it
-                client.storage.create_bucket(
-                    FILE_BUCKET_NAME,
-                    options={"public": False}
-                )
+                client.storage.create_bucket(FILE_BUCKET_NAME, options={"public": False})
                 print(f"[FileStorage] Created Supabase bucket: {FILE_BUCKET_NAME}")
                 return True
         except Exception as e:
@@ -315,9 +320,7 @@ class SupabaseFileStorage(FileStorageBackend):
             client = self._get_client()
 
             client.storage.from_(FILE_BUCKET_NAME).upload(
-                path=file_id,
-                file=data,
-                file_options={"content-type": content_type}
+                path=file_id, file=data, file_options={"content-type": content_type}
             )
             print(f"[FileStorage] Saved file to Supabase: {file_id}")
             return True
@@ -362,13 +365,15 @@ class SupabaseFileStorage(FileStorageBackend):
                 name_parts = item["name"].split("_", 3)
                 original_name = name_parts[-1] if len(name_parts) >= 4 else item["name"]
 
-                files.append({
-                    "file_id": file_id,
-                    "filename": original_name,
-                    "size": item.get("metadata", {}).get("size", 0),
-                    "created_at": item.get("created_at", ""),
-                    "content_type": get_mime_type(original_name),
-                })
+                files.append(
+                    {
+                        "file_id": file_id,
+                        "filename": original_name,
+                        "size": item.get("metadata", {}).get("size", 0),
+                        "created_at": item.get("created_at", ""),
+                        "content_type": get_mime_type(original_name),
+                    }
+                )
         except Exception as e:
             print(f"[FileStorage] Supabase list error: {e}")
 
@@ -419,6 +424,7 @@ class SupabaseFileStorage(FileStorageBackend):
 # =============================================================================
 # Unified FileStorage Class
 # =============================================================================
+
 
 class GeneratedFileStorage:
     """
@@ -485,26 +491,31 @@ class GeneratedFileStorage:
             # graph.py tools), so we can safely use asyncio.run().
             if USE_SUPABASE_DB:
                 import asyncio
+
                 try:
                     # Verify we're not in an async context
                     asyncio.get_running_loop()
                     # If we get here, we're in async context - this shouldn't happen
                     # for the current call sites, but log it if it does
-                    print(f"[FileStorage] Warning: save_file called from async context for {filename}")
+                    print(
+                        f"[FileStorage] Warning: save_file called from async context for {filename}"
+                    )
                 except RuntimeError:
                     # No running loop - safe to use asyncio.run()
                     pass
 
                 try:
-                    db_record = asyncio.run(save_file_record(
-                        user_id=user_id,
-                        filename=filename,
-                        storage_path=file_id,
-                        file_size=len(data),
-                        content_type=content_type,
-                        file_type=file_type,
-                        thread_id=thread_id,
-                    ))
+                    db_record = asyncio.run(
+                        save_file_record(
+                            user_id=user_id,
+                            filename=filename,
+                            storage_path=file_id,
+                            file_size=len(data),
+                            content_type=content_type,
+                            file_type=file_type,
+                            thread_id=thread_id,
+                        )
+                    )
                     if db_record:
                         result["db_record"] = db_record
                         print(f"[FileStorage] ✓ Database record saved: {filename}")

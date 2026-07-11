@@ -61,7 +61,7 @@ def test_sanitize_legacy_agent_prefix_best_effort():
         "id": "msg-agent",
         "type": "human",
         "content": (
-            "[System: You are now acting as the agent \"Writer\". Follow these instructions:\n"
+            '[System: You are now acting as the agent "Writer". Follow these instructions:\n'
             "secret agent instruction"
             "\n---\nUser message:]\n"
             "draft this email"

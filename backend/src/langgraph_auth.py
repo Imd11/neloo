@@ -13,7 +13,6 @@ from .usage_limits import (
     enforce_ip_usage_limit,
 )
 
-
 auth = Auth()
 MAX_CHAT_INPUT_CHARS = 20_000
 MAX_CHAT_ATTACHMENTS = 10

@@ -1,4 +1,5 @@
 """Tests for local-storage path containment (Task 3)."""
+
 import os
 import sys
 
@@ -11,8 +12,7 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from src.api import webapp
-from src.api import auth
+from src.api import auth, webapp
 from src.api.webapp import _safe_join
 
 
@@ -40,7 +40,9 @@ def test_local_storage_path_is_isolated_by_guest_identity(monkeypatch, tmp_path)
     assert webapp.get_local_storage_path("guest-a") != webapp.get_local_storage_path("guest-b")
 
 
-def test_local_library_lists_downloads_and_deletes_only_the_current_guest_file(monkeypatch, tmp_path):
+def test_local_library_lists_downloads_and_deletes_only_the_current_guest_file(
+    monkeypatch, tmp_path
+):
     monkeypatch.setenv("ALLOW_ANONYMOUS", "true")
     monkeypatch.setenv("ALLOW_INSECURE_LOCAL_TOKENS", "true")
     auth.allow_anonymous.cache_clear()

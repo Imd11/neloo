@@ -17,10 +17,11 @@ Features:
 
 import csv
 import re
-from pathlib import Path
-from math import log
 from collections import defaultdict
-from typing import Literal, Annotated, Any
+from math import log
+from pathlib import Path
+from typing import Annotated, Any, Literal
+
 from langchain_core.tools import tool
 
 # ============ Configuration ============
@@ -44,50 +45,101 @@ STACK_CONFIG = {
 
 # Stack search columns (same for all stacks)
 STACK_SEARCH_COLS = ["Category", "Guideline", "Description", "Do", "Don't"]
-STACK_OUTPUT_COLS = ["Category", "Guideline", "Description", "Do", "Don't", "Code Good", "Code Bad", "Severity", "Docs URL"]
+STACK_OUTPUT_COLS = [
+    "Category",
+    "Guideline",
+    "Description",
+    "Do",
+    "Don't",
+    "Code Good",
+    "Code Bad",
+    "Severity",
+    "Docs URL",
+]
 
 CSV_CONFIG = {
     "style": {
         "file": "styles.csv",
         "search_cols": ["Style Category", "Keywords", "Best For", "Type"],
-        "output_cols": ["Style Category", "Type", "Keywords", "Primary Colors",
-                       "Effects & Animation", "Best For", "Framework Compatibility"]
+        "output_cols": [
+            "Style Category",
+            "Type",
+            "Keywords",
+            "Primary Colors",
+            "Effects & Animation",
+            "Best For",
+            "Framework Compatibility",
+        ],
     },
     "color": {
         "file": "colors.csv",
         "search_cols": ["Product Type", "Keywords", "Notes"],
-        "output_cols": ["Product Type", "Keywords", "Primary (Hex)", "Secondary (Hex)",
-                       "CTA (Hex)", "Background (Hex)", "Text (Hex)", "Notes"]
+        "output_cols": [
+            "Product Type",
+            "Keywords",
+            "Primary (Hex)",
+            "Secondary (Hex)",
+            "CTA (Hex)",
+            "Background (Hex)",
+            "Text (Hex)",
+            "Notes",
+        ],
     },
     "typography": {
         "file": "typography.csv",
         "search_cols": ["Font Pairing Name", "Category", "Mood/Style Keywords", "Best For"],
-        "output_cols": ["Font Pairing Name", "Category", "Heading Font", "Body Font",
-                       "Mood/Style Keywords", "Best For", "Google Fonts URL", "Tailwind Config"]
+        "output_cols": [
+            "Font Pairing Name",
+            "Category",
+            "Heading Font",
+            "Body Font",
+            "Mood/Style Keywords",
+            "Best For",
+            "Google Fonts URL",
+            "Tailwind Config",
+        ],
     },
     "chart": {
         "file": "charts.csv",
         "search_cols": ["Data Type", "Keywords", "Best Chart Type"],
-        "output_cols": ["Data Type", "Keywords", "Best Chart Type", "Secondary Options",
-                       "Color Guidance", "Library Recommendation"]
+        "output_cols": [
+            "Data Type",
+            "Keywords",
+            "Best Chart Type",
+            "Secondary Options",
+            "Color Guidance",
+            "Library Recommendation",
+        ],
     },
     "ux": {
         "file": "ux-guidelines.csv",
         "search_cols": ["Category", "Issue", "Description", "Platform"],
-        "output_cols": ["Category", "Issue", "Platform", "Description", "Do", "Don't", "Severity"]
+        "output_cols": ["Category", "Issue", "Platform", "Description", "Do", "Don't", "Severity"],
     },
     "landing": {
         "file": "landing.csv",
         "search_cols": ["Pattern Name", "Keywords", "Conversion Optimization"],
-        "output_cols": ["Pattern Name", "Keywords", "Section Order", "Primary CTA Placement",
-                       "Color Strategy", "Conversion Optimization"]
+        "output_cols": [
+            "Pattern Name",
+            "Keywords",
+            "Section Order",
+            "Primary CTA Placement",
+            "Color Strategy",
+            "Conversion Optimization",
+        ],
     },
     "product": {
         "file": "products.csv",
         "search_cols": ["Product Type", "Keywords", "Primary Style Recommendation"],
-        "output_cols": ["Product Type", "Keywords", "Primary Style Recommendation",
-                       "Secondary Styles", "Landing Page Pattern", "Color Palette Focus"]
-    }
+        "output_cols": [
+            "Product Type",
+            "Keywords",
+            "Primary Style Recommendation",
+            "Secondary Styles",
+            "Landing Page Pattern",
+            "Color Palette Focus",
+        ],
+    },
 }
 
 
@@ -107,7 +159,7 @@ class BM25:
 
     def tokenize(self, text: str) -> list[str]:
         """Lowercase, split, remove punctuation, filter short words"""
-        text = re.sub(r'[^\w\s]', ' ', str(text).lower())
+        text = re.sub(r"[^\w\s]", " ", str(text).lower())
         return [w for w in text.split() if len(w) > 2]
 
     def fit(self, documents: list[str]) -> None:
@@ -157,16 +209,12 @@ class BM25:
 # ============ Search Functions ============
 def _load_csv(filepath: Path) -> list[dict[str, Any]]:
     """Load CSV and return list of dicts"""
-    with open(filepath, 'r', encoding='utf-8') as f:
+    with open(filepath, "r", encoding="utf-8") as f:
         return list(csv.DictReader(f))
 
 
 def _search_csv(
-    filepath: Path,
-    search_cols: list[str],
-    output_cols: list[str],
-    query: str,
-    max_results: int
+    filepath: Path, search_cols: list[str], output_cols: list[str], query: str, max_results: int
 ) -> list[dict[str, str]]:
     """Core search function using BM25"""
     if not filepath.exists():
@@ -196,24 +244,43 @@ def _detect_domain(query: str) -> str:
         "color": ["color", "palette", "hex", "#", "rgb", "配色", "颜色", "theme"],
         "chart": ["chart", "graph", "visualization", "图表", "可视化", "data viz"],
         "landing": ["landing", "page", "cta", "conversion", "落地页", "首页", "hero"],
-        "product": ["saas", "ecommerce", "e-commerce", "fintech", "healthcare", "dashboard",
-                   "产品", "app", "application"],
-        "style": ["style", "design", "ui", "minimalism", "glassmorphism", "brutalism",
-                 "neumorphism", "风格", "设计", "aesthetic"],
+        "product": [
+            "saas",
+            "ecommerce",
+            "e-commerce",
+            "fintech",
+            "healthcare",
+            "dashboard",
+            "产品",
+            "app",
+            "application",
+        ],
+        "style": [
+            "style",
+            "design",
+            "ui",
+            "minimalism",
+            "glassmorphism",
+            "brutalism",
+            "neumorphism",
+            "风格",
+            "设计",
+            "aesthetic",
+        ],
         "ux": ["ux", "usability", "accessibility", "用户体验", "可用性", "a11y", "wcag"],
-        "typography": ["font", "typography", "字体", "排版", "heading", "text"]
+        "typography": ["font", "typography", "字体", "排版", "heading", "text"],
     }
 
-    scores = {domain: sum(1 for kw in keywords if kw in query_lower)
-              for domain, keywords in domain_keywords.items()}
+    scores = {
+        domain: sum(1 for kw in keywords if kw in query_lower)
+        for domain, keywords in domain_keywords.items()
+    }
     best = max(scores, key=scores.get)
     return best if scores[best] > 0 else "style"
 
 
 def search_design_knowledge(
-    query: str,
-    domain: str | None = None,
-    max_results: int = MAX_RESULTS
+    query: str, domain: str | None = None, max_results: int = MAX_RESULTS
 ) -> dict[str, Any]:
     """Main search function with auto-domain detection"""
     if domain is None:
@@ -225,36 +292,25 @@ def search_design_knowledge(
     if not filepath.exists():
         return {
             "error": f"Data file not found: {filepath}. Please ensure UI/UX data is installed.",
-            "domain": domain
+            "domain": domain,
         }
 
     results = _search_csv(
-        filepath,
-        config["search_cols"],
-        config["output_cols"],
-        query,
-        max_results
+        filepath, config["search_cols"], config["output_cols"], query, max_results
     )
 
-    return {
-        "domain": domain,
-        "query": query,
-        "count": len(results),
-        "results": results
-    }
+    return {"domain": domain, "query": query, "count": len(results), "results": results}
 
 
 def search_stack_guidelines(
-    query: str,
-    stack: str = "html-tailwind",
-    max_results: int = MAX_RESULTS
+    query: str, stack: str = "html-tailwind", max_results: int = MAX_RESULTS
 ) -> dict[str, Any]:
     """Search stack-specific guidelines"""
     stack = stack.lower()
     if stack not in STACK_CONFIG:
         return {
             "error": f"Unknown stack '{stack}'. Available: {', '.join(STACK_CONFIG.keys())}",
-            "stack": stack
+            "stack": stack,
         }
 
     filepath = STACKS_DIR / STACK_CONFIG[stack]
@@ -262,29 +318,18 @@ def search_stack_guidelines(
     if not filepath.exists():
         return {
             "error": f"Stack data file not found: {filepath}. Please ensure stack data is installed.",
-            "stack": stack
+            "stack": stack,
         }
 
-    results = _search_csv(
-        filepath,
-        STACK_SEARCH_COLS,
-        STACK_OUTPUT_COLS,
-        query,
-        max_results
-    )
+    results = _search_csv(filepath, STACK_SEARCH_COLS, STACK_OUTPUT_COLS, query, max_results)
 
-    return {
-        "stack": stack,
-        "query": query,
-        "count": len(results),
-        "results": results
-    }
+    return {"stack": stack, "query": query, "count": len(results), "results": results}
 
 
 # ============ Output Formatters ============
 def _extract_hex_color(color_str: str) -> str | None:
     """Extract first hex color from a string like 'Primary Blue #3B82F6'"""
-    match = re.search(r'#[0-9A-Fa-f]{6}', str(color_str))
+    match = re.search(r"#[0-9A-Fa-f]{6}", str(color_str))
     return match.group(0) if match else None
 
 
@@ -294,10 +339,7 @@ def _format_color_tokens(results: list[dict]) -> dict:
         return {}
 
     r = results[0]
-    tokens = {
-        "product_type": r.get("Product Type", ""),
-        "colors": {}
-    }
+    tokens = {"product_type": r.get("Product Type", ""), "colors": {}}
 
     # Extract hex values
     color_fields = [
@@ -341,8 +383,12 @@ def _format_style_tokens(results: list[dict]) -> dict:
 
     # Infer common CSS properties from style
     css_hints = {
-        "border_radius": "rounded-2xl" if any(kw in style_name for kw in ["glass", "clay", "soft", "bento"]) else "rounded-lg",
-        "shadow": "shadow-xl" if any(kw in style_name for kw in ["glass", "3d", "neumorph"]) else "shadow-md",
+        "border_radius": "rounded-2xl"
+        if any(kw in style_name for kw in ["glass", "clay", "soft", "bento"])
+        else "rounded-lg",
+        "shadow": "shadow-xl"
+        if any(kw in style_name for kw in ["glass", "3d", "neumorph"])
+        else "shadow-md",
     }
 
     return {
@@ -362,10 +408,7 @@ def _format_stack_output(result: dict) -> str:
     if not results:
         return f"No guidelines found for stack '{stack}'"
 
-    output_parts = [
-        f"## {stack.upper()} Guidelines",
-        ""
-    ]
+    output_parts = [f"## {stack.upper()} Guidelines", ""]
 
     for i, item in enumerate(results, 1):
         category = item.get("Category", "General")
@@ -431,7 +474,9 @@ def _format_structured_output(result: dict) -> str:
         output_parts.append("**Color Palette** (copy hex values directly):")
         for name, hex_val in tokens.get("colors", {}).items():
             # Provide both hex and Tailwind-style class hint
-            output_parts.append(f"- {name}: `{hex_val}` → use in `bg-[{hex_val}]` or `text-[{hex_val}]`")
+            output_parts.append(
+                f"- {name}: `{hex_val}` → use in `bg-[{hex_val}]` or `text-[{hex_val}]`"
+            )
 
     elif domain == "typography":
         tokens = _format_typography_tokens(results)
@@ -476,9 +521,9 @@ def _format_structured_output(result: dict) -> str:
 def _format_markdown_output(result: dict) -> str:
     """Format search results as readable Markdown (legacy format)"""
     output_parts = [
-        f"**UI/UX Design Recommendations**",
+        "**UI/UX Design Recommendations**",
         f"Domain: {result['domain']} | Query: {result['query']} | Results: {result['count']}",
-        ""
+        "",
     ]
 
     for i, item in enumerate(result["results"], 1):
@@ -499,18 +544,33 @@ def _format_markdown_output(result: dict) -> str:
 # ============ LangChain Tool ============
 @tool
 def search_ui_design(
-    query: Annotated[str, "Product type or design need, e.g. 'SaaS dashboard', 'e-commerce landing', 'fintech app', or for stack: 'useState hooks', 'navigation'"],
+    query: Annotated[
+        str,
+        "Product type or design need, e.g. 'SaaS dashboard', 'e-commerce landing', 'fintech app', or for stack: 'useState hooks', 'navigation'",
+    ],
     domain: Annotated[
         Literal["style", "color", "typography", "chart", "ux", "landing", "product"] | None,
-        "Search domain (auto-detected if not specified): style, color, typography, chart, ux, landing, product"
+        "Search domain (auto-detected if not specified): style, color, typography, chart, ux, landing, product",
     ] = None,
     stack: Annotated[
-        Literal["react", "nextjs", "vue", "nuxtjs", "nuxt-ui", "svelte", "react-native", "flutter", "swiftui", "html-tailwind"] | None,
-        "Tech stack for framework-specific guidelines. If specified, searches stack guidelines instead of design domains."
+        Literal[
+            "react",
+            "nextjs",
+            "vue",
+            "nuxtjs",
+            "nuxt-ui",
+            "svelte",
+            "react-native",
+            "flutter",
+            "swiftui",
+            "html-tailwind",
+        ]
+        | None,
+        "Tech stack for framework-specific guidelines. If specified, searches stack guidelines instead of design domains.",
     ] = None,
     output_format: Annotated[
         Literal["structured", "markdown"],
-        "Output format: 'structured' returns actionable design tokens, 'markdown' returns detailed descriptions"
+        "Output format: 'structured' returns actionable design tokens, 'markdown' returns detailed descriptions",
     ] = "structured",
 ) -> str:
     """

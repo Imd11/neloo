@@ -15,12 +15,12 @@ import hmac
 import json
 import os
 import time
-import jwt
+from functools import lru_cache
 from typing import Optional
 from uuid import UUID
-from fastapi import HTTPException, Header, Depends
-from functools import lru_cache
 
+import jwt
+from fastapi import Header, HTTPException
 
 # =============================================================================
 # Configuration
@@ -35,6 +35,7 @@ JWT_ALGORITHM = "HS256"
 # =============================================================================
 # JWT Verification
 # =============================================================================
+
 
 @lru_cache(maxsize=1)
 def get_jwt_secret() -> Optional[str]:
@@ -69,7 +70,7 @@ def _decode_anonymous_session(token: str) -> Optional[dict]:
         raise HTTPException(status_code=401, detail="Anonymous sessions are not configured")
 
     try:
-        encoded_payload, signature = token[len(prefix):].split(".", 1)
+        encoded_payload, signature = token[len(prefix) :].split(".", 1)
         expected = hmac.new(
             secret.encode("utf-8"), encoded_payload.encode("ascii"), hashlib.sha256
         ).hexdigest()
@@ -114,7 +115,9 @@ def verify_jwt_token(token: str) -> dict:
             try:
                 user_id = str(UUID(token.removeprefix("local-dev:")))
             except ValueError as exc:
-                raise HTTPException(status_code=401, detail="Invalid local development token") from exc
+                raise HTTPException(
+                    status_code=401, detail="Invalid local development token"
+                ) from exc
             return {
                 "sub": user_id,
                 "email": f"guest-{user_id}@local",
@@ -175,12 +178,14 @@ def extract_token_from_header(authorization: Optional[str]) -> Optional[str]:
 # FastAPI Dependencies
 # =============================================================================
 
+
 def authenticate_authorization_header(authorization: Optional[str]) -> dict:
     """Authenticate a Bearer header without FastAPI dependency injection."""
     token = extract_token_from_header(authorization)
     if not token:
         raise HTTPException(status_code=401, detail="Authentication required")
     return verify_jwt_token(token)
+
 
 async def get_current_user(
     authorization: Optional[str] = Header(None),

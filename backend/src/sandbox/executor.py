@@ -16,29 +16,43 @@ Usage:
     ''')
 """
 
-import os
-import sys
-import subprocess
-import tempfile
-import base64
-import threading
 import asyncio
+import base64
+import os
+import subprocess
+import sys
+import tempfile
+import threading
 from abc import ABC, abstractmethod
-from typing import Optional, Any
 from dataclasses import dataclass, field
 from datetime import datetime
-
+from typing import Any, Optional
 
 # Environment variables considered safe to pass to the local-subprocess sandbox.
 # Everything else (API keys, secrets, tokens, database URLs) is stripped so that
 # untrusted user code executed by LocalSubprocessExecutor cannot read host secrets.
-_SAFE_CHILD_ENV_KEYS = frozenset({
-    "PATH", "HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "LC_CTYPE",
-    "TMPDIR", "TMP", "TEMP", "SYSTEMROOT", "APPDATA", "PATHEXT",
-    "TZ",  # timezone — pandas/matplotlib date display depends on it
-    "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY",  # corporate egress proxies
-    "SSL_CERT_FILE",  # enterprise CA bundles
-})
+_SAFE_CHILD_ENV_KEYS = frozenset(
+    {
+        "PATH",
+        "HOME",
+        "USER",
+        "LOGNAME",
+        "LANG",
+        "LC_ALL",
+        "LC_CTYPE",
+        "TMPDIR",
+        "TMP",
+        "TEMP",
+        "SYSTEMROOT",
+        "APPDATA",
+        "PATHEXT",
+        "TZ",  # timezone — pandas/matplotlib date display depends on it
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "NO_PROXY",  # corporate egress proxies
+        "SSL_CERT_FILE",  # enterprise CA bundles
+    }
+)
 
 
 def _build_child_env() -> dict:
@@ -52,12 +66,15 @@ def _build_child_env() -> dict:
 @dataclass
 class ExecutionResult:
     """Result of code execution"""
+
     success: bool
     stdout: str = ""
     stderr: str = ""
     results: list[dict[str, Any]] = field(default_factory=list)
     error: Optional[str] = None
-    generated_files: list[dict[str, Any]] = field(default_factory=list)  # New files created during execution
+    generated_files: list[dict[str, Any]] = field(
+        default_factory=list
+    )  # New files created during execution
 
     def to_dict(self) -> dict:
         return {
@@ -94,9 +111,11 @@ class SandboxExecutor(ABC):
 # E2B Cloud Sandbox Executor (Production) - Per-User Isolation
 # =============================================================================
 
+
 @dataclass
 class SandboxInfo:
     """Information about a user's sandbox instance"""
+
     sandbox: Any  # E2B Sandbox instance
     last_used: datetime
     created_at: datetime
@@ -124,18 +143,20 @@ class E2BSandboxExecutor(SandboxExecutor):
     """
 
     # Configuration
-    SANDBOX_TIMEOUT = 600           # E2B sandbox lifetime (10 minutes)
-    IDLE_CLEANUP_THRESHOLD = 1800   # Cleanup sandboxes idle for 30 minutes
-    MAX_SANDBOXES = 50              # Maximum concurrent sandboxes
+    SANDBOX_TIMEOUT = 600  # E2B sandbox lifetime (10 minutes)
+    IDLE_CLEANUP_THRESHOLD = 1800  # Cleanup sandboxes idle for 30 minutes
+    MAX_SANDBOXES = 50  # Maximum concurrent sandboxes
 
     def __init__(self):
         """
         Initialize E2B executor with per-user sandbox management
         """
         self._sandboxes: dict[str, SandboxInfo] = {}  # user_id -> SandboxInfo
-        self._lock = threading.Lock()                  # Protects _sandboxes dict
+        self._lock = threading.Lock()  # Protects _sandboxes dict
         self._user_locks: dict[str, threading.Lock] = {}  # Per-user execution locks
-        print(f"[E2BExecutor] Initialized with per-user isolation (max {self.MAX_SANDBOXES} sandboxes)")
+        print(
+            f"[E2BExecutor] Initialized with per-user isolation (max {self.MAX_SANDBOXES} sandboxes)"
+        )
 
     def _get_user_lock(self, user_id: str) -> threading.Lock:
         """
@@ -184,14 +205,15 @@ class E2BSandboxExecutor(SandboxExecutor):
             # Create new sandbox for this user
             try:
                 from e2b_code_interpreter import Sandbox
+
                 # Use official code-interpreter template (default)
                 sandbox = Sandbox.create(timeout=self.SANDBOX_TIMEOUT)
                 self._sandboxes[user_id] = SandboxInfo(
-                    sandbox=sandbox,
-                    last_used=now,
-                    created_at=now
+                    sandbox=sandbox, last_used=now, created_at=now
                 )
-                print(f"[E2BExecutor] Created new sandbox for user {user_id} (total: {len(self._sandboxes)})")
+                print(
+                    f"[E2BExecutor] Created new sandbox for user {user_id} (total: {len(self._sandboxes)})"
+                )
                 return sandbox
             except ImportError:
                 raise ImportError(
@@ -223,21 +245,17 @@ class E2BSandboxExecutor(SandboxExecutor):
             return
 
         # Find candidates that are NOT currently executing
-        candidates = [
-            user_id for user_id, info in self._sandboxes.items()
-            if not info.is_executing
-        ]
+        candidates = [user_id for user_id, info in self._sandboxes.items() if not info.is_executing]
 
         if not candidates:
             # All sandboxes are executing, cannot evict safely
-            print(f"[E2BExecutor] WARNING: All {len(self._sandboxes)} sandboxes are executing, cannot evict")
+            print(
+                f"[E2BExecutor] WARNING: All {len(self._sandboxes)} sandboxes are executing, cannot evict"
+            )
             return
 
         # Find the user with oldest last_used time among non-executing sandboxes
-        oldest_user = min(
-            candidates,
-            key=lambda u: self._sandboxes[u].last_used
-        )
+        oldest_user = min(candidates, key=lambda u: self._sandboxes[u].last_used)
         print(f"[E2BExecutor] Evicting LRU sandbox for user {oldest_user}")
         self._close_sandbox_unlocked(oldest_user)
 
@@ -295,8 +313,16 @@ class E2BSandboxExecutor(SandboxExecutor):
         are present even if pre-warming failed or sandbox was recreated.
         """
         try:
-            from .file_sync import list_supabase_files, sync_file_to_e2b, SUPABASE_URL, SUPABASE_SERVICE_KEY, USE_LOCAL_STORAGE, BUCKET_NAME
-            print(f"[E2BExecutor] ========== FILE SYNC DEBUG ==========")
+            from .file_sync import (
+                BUCKET_NAME,
+                SUPABASE_SERVICE_KEY,
+                SUPABASE_URL,
+                USE_LOCAL_STORAGE,
+                list_supabase_files,
+                sync_file_to_e2b,
+            )
+
+            print("[E2BExecutor] ========== FILE SYNC DEBUG ==========")
             print(f"[E2BExecutor] user_id = '{user_id}' (type: {type(user_id).__name__})")
             print(f"[E2BExecutor] Storage mode: {'LOCAL' if USE_LOCAL_STORAGE else 'SUPABASE'}")
             print(f"[E2BExecutor] BUCKET_NAME = '{BUCKET_NAME}'")
@@ -327,7 +353,9 @@ class E2BSandboxExecutor(SandboxExecutor):
                     storage_path = file_info.get("storage_path")
                     if storage_path:
                         # Extract filename from storage path
-                        filename = storage_path.split("/")[-1] if "/" in storage_path else storage_path
+                        filename = (
+                            storage_path.split("/")[-1] if "/" in storage_path else storage_path
+                        )
                         if filename not in existing_files:
                             result = sync_file_to_e2b(sandbox, storage_path)
                             synced_count += 1
@@ -342,6 +370,7 @@ class E2BSandboxExecutor(SandboxExecutor):
 
         except Exception as e:
             import traceback
+
             print(f"[E2BExecutor] Warning: File sync check failed: {e}")
             print(f"[E2BExecutor] Traceback: {traceback.format_exc()}")
 
@@ -383,7 +412,9 @@ class E2BSandboxExecutor(SandboxExecutor):
                         self._ensure_files_synced(sandbox, user_id)
 
                         # Execute code
-                        result = self._execute_in_sandbox(sandbox, code, timeout, user_id, thread_id)
+                        result = self._execute_in_sandbox(
+                            sandbox, code, timeout, user_id, thread_id
+                        )
                         return result
                     finally:
                         # Always clear executing flag when done
@@ -394,7 +425,9 @@ class E2BSandboxExecutor(SandboxExecutor):
                     # Check if error is due to sandbox not found (expired)
                     if "sandbox was not found" in error_str or "502" in error_str:
                         if attempt < max_retries - 1:
-                            print(f"[E2BExecutor] Sandbox expired for user {user_id}, recreating (attempt {attempt + 2})")
+                            print(
+                                f"[E2BExecutor] Sandbox expired for user {user_id}, recreating (attempt {attempt + 2})"
+                            )
                             # Clear the stale reference and best-effort kill the sandbox to avoid leaks.
                             with self._lock:
                                 self._close_sandbox_unlocked(user_id)
@@ -442,13 +475,13 @@ class E2BSandboxExecutor(SandboxExecutor):
 
             if execution.results:
                 for r in execution.results:
-                    if hasattr(r, 'png') and r.png:
+                    if hasattr(r, "png") and r.png:
                         results.append({"type": "image/png", "data": r.png})
-                    elif hasattr(r, 'html') and r.html:
+                    elif hasattr(r, "html") and r.html:
                         results.append({"type": "text/html", "data": r.html})
-                    elif hasattr(r, 'text') and r.text:
+                    elif hasattr(r, "text") and r.text:
                         results.append({"type": "text/plain", "data": r.text})
-                    elif hasattr(r, 'latex') and r.latex:
+                    elif hasattr(r, "latex") and r.latex:
                         results.append({"type": "text/latex", "data": r.latex})
 
             # Sync generated files from E2B sandbox back to storage
@@ -459,7 +492,9 @@ class E2BSandboxExecutor(SandboxExecutor):
                 data_dir = "/home/user/data"
                 try:
                     files_in_sandbox = sandbox.files.list(data_dir)
-                    print(f"[E2BExecutor] Files in sandbox data dir: {[f.name for f in files_in_sandbox]}")
+                    print(
+                        f"[E2BExecutor] Files in sandbox data dir: {[f.name for f in files_in_sandbox]}"
+                    )
                 except Exception as e:
                     print(f"[E2BExecutor] Could not list sandbox files: {e}")
                     files_in_sandbox = []
@@ -469,12 +504,12 @@ class E2BSandboxExecutor(SandboxExecutor):
                     file_path = f"{data_dir}/{f.name}"
 
                     # Handle image files (PNG) - add to results for inline display
-                    if f.name.endswith('.png'):
+                    if f.name.endswith(".png"):
                         try:
                             # Read the file content from sandbox as bytes
                             content = sandbox.files.read(file_path, format="bytes")
                             content_bytes = bytes(content)
-                            img_base64 = base64.b64encode(content_bytes).decode('utf-8')
+                            img_base64 = base64.b64encode(content_bytes).decode("utf-8")
                             results.append({"type": "image/png", "data": img_base64})
                             print(f"[E2BExecutor] Read image from sandbox: {file_path}")
 
@@ -488,37 +523,49 @@ class E2BSandboxExecutor(SandboxExecutor):
                                 file_type="chart",  # Charts and images
                             )
                             if file_info:
-                                generated_files.append({
-                                    "filename": f.name,
-                                    "sandbox_path": file_path,
-                                    "size": len(content_bytes),
-                                    "download_url": file_info["download_url"],
-                                    "file_id": file_info["file_id"],
-                                    "content_type": "image/png",
-                                    "file_type": "chart",
-                                })
-                                print(f"[E2BExecutor] Saved chart to storage: {file_info['download_url']}")
+                                generated_files.append(
+                                    {
+                                        "filename": f.name,
+                                        "sandbox_path": file_path,
+                                        "size": len(content_bytes),
+                                        "download_url": file_info["download_url"],
+                                        "file_id": file_info["file_id"],
+                                        "content_type": "image/png",
+                                        "file_type": "chart",
+                                    }
+                                )
+                                print(
+                                    f"[E2BExecutor] Saved chart to storage: {file_info['download_url']}"
+                                )
                             else:
-                                generated_files.append({
-                                    "filename": f.name,
-                                    "sandbox_path": file_path,
-                                    "size": len(content_bytes),
-                                    "file_type": "chart",
-                                })
+                                generated_files.append(
+                                    {
+                                        "filename": f.name,
+                                        "sandbox_path": file_path,
+                                        "size": len(content_bytes),
+                                        "file_type": "chart",
+                                    }
+                                )
                         except Exception as e:
                             print(f"[E2BExecutor] Failed to read image {f.name}: {e}")
 
                     # Handle other file types (CSV, Excel, TXT, etc.) - save to storage for download
-                    elif f.name.endswith(('.csv', '.xlsx', '.xls', '.json', '.txt', '.pdf', '.html', '.md')):
+                    elif f.name.endswith(
+                        (".csv", ".xlsx", ".xls", ".json", ".txt", ".pdf", ".html", ".md")
+                    ):
                         try:
                             # Determine read format based on file type
-                            if f.name.endswith(('.xlsx', '.xls', '.pdf')):
+                            if f.name.endswith((".xlsx", ".xls", ".pdf")):
                                 content = sandbox.files.read(file_path, format="bytes")
                                 content_bytes = bytes(content)
                             else:
                                 # Text-based files
                                 content = sandbox.files.read(file_path)
-                                content_bytes = content.encode('utf-8') if isinstance(content, str) else bytes(content)
+                                content_bytes = (
+                                    content.encode("utf-8")
+                                    if isinstance(content, str)
+                                    else bytes(content)
+                                )
 
                             # Save to persistent storage with file_type="generated" for data files
                             file_info = save_generated_file(
@@ -530,34 +577,43 @@ class E2BSandboxExecutor(SandboxExecutor):
                             )
 
                             if file_info:
-                                generated_files.append({
-                                    "filename": f.name,
-                                    "sandbox_path": file_path,
-                                    "size": len(content_bytes),
-                                    "download_url": file_info["download_url"],
-                                    "file_id": file_info["file_id"],
-                                    "content_type": file_info["content_type"],
-                                    "file_type": "generated",
-                                })
-                                print(f"[E2BExecutor] Saved file to storage: {f.name} -> {file_info['download_url']}")
+                                generated_files.append(
+                                    {
+                                        "filename": f.name,
+                                        "sandbox_path": file_path,
+                                        "size": len(content_bytes),
+                                        "download_url": file_info["download_url"],
+                                        "file_id": file_info["file_id"],
+                                        "content_type": file_info["content_type"],
+                                        "file_type": "generated",
+                                    }
+                                )
+                                print(
+                                    f"[E2BExecutor] Saved file to storage: {f.name} -> {file_info['download_url']}"
+                                )
                             else:
-                                generated_files.append({
-                                    "filename": f.name,
-                                    "sandbox_path": file_path,
-                                    "size": len(content_bytes),
-                                    "file_type": "generated",
-                                })
+                                generated_files.append(
+                                    {
+                                        "filename": f.name,
+                                        "sandbox_path": file_path,
+                                        "size": len(content_bytes),
+                                        "file_type": "generated",
+                                    }
+                                )
                                 print(f"[E2BExecutor] Found generated file (not saved): {f.name}")
 
                         except Exception as e:
                             print(f"[E2BExecutor] Failed to read/save file {f.name}: {e}")
-                            generated_files.append({
-                                "filename": f.name,
-                                "sandbox_path": file_path,
-                            })
+                            generated_files.append(
+                                {
+                                    "filename": f.name,
+                                    "sandbox_path": file_path,
+                                }
+                            )
 
             except Exception as e:
                 import traceback
+
                 print(f"[E2BExecutor] Warning: Failed to sync generated files: {e}")
                 print(f"[E2BExecutor] Traceback: {traceback.format_exc()}")
 
@@ -570,7 +626,7 @@ class E2BSandboxExecutor(SandboxExecutor):
                 generated_files=generated_files,
             )
 
-        except Exception as e:
+        except Exception:
             # Re-raise to let execute() handle retry logic
             raise
 
@@ -587,6 +643,7 @@ class E2BSandboxExecutor(SandboxExecutor):
 # =============================================================================
 # Async E2B Cloud Sandbox Executor (Production) - Per-User Isolation
 # =============================================================================
+
 
 class AsyncE2BSandboxExecutor(SandboxExecutor):
     """
@@ -609,18 +666,20 @@ class AsyncE2BSandboxExecutor(SandboxExecutor):
     """
 
     # Configuration
-    SANDBOX_TIMEOUT = 600           # E2B sandbox lifetime (10 minutes)
-    IDLE_CLEANUP_THRESHOLD = 1800   # Cleanup sandboxes idle for 30 minutes
-    MAX_SANDBOXES = 50              # Maximum concurrent sandboxes
+    SANDBOX_TIMEOUT = 600  # E2B sandbox lifetime (10 minutes)
+    IDLE_CLEANUP_THRESHOLD = 1800  # Cleanup sandboxes idle for 30 minutes
+    MAX_SANDBOXES = 50  # Maximum concurrent sandboxes
 
     def __init__(self):
         """
         Initialize Async E2B executor with per-user sandbox management
         """
         self._sandboxes: dict[str, SandboxInfo] = {}  # user_id -> SandboxInfo
-        self._lock = asyncio.Lock()                    # Protects _sandboxes dict (async)
+        self._lock = asyncio.Lock()  # Protects _sandboxes dict (async)
         self._user_locks: dict[str, asyncio.Lock] = {}  # Per-user execution locks (async)
-        print(f"[AsyncE2BExecutor] Initialized with per-user isolation (max {self.MAX_SANDBOXES} sandboxes)")
+        print(
+            f"[AsyncE2BExecutor] Initialized with per-user isolation (max {self.MAX_SANDBOXES} sandboxes)"
+        )
 
     async def _get_user_lock(self, user_id: str) -> asyncio.Lock:
         """
@@ -656,7 +715,9 @@ class AsyncE2BSandboxExecutor(SandboxExecutor):
                 elapsed = (now - info.created_at).total_seconds()
                 if elapsed < self.SANDBOX_TIMEOUT - 30:  # 30s buffer
                     info.last_used = now
-                    print(f"[AsyncE2BExecutor] Reusing sandbox for user {user_id} (age: {elapsed:.0f}s)")
+                    print(
+                        f"[AsyncE2BExecutor] Reusing sandbox for user {user_id} (age: {elapsed:.0f}s)"
+                    )
                     return info.sandbox
                 else:
                     # Sandbox expired, close it
@@ -670,14 +731,15 @@ class AsyncE2BSandboxExecutor(SandboxExecutor):
             # Create new sandbox for this user
             try:
                 from e2b_code_interpreter import AsyncSandbox
+
                 # Use official code-interpreter template (default)
                 sandbox = await AsyncSandbox.create(timeout=self.SANDBOX_TIMEOUT)
                 self._sandboxes[user_id] = SandboxInfo(
-                    sandbox=sandbox,
-                    last_used=now,
-                    created_at=now
+                    sandbox=sandbox, last_used=now, created_at=now
                 )
-                print(f"[AsyncE2BExecutor] Created new sandbox for user {user_id} (total: {len(self._sandboxes)})")
+                print(
+                    f"[AsyncE2BExecutor] Created new sandbox for user {user_id} (total: {len(self._sandboxes)})"
+                )
                 return sandbox
             except ImportError:
                 raise ImportError(
@@ -708,21 +770,17 @@ class AsyncE2BSandboxExecutor(SandboxExecutor):
             return
 
         # Find candidates that are NOT currently executing
-        candidates = [
-            user_id for user_id, info in self._sandboxes.items()
-            if not info.is_executing
-        ]
+        candidates = [user_id for user_id, info in self._sandboxes.items() if not info.is_executing]
 
         if not candidates:
             # All sandboxes are executing, cannot evict safely
-            print(f"[AsyncE2BExecutor] WARNING: All {len(self._sandboxes)} sandboxes are executing, cannot evict")
+            print(
+                f"[AsyncE2BExecutor] WARNING: All {len(self._sandboxes)} sandboxes are executing, cannot evict"
+            )
             return
 
         # Find the user with oldest last_used time among non-executing sandboxes
-        oldest_user = min(
-            candidates,
-            key=lambda u: self._sandboxes[u].last_used
-        )
+        oldest_user = min(candidates, key=lambda u: self._sandboxes[u].last_used)
         print(f"[AsyncE2BExecutor] Evicting LRU sandbox for user {oldest_user}")
         await self._close_sandbox_unlocked(oldest_user)
 
@@ -755,7 +813,8 @@ class AsyncE2BSandboxExecutor(SandboxExecutor):
 
             # Clean up orphaned user locks (users without sandboxes)
             orphaned_locks = [
-                user_id for user_id in self._user_locks.keys()
+                user_id
+                for user_id in self._user_locks.keys()
                 if user_id not in self._sandboxes and not self._user_locks[user_id].locked()
             ]
 
@@ -773,16 +832,29 @@ class AsyncE2BSandboxExecutor(SandboxExecutor):
         are present even if pre-warming failed or sandbox was recreated.
         """
         try:
-            from .file_sync import list_supabase_files, SUPABASE_URL, SUPABASE_SERVICE_KEY, USE_LOCAL_STORAGE, BUCKET_NAME
-            print(f"[AsyncE2BExecutor] ========== FILE SYNC DEBUG ==========")
+            from .file_sync import (
+                BUCKET_NAME,
+                SUPABASE_SERVICE_KEY,
+                SUPABASE_URL,
+                USE_LOCAL_STORAGE,
+                list_supabase_files,
+            )
+
+            print("[AsyncE2BExecutor] ========== FILE SYNC DEBUG ==========")
             print(f"[AsyncE2BExecutor] user_id = '{user_id}' (type: {type(user_id).__name__})")
-            print(f"[AsyncE2BExecutor] Storage mode: {'LOCAL' if USE_LOCAL_STORAGE else 'SUPABASE'}")
+            print(
+                f"[AsyncE2BExecutor] Storage mode: {'LOCAL' if USE_LOCAL_STORAGE else 'SUPABASE'}"
+            )
             print(f"[AsyncE2BExecutor] BUCKET_NAME = '{BUCKET_NAME}'")
             print(f"[AsyncE2BExecutor] SUPABASE_URL configured: {bool(SUPABASE_URL)}")
-            print(f"[AsyncE2BExecutor] SUPABASE_SERVICE_KEY configured: {bool(SUPABASE_SERVICE_KEY)}")
+            print(
+                f"[AsyncE2BExecutor] SUPABASE_SERVICE_KEY configured: {bool(SUPABASE_SERVICE_KEY)}"
+            )
 
             remote_files = list_supabase_files(user_id=user_id)
-            print(f"[AsyncE2BExecutor] Found {len(remote_files)} files in storage for user {user_id}")
+            print(
+                f"[AsyncE2BExecutor] Found {len(remote_files)} files in storage for user {user_id}"
+            )
 
             # Ensure the data directory exists even when there are no files to sync.
             try:
@@ -805,12 +877,16 @@ class AsyncE2BSandboxExecutor(SandboxExecutor):
                     storage_path = file_info.get("storage_path")
                     if storage_path:
                         # Extract filename from storage path
-                        filename = storage_path.split("/")[-1] if "/" in storage_path else storage_path
+                        filename = (
+                            storage_path.split("/")[-1] if "/" in storage_path else storage_path
+                        )
                         if filename not in existing_files:
                             # Use async sync function
                             result = await self._async_sync_file_to_e2b(sandbox, storage_path)
                             synced_count += 1
-                            print(f"[AsyncE2BExecutor] Synced missing file: {storage_path} -> {result}")
+                            print(
+                                f"[AsyncE2BExecutor] Synced missing file: {storage_path} -> {result}"
+                            )
 
                 if synced_count > 0:
                     print(f"[AsyncE2BExecutor] Synced {synced_count} missing files")
@@ -821,6 +897,7 @@ class AsyncE2BSandboxExecutor(SandboxExecutor):
 
         except Exception as e:
             import traceback
+
             print(f"[AsyncE2BExecutor] Warning: File sync check failed: {e}")
             print(f"[AsyncE2BExecutor] Traceback: {traceback.format_exc()}")
 
@@ -829,8 +906,9 @@ class AsyncE2BSandboxExecutor(SandboxExecutor):
         Async version of sync_file_to_e2b.
         Downloads file from Supabase and uploads to E2B sandbox.
         """
-        from .file_sync import SUPABASE_URL, SUPABASE_SERVICE_KEY, USE_LOCAL_STORAGE, BUCKET_NAME
         import httpx
+
+        from .file_sync import BUCKET_NAME, SUPABASE_SERVICE_KEY, SUPABASE_URL, USE_LOCAL_STORAGE
 
         filename = storage_path.split("/")[-1] if "/" in storage_path else storage_path
         e2b_path = f"/home/user/data/{filename}"
@@ -838,6 +916,7 @@ class AsyncE2BSandboxExecutor(SandboxExecutor):
         if USE_LOCAL_STORAGE:
             # For local storage, read file directly
             from .file_sync import get_local_data_dir
+
             local_path = get_local_data_dir() / storage_path.split("/")[-1]
             if local_path.exists():
                 content = local_path.read_bytes()
@@ -879,12 +958,15 @@ class AsyncE2BSandboxExecutor(SandboxExecutor):
         """
         # Run the async version in the event loop
         try:
-            loop = asyncio.get_running_loop()
+            asyncio.get_running_loop()
             # If we're already in an async context, we need to use a different approach
             # This shouldn't happen in normal usage as tools are called via ainvoke
             import concurrent.futures
+
             with concurrent.futures.ThreadPoolExecutor() as executor:
-                future = executor.submit(asyncio.run, self.aexecute(code, timeout, user_id, thread_id))
+                future = executor.submit(
+                    asyncio.run, self.aexecute(code, timeout, user_id, thread_id)
+                )
                 return future.result()
         except RuntimeError:
             # No running event loop, safe to use asyncio.run
@@ -923,7 +1005,9 @@ class AsyncE2BSandboxExecutor(SandboxExecutor):
                         await self._ensure_files_synced(sandbox, user_id)
 
                         # Execute code
-                        result = await self._execute_in_sandbox(sandbox, code, timeout, user_id, thread_id)
+                        result = await self._execute_in_sandbox(
+                            sandbox, code, timeout, user_id, thread_id
+                        )
                         return result
                     finally:
                         # Always clear executing flag when done
@@ -934,7 +1018,9 @@ class AsyncE2BSandboxExecutor(SandboxExecutor):
                     # Check if error is due to sandbox not found (expired)
                     if "sandbox was not found" in error_str or "502" in error_str:
                         if attempt < max_retries - 1:
-                            print(f"[AsyncE2BExecutor] Sandbox expired for user {user_id}, recreating (attempt {attempt + 2})")
+                            print(
+                                f"[AsyncE2BExecutor] Sandbox expired for user {user_id}, recreating (attempt {attempt + 2})"
+                            )
                             # Clear the stale reference
                             async with self._lock:
                                 await self._close_sandbox_unlocked(user_id)
@@ -979,13 +1065,13 @@ class AsyncE2BSandboxExecutor(SandboxExecutor):
 
             if execution.results:
                 for r in execution.results:
-                    if hasattr(r, 'png') and r.png:
+                    if hasattr(r, "png") and r.png:
                         results.append({"type": "image/png", "data": r.png})
-                    elif hasattr(r, 'html') and r.html:
+                    elif hasattr(r, "html") and r.html:
                         results.append({"type": "text/html", "data": r.html})
-                    elif hasattr(r, 'text') and r.text:
+                    elif hasattr(r, "text") and r.text:
                         results.append({"type": "text/plain", "data": r.text})
-                    elif hasattr(r, 'latex') and r.latex:
+                    elif hasattr(r, "latex") and r.latex:
                         results.append({"type": "text/latex", "data": r.latex})
 
             # Sync generated files from E2B sandbox back to storage
@@ -996,7 +1082,9 @@ class AsyncE2BSandboxExecutor(SandboxExecutor):
                 data_dir = "/home/user/data"
                 try:
                     files_in_sandbox = await sandbox.files.list(data_dir)
-                    print(f"[AsyncE2BExecutor] Files in sandbox data dir: {[f.name for f in files_in_sandbox]}")
+                    print(
+                        f"[AsyncE2BExecutor] Files in sandbox data dir: {[f.name for f in files_in_sandbox]}"
+                    )
                 except Exception as e:
                     print(f"[AsyncE2BExecutor] Could not list sandbox files: {e}")
                     files_in_sandbox = []
@@ -1006,11 +1094,11 @@ class AsyncE2BSandboxExecutor(SandboxExecutor):
                     file_path = f"{data_dir}/{f.name}"
 
                     # Handle image files (PNG)
-                    if f.name.endswith('.png'):
+                    if f.name.endswith(".png"):
                         try:
                             content = await sandbox.files.read(file_path, format="bytes")
                             content_bytes = bytes(content)
-                            img_base64 = base64.b64encode(content_bytes).decode('utf-8')
+                            img_base64 = base64.b64encode(content_bytes).decode("utf-8")
                             results.append({"type": "image/png", "data": img_base64})
                             print(f"[AsyncE2BExecutor] Read image from sandbox: {file_path}")
 
@@ -1022,35 +1110,47 @@ class AsyncE2BSandboxExecutor(SandboxExecutor):
                                 file_type="chart",
                             )
                             if file_info:
-                                generated_files.append({
-                                    "filename": f.name,
-                                    "sandbox_path": file_path,
-                                    "size": len(content_bytes),
-                                    "download_url": file_info["download_url"],
-                                    "file_id": file_info["file_id"],
-                                    "content_type": "image/png",
-                                    "file_type": "chart",
-                                })
-                                print(f"[AsyncE2BExecutor] Saved chart to storage: {file_info['download_url']}")
+                                generated_files.append(
+                                    {
+                                        "filename": f.name,
+                                        "sandbox_path": file_path,
+                                        "size": len(content_bytes),
+                                        "download_url": file_info["download_url"],
+                                        "file_id": file_info["file_id"],
+                                        "content_type": "image/png",
+                                        "file_type": "chart",
+                                    }
+                                )
+                                print(
+                                    f"[AsyncE2BExecutor] Saved chart to storage: {file_info['download_url']}"
+                                )
                             else:
-                                generated_files.append({
-                                    "filename": f.name,
-                                    "sandbox_path": file_path,
-                                    "size": len(content_bytes),
-                                    "file_type": "chart",
-                                })
+                                generated_files.append(
+                                    {
+                                        "filename": f.name,
+                                        "sandbox_path": file_path,
+                                        "size": len(content_bytes),
+                                        "file_type": "chart",
+                                    }
+                                )
                         except Exception as e:
                             print(f"[AsyncE2BExecutor] Failed to read image {f.name}: {e}")
 
                     # Handle other file types
-                    elif f.name.endswith(('.csv', '.xlsx', '.xls', '.json', '.txt', '.pdf', '.html', '.md')):
+                    elif f.name.endswith(
+                        (".csv", ".xlsx", ".xls", ".json", ".txt", ".pdf", ".html", ".md")
+                    ):
                         try:
-                            if f.name.endswith(('.xlsx', '.xls', '.pdf')):
+                            if f.name.endswith((".xlsx", ".xls", ".pdf")):
                                 content = await sandbox.files.read(file_path, format="bytes")
                                 content_bytes = bytes(content)
                             else:
                                 content = await sandbox.files.read(file_path)
-                                content_bytes = content.encode('utf-8') if isinstance(content, str) else bytes(content)
+                                content_bytes = (
+                                    content.encode("utf-8")
+                                    if isinstance(content, str)
+                                    else bytes(content)
+                                )
 
                             file_info = save_generated_file(
                                 filename=f.name,
@@ -1061,33 +1161,42 @@ class AsyncE2BSandboxExecutor(SandboxExecutor):
                             )
 
                             if file_info:
-                                generated_files.append({
-                                    "filename": f.name,
-                                    "sandbox_path": file_path,
-                                    "size": len(content_bytes),
-                                    "download_url": file_info["download_url"],
-                                    "file_id": file_info["file_id"],
-                                    "content_type": file_info["content_type"],
-                                    "file_type": "generated",
-                                })
-                                print(f"[AsyncE2BExecutor] Saved file to storage: {f.name} -> {file_info['download_url']}")
+                                generated_files.append(
+                                    {
+                                        "filename": f.name,
+                                        "sandbox_path": file_path,
+                                        "size": len(content_bytes),
+                                        "download_url": file_info["download_url"],
+                                        "file_id": file_info["file_id"],
+                                        "content_type": file_info["content_type"],
+                                        "file_type": "generated",
+                                    }
+                                )
+                                print(
+                                    f"[AsyncE2BExecutor] Saved file to storage: {f.name} -> {file_info['download_url']}"
+                                )
                             else:
-                                generated_files.append({
-                                    "filename": f.name,
-                                    "sandbox_path": file_path,
-                                    "size": len(content_bytes),
-                                    "file_type": "generated",
-                                })
+                                generated_files.append(
+                                    {
+                                        "filename": f.name,
+                                        "sandbox_path": file_path,
+                                        "size": len(content_bytes),
+                                        "file_type": "generated",
+                                    }
+                                )
 
                         except Exception as e:
                             print(f"[AsyncE2BExecutor] Failed to read/save file {f.name}: {e}")
-                            generated_files.append({
-                                "filename": f.name,
-                                "sandbox_path": file_path,
-                            })
+                            generated_files.append(
+                                {
+                                    "filename": f.name,
+                                    "sandbox_path": file_path,
+                                }
+                            )
 
             except Exception as e:
                 import traceback
+
                 print(f"[AsyncE2BExecutor] Warning: Failed to sync generated files: {e}")
                 print(f"[AsyncE2BExecutor] Traceback: {traceback.format_exc()}")
 
@@ -1100,15 +1209,16 @@ class AsyncE2BSandboxExecutor(SandboxExecutor):
                 generated_files=generated_files,
             )
 
-        except Exception as e:
+        except Exception:
             # Re-raise to let aexecute() handle retry logic
             raise
 
     def close(self) -> None:
         """Close all user sandboxes (sync wrapper)"""
         try:
-            loop = asyncio.get_running_loop()
+            asyncio.get_running_loop()
             import concurrent.futures
+
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(asyncio.run, self.aclose())
                 future.result()
@@ -1128,6 +1238,7 @@ class AsyncE2BSandboxExecutor(SandboxExecutor):
 # =============================================================================
 # Local Subprocess Executor (Development Only)
 # =============================================================================
+
 
 class LocalSubprocessExecutor(SandboxExecutor):
     """
@@ -1149,6 +1260,7 @@ class LocalSubprocessExecutor(SandboxExecutor):
         """Get or create the local data directory for file storage."""
         if user_id not in self._data_dirs:
             from .file_sync import get_local_data_dir
+
             self._data_dirs[user_id] = str(get_local_data_dir(user_id))
         return self._data_dirs[user_id]
 
@@ -1205,12 +1317,14 @@ class LocalSubprocessExecutor(SandboxExecutor):
                 file_path = os.path.join(data_dir, filename)
                 try:
                     size = os.path.getsize(file_path)
-                    new_files.append({
-                        "filename": filename,
-                        "size": size,
-                        "sandbox_path": f"/home/user/data/{filename}",
-                        "local_path": file_path,
-                    })
+                    new_files.append(
+                        {
+                            "filename": filename,
+                            "size": size,
+                            "sandbox_path": f"/home/user/data/{filename}",
+                            "local_path": file_path,
+                        }
+                    )
                 except Exception:
                     pass
 
@@ -1241,6 +1355,7 @@ class LocalSubprocessExecutor(SandboxExecutor):
         # This ensures all user-uploaded files are available in the local sandbox
         try:
             from .file_sync import sync_all_supabase_files_to_local
+
             synced_files = sync_all_supabase_files_to_local(user_id=user_id)
             if synced_files:
                 print(f"[LocalExecutor] {len(synced_files)} files available for user {user_id}")
@@ -1260,7 +1375,7 @@ class LocalSubprocessExecutor(SandboxExecutor):
         os.makedirs(temp_images_dir, exist_ok=True)
 
         # Wrapper code to capture matplotlib figures
-        wrapper_code = f'''
+        wrapper_code = f"""
 import sys
 import os
 import warnings
@@ -1309,10 +1424,10 @@ for fig_num in plt.get_fignums():
         filepath = os.path.join(_IMAGE_DIR, f"figure_{{_IMAGE_COUNT[0]:03d}}.png")
         fig.savefig(filepath, dpi=150, bbox_inches='tight', facecolor='white')
     plt.close(fig)
-'''
+"""
 
         # Write the wrapper script
-        with open(temp_script, 'w', encoding='utf-8') as f:
+        with open(temp_script, "w", encoding="utf-8") as f:
             f.write(wrapper_code)
 
         try:
@@ -1333,15 +1448,12 @@ for fig_num in plt.get_fignums():
 
             # Capture generated images
             if os.path.exists(temp_images_dir):
-                image_files = sorted([
-                    f for f in os.listdir(temp_images_dir)
-                    if f.endswith('.png')
-                ])
+                image_files = sorted([f for f in os.listdir(temp_images_dir) if f.endswith(".png")])
                 for img_file in image_files:
                     img_path = os.path.join(temp_images_dir, img_file)
                     try:
-                        with open(img_path, 'rb') as f:
-                            img_data = base64.b64encode(f.read()).decode('utf-8')
+                        with open(img_path, "rb") as f:
+                            img_data = base64.b64encode(f.read()).decode("utf-8")
                             results.append({"type": "image/png", "data": img_data})
                     except Exception:
                         pass
@@ -1375,6 +1487,7 @@ for fig_num in plt.get_fignums():
             # Clean up temp directory
             try:
                 import shutil
+
                 shutil.rmtree(temp_dir, ignore_errors=True)
             except Exception:
                 pass
@@ -1387,6 +1500,7 @@ for fig_num in plt.get_fignums():
 # =============================================================================
 # Docker Container Executor (Self-hosted)
 # =============================================================================
+
 
 class DockerExecutor(SandboxExecutor):
     """
@@ -1421,8 +1535,7 @@ class DockerExecutor(SandboxExecutor):
                 raise RuntimeError("Docker is not available")
         except FileNotFoundError:
             raise RuntimeError(
-                "Docker is not installed. "
-                "Please install Docker or use a different sandbox mode."
+                "Docker is not installed. Please install Docker or use a different sandbox mode."
             )
 
     def execute(
@@ -1435,20 +1548,28 @@ class DockerExecutor(SandboxExecutor):
         """Execute code in Docker container"""
         # Note: user_id and thread_id are not used in Docker mode yet
         # Base64 encode to avoid shell escaping issues
-        code_b64 = base64.b64encode(code.encode('utf-8')).decode('utf-8')
+        code_b64 = base64.b64encode(code.encode("utf-8")).decode("utf-8")
 
         # Build Docker command with security restrictions
         cmd = [
-            "docker", "run", "--rm",
-            "--network", "none",           # Disable network
-            "--memory", "512m",            # Memory limit
-            "--cpus", "1",                 # CPU limit
-            "--pids-limit", "50",          # Process limit
-            "--read-only",                 # Read-only filesystem
-            "--tmpfs", "/tmp:rw,noexec,nosuid,size=100m",  # Writable /tmp
+            "docker",
+            "run",
+            "--rm",
+            "--network",
+            "none",  # Disable network
+            "--memory",
+            "512m",  # Memory limit
+            "--cpus",
+            "1",  # CPU limit
+            "--pids-limit",
+            "50",  # Process limit
+            "--read-only",  # Read-only filesystem
+            "--tmpfs",
+            "/tmp:rw,noexec,nosuid,size=100m",  # Writable /tmp
             self.image,
-            "python", "-c",
-            f"import base64; exec(base64.b64decode('{code_b64}').decode('utf-8'))"
+            "python",
+            "-c",
+            f"import base64; exec(base64.b64decode('{code_b64}').decode('utf-8'))",
         ]
 
         try:
@@ -1631,7 +1752,7 @@ def execute_python(
     # via _ensure_files_synced(), so we only need to handle local mode here
     if files:
         try:
-            from .file_sync import sync_files_to_local, sync_files_to_e2b
+            from .file_sync import sync_files_to_e2b, sync_files_to_local
 
             mode = os.environ.get("SANDBOX_MODE", "e2b").lower()
 

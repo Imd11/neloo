@@ -96,9 +96,7 @@ async def test_thread_create_forces_owner_metadata():
 @pytest.mark.asyncio
 @pytest.mark.parametrize("action", ["read", "search", "update", "delete"])
 async def test_thread_access_is_filtered_by_owner(action: str):
-    result = await _handler("threads", action)(
-        _context("threads", action), {"thread_id": uuid4()}
-    )
+    result = await _handler("threads", action)(_context("threads", action), {"thread_id": uuid4()})
 
     assert result == {"owner": "guest-a"}
 
@@ -114,9 +112,7 @@ async def test_store_namespace_is_prefixed_with_identity():
 
 @pytest.mark.asyncio
 async def test_unhandled_resource_is_denied_by_default():
-    result = await auth._global_handlers[-1](
-        _context("runs", "read"), {"run_id": uuid4()}
-    )
+    result = await auth._global_handlers[-1](_context("runs", "read"), {"run_id": uuid4()})
 
     assert result is False
 
@@ -137,9 +133,7 @@ async def test_create_run_handler_is_registered_and_scopes_owner():
     assert ("runs", "create") not in auth._handlers
     value = {"thread_id": uuid4(), "metadata": {}}
 
-    result = await _handler("threads", "create_run")(
-        _context("threads", "create_run"), value
-    )
+    result = await _handler("threads", "create_run")(_context("threads", "create_run"), value)
 
     assert result == {"owner": "guest-a"}
     assert value["metadata"]["owner"] == "guest-a"
@@ -153,9 +147,7 @@ async def test_create_run_rejects_oversized_chat_input_before_limiting():
     }
 
     with pytest.raises(Auth.exceptions.HTTPException) as error:
-        await _handler("threads", "create_run")(
-            _context("threads", "create_run"), value
-        )
+        await _handler("threads", "create_run")(_context("threads", "create_run"), value)
 
     assert error.value.status_code == 413
 

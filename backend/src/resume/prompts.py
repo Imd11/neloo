@@ -106,6 +106,7 @@ PROJECTS_PROMPT = """
 }
 """
 
+
 def get_prompts():
     """Get all prompts for different extraction types"""
     return {

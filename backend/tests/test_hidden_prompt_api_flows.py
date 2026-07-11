@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
+
 def set_test_env_default(name, value):
     if not os.environ.get(name):
         os.environ[name] = value
@@ -20,7 +21,6 @@ set_test_env_default("ALLOW_LOCAL_SANDBOX", "true")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.api import webapp
 from src.storage import supabase_db
-
 
 HIDDEN_USER_MESSAGE = {
     "id": "human-1",
@@ -253,7 +253,10 @@ def test_shared_single_message_truncates_messages_after_the_target(monkeypatch):
 
     assert response.status_code == 200
     body = response.json()
-    assert [message["content"] for message in body["messages"]] == ["First question", "First answer"]
+    assert [message["content"] for message in body["messages"]] == [
+        "First question",
+        "First answer",
+    ]
     assert body["target_ai_message_id"] == "ai-1"
 
 

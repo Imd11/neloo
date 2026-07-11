@@ -6,10 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
-from .auth import get_current_user
-from .ratelimit import limiter
 from ..agent.graph import get_model
 from ..usage_limits import enforce_usage_limit
+from .auth import get_current_user
+from .ratelimit import limiter
 
 translate_router = APIRouter(prefix="/api", tags=["translate"])
 
@@ -70,7 +70,9 @@ async def translate(
     try:
         model = get_model(payload.model_id or "deepseek")
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Selected model is not configured: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Selected model is not configured: {exc}"
+        ) from exc
 
     try:
         response = await asyncio.wait_for(
@@ -90,8 +92,7 @@ async def translate(
     content = getattr(response, "content", "")
     if isinstance(content, list):
         content = "".join(
-            part.get("text", "") if isinstance(part, dict) else str(part)
-            for part in content
+            part.get("text", "") if isinstance(part, dict) else str(part) for part in content
         )
 
     translation = str(content).strip()

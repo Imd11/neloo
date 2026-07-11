@@ -16,44 +16,48 @@ Architecture:
 
 # Apply patches before importing other modules
 from ..patches.deepseek_reasoning import apply_patch as _apply_deepseek_patch
+
 _apply_deepseek_patch()
 
 import os
 from typing import Annotated
+
+from deepagents import SubAgent, create_deep_agent
 from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
-from deepagents import create_deep_agent, SubAgent
 
-from ..tools.search import internet_search
-from ..tools.code_execution import execute_python_tool
-from ..tools.ui_design import search_ui_design
 from ..context import (
     create_dual_output,
     save_result_to_file,
     should_save_to_file,
-    format_file_reference,
 )
-from ..storage import save_image_base64, get_image_url
-
+from ..model_ids import PUBLIC_MODEL_IDS, public_model_id
 from ..runtime_context import (
     thread_id_ctx as _thread_id_ctx,
+)
+from ..runtime_context import (
     user_id_ctx as _user_id_ctx,
+)
+from ..runtime_context import (
     user_id_from_config,
 )
-from ..sandbox import get_executor, get_e2b_backend_factory
-from .integration_tools import INTEGRATION_TOOLS
-from ..model_ids import PUBLIC_MODEL_IDS, public_model_id
-from .persistence_middleware import MessagePersistenceMiddleware
+from ..sandbox import get_e2b_backend_factory, get_executor
+from ..storage import save_image_base64
+from ..tools.code_execution import execute_python_tool
 
 # Document generation tools (each in separate file)
 from ..tools.excel_generator import EXCEL_TOOLS
-from ..tools.word_generator import WORD_TOOLS
 from ..tools.pdf_generator import PDF_TOOLS
 from ..tools.pptx_generator import PPTX_TOOLS
+from ..tools.search import internet_search
 
 # Skill Runtime - progressive disclosure for document skills
 from ..tools.skill_runtime import SKILL_RUNTIME_TOOLS
+from ..tools.ui_design import search_ui_design
+from ..tools.word_generator import WORD_TOOLS
+from .integration_tools import INTEGRATION_TOOLS
+from .persistence_middleware import MessagePersistenceMiddleware
 
 # API base URL for image serving (configurable via environment)
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:2024")
@@ -61,6 +65,7 @@ API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:2024")
 # Global executor instance for E2B backend factory
 # This ensures the backend uses the same sandbox pool as execute_python tool
 _SANDBOX_EXECUTOR = None
+
 
 def _get_sandbox_executor():
     """Get or create the global sandbox executor."""
@@ -117,7 +122,7 @@ GENERAL_ASSISTANT_PROMPT = """You are Neloo, a powerful AI assistant capable of 
    - `create_word` - Generate Word documents
    - `create_pptx` - Generate PowerPoint presentations
    - `create_pdf` - Generate PDF documents
-   
+
    **IMPORTANT**: Before calling any `create_*` tool, first construct a structured JSON spec describing:
    - filename, title, sheets/slides/sections
    - content structure (rows, columns, text, images)
@@ -613,6 +618,7 @@ Skip the design workflow ONLY if user already provided specific colors/fonts/sty
 - For showing code snippets that aren't meant to be rendered
 """
 
+
 def _resolve_thread_id_from_config(config: RunnableConfig | None) -> str | None:
     if not config:
         return None
@@ -638,6 +644,7 @@ def _resolve_user_id_for_thread(thread_id: str) -> str | None:
         return None
     try:
         from ..storage.supabase_db import USE_SUPABASE_DB, get_thread_by_langgraph_id
+
         if not USE_SUPABASE_DB:
             return None
 
@@ -656,13 +663,16 @@ def _resolve_user_id_for_thread(thread_id: str) -> str | None:
         else:
             return None
     except Exception as e:
-        print(f"[execute_python] Warning: Failed to resolve user_id for thread {thread_id[:8]}...: {e}")
+        print(
+            f"[execute_python] Warning: Failed to resolve user_id for thread {thread_id[:8]}...: {e}"
+        )
         return None
 
 
 # =============================================================================
 # Tool Definitions
 # =============================================================================
+
 
 @tool
 def execute_python(
@@ -709,12 +719,13 @@ def execute_python(
     try:
         if result.get("generated_files"):
             import inspect
+
             # Find the runtime in the call stack (deepagents pattern)
             for frame_info in inspect.stack():
                 frame_locals = frame_info.frame.f_locals
-                if 'runtime' in frame_locals:
-                    runtime = frame_locals['runtime']
-                    if hasattr(runtime, 'state'):
+                if "runtime" in frame_locals:
+                    runtime = frame_locals["runtime"]
+                    if hasattr(runtime, "state"):
                         state = runtime.state
                         files = state.get("files", {})
                         # Add generated files to state
@@ -726,7 +737,9 @@ def execute_python(
                                 file_content = f"# {filename}\nDownload: {download_url}\n"
                                 files[filename] = file_content
                         state["files"] = files
-                        print(f"[execute_python] Updated state.files with {len(result['generated_files'])} files")
+                        print(
+                            f"[execute_python] Updated state.files with {len(result['generated_files'])} files"
+                        )
                         break
     except Exception as e:
         # Silent failure - file registration is not critical
@@ -758,11 +771,7 @@ def execute_python(
                     user_id = _user_id_ctx.get()
                     thread_id = _thread_id_ctx.get()
 
-                    image_info = save_image_base64(
-                        r["data"],
-                        thread_id=thread_id,
-                        user_id=user_id
-                    )
+                    image_info = save_image_base64(r["data"], thread_id=thread_id, user_id=user_id)
 
                     if image_info:
                         # Return URL for frontend to load
@@ -771,10 +780,16 @@ def execute_python(
                         full_output_parts.append(f"[Figure {image_count} saved: {image_url}]")
                     else:
                         # Fallback to base64 if storage fails
-                        output_parts.append(f"![Figure {image_count}](data:image/png;base64,{r['data']})")
-                        full_output_parts.append(f"[Figure {image_count} - storage failed, using inline]")
+                        output_parts.append(
+                            f"![Figure {image_count}](data:image/png;base64,{r['data']})"
+                        )
+                        full_output_parts.append(
+                            f"[Figure {image_count} - storage failed, using inline]"
+                        )
 
-        raw_output = "\n\n".join(output_parts) if output_parts else "Code executed successfully (no output)"
+        raw_output = (
+            "\n\n".join(output_parts) if output_parts else "Code executed successfully (no output)"
+        )
         full_text = "\n\n".join(full_output_parts) if full_output_parts else raw_output
 
         # Process generated files and add to state.files
@@ -793,13 +808,15 @@ def execute_python(
                     if file_id:
                         file_content_preview += f"File ID: {file_id}\n"
                     file_content_preview += f"Type: {file_type}\n"
-                    file_content_preview += f"\nThis file was generated during code execution."
+                    file_content_preview += "\nThis file was generated during code execution."
 
-                    generated_files_info.append({
-                        "filename": filename,
-                        "content": file_content_preview,
-                        "download_url": download_url,
-                    })
+                    generated_files_info.append(
+                        {
+                            "filename": filename,
+                            "content": file_content_preview,
+                            "download_url": download_url,
+                        }
+                    )
 
         # If we have generated files, prepend their info to output
         if generated_files_info:
@@ -816,7 +833,7 @@ def execute_python(
             file_info = save_result_to_file(
                 content=full_text,
                 result_type="code_execution",
-                metadata={"code_preview": code[:200]}
+                metadata={"code_preview": code[:200]},
             )
 
             # Create dual output: summary for LLM, with file reference
@@ -1104,7 +1121,11 @@ AVAILABLE_MODELS = {
         "provider": "anthropic",
         "credentials": [
             {"env_key": "ANTHROPIC_API_KEY", "base_url_env": "ANTHROPIC_BASE_URL"},
-            {"env_key": "NEWAPI_API_KEY", "base_url_env": "NEWAPI_ANTHROPIC_BASE_URL", "requires_base_url": True},
+            {
+                "env_key": "NEWAPI_API_KEY",
+                "base_url_env": "NEWAPI_ANTHROPIC_BASE_URL",
+                "requires_base_url": True,
+            },
         ],
         "profile_key": "anthropic",
     },
@@ -1124,7 +1145,11 @@ AVAILABLE_MODELS = {
         "model_env": "GEMINI_MODEL",
         "provider": "openai",
         "credentials": [
-            {"env_key": "GEMINI_API_KEY", "base_url_env": "GEMINI_BASE_URL", "requires_base_url": True},
+            {
+                "env_key": "GEMINI_API_KEY",
+                "base_url_env": "GEMINI_BASE_URL",
+                "requires_base_url": True,
+            },
         ],
         "profile_key": "google",
     },
@@ -1168,7 +1193,6 @@ AVAILABLE_MODELS = {
         "requires_model_env": True,
         "profile_key": "anthropic",
     },
-
     # Hidden legacy IDs. They are intentionally kept for existing deployments,
     # stored thread model_id values, and historical LangGraph graph IDs.
     "deepseek-chat": {
@@ -1384,12 +1408,14 @@ def get_available_models() -> list[dict]:
     models = []
     for model_id in PUBLIC_MODEL_IDS:
         config = AVAILABLE_MODELS[model_id]
-        models.append({
-            "id": model_id,
-            "display_name": config["display_name"],
-            "model_name": _resolve_model_name(config),
-            "available": _is_model_configured(config),
-        })
+        models.append(
+            {
+                "id": model_id,
+                "display_name": config["display_name"],
+                "model_name": _resolve_model_name(config),
+                "available": _is_model_configured(config),
+            }
+        )
     return models
 
 
@@ -1494,6 +1520,7 @@ def get_model(model_id: str | None = None):
 # Create Deep Agent
 # =============================================================================
 
+
 def build_graph(model_id: str | None = None, mode: str = "default"):
     """
     Build the Neloo agent using Deep Agents architecture.
@@ -1546,21 +1573,22 @@ def build_graph(model_id: str | None = None, mode: str = "default"):
     # (Runtime Dispatcher pattern - no dynamic injection needed)
     tools = list(CUSTOM_TOOLS)
     middleware = [MessagePersistenceMiddleware()]
-    
+
     return create_deep_agent(
         model=model,
         tools=tools,
         middleware=middleware,
         system_prompt=system_prompt,
         subagents=DATA_ANALYST_SUBAGENTS,  # Enable specialized subagents
-        interrupt_on=interrupt_on,          # Enable HITL if configured
-        backend=backend_factory,            # Route filesystem ops to E2B sandbox
+        interrupt_on=interrupt_on,  # Enable HITL if configured
+        backend=backend_factory,  # Route filesystem ops to E2B sandbox
     )
 
 
 # =============================================================================
 # Export Graphs for LangGraph Server
 # =============================================================================
+
 
 # Build graphs for each available model
 # LangGraph Server will expose these as separate assistants
@@ -1637,6 +1665,7 @@ except Exception as _e:
 graph_data_analyst_webdev = build_graph(mode="web-dev") if BUILD_VARIANT_GRAPHS else graph
 graph_data_analyst_fortune = build_graph(mode="fortune") if BUILD_VARIANT_GRAPHS else graph
 
+
 def _graph_or_default(model_id: str):
     if model_id in _MODEL_GRAPHS:
         return _MODEL_GRAPHS[model_id]
@@ -1682,24 +1711,42 @@ graph_custom_anthropic = _graph_or_default("custom-anthropic")
 graph_deepseek_webdev = _graph_variant_or_default("deepseek", "-web-dev", graph_data_analyst_webdev)
 graph_qwen_webdev = _graph_variant_or_default("qwen", "-web-dev", graph_data_analyst_webdev)
 graph_minimax_webdev = _graph_variant_or_default("minimax", "-web-dev", graph_data_analyst_webdev)
-graph_anthropic_webdev = _graph_variant_or_default("anthropic", "-web-dev", graph_data_analyst_webdev)
+graph_anthropic_webdev = _graph_variant_or_default(
+    "anthropic", "-web-dev", graph_data_analyst_webdev
+)
 graph_openai_webdev = _graph_variant_or_default("openai", "-web-dev", graph_data_analyst_webdev)
 graph_gemini_webdev = _graph_variant_or_default("gemini", "-web-dev", graph_data_analyst_webdev)
 graph_zhipu_webdev = _graph_variant_or_default("zhipu", "-web-dev", graph_data_analyst_webdev)
-graph_openrouter_webdev = _graph_variant_or_default("openrouter", "-web-dev", graph_data_analyst_webdev)
-graph_custom_openai_webdev = _graph_variant_or_default("custom-openai", "-web-dev", graph_data_analyst_webdev)
-graph_custom_anthropic_webdev = _graph_variant_or_default("custom-anthropic", "-web-dev", graph_data_analyst_webdev)
+graph_openrouter_webdev = _graph_variant_or_default(
+    "openrouter", "-web-dev", graph_data_analyst_webdev
+)
+graph_custom_openai_webdev = _graph_variant_or_default(
+    "custom-openai", "-web-dev", graph_data_analyst_webdev
+)
+graph_custom_anthropic_webdev = _graph_variant_or_default(
+    "custom-anthropic", "-web-dev", graph_data_analyst_webdev
+)
 
-graph_deepseek_fortune = _graph_variant_or_default("deepseek", "-fortune", graph_data_analyst_fortune)
+graph_deepseek_fortune = _graph_variant_or_default(
+    "deepseek", "-fortune", graph_data_analyst_fortune
+)
 graph_qwen_fortune = _graph_variant_or_default("qwen", "-fortune", graph_data_analyst_fortune)
 graph_minimax_fortune = _graph_variant_or_default("minimax", "-fortune", graph_data_analyst_fortune)
-graph_anthropic_fortune = _graph_variant_or_default("anthropic", "-fortune", graph_data_analyst_fortune)
+graph_anthropic_fortune = _graph_variant_or_default(
+    "anthropic", "-fortune", graph_data_analyst_fortune
+)
 graph_openai_fortune = _graph_variant_or_default("openai", "-fortune", graph_data_analyst_fortune)
 graph_gemini_fortune = _graph_variant_or_default("gemini", "-fortune", graph_data_analyst_fortune)
 graph_zhipu_fortune = _graph_variant_or_default("zhipu", "-fortune", graph_data_analyst_fortune)
-graph_openrouter_fortune = _graph_variant_or_default("openrouter", "-fortune", graph_data_analyst_fortune)
-graph_custom_openai_fortune = _graph_variant_or_default("custom-openai", "-fortune", graph_data_analyst_fortune)
-graph_custom_anthropic_fortune = _graph_variant_or_default("custom-anthropic", "-fortune", graph_data_analyst_fortune)
+graph_openrouter_fortune = _graph_variant_or_default(
+    "openrouter", "-fortune", graph_data_analyst_fortune
+)
+graph_custom_openai_fortune = _graph_variant_or_default(
+    "custom-openai", "-fortune", graph_data_analyst_fortune
+)
+graph_custom_anthropic_fortune = _graph_variant_or_default(
+    "custom-anthropic", "-fortune", graph_data_analyst_fortune
+)
 
 # Export individual graphs for LangGraph Server multi-assistant setup
 # Default mode graphs
@@ -1713,9 +1760,13 @@ graph_glm_4_7 = _MODEL_GRAPHS.get("glm-4.7") or graph_zhipu
 
 # Right Code Claude models (third-party API)
 graph_claude_opus_right = _MODEL_GRAPHS.get("claude-opus-right") or graph_anthropic
-graph_claude_opus_right_thinking = _MODEL_GRAPHS.get("claude-opus-right-thinking") or graph_anthropic
+graph_claude_opus_right_thinking = (
+    _MODEL_GRAPHS.get("claude-opus-right-thinking") or graph_anthropic
+)
 graph_claude_sonnet_right = _MODEL_GRAPHS.get("claude-sonnet-right") or graph_anthropic
-graph_claude_sonnet_right_thinking = _MODEL_GRAPHS.get("claude-sonnet-right-thinking") or graph_anthropic
+graph_claude_sonnet_right_thinking = (
+    _MODEL_GRAPHS.get("claude-sonnet-right-thinking") or graph_anthropic
+)
 
 # Legacy model aliases
 graph_gemini_3_pro = _MODEL_GRAPHS.get("gemini-3-pro") or graph_gemini
@@ -1724,7 +1775,9 @@ graph_gpt_5_thinking = _MODEL_GRAPHS.get("gpt-5-thinking") or graph_openai
 
 # Web-dev mode graphs (with artifact output support)
 graph_deepseek_chat_webdev = _MODEL_GRAPHS.get("deepseek-chat-web-dev") or graph_deepseek_webdev
-graph_deepseek_reasoner_webdev = _MODEL_GRAPHS.get("deepseek-reasoner-web-dev") or graph_deepseek_webdev
+graph_deepseek_reasoner_webdev = (
+    _MODEL_GRAPHS.get("deepseek-reasoner-web-dev") or graph_deepseek_webdev
+)
 graph_qwen_plus_webdev = _MODEL_GRAPHS.get("qwen-plus-web-dev") or graph_qwen_webdev
 graph_qwen3_max_webdev = _MODEL_GRAPHS.get("qwen3-max-web-dev") or graph_qwen_webdev
 graph_minimax_m2_webdev = _MODEL_GRAPHS.get("minimax-m2-web-dev") or graph_minimax_webdev
@@ -1732,10 +1785,18 @@ graph_claude_opus_or_webdev = _MODEL_GRAPHS.get("claude-opus-or-web-dev") or gra
 graph_glm_4_7_webdev = _MODEL_GRAPHS.get("glm-4.7-web-dev") or graph_zhipu_webdev
 
 # Right Code Claude web-dev mode graphs
-graph_claude_opus_right_webdev = _MODEL_GRAPHS.get("claude-opus-right-web-dev") or graph_anthropic_webdev
-graph_claude_opus_right_thinking_webdev = _MODEL_GRAPHS.get("claude-opus-right-thinking-web-dev") or graph_anthropic_webdev
-graph_claude_sonnet_right_webdev = _MODEL_GRAPHS.get("claude-sonnet-right-web-dev") or graph_anthropic_webdev
-graph_claude_sonnet_right_thinking_webdev = _MODEL_GRAPHS.get("claude-sonnet-right-thinking-web-dev") or graph_anthropic_webdev
+graph_claude_opus_right_webdev = (
+    _MODEL_GRAPHS.get("claude-opus-right-web-dev") or graph_anthropic_webdev
+)
+graph_claude_opus_right_thinking_webdev = (
+    _MODEL_GRAPHS.get("claude-opus-right-thinking-web-dev") or graph_anthropic_webdev
+)
+graph_claude_sonnet_right_webdev = (
+    _MODEL_GRAPHS.get("claude-sonnet-right-web-dev") or graph_anthropic_webdev
+)
+graph_claude_sonnet_right_thinking_webdev = (
+    _MODEL_GRAPHS.get("claude-sonnet-right-thinking-web-dev") or graph_anthropic_webdev
+)
 
 # Legacy web-dev mode graph aliases
 graph_gemini_3_pro_webdev = _MODEL_GRAPHS.get("gemini-3-pro-web-dev") or graph_gemini_webdev
@@ -1744,7 +1805,9 @@ graph_gpt_5_thinking_webdev = _MODEL_GRAPHS.get("gpt-5-thinking-web-dev") or gra
 
 # OpenRouter Llama models
 graph_llama_4_maverick = _MODEL_GRAPHS.get("llama-4-maverick") or graph_openrouter
-graph_llama_4_maverick_webdev = _MODEL_GRAPHS.get("llama-4-maverick-web-dev") or graph_openrouter_webdev
+graph_llama_4_maverick_webdev = (
+    _MODEL_GRAPHS.get("llama-4-maverick-web-dev") or graph_openrouter_webdev
+)
 graph_llama_3_3_70b = _MODEL_GRAPHS.get("llama-3.3-70b") or graph_openrouter
 graph_llama_3_3_70b_webdev = _MODEL_GRAPHS.get("llama-3.3-70b-web-dev") or graph_openrouter_webdev
 
@@ -1752,6 +1815,7 @@ graph_llama_3_3_70b_webdev = _MODEL_GRAPHS.get("llama-3.3-70b-web-dev") or graph
 # =============================================================================
 # Convenience Functions
 # =============================================================================
+
 
 def invoke(query: str, thread_id: str = "default", user_id: str = "default") -> dict:
     """

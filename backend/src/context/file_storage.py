@@ -11,14 +11,12 @@ Key insight from Manus:
 - "Keep URLs/paths for recovery, not the full content"
 """
 
-import os
-import json
 import hashlib
+import json
+import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Any
-import tempfile
-
+from typing import Optional
 
 # =============================================================================
 # Configuration
@@ -38,6 +36,7 @@ MAX_RESULT_AGE_HOURS = 24
 # =============================================================================
 # File Operations
 # =============================================================================
+
 
 def ensure_results_dir() -> Path:
     """Ensure the results directory exists."""
@@ -105,9 +104,9 @@ def save_result_to_file(
         f.write(content)
 
     # Generate a brief summary
-    lines = content.split('\n')
+    lines = content.split("\n")
     if len(lines) > 5:
-        summary = '\n'.join(lines[:3]) + f"\n... ({len(lines)} total lines)"
+        summary = "\n".join(lines[:3]) + f"\n... ({len(lines)} total lines)"
     else:
         summary = content[:500]
 
@@ -185,13 +184,15 @@ def list_saved_results(max_age_hours: Optional[int] = None) -> list[dict]:
             with open(json_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 # Return metadata without full content
-                results.append({
-                    "result_id": data.get("result_id"),
-                    "result_type": data.get("result_type"),
-                    "timestamp": data.get("timestamp"),
-                    "size": data.get("size"),
-                    "file_path": str(json_file),
-                })
+                results.append(
+                    {
+                        "result_id": data.get("result_id"),
+                        "result_type": data.get("result_type"),
+                        "timestamp": data.get("timestamp"),
+                        "size": data.get("size"),
+                        "file_path": str(json_file),
+                    }
+                )
         except (json.JSONDecodeError, IOError):
             continue
 
@@ -226,6 +227,7 @@ def cleanup_old_results(max_age_hours: int = MAX_RESULT_AGE_HOURS) -> int:
 # =============================================================================
 # Context Recovery
 # =============================================================================
+
 
 def format_file_reference(result_info: dict) -> str:
     """

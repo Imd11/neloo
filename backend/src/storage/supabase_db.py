@@ -11,12 +11,14 @@ This module handles:
 - Listing files for a thread
 """
 
-import os
-import uuid
-import os.path
-from typing import Optional, Literal
-from datetime import datetime, timedelta
 import asyncio
+import os
+import os.path
+import secrets
+import string
+import uuid
+from datetime import datetime, timedelta
+from typing import Literal, Optional
 
 # Supabase configuration
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
@@ -26,7 +28,7 @@ SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY")
 USE_SUPABASE_DB = bool(SUPABASE_URL and SUPABASE_SERVICE_KEY)
 
 # Valid file types
-FileType = Literal['uploaded', 'generated', 'chart', 'code']
+FileType = Literal["uploaded", "generated", "chart", "code"]
 
 # Async Supabase client singleton
 _supabase_client = None
@@ -54,7 +56,9 @@ async def get_supabase_client():
     ):
         # Best-effort close of an existing client/session if supported.
         try:
-            close_fn = getattr(_supabase_client, "aclose", None) or getattr(_supabase_client, "close", None)
+            close_fn = getattr(_supabase_client, "aclose", None) or getattr(
+                _supabase_client, "close", None
+            )
             if callable(close_fn):
                 maybe_awaitable = close_fn()
                 if asyncio.iscoroutine(maybe_awaitable):
@@ -62,6 +66,7 @@ async def get_supabase_client():
         except Exception:
             pass
         from supabase import acreate_client
+
         _supabase_client = await acreate_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
         _supabase_client_loop = loop
     return _supabase_client
@@ -100,7 +105,7 @@ async def save_file_record(
         The created file record, or None if failed
     """
     if not USE_SUPABASE_DB:
-        print(f"[SupabaseDB] Skipping save_file_record (not configured)")
+        print("[SupabaseDB] Skipping save_file_record (not configured)")
         return None
 
     await _ensure_guest_identity(user_id)
@@ -155,7 +160,9 @@ async def save_file_record(
                     # Use the threads table UUID for the association
                     await create_thread_file_link(thread_record["id"], file_id)
                 else:
-                    print(f"[SupabaseDB] Warning: Thread not found for langgraph_id {thread_id[:8]}... File saved but not linked to thread.")
+                    print(
+                        f"[SupabaseDB] Warning: Thread not found for langgraph_id {thread_id[:8]}... File saved but not linked to thread."
+                    )
 
             return file_record
 
@@ -193,13 +200,16 @@ async def create_thread_file_link(thread_id: str, file_id: str) -> bool:
 
         # Use upsert with ON CONFLICT DO NOTHING for idempotency
         # The table has UNIQUE(thread_id, file_id) constraint
-        result = await supabase.table("thread_files").upsert(
-            link_data,
-            on_conflict="thread_id,file_id"
-        ).execute()
+        result = (
+            await supabase.table("thread_files")
+            .upsert(link_data, on_conflict="thread_id,file_id")
+            .execute()
+        )
 
         if result.data and len(result.data) > 0:
-            print(f"[SupabaseDB] Created/verified thread_file link: thread={thread_id[:8]}... -> file={file_id[:8]}...")
+            print(
+                f"[SupabaseDB] Created/verified thread_file link: thread={thread_id[:8]}... -> file={file_id[:8]}..."
+            )
             return True
 
         return False
@@ -249,10 +259,12 @@ async def get_files_by_type(
         # If thread_id specified, filter by thread association
         if thread_id and files:
             # Get file IDs associated with this thread
-            thread_files_result = await supabase.table("thread_files")\
-                .select("file_id")\
-                .eq("thread_id", thread_id)\
+            thread_files_result = (
+                await supabase.table("thread_files")
+                .select("file_id")
+                .eq("thread_id", thread_id)
                 .execute()
+            )
 
             associated_file_ids = {tf["file_id"] for tf in (thread_files_result.data or [])}
             files = [f for f in files if f["id"] in associated_file_ids]
@@ -306,10 +318,12 @@ async def get_thread_files(thread_id: str) -> list[dict]:
             return []
 
         # Join thread_files with files
-        result = await supabase.table("thread_files")\
-            .select("file_id, files(*)")\
-            .eq("thread_id", thread_id)\
+        result = (
+            await supabase.table("thread_files")
+            .select("file_id, files(*)")
+            .eq("thread_id", thread_id)
             .execute()
+        )
 
         if result.data:
             # Extract the file records from the join result
@@ -332,11 +346,13 @@ async def count_file_thread_links(file_id: str, user_id: str) -> int:
         if not supabase:
             return 0
         # Count thread_files where thread belongs to user.
-        result = await supabase.table("thread_files")\
-            .select("id, threads!inner(user_id)", count="exact")\
-            .eq("file_id", file_id)\
-            .eq("threads.user_id", user_id)\
+        result = (
+            await supabase.table("thread_files")
+            .select("id, threads!inner(user_id)", count="exact")
+            .eq("file_id", file_id)
+            .eq("threads.user_id", user_id)
             .execute()
+        )
         return int(getattr(result, "count", None) or 0)
     except Exception as e:
         print(f"[SupabaseDB] Error counting file links: {e}")
@@ -351,11 +367,13 @@ async def delete_file_record(file_id: str, user_id: str) -> bool:
         supabase = await get_supabase_client()
         if not supabase:
             return False
-        result = await supabase.table("files")\
-            .delete()\
-            .eq("id", file_id)\
-            .eq("user_id", user_id)\
+        result = (
+            await supabase.table("files")
+            .delete()
+            .eq("id", file_id)
+            .eq("user_id", user_id)
             .execute()
+        )
         return bool(result.data)
     except Exception as e:
         print(f"[SupabaseDB] Error deleting file record: {e}")
@@ -370,11 +388,13 @@ async def delete_thread_file_link(thread_db_id: str, file_id: str) -> bool:
         supabase = await get_supabase_client()
         if not supabase:
             return False
-        result = await supabase.table("thread_files")\
-            .delete()\
-            .eq("thread_id", thread_db_id)\
-            .eq("file_id", file_id)\
+        result = (
+            await supabase.table("thread_files")
+            .delete()
+            .eq("thread_id", thread_db_id)
+            .eq("file_id", file_id)
             .execute()
+        )
         return True if result.data is not None else True
     except Exception as e:
         print(f"[SupabaseDB] Error deleting thread_file link: {e}")
@@ -389,11 +409,13 @@ async def delete_thread_record(thread_db_id: str, user_id: str) -> bool:
         supabase = await get_supabase_client()
         if not supabase:
             return False
-        result = await supabase.table("threads")\
-            .delete()\
-            .eq("id", thread_db_id)\
-            .eq("user_id", user_id)\
+        result = (
+            await supabase.table("threads")
+            .delete()
+            .eq("id", thread_db_id)
+            .eq("user_id", user_id)
             .execute()
+        )
         return bool(result.data)
     except Exception as e:
         print(f"[SupabaseDB] Error deleting thread record: {e}")
@@ -443,7 +465,7 @@ async def create_thread(
         The thread record (existing or newly created), or None if failed
     """
     if not USE_SUPABASE_DB:
-        print(f"[SupabaseDB] Skipping create_thread (not configured)")
+        print("[SupabaseDB] Skipping create_thread (not configured)")
         return None
 
     await _ensure_guest_identity(user_id)
@@ -454,14 +476,18 @@ async def create_thread(
             return None
 
         # First, check if thread already exists for this user + langgraph_thread_id
-        existing = await supabase.table("threads")\
-            .select("*")\
-            .eq("user_id", user_id)\
-            .eq("langgraph_thread_id", langgraph_thread_id)\
+        existing = (
+            await supabase.table("threads")
+            .select("*")
+            .eq("user_id", user_id)
+            .eq("langgraph_thread_id", langgraph_thread_id)
             .execute()
+        )
 
         if existing.data and len(existing.data) > 0:
-            print(f"[SupabaseDB] Thread already exists: {langgraph_thread_id[:8]}... (returning existing)")
+            print(
+                f"[SupabaseDB] Thread already exists: {langgraph_thread_id[:8]}... (returning existing)"
+            )
             return existing.data[0]
 
         # Thread doesn't exist, create new one
@@ -474,7 +500,7 @@ async def create_thread(
             "langgraph_thread_id": langgraph_thread_id,
             "mode": mode,  # Thread mode: "default" or "web-dev"
         }
-        
+
         # Add model_id if provided (for per-thread model preference)
         if model_id:
             thread_data["model_id"] = model_id
@@ -492,14 +518,18 @@ async def create_thread(
         # Handle race condition: if another request created the thread between
         # our check and insert, we'll get a duplicate key error (if UNIQUE constraint exists)
         if "duplicate" in str(e).lower() or "unique" in str(e).lower():
-            print(f"[SupabaseDB] Thread created by concurrent request: {langgraph_thread_id[:8]}...")
+            print(
+                f"[SupabaseDB] Thread created by concurrent request: {langgraph_thread_id[:8]}..."
+            )
             # Fetch the existing thread
             try:
-                result = await supabase.table("threads")\
-                    .select("*")\
-                    .eq("user_id", user_id)\
-                    .eq("langgraph_thread_id", langgraph_thread_id)\
+                result = (
+                    await supabase.table("threads")
+                    .select("*")
+                    .eq("user_id", user_id)
+                    .eq("langgraph_thread_id", langgraph_thread_id)
                     .execute()
+                )
                 if result.data and len(result.data) > 0:
                     return result.data[0]
             except Exception:
@@ -519,7 +549,7 @@ async def create_thread_with_fork(
 ) -> Optional[dict]:
     """
     Create a new thread with fork metadata.
-    
+
     Args:
         langgraph_thread_id: The new thread's ID
         user_id: Owner's user ID
@@ -528,7 +558,7 @@ async def create_thread_with_fork(
         parent_thread_id: The thread this was forked from
         fork_target_ai_message_id: The AI message user clicked to regenerate
         fork_anchor_human_message_id: The human message used as anchor
-        
+
     Returns:
         The created thread record, or None on failure
     """
@@ -536,14 +566,14 @@ async def create_thread_with_fork(
         return None
 
     await _ensure_guest_identity(user_id)
-    
+
     try:
         supabase = await get_supabase_client()
         if not supabase:
             return None
-        
+
         thread_id = str(uuid.uuid4())
-        
+
         thread_data = {
             "id": thread_id,
             "user_id": user_id,
@@ -554,15 +584,17 @@ async def create_thread_with_fork(
             "fork_target_ai_message_id": fork_target_ai_message_id,
             "fork_anchor_human_message_id": fork_anchor_human_message_id,
         }
-        
+
         result = await supabase.table("threads").insert(thread_data).execute()
-        
+
         if result.data and len(result.data) > 0:
-            print(f"[SupabaseDB] Created forked thread: {langgraph_thread_id[:8]}... from {parent_thread_id[:8] if parent_thread_id else 'none'}...")
+            print(
+                f"[SupabaseDB] Created forked thread: {langgraph_thread_id[:8]}... from {parent_thread_id[:8] if parent_thread_id else 'none'}..."
+            )
             return result.data[0]
-        
+
         return None
-        
+
     except Exception as e:
         print(f"[SupabaseDB] Error creating forked thread: {e}")
         return None
@@ -575,34 +607,36 @@ async def copy_messages_to_thread(
 ) -> int:
     """
     Copy messages from one thread to another, up to a specific seq.
-    
+
     Args:
         source_thread_id: The thread to copy from
         target_thread_id: The thread to copy to
         up_to_seq: Copy messages with seq <= this value
-        
+
     Returns:
         Number of messages copied
     """
     if not USE_SUPABASE_DB:
         return 0
-    
+
     try:
         supabase = await get_supabase_client()
         if not supabase:
             return 0
-        
+
         # Get messages from source thread up to the anchor
-        result = await supabase.table("chat_messages")\
-            .select("*")\
-            .eq("thread_id", source_thread_id)\
-            .lte("seq", up_to_seq)\
-            .order("seq")\
+        result = (
+            await supabase.table("chat_messages")
+            .select("*")
+            .eq("thread_id", source_thread_id)
+            .lte("seq", up_to_seq)
+            .order("seq")
             .execute()
-        
+        )
+
         if not result.data:
             return 0
-        
+
         # Copy each message to new thread with new seq
         copied = 0
         for i, msg in enumerate(result.data, start=1):
@@ -613,16 +647,16 @@ async def copy_messages_to_thread(
                 "message_data": msg["message_data"],
                 "seq": i,  # Reset seq for new thread
             }
-            
+
             try:
                 await supabase.table("chat_messages").insert(new_msg).execute()
                 copied += 1
             except Exception as e:
                 print(f"[SupabaseDB] Error copying message {i}: {e}")
-        
+
         print(f"[SupabaseDB] Copied {copied} messages to thread {target_thread_id[:8]}...")
         return copied
-        
+
     except Exception as e:
         print(f"[SupabaseDB] Error copying messages: {e}")
         return 0
@@ -652,12 +686,14 @@ async def get_user_threads(
         if not supabase:
             return []
 
-        result = await supabase.table("threads")\
-            .select("*")\
-            .eq("user_id", user_id)\
-            .order("updated_at", desc=True)\
-            .range(offset, offset + limit - 1)\
+        result = (
+            await supabase.table("threads")
+            .select("*")
+            .eq("user_id", user_id)
+            .order("updated_at", desc=True)
+            .range(offset, offset + limit - 1)
             .execute()
+        )
 
         return result.data or []
 
@@ -686,10 +722,12 @@ async def get_thread_by_langgraph_id(
         if not supabase:
             return None
 
-        result = await supabase.table("threads")\
-            .select("*")\
-            .eq("langgraph_thread_id", langgraph_thread_id)\
+        result = (
+            await supabase.table("threads")
+            .select("*")
+            .eq("langgraph_thread_id", langgraph_thread_id)
             .execute()
+        )
 
         if result.data and len(result.data) > 0:
             return result.data[0]
@@ -723,10 +761,12 @@ async def update_thread_title(
         if not supabase:
             return False
 
-        result = await supabase.table("threads")\
-            .update({"title": title, "updated_at": datetime.now().isoformat()})\
-            .eq("langgraph_thread_id", langgraph_thread_id)\
+        result = (
+            await supabase.table("threads")
+            .update({"title": title, "updated_at": datetime.now().isoformat()})
+            .eq("langgraph_thread_id", langgraph_thread_id)
             .execute()
+        )
 
         if result.data:
             print(f"[SupabaseDB] Updated thread title: {langgraph_thread_id[:8]}... -> {title}")
@@ -762,13 +802,17 @@ async def update_thread_model_id(
         if not supabase:
             return False
 
-        result = await supabase.table("threads")\
-            .update({"model_id": model_id, "updated_at": datetime.now().isoformat()})\
-            .eq("langgraph_thread_id", langgraph_thread_id)\
+        result = (
+            await supabase.table("threads")
+            .update({"model_id": model_id, "updated_at": datetime.now().isoformat()})
+            .eq("langgraph_thread_id", langgraph_thread_id)
             .execute()
+        )
 
         if result.data:
-            print(f"[SupabaseDB] Updated thread model_id: {langgraph_thread_id[:8]}... -> {model_id}")
+            print(
+                f"[SupabaseDB] Updated thread model_id: {langgraph_thread_id[:8]}... -> {model_id}"
+            )
             return True
 
         return False
@@ -796,7 +840,8 @@ def _cleanup_expired_memory_sessions():
     global _in_memory_upload_sessions
     now = datetime.now()
     expired_ids = [
-        sid for sid, session in _in_memory_upload_sessions.items()
+        sid
+        for sid, session in _in_memory_upload_sessions.items()
         if datetime.fromisoformat(session["expires_at"]) < now
     ]
     for sid in expired_ids:
@@ -873,8 +918,12 @@ async def create_upload_session(
     except Exception as e:
         error_str = str(e).lower()
         # Check if error indicates table doesn't exist
-        if "upload_sessions" in error_str or "does not exist" in error_str or "relation" in error_str:
-            print(f"[SupabaseDB] Table upload_sessions not found, using in-memory fallback")
+        if (
+            "upload_sessions" in error_str
+            or "does not exist" in error_str
+            or "relation" in error_str
+        ):
+            print("[SupabaseDB] Table upload_sessions not found, using in-memory fallback")
             _use_memory_sessions_fallback = True
             _in_memory_upload_sessions[file_id] = session_data
             return session_data
@@ -917,11 +966,13 @@ async def get_upload_session(file_id: str, user_id: str) -> Optional[dict]:
                 return session
             return None
 
-        result = await supabase.table("upload_sessions")\
-            .select("*")\
-            .eq("id", file_id)\
-            .eq("user_id", user_id)\
+        result = (
+            await supabase.table("upload_sessions")
+            .select("*")
+            .eq("id", file_id)
+            .eq("user_id", user_id)
             .execute()
+        )
 
         if result.data and len(result.data) > 0:
             session = result.data[0]
@@ -936,8 +987,12 @@ async def get_upload_session(file_id: str, user_id: str) -> Optional[dict]:
 
     except Exception as e:
         error_str = str(e).lower()
-        if "upload_sessions" in error_str or "does not exist" in error_str or "relation" in error_str:
-            print(f"[SupabaseDB] Table upload_sessions not found, using in-memory fallback")
+        if (
+            "upload_sessions" in error_str
+            or "does not exist" in error_str
+            or "relation" in error_str
+        ):
+            print("[SupabaseDB] Table upload_sessions not found, using in-memory fallback")
             _use_memory_sessions_fallback = True
             session = _in_memory_upload_sessions.get(file_id)
             if session and session.get("user_id") == user_id:
@@ -991,10 +1046,9 @@ async def update_upload_session_status(
         if actual_size is not None:
             update_data["actual_size"] = actual_size
 
-        result = await supabase.table("upload_sessions")\
-            .update(update_data)\
-            .eq("id", file_id)\
-            .execute()
+        result = (
+            await supabase.table("upload_sessions").update(update_data).eq("id", file_id).execute()
+        )
 
         if result.data:
             print(f"[SupabaseDB] Updated upload session status: {file_id[:8]}... -> {status}")
@@ -1004,7 +1058,11 @@ async def update_upload_session_status(
 
     except Exception as e:
         error_str = str(e).lower()
-        if "upload_sessions" in error_str or "does not exist" in error_str or "relation" in error_str:
+        if (
+            "upload_sessions" in error_str
+            or "does not exist" in error_str
+            or "relation" in error_str
+        ):
             _use_memory_sessions_fallback = True
             if file_id in _in_memory_upload_sessions:
                 _in_memory_upload_sessions[file_id]["status"] = status
@@ -1056,10 +1114,9 @@ async def commit_upload_session(file_id: str, thread_id: str) -> bool:
             "updated_at": datetime.now().isoformat(),
         }
 
-        result = await supabase.table("upload_sessions")\
-            .update(update_data)\
-            .eq("id", file_id)\
-            .execute()
+        result = (
+            await supabase.table("upload_sessions").update(update_data).eq("id", file_id).execute()
+        )
 
         if result.data:
             print(f"[SupabaseDB] Committed upload: {file_id[:8]}... to thread {thread_id[:8]}...")
@@ -1069,7 +1126,11 @@ async def commit_upload_session(file_id: str, thread_id: str) -> bool:
 
     except Exception as e:
         error_str = str(e).lower()
-        if "upload_sessions" in error_str or "does not exist" in error_str or "relation" in error_str:
+        if (
+            "upload_sessions" in error_str
+            or "does not exist" in error_str
+            or "relation" in error_str
+        ):
             _use_memory_sessions_fallback = True
             if file_id in _in_memory_upload_sessions:
                 _in_memory_upload_sessions[file_id]["committed"] = True
@@ -1098,7 +1159,8 @@ async def get_user_pending_uploads(user_id: str) -> list[dict]:
     if _use_memory_sessions_fallback or not USE_SUPABASE_DB:
         _cleanup_expired_memory_sessions()
         return [
-            session for session in _in_memory_upload_sessions.values()
+            session
+            for session in _in_memory_upload_sessions.values()
             if session.get("user_id") == user_id
             and not session.get("committed", False)
             and datetime.fromisoformat(session["expires_at"]) > now
@@ -1108,29 +1170,35 @@ async def get_user_pending_uploads(user_id: str) -> list[dict]:
         supabase = await get_supabase_client()
         if not supabase:
             return [
-                session for session in _in_memory_upload_sessions.values()
-                if session.get("user_id") == user_id
-                and not session.get("committed", False)
+                session
+                for session in _in_memory_upload_sessions.values()
+                if session.get("user_id") == user_id and not session.get("committed", False)
             ]
 
-        result = await supabase.table("upload_sessions")\
-            .select("*")\
-            .eq("user_id", user_id)\
-            .eq("committed", False)\
-            .gt("expires_at", now.isoformat())\
-            .order("created_at", desc=True)\
+        result = (
+            await supabase.table("upload_sessions")
+            .select("*")
+            .eq("user_id", user_id)
+            .eq("committed", False)
+            .gt("expires_at", now.isoformat())
+            .order("created_at", desc=True)
             .execute()
+        )
 
         return result.data or []
 
     except Exception as e:
         error_str = str(e).lower()
-        if "upload_sessions" in error_str or "does not exist" in error_str or "relation" in error_str:
+        if (
+            "upload_sessions" in error_str
+            or "does not exist" in error_str
+            or "relation" in error_str
+        ):
             _use_memory_sessions_fallback = True
             return [
-                session for session in _in_memory_upload_sessions.values()
-                if session.get("user_id") == user_id
-                and not session.get("committed", False)
+                session
+                for session in _in_memory_upload_sessions.values()
+                if session.get("user_id") == user_id and not session.get("committed", False)
             ]
         print(f"[SupabaseDB] Error getting pending uploads: {e}")
         return []
@@ -1161,11 +1229,13 @@ async def cleanup_expired_uploads() -> int:
         now = datetime.now().isoformat()
 
         # Delete expired sessions that were never committed
-        result = await supabase.table("upload_sessions")\
-            .delete()\
-            .eq("committed", False)\
-            .lt("expires_at", now)\
+        result = (
+            await supabase.table("upload_sessions")
+            .delete()
+            .eq("committed", False)
+            .lt("expires_at", now)
             .execute()
+        )
 
         deleted_count = len(result.data) if result.data else 0
 
@@ -1176,7 +1246,11 @@ async def cleanup_expired_uploads() -> int:
 
     except Exception as e:
         error_str = str(e).lower()
-        if "upload_sessions" in error_str or "does not exist" in error_str or "relation" in error_str:
+        if (
+            "upload_sessions" in error_str
+            or "does not exist" in error_str
+            or "relation" in error_str
+        ):
             _use_memory_sessions_fallback = True
             _cleanup_expired_memory_sessions()
             return 0
@@ -1207,22 +1281,24 @@ def save_file_record_sync(
         if loop.is_running():
             # We're in an async context, need to use create_task or similar
             # For now, just log and skip
-            print(f"[SupabaseDB] Cannot run sync wrapper in async context")
+            print("[SupabaseDB] Cannot run sync wrapper in async context")
             return None
     except RuntimeError:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
     try:
-        return loop.run_until_complete(save_file_record(
-            user_id=user_id,
-            filename=filename,
-            storage_path=storage_path,
-            file_size=file_size,
-            content_type=content_type,
-            file_type=file_type,
-            thread_id=thread_id,
-        ))
+        return loop.run_until_complete(
+            save_file_record(
+                user_id=user_id,
+                filename=filename,
+                storage_path=storage_path,
+                file_size=file_size,
+                content_type=content_type,
+                file_type=file_type,
+                thread_id=thread_id,
+            )
+        )
     except Exception as e:
         print(f"[SupabaseDB] Sync wrapper error: {e}")
         return None
@@ -1235,7 +1311,7 @@ def create_thread_file_link_sync(thread_id: str, file_id: str) -> bool:
     try:
         loop = asyncio.get_event_loop()
         if loop.is_running():
-            print(f"[SupabaseDB] Cannot run sync wrapper in async context")
+            print("[SupabaseDB] Cannot run sync wrapper in async context")
             return False
     except RuntimeError:
         loop = asyncio.new_event_loop()
@@ -1252,13 +1328,11 @@ def create_thread_file_link_sync(thread_id: str, file_id: str) -> bool:
 # Share Link Functions
 # =============================================================================
 
-import secrets
-import string
 
 def generate_share_id(length: int = 8) -> str:
     """Generate a random share ID."""
     alphabet = string.ascii_lowercase + string.digits
-    return ''.join(secrets.choice(alphabet) for _ in range(length))
+    return "".join(secrets.choice(alphabet) for _ in range(length))
 
 
 async def create_share(
@@ -1268,13 +1342,13 @@ async def create_share(
 ) -> Optional[dict]:
     """
     Create a share link for a thread or up to a specific AI message.
-    
+
     Args:
         user_id: Owner's user ID
         thread_id: langgraph_thread_id of the thread to share
         target_ai_message_id: Optional ID of AI message to share up to.
                       If None, shares the entire conversation.
-        
+
     Returns:
         Share record dict with share_id, or None on failure
     """
@@ -1283,29 +1357,31 @@ async def create_share(
         return None
 
     await _ensure_guest_identity(user_id)
-    
+
     supabase = await get_supabase_client()
     if not supabase:
         return None
-    
+
     try:
         share_id = generate_share_id()
-        
+
         share_data = {
             "share_id": share_id,
             "thread_id": thread_id,
             "user_id": user_id,
         }
-        
+
         # Add target_ai_message_id if provided (for truncated sharing)
         if target_ai_message_id is not None:
             share_data["target_ai_message_id"] = target_ai_message_id
-        
+
         result = await supabase.table("shared_conversations").insert(share_data).execute()
-        
+
         if result.data:
-            print(f"[SupabaseDB] Created share: {share_id} for thread {thread_id}" + 
-                  (f" (up to msg {target_ai_message_id[:8]}...)" if target_ai_message_id else ""))
+            print(
+                f"[SupabaseDB] Created share: {share_id} for thread {thread_id}"
+                + (f" (up to msg {target_ai_message_id[:8]}...)" if target_ai_message_id else "")
+            )
             return result.data[0]
         return None
     except Exception as e:
@@ -1316,26 +1392,28 @@ async def create_share(
 async def get_share_by_id(share_id: str) -> Optional[dict]:
     """
     Get a share record by its share_id.
-    
+
     Args:
         share_id: The short share identifier
-        
+
     Returns:
         Share record dict or None if not found
     """
     if not USE_SUPABASE_DB:
         return None
-    
+
     supabase = await get_supabase_client()
     if not supabase:
         return None
-    
+
     try:
-        result = await supabase.table("shared_conversations")\
-            .select("*")\
-            .eq("share_id", share_id)\
+        result = (
+            await supabase.table("shared_conversations")
+            .select("*")
+            .eq("share_id", share_id)
             .execute()
-        
+        )
+
         if result.data and len(result.data) > 0:
             return result.data[0]
         return None
@@ -1347,28 +1425,30 @@ async def get_share_by_id(share_id: str) -> Optional[dict]:
 async def delete_share(share_id: str, user_id: str) -> bool:
     """
     Delete a share link (only owner can delete).
-    
+
     Args:
         share_id: The share identifier to delete
         user_id: The user attempting to delete (must be owner)
-        
+
     Returns:
         True if deleted, False otherwise
     """
     if not USE_SUPABASE_DB:
         return False
-    
+
     supabase = await get_supabase_client()
     if not supabase:
         return False
-    
+
     try:
-        result = await supabase.table("shared_conversations")\
-            .delete()\
-            .eq("share_id", share_id)\
-            .eq("user_id", user_id)\
+        (
+            await supabase.table("shared_conversations")
+            .delete()
+            .eq("share_id", share_id)
+            .eq("user_id", user_id)
             .execute()
-        
+        )
+
         return True
     except Exception as e:
         print(f"[SupabaseDB] Failed to delete share: {e}")
@@ -1378,27 +1458,29 @@ async def delete_share(share_id: str, user_id: str) -> bool:
 async def get_user_shares(user_id: str) -> list:
     """
     Get all shares created by a user.
-    
+
     Args:
         user_id: The user's ID
-        
+
     Returns:
         List of share records
     """
     if not USE_SUPABASE_DB:
         return []
-    
+
     supabase = await get_supabase_client()
     if not supabase:
         return []
-    
+
     try:
-        result = await supabase.table("shared_conversations")\
-            .select("*")\
-            .eq("user_id", user_id)\
-            .order("created_at", desc=True)\
+        result = (
+            await supabase.table("shared_conversations")
+            .select("*")
+            .eq("user_id", user_id)
+            .order("created_at", desc=True)
             .execute()
-        
+        )
+
         return result.data or []
     except Exception as e:
         print(f"[SupabaseDB] Failed to get user shares: {e}")
@@ -1409,27 +1491,28 @@ async def get_user_shares(user_id: str) -> list:
 # Chat Message Persistence (WeChat-style final history)
 # =============================================================================
 
+
 async def get_next_seq(thread_id: str) -> int:
     """
     Atomically get and increment the sequence number for a thread.
-    
+
     Uses a database RPC function to ensure atomic increment even under concurrency.
     Falls back to counting existing messages + 1 if RPC not available.
-    
+
     Args:
         thread_id: The thread ID (langgraph_thread_id)
-        
+
     Returns:
         The next sequence number for this thread
     """
     if not USE_SUPABASE_DB:
         return 1
-    
+
     try:
         supabase = await get_supabase_client()
         if not supabase:
             return 1
-        
+
         # Try to use the atomic RPC function
         try:
             result = await supabase.rpc("get_next_seq", {"p_thread_id": thread_id}).execute()
@@ -1438,19 +1521,21 @@ async def get_next_seq(thread_id: str) -> int:
         except Exception as rpc_error:
             # RPC function may not exist yet, fall back to counting
             print(f"[SupabaseDB] get_next_seq RPC not available: {rpc_error}")
-        
+
         # Fallback: count existing messages and add 1
-        count_result = await supabase.table("chat_messages")\
-            .select("seq", count="exact")\
-            .eq("thread_id", thread_id)\
-            .order("seq", desc=True)\
-            .limit(1)\
+        count_result = (
+            await supabase.table("chat_messages")
+            .select("seq", count="exact")
+            .eq("thread_id", thread_id)
+            .order("seq", desc=True)
+            .limit(1)
             .execute()
-        
+        )
+
         if count_result.data and len(count_result.data) > 0:
             return count_result.data[0]["seq"] + 1
         return 1
-        
+
     except Exception as e:
         print(f"[SupabaseDB] Error getting next seq: {e}")
         return 1
@@ -1464,35 +1549,37 @@ async def save_chat_message(
 ) -> Optional[dict]:
     """
     Save a chat message with idempotent behavior.
-    
+
     If (thread_id, message_id) already exists, returns existing record without modification.
     This ensures seq is never wasted or changed on duplicate saves.
-    
+
     Args:
         thread_id: The thread ID (langgraph_thread_id)
         message_id: Unique message identifier (for idempotency)
         role: Message role ('user', 'assistant', 'system', 'tool')
         message_data: Complete message object as dict (JSONB)
-        
+
     Returns:
         The saved/existing message record, or None if failed
     """
     if not USE_SUPABASE_DB:
-        print(f"[SupabaseDB] Skipping save_chat_message (not configured)")
+        print("[SupabaseDB] Skipping save_chat_message (not configured)")
         return None
-    
+
     try:
         supabase = await get_supabase_client()
         if not supabase:
             return None
-        
+
         # First check if this message already exists (idempotent check)
-        existing = await supabase.table("chat_messages")\
-            .select("*")\
-            .eq("thread_id", thread_id)\
-            .eq("message_id", message_id)\
+        existing = (
+            await supabase.table("chat_messages")
+            .select("*")
+            .eq("thread_id", thread_id)
+            .eq("message_id", message_id)
             .execute()
-        
+        )
+
         if existing.data and len(existing.data) > 0:
             # Record already exists: update message_data (keep seq stable)
             record = existing.data[0]
@@ -1501,21 +1588,27 @@ async def save_chat_message(
                 "message_data": message_data,
                 "updated_at": datetime.now().isoformat(),
             }
-            update_result = await supabase.table("chat_messages")\
-                .update(update_data)\
-                .eq("thread_id", thread_id)\
-                .eq("message_id", message_id)\
+            update_result = (
+                await supabase.table("chat_messages")
+                .update(update_data)
+                .eq("thread_id", thread_id)
+                .eq("message_id", message_id)
                 .execute()
+            )
             if update_result.data and len(update_result.data) > 0:
                 updated = update_result.data[0]
-                print(f"[SupabaseDB] Updated chat message: {thread_id[:8]}... #{updated.get('seq')} ({role})")
+                print(
+                    f"[SupabaseDB] Updated chat message: {thread_id[:8]}... #{updated.get('seq')} ({role})"
+                )
                 return updated
-            print(f"[SupabaseDB] Message exists but update returned empty: {thread_id[:8]}... #{record.get('seq')} ({role})")
+            print(
+                f"[SupabaseDB] Message exists but update returned empty: {thread_id[:8]}... #{record.get('seq')} ({role})"
+            )
             return record
-        
+
         # Record doesn't exist, get next seq and insert
         seq = await get_next_seq(thread_id)
-        
+
         record = {
             "thread_id": thread_id,
             "message_id": message_id,
@@ -1523,18 +1616,18 @@ async def save_chat_message(
             "message_data": message_data,
             "seq": seq,
         }
-        
-        result = await supabase.table("chat_messages")\
-            .insert(record)\
-            .execute()
-        
+
+        result = await supabase.table("chat_messages").insert(record).execute()
+
         if result.data and len(result.data) > 0:
             saved = result.data[0]
-            print(f"[SupabaseDB] Saved chat message: {thread_id[:8]}... #{saved.get('seq')} ({role})")
+            print(
+                f"[SupabaseDB] Saved chat message: {thread_id[:8]}... #{saved.get('seq')} ({role})"
+            )
             return saved
-        
+
         return None
-        
+
     except Exception as e:
         print(f"[SupabaseDB] Error saving chat message: {e}")
         return None
@@ -1557,12 +1650,14 @@ async def get_chat_message_rows(
         if not supabase:
             return []
 
-        result = await supabase.table("chat_messages")\
-            .select("message_id, role, message_data, seq")\
-            .eq("thread_id", thread_id)\
-            .order("seq")\
-            .limit(limit)\
+        result = (
+            await supabase.table("chat_messages")
+            .select("message_id, role, message_data, seq")
+            .eq("thread_id", thread_id)
+            .order("seq")
+            .limit(limit)
             .execute()
+        )
 
         return result.data or []
     except Exception as e:

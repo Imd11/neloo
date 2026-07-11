@@ -1,7 +1,7 @@
 """Application identity persistence for guest and Supabase users."""
 
-from datetime import datetime, timezone
 import os
+from datetime import datetime, timezone
 
 from fastapi import Depends, HTTPException
 

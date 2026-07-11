@@ -63,7 +63,9 @@ def test_ensure_identity_is_noop_without_supabase(monkeypatch):
         raise AssertionError("database client should not be created")
 
     monkeypatch.setattr(identity, "get_supabase_client", unexpected_client)
-    assert run(identity.ensure_app_identity("11111111-1111-4111-8111-111111111111", "guest")) is None
+    assert (
+        run(identity.ensure_app_identity("11111111-1111-4111-8111-111111111111", "guest")) is None
+    )
 
 
 def test_authenticated_request_ensures_identity_before_route(monkeypatch):
