@@ -186,10 +186,15 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 Security rules:
 
 - `SUPABASE_SERVICE_KEY` is a backend-only secret.
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` is public. Configure Row Level Security in Supabase.
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` is public, but it has no direct CRUD permission on
+  Neloo user tables or Storage objects. User persistence runs through the backend
+  service role; do not add browser policies to work around a backend error.
 - Run only the canonical migrations in `supabase/migrations/`. The two legacy SQL
   directories under `backend/` are retained solely as historical input for the
   automated legacy-upgrade fixture; do not execute them manually.
+- Verify the canonical chain with `supabase db reset`, then run
+  `supabase test db supabase/tests/schema_smoke.sql` and
+  `supabase test db supabase/tests/guest_data_rls.sql`.
 
 ### Legacy LangGraph thread ownership
 

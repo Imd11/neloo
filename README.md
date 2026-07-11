@@ -201,9 +201,23 @@ For providers with a required base URL or custom model variable, the API key alo
 1. Create a Supabase project.
 2. Copy your project URL into `SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_URL`.
 3. Copy the service role key into `SUPABASE_SERVICE_KEY`. Never expose it in the frontend.
-4. Copy the anon key into `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+4. Copy the anon key into `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Neloo does not use it
+   for direct user-data access; all persistence and signed file operations go
+   through the backend service role.
 5. If you enable JWT verification, set `SUPABASE_JWT_SECRET`.
 6. Apply the Supabase migrations described in [Configuration](docs/configuration.md).
+
+Verify a local database before deployment:
+
+```bash
+supabase db reset
+supabase test db supabase/tests/schema_smoke.sql
+supabase test db supabase/tests/guest_data_rls.sql
+```
+
+The expected security boundary is deliberate: `anon` and `authenticated` cannot
+directly read or write user tables or Storage objects. Public share links are read
+through `/api/share/*`, where the backend applies the share contract.
 
 ### Upgrading an existing deployment
 
