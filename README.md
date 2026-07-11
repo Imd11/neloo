@@ -266,6 +266,9 @@ API_BASE_URL=https://your-backend.up.railway.app
 FRONTEND_URL=https://your-frontend.vercel.app
 CORS_ALLOWED_ORIGINS=https://your-frontend.vercel.app
 DATABASE_URL=postgresql://...
+RATE_LIMIT_REDIS_URL=redis://...
+RATE_LIMIT_NAMESPACE=neloo
+TRUSTED_PROXY_HOPS=1
 SANDBOX_MODE=e2b
 E2B_API_KEY=...
 DEEPSEEK_API_KEY=...
@@ -278,9 +281,14 @@ On Vercel, set frontend variables in Project Settings -> Environment Variables:
 ```env
 NEXT_PUBLIC_API_URL=https://your-backend.up.railway.app
 NEXT_PUBLIC_ASSISTANT_ID=data_analyst
+ANONYMOUS_SESSION_SECRET=use-the-same-server-only-secret-as-the-backend
+RATE_LIMIT_REDIS_URL=redis://...
+RATE_LIMIT_NAMESPACE=neloo
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 ```
+
+`RATE_LIMIT_REDIS_URL` is server-only and must point to the same Redis service in Railway and Vercel. Neloo uses it for shared guest/IP windows and daily cost-unit budgets across all instances. Local development may omit Redis, but that memory mode is single-process only and `/ready` will never treat it as production-ready.
 
 ## Security Before Open Sourcing
 

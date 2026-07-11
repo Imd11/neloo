@@ -24,6 +24,7 @@ const SlideViewer = dynamic(() => import('./SlideViewer'), {
 import RegenerateModal from './RegenerateModal';
 import NewSlideModal from './NewSlideModal';
 import ConfirmationModal from './ConfirmationModal';
+import { useAuth } from '@/providers/AuthProvider';
 
 interface SlideShowProps {
     slides: Slide[];
@@ -42,6 +43,7 @@ const SlideShow: React.FC<SlideShowProps> = ({
     userId,
     onSlidesUpdate
 }) => {
+    const { session } = useAuth();
     const [slides, setSlides] = useState<Slide[]>(initialSlides);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [generatingCount, setGeneratingCount] = useState(0);
@@ -167,7 +169,7 @@ const SlideShow: React.FC<SlideShowProps> = ({
         setGeneratingCount(c => c + 1);
 
         try {
-            const base64 = await generateSlideImage(slide);
+            const base64 = await generateSlideImage(slide, session.access_token);
 
             if (!base64) {
                 throw new Error("Image generation returned empty result");
@@ -221,7 +223,7 @@ const SlideShow: React.FC<SlideShowProps> = ({
         } finally {
             setGeneratingCount(c => c - 1);
         }
-    }, [slides, presentationId]);
+    }, [slides, presentationId, session.access_token]);
 
     // Queue strategy
     useEffect(() => {

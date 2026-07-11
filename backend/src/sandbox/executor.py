@@ -1619,6 +1619,11 @@ def execute_python(
             "generated_files": [],
         }
 
+    if os.environ.get("SANDBOX_MODE", "e2b").lower() in {"e2b", "e2b-sync", "e2b-async"}:
+        from ..usage_limits import enforce_e2b_usage_limit_sync
+
+        enforce_e2b_usage_limit_sync(user_id)
+
     executor = get_executor()
 
     # Sync files if provided (for explicit file sync before execution)

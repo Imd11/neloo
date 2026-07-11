@@ -590,7 +590,12 @@
     "library_title": "文件库",
     "library_select_title": "从库中选择文件"
   },
-  "tool_approval": {
+    "errors": {
+        "rate_limited": "请求过多，请在 {seconds} 秒后重试。",
+        "input_too_large": "消息过长，请控制在 20,000 个字符以内。",
+        "too_many_attachments": "每次请求最多可添加 10 个附件。"
+    },
+    "tool_approval": {
     "required": "需要审批", "tool": "工具", "app": "应用", "action": "操作",
     "risk": "风险", "unknown": "未知", "external_write": "外部写操作",
     "external_impact": "批准后可能在已连接的应用中创建、修改、发送或删除数据。",

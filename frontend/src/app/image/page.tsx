@@ -37,6 +37,7 @@ import { getConfig } from "@/lib/config";
 import { useThreads } from "@/app/hooks/useThreads";
 import { features } from "@/data/featureTemplates";
 import { useLanguage } from "@/providers/LanguageProvider";
+import { rateLimitRetryAfter } from "@/lib/rateLimitError";
 
 // Import logos for image models
 import nanoBananaLogo from "@/assets/logos/nano-banana.png";
@@ -256,7 +257,10 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
             // Call real API
             const response = await fetch("/api/generate-image", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+                },
                 body: JSON.stringify({
                     prompt: value,
                     resolution: resolution,
@@ -267,6 +271,10 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
             });
 
             if (!response.ok) {
+                const retryAfter = rateLimitRetryAfter(response);
+                if (retryAfter !== null) {
+                    throw new Error(t("errors.rate_limited", { seconds: retryAfter }));
+                }
                 const error = await response.json();
                 throw new Error(error.error || "生成失败");
             }
@@ -318,7 +326,7 @@ export function ImagePageContent({ onExit }: { onExit?: () => void } = {}) {
                 generationAbortRef.current = null;
             }
         }
-    }, [setCollapsed, messages, createImageThread, generateTitle, imageModel, ratio, resolution, t]);
+    }, [setCollapsed, messages, createImageThread, generateTitle, imageModel, ratio, resolution, session?.access_token, t]);
 
     const handleSelectTemplate = (template: Template) => {
         setSelectedImageTemplate(template);

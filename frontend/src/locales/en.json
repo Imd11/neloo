@@ -590,6 +590,11 @@
         "library_title": "File Library",
         "library_select_title": "Choose files from library"
     },
+    "errors": {
+        "rate_limited": "Too many requests. Try again in {seconds} seconds.",
+        "input_too_large": "The message is too long. Keep it under 20,000 characters.",
+        "too_many_attachments": "You can attach up to 10 files per request."
+    },
     "tool_approval": {
         "required": "Approval required", "tool": "Tool", "app": "App", "action": "Action",
         "risk": "Risk", "unknown": "Unknown", "external_write": "External write",

@@ -96,6 +96,7 @@ export const SERVER_ONLY_KEYS = [
   "COMPOSIO_AUTH_CONFIGS_JSON",
   "LANGSMITH_API_KEY",
   "ANONYMOUS_SESSION_SECRET",
+  "RATE_LIMIT_REDIS_URL",
 ];
 
 const PUBLIC_FRONTEND_KEYS = [
@@ -238,6 +239,9 @@ export function analyzeEnvironment({ backend, frontend, profile = "local-minimal
     if (isProductionProfile && !hasValue(backendValues, "ANONYMOUS_SESSION_SECRET")) {
       add(report, "error", "missing-anonymous-session-secret", "Production guest mode requires ANONYMOUS_SESSION_SECRET. Use the same server-only value in backend/.env and frontend/.env.local.", "backend/.env");
     }
+    if (isProductionProfile && !hasValue(backendValues, "RATE_LIMIT_REDIS_URL")) {
+      add(report, "error", "missing-rate-limit-redis", "Production requires RATE_LIMIT_REDIS_URL for shared usage limits.", "backend/.env");
+    }
     const hasAnyChatKey = CHAT_MODEL_KEYS.some((key) => hasValue(backendValues, key));
     const chatModelStatus = evaluateChatModelConfigs(backendValues);
 
@@ -300,6 +304,16 @@ export function analyzeEnvironment({ backend, frontend, profile = "local-minimal
   if (frontend.exists) {
     if (profile === "production-railway-vercel" && !hasValue(frontendValues, "ANONYMOUS_SESSION_SECRET")) {
       add(report, "error", "missing-frontend-anonymous-session-secret", "Production guest mode requires ANONYMOUS_SESSION_SECRET in frontend/.env.local so the server can issue isolated guest sessions.", "frontend/.env.local");
+    }
+    if (isProductionProfile && !hasValue(frontendValues, "RATE_LIMIT_REDIS_URL")) {
+      add(report, "error", "missing-frontend-rate-limit-redis", "Production image routes require server-only RATE_LIMIT_REDIS_URL in Vercel.", "frontend/.env.local");
+    }
+    if (
+      hasValue(backendValues, "RATE_LIMIT_REDIS_URL") &&
+      hasValue(frontendValues, "RATE_LIMIT_REDIS_URL") &&
+      backendValues.RATE_LIMIT_REDIS_URL !== frontendValues.RATE_LIMIT_REDIS_URL
+    ) {
+      add(report, "error", "rate-limit-redis-mismatch", "Backend and frontend server routes must use the same RATE_LIMIT_REDIS_URL.", "backend/.env");
     }
     if (
       backend.exists &&

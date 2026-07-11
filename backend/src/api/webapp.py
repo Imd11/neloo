@@ -48,6 +48,7 @@ from .ratelimit import limiter
 from ..runtime_context import user_id_ctx, thread_id_ctx
 from ..model_ids import public_model_id
 from ..hidden_prompt_sanitization import sanitize_hidden_prompt_message_data
+from ..usage_limits import get_usage_limiter, usage_store_ready
 
 # Import image storage
 from ..storage import get_image, get_image_storage
@@ -382,6 +383,10 @@ app = FastAPI(
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+if os.environ.get("ENVIRONMENT", "development").lower() == "production":
+    get_usage_limiter()
 
 if allow_anonymous():
     print(
@@ -1476,10 +1481,38 @@ async def get_download_url(
         raise HTTPException(status_code=500, detail=f"Failed to create download URL: {str(e)}")
 
 
+@app.get("/live")
+async def liveness_check():
+    return {"status": "alive", "service": "neloo-api"}
+
+
+@app.get("/ready")
+async def readiness_check():
+    checks: dict[str, bool] = {}
+    try:
+        checks["redis"] = await usage_store_ready()
+    except Exception:
+        checks["redis"] = False
+
+    database_configured = bool(os.environ.get("DATABASE_URL") or (SUPABASE_URL and SUPABASE_SERVICE_KEY))
+    checks["database"] = database_configured or os.environ.get("ENVIRONMENT", "development").lower() != "production"
+    provider_keys = (
+        "DEEPSEEK_API_KEY", "QWEN_API_KEY", "MINIMAX_API_KEY", "ANTHROPIC_API_KEY",
+        "OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY", "ZHIPU_API_KEY",
+        "CUSTOM_OPENAI_API_KEY", "CUSTOM_ANTHROPIC_API_KEY",
+    )
+    checks["model_provider"] = any(os.environ.get(key, "").strip() for key in provider_keys)
+    ready = all(checks.values())
+    return JSONResponse(
+        status_code=200 if ready else 503,
+        content={"status": "ready" if ready else "not_ready", "checks": checks},
+    )
+
+
 @app.get("/health")
 async def health_check():
-    """Health check endpoint."""
-    return {"status": "healthy", "service": "data-analyst-file-api"}
+    """Backward-compatible liveness endpoint."""
+    return await liveness_check()
 
 
 # =============================================================================

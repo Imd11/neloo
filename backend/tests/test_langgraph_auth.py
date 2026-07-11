@@ -145,6 +145,21 @@ async def test_create_run_handler_is_registered_and_scopes_owner():
     assert value["metadata"]["owner"] == "guest-a"
 
 
+@pytest.mark.asyncio
+async def test_create_run_rejects_oversized_chat_input_before_limiting():
+    value = {
+        "thread_id": uuid4(),
+        "input": {"messages": [{"content": "x" * 20_001}]},
+    }
+
+    with pytest.raises(Auth.exceptions.HTTPException) as error:
+        await _handler("threads", "create_run")(
+            _context("threads", "create_run"), value
+        )
+
+    assert error.value.status_code == 413
+
+
 def test_runtime_config_prefers_authenticated_identity():
     config = {
         "configurable": {

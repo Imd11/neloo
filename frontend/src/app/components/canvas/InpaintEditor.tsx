@@ -6,6 +6,7 @@ import { Slider } from "@/components/ui/slider";
 import { Loader2, Eraser, Brush, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { useLanguage } from "@/providers/LanguageProvider";
+import { useAuth } from "@/providers/AuthProvider";
 
 interface InpaintEditorProps {
     imageUrl: string;
@@ -16,6 +17,7 @@ interface InpaintEditorProps {
 
 export function InpaintEditor({ imageUrl, onClose, onSave, initialPrompt = "" }: InpaintEditorProps) {
     const { t } = useLanguage();
+    const { session } = useAuth();
     const [prompt, setPrompt] = useState(initialPrompt);
     const [brushSize, setBrushSize] = useState(30);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -147,6 +149,7 @@ export function InpaintEditor({ imageUrl, onClose, onSave, initialPrompt = "" }:
 
             const res = await fetch("/api/edit", {
                 method: "POST",
+                headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
                 body: formData,
                 signal: controller.signal
             });

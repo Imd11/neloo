@@ -22,6 +22,7 @@ from langchain_core.runnables import RunnableConfig
 from ..runtime_context import thread_id_ctx, user_id_ctx, user_id_from_config
 from ..storage.supabase_db import get_supabase_client
 from ..identity import ensure_app_identity
+from ..usage_limits import enforce_guest_usage_limit
 from .integration_policy import classify_action
 
 
@@ -229,6 +230,8 @@ async def _invoke_allowed_action_legacy(
     Returns:
         A dict with status, result_id, result_url, and message.
     """
+    raise RuntimeError("Legacy integration execution is disabled")
+
     # ==========================================================================
     # Step 1: Resolve user_id and thread_id
     # ==========================================================================
@@ -598,6 +601,10 @@ async def _invoke_allowed_action(
 
     idempotency_key = None
     if classification in {"write", "sensitive"}:
+        try:
+            await enforce_guest_usage_limit("integration", user_id)
+        except Exception:
+            return {"status": "error", "message": "Integration usage limit exceeded."}
         idempotency_key = _generate_idempotency_key(
             user_id, thread_id, run_id, app_name, action, params
         )

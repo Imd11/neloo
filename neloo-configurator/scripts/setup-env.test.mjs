@@ -70,6 +70,7 @@ test("setupEnvironment gives production-specific next steps", () => {
   );
   assert.match(output, /Railway\/Vercel dashboards/);
   assert.match(output, /DATABASE_URL/);
+  assert.match(output, /RATE_LIMIT_REDIS_URL/);
   assert.doesNotMatch(output, /langgraph dev --host 127\.0\.0\.1 --port 2024/);
 });
 

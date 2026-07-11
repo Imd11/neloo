@@ -107,6 +107,18 @@ Old graph IDs are hidden from the selector but kept so existing LangGraph graph 
 | `NEXT_PUBLIC_SUPABASE_URL` | Frontend | Supabase browser features | Public browser value | Supabase client URL. |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Frontend | Supabase browser features | Public browser value | Public anon key; configure RLS. |
 
+## Shared Usage Limits
+
+| Variable | Location | Required when | Security | Feature |
+| --- | --- | --- | --- | --- |
+| `RATE_LIMIT_REDIS_URL` | Backend and frontend server environments | Every production deployment | Secret, never `NEXT_PUBLIC_` | Shared guest/IP windows, daily budgets, and concurrency leases. Use the same Redis service in Railway and Vercel. |
+| `RATE_LIMIT_NAMESPACE` | Backend and frontend server environments | Optional | Public config | Redis key prefix; defaults to `neloo`. Values must match. |
+| `TRUSTED_PROXY_HOPS` | Backend and frontend server environments | Behind a trusted proxy | Public config | Selects the trusted client address from the right side of the forwarding chain. |
+| `MODEL_RUNS_PER_10_MINUTES` | Backend | Optional | Public config | Chat, Slides, translate, resume, and integration window. |
+| `IMAGE_RUNS_PER_10_MINUTES` | Frontend server environment | Optional | Public config | Generate, edit, and resize image window. |
+| `E2B_RUNS_PER_10_MINUTES` | Backend | Optional | Public config | E2B execution window. |
+| `DAILY_BUDGET_UNITS` | Backend and frontend server environments | Optional | Public config | Stable daily cost-unit ceiling per guest. |
+
 Durable app-level chat history, share links, fork/regenerate history, and DB spot checks require a reachable `SUPABASE_URL` and a valid backend-only `SUPABASE_SERVICE_KEY`. Local chat can run without these values, but those durable workflows must be reported as unavailable rather than passed during verification.
 
 ## Persistence and Storage Variables

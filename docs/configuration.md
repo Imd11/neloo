@@ -330,7 +330,8 @@ node neloo-configurator/scripts/check-env.mjs
 ## Security Checklist
 
 - `ANONYMOUS_SESSION_SECRET` must be server-only and identical in the backend and frontend environments. Never expose it through a `NEXT_PUBLIC_` variable.
-- **Rate limiting is not bundled.** For any public deployment, add per-user/per-IP rate limiting on the LLM-proxy routes (`/api/resume/*`, `/api/translate`, `/api/slides/*`) and the PDF/Chromium route. `slowapi` is a common choice; remember to parse `X-Forwarded-For` behind Railway/Cloudflare so limits key on the real client.
+- Shared rate limiting is built in for chat runs, image routes, Slides, translation, resume AI, E2B, and Connected Apps. Set the same server-only `RATE_LIMIT_REDIS_URL` and `RATE_LIMIT_NAMESPACE` in Railway and Vercel. Set `TRUSTED_PROXY_HOPS` to the number of trusted reverse proxies; do not blindly trust browser-supplied forwarding headers.
+- Configure `MODEL_RUNS_PER_10_MINUTES`, `IMAGE_RUNS_PER_10_MINUTES`, `E2B_RUNS_PER_10_MINUTES`, and `DAILY_BUDGET_UNITS` for your capacity. Production startup fails without Redis. `/live` checks only the process; `/ready` checks Redis, persistence configuration, and model-provider configuration without returning secrets.
 - **Hidden/system prompts are sanitized from persisted thread state, but are still visible in the live stream response.** If you depend on prompt confidentiality, treat the streaming channel as exposing the system prompt.
 - Do not commit `.env`, `.env.local`, `.env.production`, `.mcp.json`, `.vercel/`, or local databases.
 - Treat every `NEXT_PUBLIC_*` variable as public.

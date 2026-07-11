@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Brush, Eraser, Square, X, Check, Loader2 } from "lucide-react";
+import { useAuth } from "@/providers/AuthProvider";
 
 type CanvasGenerationParams = NonNullable<CanvasImage["generationParams"]>;
 
@@ -51,6 +52,7 @@ export function ImageCanvas({
 }: ImageCanvasProps) {
     const canvasRef = useRef<HTMLDivElement>(null);
     const { t } = useLanguageSafe();
+    const { session } = useAuth();
 
     const [tool, setTool] = useState<CanvasTool>('select');
     const [viewOffset, setViewOffset] = useState({ x: 0, y: 0 });
@@ -287,6 +289,7 @@ export function ImageCanvas({
 
             const res = await fetch("/api/edit", {
                 method: "POST",
+                headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
                 body: formData,
                 signal: controller.signal
             });
@@ -340,7 +343,10 @@ export function ImageCanvas({
         try {
             const response = await fetch("/api/generate-image", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+                },
                 body: JSON.stringify({
                     prompt: img.generationParams.prompt,
                     resolution: img.generationParams.resolution,

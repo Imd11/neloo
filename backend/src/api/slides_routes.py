@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from .auth import get_current_user
 from ..identity import get_persistent_user
+from ..usage_limits import enforce_usage_limit
 from .ratelimit import limiter
 from ..agent.graph import get_model
 from ..storage.supabase_db import USE_SUPABASE_DB, get_supabase_client
@@ -25,8 +26,8 @@ LOCAL_STORE = Path(".local/slide_presentations.json")
 
 class SlidesLLMRequest(BaseModel):
     model_id: str | None = None
-    system: str
-    prompt: str
+    system: str = Field(min_length=1, max_length=20_000)
+    prompt: str = Field(min_length=1, max_length=20_000)
     temperature: float = 0.7
     attachments: list["SlideAttachment"] = Field(default_factory=list, max_length=5)
 
@@ -181,6 +182,7 @@ async def generate_slides_text(
     payload: SlidesLLMRequest,
     user: dict = Depends(get_current_user),
 ):
+    await enforce_usage_limit("model", user["sub"], request=request)
     try:
         model = get_model(payload.model_id or "deepseek")
     except Exception as exc:

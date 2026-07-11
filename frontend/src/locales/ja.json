@@ -590,6 +590,11 @@
         "library_title": "ファイルライブラリ",
         "library_select_title": "ライブラリからファイルを選択"
     },
+    "errors": {
+        "rate_limited": "リクエストが多すぎます。{seconds} 秒後に再試行してください。",
+        "input_too_large": "メッセージが長すぎます。20,000 文字以内にしてください。",
+        "too_many_attachments": "1 回のリクエストに添付できるファイルは 10 個までです。"
+    },
     "tool_approval": {
         "required": "承認が必要です", "tool": "ツール", "app": "アプリ", "action": "操作",
         "risk": "リスク", "unknown": "不明", "external_write": "外部への書き込み",

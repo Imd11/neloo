@@ -590,6 +590,11 @@
         "library_title": "檔案庫",
         "library_select_title": "從庫中選擇檔案"
     },
+    "errors": {
+        "rate_limited": "請求過多，請在 {seconds} 秒後重試。",
+        "input_too_large": "訊息過長，請控制在 20,000 個字元以內。",
+        "too_many_attachments": "每次請求最多可新增 10 個附件。"
+    },
     "tool_approval": {
         "required": "需要審批", "tool": "工具", "app": "應用程式", "action": "操作",
         "risk": "風險", "unknown": "未知", "external_write": "外部寫入操作",

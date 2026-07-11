@@ -7,7 +7,7 @@ export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
     try {
-        const rejection = rejectUnsafeImageRequest(request, 40);
+        const rejection = await rejectUnsafeImageRequest(request, Number(process.env.IMAGE_RUNS_PER_10_MINUTES || 40));
         if (rejection) return rejection;
 
         const body = await request.json();

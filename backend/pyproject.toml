@@ -12,28 +12,22 @@ dependencies = [
     "langgraph-cli[inmem]>=0.1.0",
     "langgraph-api>=0.11.0,<0.12",
     "langchain-community>=0.3.0",
-
     # Model Providers
     "langchain-openai>=0.3.0",
     "langchain-anthropic>=0.3.0",
     "langchain-deepseek>=0.0.2",
-
     # DeepSeek (via OpenAI-compatible API)
     "openai>=1.0.0",
-
     # Sandbox Execution
     "e2b-code-interpreter>=1.0.0",
-
     # Web Search
     "tavily-python>=0.5.0",
-
     # Data Analysis (for local execution)
     "pandas>=2.0.0",
     "numpy>=1.24.0",
     "scipy>=1.10.0",
     "statsmodels>=0.14.0",
     "matplotlib>=3.7.0",
-
     # Utilities
     "python-dotenv>=1.0.0",
     "rich>=13.0.0",
@@ -43,32 +37,27 @@ dependencies = [
     "python-multipart>=0.0.6",
     "PyJWT>=2.8.0",
     "slowapi>=0.1.9",
-
     # File Storage
     "supabase>=2.0.0",
-
     # LangGraph Checkpoint Persistence (PostgreSQL)
     "langgraph-checkpoint-postgres>=2.0.0",
     "psycopg[binary,pool]>=3.1.0",
-
     # RAG (Retrieval-Augmented Generation)
     "langchain-chroma>=0.1.0",
     "langchain-text-splitters>=0.3.0",
     "chromadb>=0.5.0",
-
     # Third-party App Integration (Composio)
     "composio>=0.10.8,<0.11",
     "composio-langchain>=0.10.8,<0.11",
-
     # Resume Parsing (YOLOv10 + PDF)
     "pdfplumber>=0.10.0",
     "pymupdf>=1.23.0",
     "onnxruntime>=1.17.0",
     "opencv-python-headless>=4.7.0",
     "json-repair>=0.16.0",
-
     # PDF Export (Playwright + Chromium)
     "playwright>=1.40.0",
+    "redis>=5.0.0,<6.0.0",
 ]
 
 [project.optional-dependencies]

@@ -8,11 +8,12 @@ Uses the configured Neloo chat model through the backend registry.
 import asyncio
 from fastapi import APIRouter, HTTPException, Depends, Request, Response
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
 
 from .auth import get_current_user
 from .ratelimit import limiter
+from ..usage_limits import enforce_usage_limit
 
 router = APIRouter(prefix="/api/resume", tags=["resume-ai"])
 
@@ -25,12 +26,12 @@ def get_model():
 
 class ChatMessage(BaseModel):
     role: str  # "system" | "user" | "assistant"
-    content: str
+    content: str = Field(max_length=20_000)
 
 
 class OptimizeRequest(BaseModel):
-    messages: List[ChatMessage]
-    system_prompt: Optional[str] = None
+    messages: List[ChatMessage] = Field(max_length=40)
+    system_prompt: Optional[str] = Field(default=None, max_length=20_000)
     stream: bool = False
 
 
@@ -95,6 +96,10 @@ async def optimize_resume(
 
     Runs resume optimization with the configured default chat model.
     """
+    user_id = user.get("sub") or user.get("id")
+    if not isinstance(user_id, str) or not user_id:
+        raise HTTPException(status_code=401, detail="Authenticated identity is missing")
+    await enforce_usage_limit("model", user_id, request=request)
     try:
         model = get_model()
         system_prompt = payload.system_prompt or RESUME_SYSTEM_PROMPT

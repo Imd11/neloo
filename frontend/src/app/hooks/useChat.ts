@@ -25,6 +25,7 @@ import {
 } from "@/app/utils/hiddenPromptEnvelope";
 import { getHumanizePrompt, getPromptOptimizePrompt } from "@/data/featurePrompts";
 import { getFortuneTemplatePrefix } from "@/data/fortuneTemplatePrefix";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 const SAVE_MESSAGE_MAX_RETRIES = 2;
 const SAVE_MESSAGE_RETRY_BASE_DELAY_MS = 500;
@@ -194,6 +195,7 @@ export function useChat({
   const [threadId, setThreadId] = useQueryState("threadId");
   const client = useClient();
   const { session } = useAuth();
+  const { t } = useLanguage();
   const config = getConfig();
   const deploymentUrl = config?.deploymentUrl;
   const accessToken = session?.access_token;
@@ -523,6 +525,12 @@ export function useChat({
     const errorMessage = error instanceof Error ? error.message : String(error);
     const lowerError = errorMessage.toLowerCase();
 
+    if (lowerError.includes("429") || lowerError.includes("usage limit") || lowerError.includes("too many requests")) {
+      const retryAfter = Number.parseInt(errorMessage.match(/retry-after[^0-9]*(\d+)/i)?.[1] || "60", 10);
+      toast.error(t("errors.rate_limited", { seconds: retryAfter }));
+      return;
+    }
+
     // Save any unsent messages even on error (important for message persistence)
     const currentThreadId = currentThreadIdRef.current;
     if (currentThreadId && accessToken && deploymentUrl) {
@@ -674,6 +682,10 @@ export function useChat({
 
   const sendMessage = useCallback(
     (content: string, hiddenPrompt?: HiddenPromptEnvelope) => {
+      if (content.length > 20_000) {
+        toast.error(t("errors.input_too_large"));
+        return;
+      }
       const displayContent = content;
 
       const messageId = uuidv4();
@@ -725,7 +737,7 @@ export function useChat({
         }
       }
     },
-    [stream, activeAssistant?.config, onHistoryRevalidate, threadId, generateTitleForThread, activeAgent]
+    [stream, activeAssistant?.config, onHistoryRevalidate, threadId, generateTitleForThread, activeAgent, t]
   );
 
   // Keep messagesSnapshotRef updated with the latest messages during streaming
@@ -778,11 +790,15 @@ export function useChat({
   const setFiles = useCallback(
     async (files: Record<string, string>) => {
       if (!threadId) return;
+      if (Object.keys(files).length > 10) {
+        toast.error(t("errors.too_many_attachments"));
+        return;
+      }
       // TODO: missing a way how to revalidate the internal state
       // I think we do want to have the ability to externally manage the state
       await client.threads.updateState(threadId, { values: { files } });
     },
-    [client, threadId]
+    [client, threadId, t]
   );
 
   const continueStream = useCallback(

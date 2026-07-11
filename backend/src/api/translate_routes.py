@@ -4,20 +4,21 @@ import asyncio
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from langchain_core.messages import HumanMessage, SystemMessage
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .auth import get_current_user
 from .ratelimit import limiter
 from ..agent.graph import get_model
+from ..usage_limits import enforce_usage_limit
 
 translate_router = APIRouter(prefix="/api", tags=["translate"])
 
 
 class TranslateRequest(BaseModel):
-    text: str
-    target_language: str = "English"
-    source_language: str = "auto"
-    style: str = "general"
+    text: str = Field(min_length=1, max_length=20_000)
+    target_language: str = Field(default="English", max_length=80)
+    source_language: str = Field(default="auto", max_length=80)
+    style: str = Field(default="general", max_length=40)
     model_id: str | None = None
 
 
@@ -64,6 +65,7 @@ async def translate(
 
     if not payload.text.strip():
         raise HTTPException(status_code=400, detail="Text cannot be empty")
+    await enforce_usage_limit("model", user["sub"], request=request)
 
     try:
         model = get_model(payload.model_id or "deepseek")

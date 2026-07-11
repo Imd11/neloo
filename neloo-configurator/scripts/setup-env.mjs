@@ -20,10 +20,14 @@ const PROFILES = {
       ALLOW_ANONYMOUS: "true",
       ALLOW_INSECURE_LOCAL_TOKENS: "true",
       ALLOW_LOCAL_SANDBOX: "true",
+      RATE_LIMIT_NAMESPACE: "neloo",
+      TRUSTED_PROXY_HOPS: "0",
     },
     frontend: {
       NEXT_PUBLIC_API_URL: "http://localhost:2024",
       NEXT_PUBLIC_ASSISTANT_ID: "data_analyst",
+      RATE_LIMIT_NAMESPACE: "neloo",
+      TRUSTED_PROXY_HOPS: "0",
     },
   },
   "local-full": {
@@ -42,11 +46,15 @@ const PROFILES = {
       ALLOW_LOCAL_SANDBOX: "true",
       LANGSMITH_TRACING_V2: "false",
       LANGSMITH_PROJECT: "neloo",
+      RATE_LIMIT_NAMESPACE: "neloo",
+      TRUSTED_PROXY_HOPS: "0",
     },
     frontend: {
       NEXT_PUBLIC_API_URL: "http://localhost:2024",
       NEXT_PUBLIC_ASSISTANT_ID: "data_analyst",
       NEXT_PUBLIC_BACKEND_URL: "http://localhost:2024",
+      RATE_LIMIT_NAMESPACE: "neloo",
+      TRUSTED_PROXY_HOPS: "0",
     },
   },
   "production-railway-vercel": {
@@ -59,9 +67,13 @@ const PROFILES = {
       ALLOW_INSECURE_LOCAL_TOKENS: "false",
       LANGSMITH_TRACING_V2: "false",
       LANGSMITH_PROJECT: "neloo",
+      RATE_LIMIT_NAMESPACE: "neloo",
+      TRUSTED_PROXY_HOPS: "1",
     },
     frontend: {
       NEXT_PUBLIC_ASSISTANT_ID: "data_analyst",
+      RATE_LIMIT_NAMESPACE: "neloo",
+      TRUSTED_PROXY_HOPS: "1",
     },
   },
 };
@@ -174,14 +186,25 @@ export function setupEnvironment({ root, profile, dryRun = false, force = false 
   const anonymousSessionSecret = backendValues.ANONYMOUS_SESSION_SECRET
     || frontendValues.ANONYMOUS_SESSION_SECRET
     || randomBytes(32).toString("hex");
+  const rateLimitRedisUrl = backendValues.RATE_LIMIT_REDIS_URL
+    || frontendValues.RATE_LIMIT_REDIS_URL
+    || "";
   const backendUpdate = updateEnvContent(
     backendContent,
-    { ...selected.backend, ANONYMOUS_SESSION_SECRET: anonymousSessionSecret },
+    {
+      ...selected.backend,
+      ANONYMOUS_SESSION_SECRET: anonymousSessionSecret,
+      RATE_LIMIT_REDIS_URL: rateLimitRedisUrl,
+    },
     { force }
   );
   const frontendUpdate = updateEnvContent(
     frontendContent,
-    { ...selected.frontend, ANONYMOUS_SESSION_SECRET: anonymousSessionSecret },
+    {
+      ...selected.frontend,
+      ANONYMOUS_SESSION_SECRET: anonymousSessionSecret,
+      RATE_LIMIT_REDIS_URL: rateLimitRedisUrl,
+    },
     { force }
   );
 
@@ -199,7 +222,7 @@ export function setupEnvironment({ root, profile, dryRun = false, force = false 
   messages.push("3. Start backend and frontend only after check-env errors are resolved.");
 
   if (profile === "production-railway-vercel") {
-    messages.push("Production reminder: fill API_BASE_URL, FRONTEND_URL, CORS_ALLOWED_ORIGINS, DATABASE_URL, E2B_API_KEY, FILE_SECRET_KEY, IMAGE_SECRET_KEY, and provider keys in Railway/Vercel dashboards.");
+    messages.push("Production reminder: fill API_BASE_URL, FRONTEND_URL, CORS_ALLOWED_ORIGINS, DATABASE_URL, RATE_LIMIT_REDIS_URL, E2B_API_KEY, FILE_SECRET_KEY, IMAGE_SECRET_KEY, and provider keys in Railway/Vercel dashboards.");
   } else {
     messages.push("Backend: `cd backend && langgraph dev --host 127.0.0.1 --port 2024`");
     messages.push("Frontend: `cd frontend && yarn dev`");

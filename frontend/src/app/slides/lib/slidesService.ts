@@ -81,7 +81,7 @@ Return one JSON object with title, content, and visualDescription.`,
     return JSON.parse(text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim());
 };
 
-export const generateSlideImage = async (slide: Slide): Promise<string> => {
+export const generateSlideImage = async (slide: Slide, accessToken: string): Promise<string> => {
     const prompt = `Create a high-quality 16:9 presentation background image.
 
 Visual concept: ${slide.visualDescription}
@@ -94,7 +94,10 @@ Rules:
 
     const response = await fetch("/api/generate-image", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+        },
         body: JSON.stringify({ prompt, size: "16x9", resolution: "1k" }),
     });
     if (!response.ok) {
