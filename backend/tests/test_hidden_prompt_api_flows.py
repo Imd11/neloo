@@ -203,8 +203,12 @@ def test_shared_conversation_sanitizes_langgraph_state(monkeypatch):
     def fake_get_client(*_args, **_kwargs):
         return SimpleNamespace(threads=FakeThreads())
 
+    async def fake_load_db_messages(_thread_id):
+        return [HIDDEN_USER_MESSAGE]
+
     monkeypatch.setattr(supabase_db, "get_share_by_id", fake_get_share_by_id)
     monkeypatch.setattr(webapp, "get_thread_by_langgraph_id", fake_get_thread_by_langgraph_id)
+    monkeypatch.setattr(webapp, "_load_db_messages_for_history", fake_load_db_messages)
     monkeypatch.setattr("langgraph_sdk.get_client", fake_get_client)
 
     response = client.get("/api/share/share-1")
@@ -245,8 +249,16 @@ def test_shared_single_message_truncates_messages_after_the_target(monkeypatch):
     def fake_get_client(*_args, **_kwargs):
         return SimpleNamespace(threads=FakeThreads())
 
+    async def fake_load_db_messages(_thread_id):
+        return [
+            {"id": "human-1", "type": "human", "content": "First question"},
+            {"id": "ai-1", "type": "ai", "content": "First answer"},
+            {"id": "human-2", "type": "human", "content": "Private follow-up"},
+        ]
+
     monkeypatch.setattr(supabase_db, "get_share_by_id", fake_get_share_by_id)
     monkeypatch.setattr(webapp, "get_thread_by_langgraph_id", fake_get_thread_by_langgraph_id)
+    monkeypatch.setattr(webapp, "_load_db_messages_for_history", fake_load_db_messages)
     monkeypatch.setattr("langgraph_sdk.get_client", fake_get_client)
 
     response = client.get("/api/share/share-1")

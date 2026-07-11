@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { createClient, type RedisClientType } from "redis";
 
 export interface RateLimitDecision {
@@ -18,12 +18,14 @@ export interface RateLimitStore {
     limit: number,
     ttlSeconds: number
   ): Promise<boolean>;
+  acquire(key: string, token: string, ttlSeconds: number): Promise<boolean>;
+  release(key: string, token: string): Promise<boolean>;
 }
 
 export class MemoryRateLimitStore implements RateLimitStore {
   private readonly values = new Map<
     string,
-    { value: number; expiresAt: number }
+    { value: number | string; expiresAt: number }
   >();
 
   async increment(
@@ -40,9 +42,9 @@ export class MemoryRateLimitStore implements RateLimitStore {
         !existing || existing.expiresAt <= now
           ? { value: 0, expiresAt: now + windowSeconds * 1000 }
           : existing;
-      entry.value += 1;
+      entry.value = Number(entry.value) + 1;
       this.values.set(key, entry);
-      allowed = allowed && entry.value <= limit;
+      allowed = allowed && Number(entry.value) <= limit;
       retryAfter = Math.max(
         retryAfter,
         Math.ceil((entry.expiresAt - now) / 1000)
@@ -63,9 +65,28 @@ export class MemoryRateLimitStore implements RateLimitStore {
       !existing || existing.expiresAt <= now
         ? { value: 0, expiresAt: now + ttlSeconds * 1000 }
         : existing;
-    if (entry.value + units > limit) return false;
-    entry.value += units;
+    if (Number(entry.value) + units > limit) return false;
+    entry.value = Number(entry.value) + units;
     this.values.set(key, entry);
+    return true;
+  }
+
+  async acquire(
+    key: string,
+    token: string,
+    ttlSeconds: number
+  ): Promise<boolean> {
+    const now = Date.now();
+    const existing = this.values.get(key);
+    if (existing && existing.expiresAt > now) return false;
+    this.values.set(key, { value: token, expiresAt: now + ttlSeconds * 1000 });
+    return true;
+  }
+
+  async release(key: string, token: string): Promise<boolean> {
+    const existing = this.values.get(key);
+    if (!existing || String(existing.value) !== token) return false;
+    this.values.delete(key);
     return true;
   }
 }
@@ -114,6 +135,25 @@ class RedisRateLimitStore implements RateLimitStore {
     );
     return Boolean(result);
   }
+
+  async acquire(
+    key: string,
+    token: string,
+    ttlSeconds: number
+  ): Promise<boolean> {
+    return Boolean(
+      await this.client.set(key, token, { NX: true, EX: ttlSeconds })
+    );
+  }
+
+  async release(key: string, token: string): Promise<boolean> {
+    return Boolean(
+      await this.client.eval(
+        "if redis.call('GET',KEYS[1])==ARGV[1] then return redis.call('DEL',KEYS[1]) else return 0 end",
+        { keys: [key], arguments: [token] }
+      )
+    );
+  }
 }
 
 export class DistributedRateLimiter {
@@ -152,6 +192,55 @@ export class DistributedRateLimiter {
       limit,
       172800
     );
+  }
+
+  private async acquireSlot(
+    capability: string,
+    subject: string,
+    limit: number,
+    ttlSeconds: number
+  ): Promise<{ key: string; token: string } | null> {
+    for (let slot = 0; slot < Math.max(1, limit); slot += 1) {
+      const key = `${this.namespace}:lease:${capability}:${subject}:${slot}`;
+      const token = randomUUID();
+      if (await this.store.acquire(key, token, ttlSeconds))
+        return { key, token };
+    }
+    return null;
+  }
+
+  async withConcurrency<T>(
+    capability: string,
+    guestId: string,
+    operation: () => Promise<T>
+  ): Promise<T> {
+    const ttl = Number.parseInt(
+      process.env.CONCURRENCY_LEASE_SECONDS || "120",
+      10
+    );
+    const guest = await this.acquireSlot(
+      capability,
+      `guest:${guestId}`,
+      Number.parseInt(process.env.GUEST_CONCURRENCY_LIMIT || "2", 10),
+      ttl
+    );
+    if (!guest) throw new Error("Concurrent usage limit exceeded");
+    const global = await this.acquireSlot(
+      capability,
+      "global",
+      Number.parseInt(process.env.GLOBAL_CONCURRENCY_LIMIT || "20", 10),
+      ttl
+    );
+    if (!global) {
+      await this.store.release(guest.key, guest.token);
+      throw new Error("Service concurrency limit exceeded");
+    }
+    try {
+      return await operation();
+    } finally {
+      await this.store.release(global.key, global.token);
+      await this.store.release(guest.key, guest.token);
+    }
   }
 }
 

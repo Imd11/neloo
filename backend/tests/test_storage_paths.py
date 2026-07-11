@@ -69,3 +69,27 @@ def test_local_library_lists_downloads_and_deletes_only_the_current_guest_file(
     deleted = client.delete(f"/api/files/{filename}", headers=headers)
     assert deleted.status_code == 200
     assert not (user_dir / filename).exists()
+
+
+def test_legacy_sandbox_routes_are_scoped_to_current_guest(monkeypatch, tmp_path):
+    monkeypatch.setenv("ALLOW_ANONYMOUS", "true")
+    monkeypatch.setenv("ALLOW_INSECURE_LOCAL_TOKENS", "true")
+    auth.allow_anonymous.cache_clear()
+    monkeypatch.setattr(webapp, "LOCAL_STORAGE_DIR", tmp_path)
+
+    guest_a = "2f582f98-dbf6-4d9d-a05e-89f99d6415f8"
+    guest_b = "fa46c63f-cd11-47fd-8038-a3f6af20ebcc"
+    for guest_id, content in ((guest_a, "a"), (guest_b, "b")):
+        user_dir = webapp.get_local_storage_path(guest_id)
+        user_dir.mkdir(parents=True)
+        (user_dir / "report.txt").write_text(content, encoding="utf-8")
+
+    client = TestClient(webapp.app)
+    headers = {"Authorization": f"Bearer local-dev:{guest_a}"}
+    listed = client.get("/sandbox/files", headers=headers)
+    downloaded = client.get("/sandbox/files/report.txt", headers=headers)
+
+    assert listed.status_code == 200
+    assert [item["filename"] for item in listed.json()["files"]] == ["report.txt"]
+    assert downloaded.status_code == 200
+    assert downloaded.text == "a"

@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
-from ..usage_limits import enforce_usage_limit
+from ..usage_limits import enforce_usage_limit, usage_concurrency
 from .auth import get_current_user
 from .ratelimit import limiter
 
@@ -113,7 +113,8 @@ async def optimize_resume(
                 messages.append(SystemMessage(content=message.content))
             else:
                 messages.append(HumanMessage(content=message.content))
-        model_response = await asyncio.wait_for(model.ainvoke(messages), timeout=60)
+        async with usage_concurrency("model", user_id):
+            model_response = await asyncio.wait_for(model.ainvoke(messages), timeout=60)
         content = getattr(model_response, "content", "")
         if isinstance(content, list):
             content = "".join(

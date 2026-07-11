@@ -7,7 +7,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
 from ..agent.graph import get_model
-from ..usage_limits import enforce_usage_limit
+from ..usage_limits import enforce_usage_limit, usage_concurrency
 from .auth import get_current_user
 from .ratelimit import limiter
 
@@ -75,15 +75,16 @@ async def translate(
         ) from exc
 
     try:
-        response = await asyncio.wait_for(
-            model.ainvoke(
-                [
-                    SystemMessage(content=_build_system_prompt(payload)),
-                    HumanMessage(content=payload.text),
-                ]
-            ),
-            timeout=60,
-        )
+        async with usage_concurrency("model", user["sub"]):
+            response = await asyncio.wait_for(
+                model.ainvoke(
+                    [
+                        SystemMessage(content=_build_system_prompt(payload)),
+                        HumanMessage(content=payload.text),
+                    ]
+                ),
+                timeout=60,
+            )
     except asyncio.TimeoutError as exc:
         raise HTTPException(status_code=504, detail="Translation request timed out") from exc
     except Exception as exc:

@@ -60,6 +60,7 @@ test("setupEnvironment gives production-specific next steps", () => {
   fs.writeFileSync(path.join(root, "frontend/.env.example"), "NEXT_PUBLIC_API_URL=\nNEXT_PUBLIC_ASSISTANT_ID=\n");
 
   const result = setupEnvironment({ root, profile: "production-railway-vercel" });
+  const backend = fs.readFileSync(path.join(root, "backend/.env"), "utf8");
   const output = result.messages.join("\n");
 
   assert.match(output, /Profile: production-railway-vercel/);
@@ -71,6 +72,8 @@ test("setupEnvironment gives production-specific next steps", () => {
   assert.match(output, /Railway\/Vercel dashboards/);
   assert.match(output, /DATABASE_URL/);
   assert.match(output, /RATE_LIMIT_REDIS_URL/);
+  assert.match(backend, /^ENVIRONMENT=production/m);
+  assert.match(backend, /^ENABLE_HITL=true/m);
   assert.doesNotMatch(output, /langgraph dev --host 127\.0\.0\.1 --port 2024/);
 });
 

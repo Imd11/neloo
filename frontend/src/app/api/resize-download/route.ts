@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchImageBuffer, resizeImage } from "@/lib/resize-service";
-import { rejectUnsafeImageRequest } from "@/lib/server/image-request-guard";
+import {
+  rejectUnsafeImageRequest,
+  runWithImageConcurrency,
+} from "@/lib/server/image-request-guard";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -38,8 +41,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const imageBuffer = await fetchImageBuffer(imageUrl);
-    const result = await resizeImage(imageBuffer, { width, height });
+    const result = await runWithImageConcurrency(request, async () => {
+      const imageBuffer = await fetchImageBuffer(imageUrl);
+      return resizeImage(imageBuffer, { width, height });
+    });
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const filename = `image_${width}x${height}_${timestamp}.png`;

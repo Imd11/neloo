@@ -22,7 +22,7 @@ from langchain_core.tools import tool
 from ..identity import ensure_app_identity
 from ..runtime_context import thread_id_ctx, user_id_ctx, user_id_from_config
 from ..storage.supabase_db import get_supabase_client
-from ..usage_limits import enforce_guest_usage_limit
+from ..usage_limits import enforce_guest_usage_limit, usage_concurrency
 from .integration_policy import classify_action
 
 # =============================================================================
@@ -690,7 +690,8 @@ async def _invoke_allowed_action(
         return {"status": "error", "message": "The configured provider action is unavailable."}
 
     try:
-        result = await provider_tool.ainvoke(params)
+        async with usage_concurrency("integration", user_id):
+            result = await provider_tool.ainvoke(params)
     except Exception as exc:
         if idempotency_key:
             await _update_integration_action(

@@ -93,7 +93,7 @@ Configure these in `backend/.env` for local development or in Railway for produc
 | `LANGGRAPH_DEFAULT_GRAPH_ID` | Recommended | Default assistant graph. Keep `data_analyst` unless you change graph IDs. |
 | `NELOO_BUILD_ALL_MODEL_GRAPHS` | Optional | When `false`, Neloo still registers public model graph exports and builds configured public provider graphs as needed during startup. Set `true` only to eagerly build every configured canonical and hidden legacy model graph. |
 | `NELOO_BUILD_VARIANT_GRAPHS` | Optional | Set `true` to build real `-web-dev` and `-fortune` graph variants. When `false`, variant graph IDs fall back to the base graph. |
-| `ENABLE_HITL` | Optional | Enables human-in-the-loop behavior when supported. |
+| `ENABLE_HITL` | Required in production | Keep `true` so external write actions require approval. It can only be disabled by an explicitly insecure local profile. |
 | `MINIMAX_BASE_URL` | Legacy optional | Legacy MiniMax-compatible base URL. New deployments should use `MINIMAX_ANTHROPIC_BASE_URL`. |
 
 ## Frontend Service Variables

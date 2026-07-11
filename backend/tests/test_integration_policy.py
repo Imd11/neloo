@@ -69,7 +69,15 @@ async def test_write_action_is_rejected_by_read_tool(monkeypatch):
 
 
 def test_write_tool_is_in_hitl_and_read_tool_is_not():
-    from src.agent.graph import INTERRUPT_ON_CONFIG
+    from src.agent.graph import INTERRUPT_ON_CONFIG, hitl_enabled
 
     assert "integrations_execute" in INTERRUPT_ON_CONFIG
     assert "integrations_query" not in INTERRUPT_ON_CONFIG
+    assert hitl_enabled({"ENABLE_HITL": "false"})
+    assert not hitl_enabled(
+        {
+            "ENVIRONMENT": "development",
+            "ALLOW_INSECURE_LOCAL_TOKENS": "true",
+            "ENABLE_HITL": "false",
+        }
+    )

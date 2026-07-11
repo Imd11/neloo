@@ -52,7 +52,7 @@ The frontend uses Yarn 1.x. `frontend/yarn.lock` is the canonical dependency loc
 | `LANGGRAPH_DEFAULT_GRAPH_ID` | Backend | Recommended | Public | Default graph ID. Current default is `data_analyst`. |
 | `NELOO_BUILD_ALL_MODEL_GRAPHS` | Backend | Optional | Public config | `false` keeps startup lighter while still exposing public selector graph IDs; `true` eagerly builds every configured canonical and hidden legacy model graph. |
 | `NELOO_BUILD_VARIANT_GRAPHS` | Backend | Optional | Public config | `true` builds real `-web-dev` and `-fortune` variants; `false` aliases variant graph IDs to the base graph. |
-| `ENABLE_HITL` | Backend | Optional | Public | Human-in-the-loop toggles. |
+| `ENABLE_HITL` | Backend | Required in production | Public | Keep `true`; only explicit insecure local development may disable approvals. |
 
 ## Frontend Variables
 

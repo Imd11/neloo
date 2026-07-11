@@ -3,6 +3,7 @@ import { editImage } from "@/lib/services/image-editor";
 import {
   assertSafeRemoteImageUrl,
   rejectUnsafeImageRequest,
+  runWithImageConcurrency,
 } from "@/lib/server/image-request-guard";
 
 export const runtime = "nodejs";
@@ -61,11 +62,13 @@ export async function POST(req: NextRequest) {
       size,
     });
 
-    const urls = await editImage(originalImageUrl, markedImageDataUrl, prompt, {
-      model: typeof model === "string" ? model : undefined,
-      resolution: typeof resolution === "string" ? resolution : undefined,
-      size: typeof size === "string" ? size : undefined,
-    });
+    const urls = await runWithImageConcurrency(req, () =>
+      editImage(originalImageUrl, markedImageDataUrl, prompt, {
+        model: typeof model === "string" ? model : undefined,
+        resolution: typeof resolution === "string" ? resolution : undefined,
+        size: typeof size === "string" ? size : undefined,
+      })
+    );
 
     return NextResponse.json({ urls });
   } catch (error) {

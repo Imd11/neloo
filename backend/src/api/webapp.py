@@ -260,6 +260,7 @@ def _select_history_messages(
 async def _ensure_langgraph_runtime_thread(
     thread_id: str,
     preferred_graph_id: Optional[str] = None,
+    authorization: str | None = None,
 ) -> bool:
     """
     Ensure a LangGraph runtime thread exists for the SAME thread_id.
@@ -271,6 +272,7 @@ async def _ensure_langgraph_runtime_thread(
 
     base_url = _get_langgraph_internal_base_url()
     graph_id = (preferred_graph_id or _resolve_runtime_graph_id()).strip()
+    headers = {"Authorization": authorization} if authorization else {}
 
     try:
         async with httpx.AsyncClient() as client:
@@ -281,6 +283,7 @@ async def _ensure_langgraph_runtime_thread(
             create_resp = await client.post(
                 f"{base_url}/threads",
                 json=create_payload,
+                headers=headers,
                 timeout=10.0,
             )
             if create_resp.status_code not in (200, 201, 202, 409):
@@ -290,7 +293,9 @@ async def _ensure_langgraph_runtime_thread(
 
             # 1.5) Existing threads created in older versions may miss graph_id.
             if graph_id:
-                thread_resp = await client.get(f"{base_url}/threads/{thread_id}", timeout=10.0)
+                thread_resp = await client.get(
+                    f"{base_url}/threads/{thread_id}", headers=headers, timeout=10.0
+                )
                 if thread_resp.status_code == 200:
                     thread_payload = thread_resp.json()
                     metadata = (
@@ -305,6 +310,7 @@ async def _ensure_langgraph_runtime_thread(
                         patch_resp = await client.patch(
                             f"{base_url}/threads/{thread_id}",
                             json={"metadata": {"graph_id": graph_id}},
+                            headers=headers,
                             timeout=10.0,
                         )
                         if patch_resp.status_code != 200:
@@ -315,7 +321,9 @@ async def _ensure_langgraph_runtime_thread(
                             )
 
             # 2) If runtime state already has messages, we're done.
-            state_resp = await client.get(f"{base_url}/threads/{thread_id}/state", timeout=10.0)
+            state_resp = await client.get(
+                f"{base_url}/threads/{thread_id}/state", headers=headers, timeout=10.0
+            )
             if state_resp.status_code == 200:
                 state_data = state_resp.json()
                 values = state_data.get("values", {}) if isinstance(state_data, dict) else {}
@@ -343,6 +351,7 @@ async def _ensure_langgraph_runtime_thread(
                     "values": {"messages": db_messages, "todos": todos},
                     "as_node": "__input__",
                 },
+                headers=headers,
                 timeout=10.0,
             )
             if patch_resp.status_code not in (200, 201):
@@ -1787,7 +1796,7 @@ async def cleanup_images(max_age_hours: int = 24, user: dict = Depends(get_curre
 
 
 @app.get("/sandbox/files/{filename}")
-async def download_sandbox_file(filename: str):
+async def download_sandbox_file(filename: str, user: dict = Depends(get_current_user)):
     """
     Download a file from the sandbox data directory.
 
@@ -1805,8 +1814,8 @@ async def download_sandbox_file(filename: str):
     """
     from fastapi.responses import FileResponse
 
-    # Resolve within LOCAL_STORAGE_DIR, rejecting path traversal.
-    local_file_path = _safe_join(LOCAL_STORAGE_DIR, filename)
+    user_id = auth_get_user_id(user)
+    local_file_path = _safe_join(get_local_storage_path(user_id), filename)
 
     if not local_file_path.exists():
         raise HTTPException(status_code=404, detail="File not found")
@@ -1846,7 +1855,7 @@ async def download_sandbox_file(filename: str):
 
 
 @app.get("/sandbox/files")
-async def list_sandbox_files():
+async def list_sandbox_files(user: dict = Depends(get_current_user)):
     """
     List all files in the sandbox data directory.
 
@@ -1855,8 +1864,9 @@ async def list_sandbox_files():
     """
     files = []
 
-    if LOCAL_STORAGE_DIR.exists():
-        for item in LOCAL_STORAGE_DIR.iterdir():
+    user_dir = get_local_storage_path(auth_get_user_id(user))
+    if user_dir.exists():
+        for item in user_dir.iterdir():
             if item.is_file():
                 stat = item.stat()
                 files.append(
@@ -2385,6 +2395,7 @@ class ThreadUpdateRequest(BaseModel):
 @app.post("/api/threads", response_model=ThreadInfo)
 async def create_thread_api(
     data: ThreadCreate,
+    request: Request,
     user: dict = Depends(get_current_user),
 ):
     """
@@ -2446,6 +2457,7 @@ async def create_thread_api(
         recovered = await _ensure_langgraph_runtime_thread(
             data.langgraph_thread_id,
             preferred_graph_id=preferred_graph_id,
+            authorization=request.headers.get("authorization"),
         )
         if not recovered:
             print(
@@ -3102,29 +3114,13 @@ async def get_shared_conversation(share_id: str):
     if not thread_record:
         raise HTTPException(status_code=404, detail="The original conversation has been deleted")
 
-    # Get messages from LangGraph
+    # Public shares read the already-authorized persisted snapshot source. They
+    # must not bypass LangGraph runtime authentication with an internal request.
     try:
-        from langgraph_sdk import get_client
-
-        # Use LANGGRAPH_API_URL if set, otherwise use localhost
-        # In LangGraph Platform, the server runs on port 2024 by default
-        langgraph_url = os.environ.get("LANGGRAPH_API_URL", "http://localhost:2024")
-        client = get_client(url=langgraph_url)
-
-        # Get thread state which includes messages
-        thread_state = await client.threads.get_state(share["thread_id"])
-        messages = thread_state.get("values", {}).get("messages", [])
-
-        # Convert messages to serializable format
-        serialized_messages = []
-        for msg in messages:
-            if hasattr(msg, "dict"):
-                message_data = msg.dict()
-            elif isinstance(msg, dict):
-                message_data = msg
-            else:
-                message_data = {"type": "unknown", "content": str(msg)}
-            serialized_messages.append(sanitize_hidden_prompt_message_data(message_data))
+        persisted_messages = await _load_db_messages_for_history(share["thread_id"])
+        serialized_messages = [
+            sanitize_hidden_prompt_message_data(message) for message in persisted_messages
+        ]
 
         shared_messages = _messages_for_share(
             serialized_messages,
@@ -3137,6 +3133,8 @@ async def get_shared_conversation(share_id: str):
             shared_at=share["created_at"],
             target_ai_message_id=share.get("target_ai_message_id"),
         )
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"[Share] Failed to get messages: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to load conversation: {str(e)}")
@@ -3286,6 +3284,7 @@ async def fork_thread(
 @app.get("/threads/{thread_id}/history")
 async def get_thread_history(
     thread_id: str,
+    request: Request,
     user: dict = Depends(get_current_user),
 ):
     """
@@ -3304,7 +3303,9 @@ async def get_thread_history(
 
     user_id = auth_get_user_id(user)
     thread_record = await get_thread_by_langgraph_id(thread_id)
-    if thread_record and thread_record.get("user_id") != user_id:
+    if not thread_record:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    if thread_record.get("user_id") != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     preferred_graph_id = _resolve_runtime_graph_id(
@@ -3340,6 +3341,7 @@ async def get_thread_history(
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 f"{internal_base_url}/threads/{thread_id}/state",
+                headers={"Authorization": request.headers.get("authorization", "")},
                 timeout=10.0,
             )
 
@@ -3347,6 +3349,7 @@ async def get_thread_history(
                 await _ensure_langgraph_runtime_thread(
                     thread_id,
                     preferred_graph_id=preferred_graph_id,
+                    authorization=request.headers.get("authorization"),
                 )
                 return await fallback_from_db()
 
@@ -3381,6 +3384,7 @@ async def get_thread_history(
                 await _ensure_langgraph_runtime_thread(
                     thread_id,
                     preferred_graph_id=preferred_graph_id,
+                    authorization=request.headers.get("authorization"),
                 )
 
             todos = values.get("todos", []) if isinstance(values, dict) else []
@@ -3462,13 +3466,14 @@ def extract_todos_from_messages(messages: list) -> list:
 @app.post("/threads/{thread_id}/history")
 async def post_thread_history(
     thread_id: str,
+    request: Request,
     user: dict = Depends(get_current_user),
 ):
     """
     POST version of history endpoint for SDK compatibility.
     Some SDK codepaths POST to /history.
     """
-    return await get_thread_history(thread_id=thread_id, user=user)
+    return await get_thread_history(thread_id=thread_id, request=request, user=user)
 
 
 # =============================================================================
@@ -3515,7 +3520,9 @@ async def save_thread_message(
 
     user_id = auth_get_user_id(user)
     thread_record = await get_thread_by_langgraph_id(thread_id)
-    if thread_record and thread_record.get("user_id") != user_id:
+    if not thread_record:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    if thread_record.get("user_id") != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     message_data = sanitize_hidden_prompt_message_data(request.message_data)

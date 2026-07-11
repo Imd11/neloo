@@ -4,7 +4,10 @@ import {
   ResolutionTier,
   ImageSize,
 } from "@/lib/services/image-generator";
-import { rejectUnsafeImageRequest } from "@/lib/server/image-request-guard";
+import {
+  rejectUnsafeImageRequest,
+  runWithImageConcurrency,
+} from "@/lib/server/image-request-guard";
 
 export const maxDuration = 120;
 
@@ -26,13 +29,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const images = await generateImage(
-      prompt,
-      resolution as ResolutionTier,
-      size as ImageSize,
-      120000,
-      model as string | undefined,
-      req.signal
+    const images = await runWithImageConcurrency(req, () =>
+      generateImage(
+        prompt,
+        resolution as ResolutionTier,
+        size as ImageSize,
+        120000,
+        model as string | undefined,
+        req.signal
+      )
     );
 
     if (!images || images.length === 0) {

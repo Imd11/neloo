@@ -137,7 +137,8 @@ const SlideShow: React.FC<SlideShowProps> = ({
         slide,
         style,
         controller.signal,
-        presentation.presetId
+        presentation.presetId,
+        accessToken
       );
       updateSlideAtIndex(idx, {
         imageBase64: base64,

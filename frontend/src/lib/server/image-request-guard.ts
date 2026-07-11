@@ -5,7 +5,7 @@ import {
   verifyGuestToken,
 } from "./distributed-rate-limit";
 
-function clientKey(request: NextRequest): string | null {
+export function clientKey(request: NextRequest): string | null {
   const forwarded =
     request.headers
       .get("x-forwarded-for")
@@ -16,9 +16,33 @@ function clientKey(request: NextRequest): string | null {
     0,
     Number.parseInt(process.env.TRUSTED_PROXY_HOPS || "0", 10)
   );
-  return forwarded.length > hops
-    ? forwarded[forwarded.length - 1 - hops]
-    : request.headers.get("x-real-ip");
+  const peer = request.headers.get("x-real-ip");
+  if (!peer) return null;
+  const chain = [...forwarded, peer];
+  return chain.length > hops ? chain[chain.length - 1 - hops] : null;
+}
+
+function authenticatedGuestId(request: NextRequest): string {
+  const authorization = request.headers.get("authorization");
+  if (!authorization?.startsWith("Bearer "))
+    throw new Error("Authentication required");
+  return verifyGuestToken(
+    authorization.slice("Bearer ".length),
+    process.env.ANONYMOUS_SESSION_SECRET?.trim(),
+    process.env.NODE_ENV === "production"
+  );
+}
+
+export async function runWithImageConcurrency<T>(
+  request: NextRequest,
+  operation: () => Promise<T>
+): Promise<T> {
+  const limiter = await getDistributedRateLimiter();
+  return limiter.withConcurrency(
+    "image",
+    authenticatedGuestId(request),
+    operation
+  );
 }
 
 export async function rejectUnsafeImageRequest(
@@ -60,10 +84,17 @@ export async function rejectUnsafeImageRequest(
       { status: 503 }
     );
   }
+  const ipAddress = clientKey(request);
+  if (!ipAddress && process.env.NODE_ENV === "production") {
+    return NextResponse.json(
+      { error: "Trusted client address is unavailable" },
+      { status: 503 }
+    );
+  }
   const decision = await limiter.consume(
     "image",
     guestId,
-    clientKey(request),
+    ipAddress,
     maxRequests,
     600
   );

@@ -6,11 +6,13 @@ import os
 import secrets
 import threading
 import time
+from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Protocol
+from typing import Any, Callable, Protocol
 
 from fastapi import HTTPException, Request
+from langchain.agents.middleware.types import AgentMiddleware
 
 
 @dataclass(frozen=True)
@@ -182,6 +184,74 @@ class UsageLimiter:
         return await self.store.release_lease(self._key("lease", capability, guest_id), token)
 
 
+async def _acquire_lease_slot(
+    limiter: UsageLimiter,
+    capability: str,
+    subject: str,
+    limit: int,
+    ttl_seconds: int,
+) -> tuple[str, str] | None:
+    for slot in range(max(1, limit)):
+        slot_subject = f"{subject}:{slot}"
+        token = await limiter.acquire_lease(capability, slot_subject, ttl_seconds=ttl_seconds)
+        if token:
+            return slot_subject, token
+    return None
+
+
+@asynccontextmanager
+async def usage_concurrency(capability: str, guest_id: str):
+    """Hold guest and global token-safe leases for one paid operation."""
+    limiter = get_usage_limiter()
+    ttl_seconds = int(os.environ.get("CONCURRENCY_LEASE_SECONDS", "120"))
+    guest_lease = await _acquire_lease_slot(
+        limiter,
+        capability,
+        f"guest:{guest_id}",
+        int(os.environ.get("GUEST_CONCURRENCY_LIMIT", "2")),
+        ttl_seconds,
+    )
+    if not guest_lease:
+        raise HTTPException(
+            status_code=429,
+            detail="Concurrent usage limit exceeded",
+            headers={"Retry-After": "5"},
+        )
+    global_lease = await _acquire_lease_slot(
+        limiter,
+        capability,
+        "global",
+        int(os.environ.get("GLOBAL_CONCURRENCY_LIMIT", "20")),
+        ttl_seconds,
+    )
+    if not global_lease:
+        await limiter.release_lease(capability, *guest_lease)
+        raise HTTPException(
+            status_code=429,
+            detail="Service concurrency limit exceeded",
+            headers={"Retry-After": "5"},
+        )
+    try:
+        yield
+    finally:
+        await limiter.release_lease(capability, *global_lease)
+        await limiter.release_lease(capability, *guest_lease)
+
+
+class UsageConcurrencyMiddleware(AgentMiddleware):
+    """Limit concurrent provider calls made by LangGraph agents."""
+
+    async def awrap_model_call(self, request: Any, handler: Callable) -> Any:
+        from .runtime_context import user_id_from_config
+
+        runtime = getattr(request, "runtime", None)
+        user_id = user_id_from_config(getattr(runtime, "config", None))
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Authenticated identity is missing")
+        async with usage_concurrency("model", user_id):
+            return await handler(request)
+
+
 def build_usage_limiter() -> UsageLimiter:
     redis_url = os.environ.get("RATE_LIMIT_REDIS_URL", "").strip()
     environment = os.environ.get("ENVIRONMENT", "development").lower()
@@ -311,6 +381,61 @@ async def usage_store_ready() -> bool:
 _sync_memory_lock = threading.Lock()
 _sync_memory_windows: dict[str, tuple[int, float]] = {}
 _sync_memory_budgets: dict[str, tuple[int, float]] = {}
+_sync_memory_leases: dict[str, tuple[str, float]] = {}
+
+
+@contextmanager
+def e2b_usage_concurrency_sync(guest_id: str):
+    """Hold token-safe guest and global leases during synchronous E2B work."""
+    namespace = os.environ.get("RATE_LIMIT_NAMESPACE", "neloo")
+    ttl_seconds = int(os.environ.get("CONCURRENCY_LEASE_SECONDS", "120"))
+    redis_url = os.environ.get("RATE_LIMIT_REDIS_URL", "").strip()
+    acquired: list[tuple[str, str]] = []
+
+    def acquire(subject: str, limit: int) -> bool:
+        for slot in range(max(1, limit)):
+            key = f"{namespace}:lease:e2b:{subject}:{slot}"
+            token = secrets.token_urlsafe(24)
+            if redis_url:
+                from redis import Redis
+
+                client = Redis.from_url(redis_url, decode_responses=True)
+                success = bool(client.set(key, token, nx=True, ex=ttl_seconds))
+            else:
+                now = time.monotonic()
+                with _sync_memory_lock:
+                    existing = _sync_memory_leases.get(key)
+                    success = not existing or existing[1] <= now
+                    if success:
+                        _sync_memory_leases[key] = (token, now + ttl_seconds)
+            if success:
+                acquired.append((key, token))
+                return True
+        return False
+
+    def release(key: str, token: str) -> None:
+        if redis_url:
+            from redis import Redis
+
+            Redis.from_url(redis_url, decode_responses=True).eval(
+                RedisUsageStore._RELEASE_SCRIPT, 1, key, token
+            )
+            return
+        with _sync_memory_lock:
+            if _sync_memory_leases.get(key, (None, 0))[0] == token:
+                _sync_memory_leases.pop(key, None)
+
+    if not acquire(f"guest:{guest_id}", int(os.environ.get("GUEST_CONCURRENCY_LIMIT", "2"))):
+        raise HTTPException(status_code=429, detail="Concurrent usage limit exceeded")
+    if not acquire("global", int(os.environ.get("GLOBAL_CONCURRENCY_LIMIT", "20"))):
+        for key, token in reversed(acquired):
+            release(key, token)
+        raise HTTPException(status_code=429, detail="Service concurrency limit exceeded")
+    try:
+        yield
+    finally:
+        for key, token in reversed(acquired):
+            release(key, token)
 
 
 def enforce_e2b_usage_limit_sync(guest_id: str, *, units: int = 1) -> None:

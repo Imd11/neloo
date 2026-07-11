@@ -56,6 +56,7 @@ from ..tools.search import internet_search
 from ..tools.skill_runtime import SKILL_RUNTIME_TOOLS
 from ..tools.ui_design import search_ui_design
 from ..tools.word_generator import WORD_TOOLS
+from ..usage_limits import UsageConcurrencyMiddleware
 from .integration_tools import INTEGRATION_TOOLS
 from .persistence_middleware import MessagePersistenceMiddleware
 
@@ -1050,14 +1051,20 @@ INTERRUPT_ON_CONFIG = {
     },
 }
 
-# Environment variable to control HITL behavior
-# Production cannot disable approval for tools with external side effects. Local
-# development can opt in with ENABLE_HITL=true or explicitly keep it disabled.
-ENABLE_HITL = (
-    True
-    if os.environ.get("ENVIRONMENT", "development").lower() == "production"
-    else os.environ.get("ENABLE_HITL", "false").lower() == "true"
-)
+
+def hitl_enabled(environment: dict[str, str] | os._Environ[str] | None = None) -> bool:
+    """Disable approvals only in an explicitly insecure local environment."""
+    env = environment if environment is not None else os.environ
+    explicit_local = (
+        env.get("ENVIRONMENT", "").lower() in {"development", "local", "test"}
+        and env.get("ALLOW_INSECURE_LOCAL_TOKENS", "false").lower() == "true"
+    )
+    if explicit_local:
+        return env.get("ENABLE_HITL", "false").lower() == "true"
+    return True
+
+
+ENABLE_HITL = hitl_enabled()
 
 
 # =============================================================================
@@ -1572,7 +1579,7 @@ def build_graph(model_id: str | None = None, mode: str = "default"):
     # Use CUSTOM_TOOLS which now includes INTEGRATION_TOOLS
     # (Runtime Dispatcher pattern - no dynamic injection needed)
     tools = list(CUSTOM_TOOLS)
-    middleware = [MessagePersistenceMiddleware()]
+    middleware = [UsageConcurrencyMiddleware(), MessagePersistenceMiddleware()]
 
     return create_deep_agent(
         model=model,

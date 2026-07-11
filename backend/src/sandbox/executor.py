@@ -1775,7 +1775,13 @@ def execute_python(
                 "generated_files": [],
             }
 
-    result = executor.execute(code, timeout, user_id, thread_id)
+    if os.environ.get("SANDBOX_MODE", "e2b").lower() in {"e2b", "e2b-sync", "e2b-async"}:
+        from ..usage_limits import e2b_usage_concurrency_sync
+
+        with e2b_usage_concurrency_sync(user_id):
+            result = executor.execute(code, timeout, user_id, thread_id)
+    else:
+        result = executor.execute(code, timeout, user_id, thread_id)
     return result.to_dict()
 
 

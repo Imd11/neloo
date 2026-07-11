@@ -234,7 +234,8 @@ export async function generateSlideImage(
   slide: Slide,
   style?: StyleDimensions,
   signal?: AbortSignal,
-  presetId?: string
+  presetId?: string,
+  accessToken?: string
 ): Promise<string> {
   const styleBlock = style ? buildStyleInstructions(style, presetId) : "";
   const presetContext = buildPresetPromptContext(presetId);
@@ -280,7 +281,10 @@ ${styleBlock}
 
   const response = await fetch("/api/generate-image", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    },
     body: JSON.stringify({
       prompt,
       size: "16x9",

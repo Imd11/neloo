@@ -51,6 +51,7 @@ interface CanvasImageProps {
   loadingType?: "generate" | "edit";
   generationSize?: string;
   displayHeight?: number;
+  accessToken?: string;
 }
 
 export interface CanvasImageRef {
@@ -88,6 +89,7 @@ export const CanvasImage = forwardRef<CanvasImageRef, CanvasImageProps>(
       loadingType = "edit",
       generationSize,
       displayHeight,
+      accessToken,
     },
     ref
   ) => {
@@ -656,7 +658,12 @@ export const CanvasImage = forwardRef<CanvasImageRef, CanvasImageProps>(
                   try {
                     const response = await fetch("/api/resize-download", {
                       method: "POST",
-                      headers: { "Content-Type": "application/json" },
+                      headers: {
+                        "Content-Type": "application/json",
+                        ...(accessToken
+                          ? { Authorization: `Bearer ${accessToken}` }
+                          : {}),
+                      },
                       body: JSON.stringify({ imageUrl: url, width, height }),
                     });
 

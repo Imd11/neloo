@@ -82,6 +82,44 @@ async def test_old_lease_cannot_release_reacquired_slot():
     assert await limiter.release_lease("image", "guest-1", current)
 
 
+@pytest.mark.asyncio
+async def test_concurrency_guard_acquires_guest_and_global_leases(monkeypatch):
+    limiter = usage_limits.UsageLimiter(usage_limits.MemoryUsageStore(), namespace="test")
+    monkeypatch.setattr(usage_limits, "get_usage_limiter", lambda: limiter)
+    monkeypatch.setenv("GUEST_CONCURRENCY_LIMIT", "1")
+    monkeypatch.setenv("GLOBAL_CONCURRENCY_LIMIT", "1")
+
+    async with usage_limits.usage_concurrency("model", "guest-1"):
+        with pytest.raises(usage_limits.HTTPException) as error:
+            async with usage_limits.usage_concurrency("model", "guest-1"):
+                pass
+        assert error.value.status_code == 429
+
+    async with usage_limits.usage_concurrency("model", "guest-1"):
+        pass
+
+
+@pytest.mark.asyncio
+async def test_agent_middleware_enforces_model_concurrency(monkeypatch):
+    limiter = usage_limits.UsageLimiter(usage_limits.MemoryUsageStore(), namespace="test")
+    monkeypatch.setattr(usage_limits, "get_usage_limiter", lambda: limiter)
+    monkeypatch.setenv("GUEST_CONCURRENCY_LIMIT", "1")
+    monkeypatch.setenv("GLOBAL_CONCURRENCY_LIMIT", "1")
+
+    runtime = type(
+        "Runtime",
+        (),
+        {"config": {"configurable": {"langgraph_auth_user_id": "guest-1"}}},
+    )()
+    request = type("Request", (), {"runtime": runtime})()
+    middleware = usage_limits.UsageConcurrencyMiddleware()
+
+    async with usage_limits.usage_concurrency("model", "guest-1"):
+        with pytest.raises(usage_limits.HTTPException) as error:
+            await middleware.awrap_model_call(request, lambda _request: None)
+    assert error.value.status_code == 429
+
+
 def test_e2b_limit_runs_before_executor_creation(monkeypatch):
     from src.sandbox import executor
 
@@ -102,3 +140,16 @@ def test_e2b_limit_runs_before_executor_creation(monkeypatch):
         executor.execute_python("print(1)", user_id="guest-1")
     assert error.value.status_code == 429
     assert calls == 0
+
+
+def test_e2b_concurrency_guard_releases_local_lease(monkeypatch):
+    monkeypatch.delenv("RATE_LIMIT_REDIS_URL", raising=False)
+    monkeypatch.setenv("GUEST_CONCURRENCY_LIMIT", "1")
+    monkeypatch.setenv("GLOBAL_CONCURRENCY_LIMIT", "1")
+
+    with usage_limits.e2b_usage_concurrency_sync("guest-1"):
+        with pytest.raises(usage_limits.HTTPException):
+            with usage_limits.e2b_usage_concurrency_sync("guest-1"):
+                pass
+    with usage_limits.e2b_usage_concurrency_sync("guest-1"):
+        pass

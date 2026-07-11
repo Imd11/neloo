@@ -575,6 +575,7 @@ export function ImageCanvas({
               loadingType={img.loadingType}
               generationSize={img.generationParams?.size}
               displayHeight={img.displayHeight}
+              accessToken={session.access_token}
               isSelected={false}
               isEditing={editingImageId === img.id}
               tool={tool === "hand" ? "hand" : "select"}

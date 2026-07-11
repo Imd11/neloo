@@ -27,6 +27,29 @@ describe("DistributedRateLimiter", () => {
     expect(await limiter.reserveBudget("guest-1", 3, 5)).toBe(true);
     expect(await limiter.reserveBudget("guest-1", 3, 5)).toBe(false);
   });
+
+  it("holds and releases guest and global concurrency leases", async () => {
+    process.env.GUEST_CONCURRENCY_LIMIT = "1";
+    process.env.GLOBAL_CONCURRENCY_LIMIT = "1";
+    const limiter = new DistributedRateLimiter(
+      new MemoryRateLimitStore(),
+      "test"
+    );
+    let release!: () => void;
+    const blocked = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const first = limiter.withConcurrency("image", "guest-1", () => blocked);
+
+    await expect(
+      limiter.withConcurrency("image", "guest-1", async () => undefined)
+    ).rejects.toThrow("Concurrent usage limit exceeded");
+    release();
+    await first;
+    await expect(
+      limiter.withConcurrency("image", "guest-1", async () => "ok")
+    ).resolves.toBe("ok");
+  });
 });
 
 describe("verifyGuestToken", () => {

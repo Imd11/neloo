@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 from ..agent.graph import get_model
 from ..identity import get_persistent_user
 from ..storage.supabase_db import USE_SUPABASE_DB, get_supabase_client
-from ..usage_limits import enforce_usage_limit
+from ..usage_limits import enforce_usage_limit, usage_concurrency
 from .auth import get_current_user
 from .ratelimit import limiter
 
@@ -191,20 +191,21 @@ async def generate_slides_text(
         ) from exc
 
     try:
-        attachment_context = build_attachment_context(payload.attachments)
-        prompt = payload.prompt
-        if attachment_context:
-            prompt = f"{prompt}\n\nUse the following source material when it is relevant:\n{attachment_context}"
+        async with usage_concurrency("model", user["sub"]):
+            attachment_context = build_attachment_context(payload.attachments)
+            prompt = payload.prompt
+            if attachment_context:
+                prompt = f"{prompt}\n\nUse the following source material when it is relevant:\n{attachment_context}"
 
-        response = await asyncio.wait_for(
-            model.ainvoke(
-                [
-                    SystemMessage(content=payload.system),
-                    HumanMessage(content=prompt),
-                ]
-            ),
-            timeout=90,
-        )
+            response = await asyncio.wait_for(
+                model.ainvoke(
+                    [
+                        SystemMessage(content=payload.system),
+                        HumanMessage(content=prompt),
+                    ]
+                ),
+                timeout=90,
+            )
     except asyncio.TimeoutError as exc:
         raise HTTPException(status_code=504, detail="Slides generation timed out") from exc
     except Exception as exc:

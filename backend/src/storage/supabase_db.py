@@ -736,7 +736,7 @@ async def get_thread_by_langgraph_id(
 
     except Exception as e:
         print(f"[SupabaseDB] Error getting thread by langgraph_id: {e}")
-        return None
+        raise RuntimeError("Thread ownership lookup failed") from e
 
 
 async def update_thread_title(
