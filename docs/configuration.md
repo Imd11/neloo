@@ -187,7 +187,9 @@ Security rules:
 
 - `SUPABASE_SERVICE_KEY` is a backend-only secret.
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` is public. Configure Row Level Security in Supabase.
-- Run migrations from `backend/supabase/migrations/` and `supabase/migrations/` when enabling database features.
+- Run only the canonical migrations in `supabase/migrations/`. The two legacy SQL
+  directories under `backend/` are retained solely as historical input for the
+  automated legacy-upgrade fixture; do not execute them manually.
 
 ### Legacy LangGraph thread ownership
 

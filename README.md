@@ -58,7 +58,7 @@ neloo/
 │   ├── src/api/             # FastAPI routes used by the frontend
 │   ├── src/sandbox/         # E2B and local execution
 │   ├── src/storage/         # Local/Supabase storage adapters
-│   ├── supabase/migrations/ # Backend database migrations
+│   ├── supabase/migrations/ # Legacy migration archive (do not execute)
 │   ├── langgraph.json       # LangGraph configuration
 │   └── .env.example         # Backend environment template
 ├── frontend/                # Next.js application
@@ -67,7 +67,7 @@ neloo/
 │   ├── src/providers/       # App providers
 │   └── .env.example         # Frontend environment template
 ├── e2b-template/            # Optional E2B template build project
-├── supabase/migrations/     # Additional Supabase migrations
+├── supabase/migrations/     # Canonical Supabase migration chain
 └── docs/readme/             # Translated README files
 ```
 
