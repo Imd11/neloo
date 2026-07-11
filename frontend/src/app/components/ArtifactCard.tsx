@@ -1,12 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import {
-  Loader2,
-  Code2,
-  CheckCircle2,
-  Eye,
-} from "lucide-react";
+import { Loader2, Code2, CheckCircle2, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Artifact } from "@/lib/artifactParser";
 import { useLanguage } from "@/providers/LanguageProvider";
@@ -63,21 +58,13 @@ export function ArtifactCard({
   const StatusIcon = useMemo(() => {
     switch (status) {
       case "generating":
-        return (
-          <Loader2 className="h-4 w-4 animate-spin text-primary" />
-        );
+        return <Loader2 className="h-4 w-4 animate-spin text-primary" />;
       case "complete":
-        return (
-          <CheckCircle2 className="h-4 w-4 text-green-500" />
-        );
+        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
       case "waiting":
-        return (
-          <Code2 className="h-4 w-4 text-muted-foreground" />
-        );
+        return <Code2 className="h-4 w-4 text-muted-foreground" />;
       default:
-        return (
-          <Code2 className="h-4 w-4 text-muted-foreground" />
-        );
+        return <Code2 className="h-4 w-4 text-muted-foreground" />;
     }
   }, [status]);
 
@@ -101,9 +88,9 @@ export function ArtifactCard({
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-3 px-3 py-2 rounded-lg border bg-muted/30",
+        "inline-flex items-center gap-3 rounded-lg border bg-muted/30 px-3 py-2",
         "transition-all duration-200",
-        isClickable && "hover:bg-muted/50 cursor-pointer",
+        isClickable && "cursor-pointer hover:bg-muted/50",
         className
       )}
       onClick={isClickable ? onPreview : undefined}
@@ -114,15 +101,20 @@ export function ArtifactCard({
       <div className="flex-shrink-0">{StatusIcon}</div>
 
       {/* Content */}
-      <div className="flex flex-col min-w-0">
-        <span className="text-sm font-medium truncate">
-          {artifact?.title || (status === "generating" ? t("chat.artifact_generating") : t("chat.artifact_preview_title"))}
+      <div className="flex min-w-0 flex-col">
+        <span className="truncate text-sm font-medium">
+          {artifact?.title ||
+            (status === "generating"
+              ? t("chat.artifact_generating")
+              : t("chat.artifact_preview_title"))}
         </span>
         <span className="text-xs text-muted-foreground">
           {typeLabel && `${typeLabel} · `}
           {statusText}
           {status === "generating" && artifact?.code && (
-            <span className="ml-1">({artifact.code.length} {t("chat.artifact_chars")})</span>
+            <span className="ml-1">
+              ({artifact.code.length} {t("chat.artifact_chars")})
+            </span>
           )}
         </span>
       </div>
@@ -135,16 +127,18 @@ export function ArtifactCard({
             onPreview?.();
           }}
           className={cn(
-            "flex items-center gap-1 px-2 py-1 rounded-md",
+            "flex items-center gap-1 rounded-md px-2 py-1",
             "text-xs font-medium",
             status === "generating"
-              ? "bg-primary/20 text-primary hover:bg-primary/30"
-              : "bg-primary text-primary-foreground hover:bg-primary/90",
+              ? "bg-primary/20 hover:bg-primary/30 text-primary"
+              : "text-primary-foreground hover:bg-primary/90 bg-primary",
             "transition-colors"
           )}
         >
           <Eye className="h-3 w-3" />
-          {status === "generating" ? t("chat.artifact_view") : t("chat.artifact_preview")}
+          {status === "generating"
+            ? t("chat.artifact_view")
+            : t("chat.artifact_preview")}
         </button>
       )}
     </div>
@@ -170,7 +164,7 @@ export function ArtifactCardCompact({
     return (
       <span
         className={cn(
-          "inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs",
+          "inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-xs",
           "bg-primary/10 text-primary",
           className
         )}
@@ -187,9 +181,9 @@ export function ArtifactCardCompact({
     <button
       onClick={onPreview}
       className={cn(
-        "inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs",
+        "inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-xs",
         "bg-green-500/10 text-green-600 dark:text-green-400",
-        "hover:bg-green-500/20 transition-colors",
+        "transition-colors hover:bg-green-500/20",
         className
       )}
     >

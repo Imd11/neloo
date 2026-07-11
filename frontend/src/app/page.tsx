@@ -1,6 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, Suspense, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  Suspense,
+  useMemo,
+  useRef,
+} from "react";
 import { useQueryState } from "nuqs";
 import { getConfig, StandaloneConfig } from "@/lib/config";
 import { Assistant } from "@langchain/langgraph-sdk";
@@ -34,15 +41,21 @@ import { ImageExperience } from "@/app/components/image/ImageExperience";
 import { ResumeExperience } from "@/app/components/resume/ResumeExperience";
 import SlidesExperience from "@/app/components/slides/SlidesExperience";
 import PresetGrid from "@/app/components/slides/slidecraft/components/PresetGrid";
-import { PRESETS, getPresetById } from "@/app/components/slides/slidecraft/data/presets";
+import {
+  PRESETS,
+  getPresetById,
+} from "@/app/components/slides/slidecraft/data/presets";
 import type { StyleDimensions } from "@/app/components/slides/slidecraft/types";
 import { TranslatePanel } from "@/app/components/TranslatePanel";
 import { useGoogleDrivePicker } from "@/app/hooks/useGoogleDrivePicker";
 import { useDataFileUpload } from "@/app/hooks/useDataFileUpload";
 import { WaterDropletMascot } from "@/app/components/WaterDropletMascot";
 import { toast } from "sonner";
-import { getFortuneTemplatePrefix } from '@/data/fortuneTemplatePrefix';
-import { getHumanizePrompt, getPromptOptimizePrompt } from "@/data/featurePrompts";
+import { getFortuneTemplatePrefix } from "@/data/fortuneTemplatePrefix";
+import {
+  getHumanizePrompt,
+  getPromptOptimizePrompt,
+} from "@/data/featurePrompts";
 import { useLanguage } from "@/providers/LanguageProvider";
 import { Button } from "@/components/ui/button";
 import type { HiddenPromptEnvelope } from "@/app/utils/hiddenPromptEnvelope";
@@ -61,9 +74,12 @@ type ThreadOpenProblem = {
 
 type ThreadOpenState = "idle" | "checking";
 
-async function classifyThreadOpenFailure(response: Response): Promise<ThreadOpenProblemCode> {
+async function classifyThreadOpenFailure(
+  response: Response
+): Promise<ThreadOpenProblemCode> {
   if (response.status === 404) return "not_found";
-  if (response.status === 401 || response.status === 403) return "access_denied";
+  if (response.status === 401 || response.status === 403)
+    return "access_denied";
   if (response.status === 503) {
     const detail = await response.text().catch(() => "");
     if (detail.toLowerCase().includes("database")) return "history_disabled";
@@ -163,15 +179,39 @@ interface LandingViewProps {
   setFortuneMode: (mode: boolean) => void;
   enableWebDevMode: () => void;
   setActiveFeatureId: (featureId: string | null) => void;
-  onEnterResumeEditMode?: (file: File | null, prompt: string, skipUpload: boolean) => void;
-  onEnterSlidesEditMode?: (file: File | null, prompt: string, presetId?: string, style?: StyleDimensions) => void;
+  onEnterResumeEditMode?: (
+    file: File | null,
+    prompt: string,
+    skipUpload: boolean
+  ) => void;
+  onEnterSlidesEditMode?: (
+    file: File | null,
+    prompt: string,
+    presetId?: string,
+    style?: StyleDimensions
+  ) => void;
 }
 
-function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFortuneMode, enableWebDevMode, setActiveFeatureId, onEnterResumeEditMode, onEnterSlidesEditMode }: LandingViewProps) {
+function LandingView({
+  onPromptSubmit,
+  onSelectFeature,
+  selectedFeature,
+  setFortuneMode,
+  enableWebDevMode,
+  setActiveFeatureId,
+  onEnterResumeEditMode,
+  onEnterSlidesEditMode,
+}: LandingViewProps) {
   const { t } = useLanguage();
-  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
-  const [selectedTemplateName, setSelectedTemplateName] = useState<string | null>(null);
-  const [selectedSlidesPresetId, setSelectedSlidesPresetId] = useState<string | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(
+    null
+  );
+  const [selectedTemplateName, setSelectedTemplateName] = useState<
+    string | null
+  >(null);
+  const [selectedSlidesPresetId, setSelectedSlidesPresetId] = useState<
+    string | null
+  >(null);
 
   // File upload state - use proper upload hook
   const { session } = useAuth();
@@ -186,29 +226,35 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
   const fileUpload = useDataFileUpload({
     apiUrl: process.env.NEXT_PUBLIC_API_URL || "",
     accessToken: session?.access_token,
-    autoUpload: true,  // Upload immediately when files are selected
+    autoUpload: true, // Upload immediately when files are selected
     maxFiles: 5,
   });
 
   // Unified file handling - all modes now use fileUpload hook
-  const handleGoogleDriveFile = useCallback((file: File) => {
-    fileUpload.addFiles([file]);
-    toast.success(t("chat.uploaded_file", { name: file.name }));
-  }, [fileUpload, t]);
+  const handleGoogleDriveFile = useCallback(
+    (file: File) => {
+      fileUpload.addFiles([file]);
+      toast.success(t("chat.uploaded_file", { name: file.name }));
+    },
+    [fileUpload, t]
+  );
   const googleDrivePicker = useGoogleDrivePicker(handleGoogleDriveFile);
 
   // Handle local file selection - unified for all modes
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      // All modes now use unified fileUpload hook
-      fileUpload.addFiles(files);
-    }
-    // Reset input
-    if (fileUpload.inputRef.current) {
-      fileUpload.inputRef.current.value = '';
-    }
-  }, [fileUpload]);
+  const handleFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (files && files.length > 0) {
+        // All modes now use unified fileUpload hook
+        fileUpload.addFiles(files);
+      }
+      // Reset input
+      if (fileUpload.inputRef.current) {
+        fileUpload.inputRef.current.value = "";
+      }
+    },
+    [fileUpload]
+  );
 
   // Handle library file import
   const handleLibraryImport = useCallback(() => {
@@ -217,10 +263,10 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
 
   // Wrapper to add fortune prefix when applicable
   const handlePromptSubmit = (userInput: string) => {
-    if (selectedFeature?.id === 'fortune') {
+    if (selectedFeature?.id === "fortune") {
       // Enable fortune mode graph
       setFortuneMode(true);
-      setActiveFeatureId('fortune');
+      setActiveFeatureId("fortune");
 
       // Get the prefix (hidden from user, sent to backend)
       const prefix = selectedTemplate?.id
@@ -232,40 +278,55 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
         hiddenPrefix: prefix,
         context: { feature: "fortune", templateId: selectedTemplate?.id ?? 1 },
       });
-    } else if (selectedFeature?.id === 'resume') {
+    } else if (selectedFeature?.id === "resume") {
       // Resume mode - use the first file from fileUpload (already uploaded to Supabase)
-      const firstFile = fileUpload.files.length > 0 ? fileUpload.files[0].file : null;
+      const firstFile =
+        fileUpload.files.length > 0 ? fileUpload.files[0].file : null;
       onEnterResumeEditMode?.(firstFile, userInput, false);
       fileUpload.clearFiles(); // Clear after use
-    } else if (selectedFeature?.id === 'slides') {
+    } else if (selectedFeature?.id === "slides") {
       // Slides mode - use the first file from fileUpload (already uploaded to Supabase)
-      const firstFile = fileUpload.files.length > 0 ? fileUpload.files[0].file : null;
-      const preset = selectedSlidesPresetId ? getPresetById(selectedSlidesPresetId) : undefined;
-      onEnterSlidesEditMode?.(firstFile, userInput, preset?.id, preset?.dimensions);
+      const firstFile =
+        fileUpload.files.length > 0 ? fileUpload.files[0].file : null;
+      const preset = selectedSlidesPresetId
+        ? getPresetById(selectedSlidesPresetId)
+        : undefined;
+      onEnterSlidesEditMode?.(
+        firstFile,
+        userInput,
+        preset?.id,
+        preset?.dimensions
+      );
       fileUpload.clearFiles(); // Clear after use
-    } else if (selectedFeature?.id === 'web-dev') {
+    } else if (selectedFeature?.id === "web-dev") {
       // Enable web-dev mode graph
       enableWebDevMode();
       setFortuneMode(false);
-      setActiveFeatureId('web-dev');
+      setActiveFeatureId("web-dev");
       onPromptSubmit(userInput);
-    } else if (selectedFeature?.id === 'prompt-optimize') {
+    } else if (selectedFeature?.id === "prompt-optimize") {
       setFortuneMode(false);
-      setActiveFeatureId('prompt-optimize');
+      setActiveFeatureId("prompt-optimize");
       onPromptSubmit(userInput, {
         visibleContent: userInput,
-        hiddenPrefix: getPromptOptimizePrompt(selectedTemplate?.id ?? null, selectedTemplate?.promptInstruction),
+        hiddenPrefix: getPromptOptimizePrompt(
+          selectedTemplate?.id ?? null,
+          selectedTemplate?.promptInstruction
+        ),
         context: {
           feature: "prompt-optimize",
           templateId: selectedTemplate?.id ?? undefined,
         },
       });
-    } else if (selectedFeature?.id === 'deai') {
+    } else if (selectedFeature?.id === "deai") {
       setFortuneMode(false);
-      setActiveFeatureId('deai');
+      setActiveFeatureId("deai");
       onPromptSubmit(userInput, {
         visibleContent: userInput,
-        hiddenPrefix: getHumanizePrompt(selectedTemplate?.id ?? null, selectedTemplate?.promptInstruction),
+        hiddenPrefix: getHumanizePrompt(
+          selectedTemplate?.id ?? null,
+          selectedTemplate?.promptInstruction
+        ),
         context: {
           feature: "deai",
           templateId: selectedTemplate?.id ?? undefined,
@@ -290,12 +351,14 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
     setSelectedTemplate(template);
     setSelectedTemplateName(template.title);
 
-    if (selectedFeature?.id === 'image') {
+    if (selectedFeature?.id === "image") {
       // In image mode, templates are handled by the image experience UI.
       return;
-    } else if (selectedFeature?.id === 'fortune') {
-      console.log(`[Fortune] Selected template: ${template.title} (ID: ${template.id})`);
-    } else if (selectedFeature?.id === 'slides') {
+    } else if (selectedFeature?.id === "fortune") {
+      console.log(
+        `[Fortune] Selected template: ${template.title} (ID: ${template.id})`
+      );
+    } else if (selectedFeature?.id === "slides") {
       const presetId = String((template as any).id);
       const preset = PRESETS.find((item) => item.id === presetId);
       setSelectedSlidesPresetId(presetId);
@@ -306,17 +369,17 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center px-6 overflow-y-auto">
-      <div className="w-full max-w-4xl flex flex-col items-center gap-8 pt-[28vh]">
+    <div className="flex flex-1 flex-col items-center overflow-y-auto px-6">
+      <div className="flex w-full max-w-4xl flex-col items-center gap-8 pt-[28vh]">
         {/* 1. Rotating Headline */}
         <div>
           <RotatingHeadline />
         </div>
 
         {/* 2. Input Area */}
-        <div className="w-full max-w-3xl mx-auto">
+        <div className="mx-auto w-full max-w-3xl">
           {/* Switch input component based on fortune mode */}
-          {selectedFeature?.id === 'fortune' ? (
+          {selectedFeature?.id === "fortune" ? (
             <TemplatePromptInput
               placeholder={t("chat.default_placeholder")}
               selectedFeature={selectedFeature}
@@ -332,19 +395,23 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
             <PromptInput
               placeholder={t("chat.default_placeholder")}
               selectedFeature={selectedFeature}
-              onClearFeature={() => { onSelectFeature(null); setSelectedTemplate(null); setSelectedTemplateName(null); }}
+              onClearFeature={() => {
+                onSelectFeature(null);
+                setSelectedTemplate(null);
+                setSelectedTemplateName(null);
+              }}
               onSubmit={handlePromptSubmit}
               disabled={false}
               onUploadClick={() => fileUpload.triggerFileSelect()}
               onLibraryClick={handleLibraryImport}
               onGoogleDriveClick={() => googleDrivePicker.openPicker()}
-              files={fileUpload.files.map(f => ({
+              files={fileUpload.files.map((f) => ({
                 id: f.id,
                 name: f.file.name,
                 size: f.displaySize || f.file.size,
                 type: f.file.type,
                 status: f.status,
-                error: f.error
+                error: f.error,
               }))}
               onRemoveFile={(fileId) => fileUpload.removeFile(fileId)}
               selectedTemplateName={selectedTemplateName}
@@ -363,11 +430,11 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
         />
 
         {/* 3.5 Skip Button for Resume */}
-        {selectedFeature?.id === 'resume' && (
-          <div className="w-full max-w-3xl mx-auto text-center">
+        {selectedFeature?.id === "resume" && (
+          <div className="mx-auto w-full max-w-3xl text-center">
             <button
-              onClick={() => onEnterResumeEditMode?.(null, '', true)}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => onEnterResumeEditMode?.(null, "", true)}
+              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               {t("chat.resume_skip")}
             </button>
@@ -375,7 +442,7 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
         )}
 
         {/* 4. Feature Template Grid (Expandable) - skip for resume which has its own grid */}
-        {selectedFeature?.id === 'slides' ? (
+        {selectedFeature?.id === "slides" ? (
           <PresetGrid
             selectedPresetId={selectedSlidesPresetId}
             onSelectPreset={(presetId) => {
@@ -384,21 +451,23 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
               setSelectedTemplateName(preset?.nameZh || preset?.name || null);
             }}
           />
-        ) : selectedFeature?.id !== 'resume' && (
-          <FeatureTemplateGrid
-            feature={selectedFeature}
-            selectedTemplateId={selectedTemplate?.id ?? null}
-            onSelectTemplate={handleSelectTemplate}
-          />
+        ) : (
+          selectedFeature?.id !== "resume" && (
+            <FeatureTemplateGrid
+              feature={selectedFeature}
+              selectedTemplateId={selectedTemplate?.id ?? null}
+              onSelectTemplate={handleSelectTemplate}
+            />
+          )
         )}
 
         {/* 4.5 Resume Template Grid */}
-        {selectedFeature?.id === 'resume' && (
-          <div className="w-full max-w-5xl mx-auto px-4">
+        {selectedFeature?.id === "resume" && (
+          <div className="mx-auto w-full max-w-5xl px-4">
             <ResumeTemplateGrid
               activeTemplate="forty-seconds-cv"
               onSelectTemplate={(templateId: TemplateId) => {
-                console.log('[Resume] Selected template:', templateId);
+                console.log("[Resume] Selected template:", templateId);
               }}
             />
           </div>
@@ -422,7 +491,7 @@ function LandingView({ onPromptSubmit, onSelectFeature, selectedFeature, setFort
         mode="select"
         onFilesSelected={(files) => {
           // Handle library file selection
-          console.log('Selected files from library:', files);
+          console.log("Selected files from library:", files);
           setLibraryDialogOpen(false);
         }}
       />
@@ -450,41 +519,68 @@ function ChatWithFilePanel({
 }) {
   const [, setThreadIdQuery] = useQueryState("threadId");
   const { t } = useLanguage();
-  const { messages, isLoading, isThreadLoading, historyUnavailable, webDevMode, sendMessage, setFortuneMode, enableWebDevMode, setActiveFeatureId } = useChatContext();
+  const {
+    messages,
+    isLoading,
+    isThreadLoading,
+    historyUnavailable,
+    webDevMode,
+    sendMessage,
+    setFortuneMode,
+    enableWebDevMode,
+    setActiveFeatureId,
+  } = useChatContext();
   const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
 
   // Resume edit mode state
   const [resumeEditMode, setResumeEditMode] = useState(false);
   const [resumeFile, setResumeFile] = useState<File | null>(null);
-  const [resumePrompt, setResumePrompt] = useState('');
+  const [resumePrompt, setResumePrompt] = useState("");
   const [resumeSkipUpload, setResumeSkipUpload] = useState(false);
 
   // Handler for entering resume edit mode
-  const handleEnterResumeEditMode = useCallback((file: File | null, prompt: string, skipUpload: boolean) => {
-    setResumeFile(file);
-    setResumePrompt(prompt);
-    setResumeSkipUpload(skipUpload);
-    setResumeEditMode(true);
-  }, []);
+  const handleEnterResumeEditMode = useCallback(
+    (file: File | null, prompt: string, skipUpload: boolean) => {
+      setResumeFile(file);
+      setResumePrompt(prompt);
+      setResumeSkipUpload(skipUpload);
+      setResumeEditMode(true);
+    },
+    []
+  );
 
   // Slides edit mode state
   const [slidesEditMode, setSlidesEditMode] = useState(false);
   const [slidesFile, setSlidesFile] = useState<File | null>(null);
-  const [slidesPrompt, setSlidesPrompt] = useState('');
-  const [slidesPresetId, setSlidesPresetId] = useState<string | undefined>(undefined);
-  const [slidesStyle, setSlidesStyle] = useState<StyleDimensions | undefined>(undefined);
+  const [slidesPrompt, setSlidesPrompt] = useState("");
+  const [slidesPresetId, setSlidesPresetId] = useState<string | undefined>(
+    undefined
+  );
+  const [slidesStyle, setSlidesStyle] = useState<StyleDimensions | undefined>(
+    undefined
+  );
 
   // Handler for entering slides edit mode
-  const handleEnterSlidesEditMode = useCallback((file: File | null, prompt: string, presetId?: string, style?: StyleDimensions) => {
-    setSlidesFile(file);
-    setSlidesPrompt(prompt);
-    setSlidesPresetId(presetId);
-    setSlidesStyle(style);
-    setSlidesEditMode(true);
-  }, []);
+  const handleEnterSlidesEditMode = useCallback(
+    (
+      file: File | null,
+      prompt: string,
+      presetId?: string,
+      style?: StyleDimensions
+    ) => {
+      setSlidesFile(file);
+      setSlidesPrompt(prompt);
+      setSlidesPresetId(presetId);
+      setSlidesStyle(style);
+      setSlidesEditMode(true);
+    },
+    []
+  );
 
   // Selected artifact from inline cards - this is what drives the right panel
-  const [selectedArtifact, setSelectedArtifact] = useState<Artifact | null>(null);
+  const [selectedArtifact, setSelectedArtifact] = useState<Artifact | null>(
+    null
+  );
   // Track if we're currently streaming (for the preview panel)
   const [isArtifactStreaming, setIsArtifactStreaming] = useState(false);
   // Track if we're subscribed to streaming updates (user clicked on streaming artifact)
@@ -559,7 +655,12 @@ function ChatWithFilePanel({
       // Streaming finished but no artifact found (parsing failed or AI didn't output artifact tags)
       setIsSubscribedToStreaming(false);
     }
-  }, [isSubscribedToStreaming, isLoading, currentStreamingArtifact, lastCompletedArtifact]);
+  }, [
+    isSubscribedToStreaming,
+    isLoading,
+    currentStreamingArtifact,
+    lastCompletedArtifact,
+  ]);
 
   // Handle artifact selection from inline cards
   const handleArtifactSelect = useCallback((artifact: Artifact | null) => {
@@ -590,36 +691,40 @@ function ChatWithFilePanel({
   // Determine view mode
   // Only show landing if: no messages AND no threadId AND not loading thread
   // This prevents flashing landing view when switching to a historical thread
-  const showLandingView = messages.length === 0 && !threadId && !isThreadLoading;
+  const showLandingView =
+    messages.length === 0 && !threadId && !isThreadLoading;
 
-  const handleSelectFeature = useCallback((feature: Feature | null) => {
-    // Optimistic UI: show the tag immediately, then navigate.
-    setSelectedFeature(feature);
+  const handleSelectFeature = useCallback(
+    (feature: Feature | null) => {
+      // Optimistic UI: show the tag immediately, then navigate.
+      setSelectedFeature(feature);
 
-    if (!feature) {
-      setFortuneMode(false);
-      setActiveFeatureId(null);
+      if (!feature) {
+        setFortuneMode(false);
+        setActiveFeatureId(null);
+        onModeChange?.("chat");
+        return;
+      }
+
+      if (feature.id === "image") {
+        // Image mode is handled inline on the home page (no route change).
+        setActiveFeatureId("image");
+        onModeChange?.("image");
+        return;
+      }
+
+      if (feature.id === "resume") {
+        // Resume mode is handled inline on the home page (no route change).
+        setActiveFeatureId("resume");
+        onModeChange?.("resume");
+        return;
+      }
+
+      setActiveFeatureId(feature.id);
       onModeChange?.("chat");
-      return;
-    }
-
-    if (feature.id === "image") {
-      // Image mode is handled inline on the home page (no route change).
-      setActiveFeatureId("image");
-      onModeChange?.("image");
-      return;
-    }
-
-    if (feature.id === "resume") {
-      // Resume mode is handled inline on the home page (no route change).
-      setActiveFeatureId("resume");
-      onModeChange?.("resume");
-      return;
-    }
-
-    setActiveFeatureId(feature.id);
-    onModeChange?.("chat");
-  }, [setActiveFeatureId, setFortuneMode, onModeChange]);
+    },
+    [setActiveFeatureId, setFortuneMode, onModeChange]
+  );
 
   // Ensure active feature is cleared when returning to landing.
   useEffect(() => {
@@ -669,7 +774,7 @@ function ChatWithFilePanel({
           onExit={() => {
             setResumeEditMode(false);
             setResumeFile(null);
-            setResumePrompt('');
+            setResumePrompt("");
             setResumeSkipUpload(false);
             setSelectedFeature(null);
             setActiveFeatureId(null);
@@ -690,7 +795,7 @@ function ChatWithFilePanel({
           onExit={() => {
             setSlidesEditMode(false);
             setSlidesFile(null);
-            setSlidesPrompt('');
+            setSlidesPrompt("");
             setSlidesPresetId(undefined);
             setSlidesStyle(undefined);
             setSelectedFeature(null);
@@ -698,7 +803,9 @@ function ChatWithFilePanel({
             void setThreadIdQuery(null);
             onModeChange?.("chat");
           }}
-          presentationId={threadType === "slides" ? threadId || undefined : undefined}
+          presentationId={
+            threadType === "slides" ? threadId || undefined : undefined
+          }
           initialFile={slidesFile}
           initialPrompt={threadType === "slides" ? undefined : slidesPrompt}
           initialPresetId={threadType === "slides" ? undefined : slidesPresetId}
@@ -731,7 +838,10 @@ function ChatWithFilePanel({
       direction="horizontal"
       className="h-full"
     >
-      <ResizablePanel defaultSize={showRightPanel ? 50 : 100} minSize={40}>
+      <ResizablePanel
+        defaultSize={showRightPanel ? 50 : 100}
+        minSize={40}
+      >
         <div className="flex h-full flex-col overflow-hidden">
           {historyUnavailable && (
             <div className="border-b border-border bg-muted/40 px-4 py-3">
@@ -759,7 +869,11 @@ function ChatWithFilePanel({
       {showArtifactPreview && selectedArtifact && (
         <>
           <ResizableHandle withHandle />
-          <ResizablePanel defaultSize={50} minSize={25} maxSize={60}>
+          <ResizablePanel
+            defaultSize={50}
+            minSize={25}
+            maxSize={60}
+          >
             <ArtifactPreview
               artifact={selectedArtifact}
               isStreaming={isArtifactStreaming}
@@ -773,7 +887,11 @@ function ChatWithFilePanel({
       {showFilePanelActual && (
         <>
           <ResizableHandle withHandle />
-          <ResizablePanel defaultSize={25} minSize={15} maxSize={40}>
+          <ResizablePanel
+            defaultSize={25}
+            minSize={15}
+            maxSize={40}
+          >
             <FilePanel
               messages={messages}
               threadId={threadId || undefined}
@@ -786,7 +904,6 @@ function ChatWithFilePanel({
     </ResizablePanelGroup>
   );
 }
-
 
 function HomePageInner() {
   const client = useClient();
@@ -812,14 +929,19 @@ function HomePageInner() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
-  const [uiMode, setUiMode] = useState<"chat" | "image" | "resume" | "slides">("chat");
-  const [threadType, setThreadType] = useState<"chat" | "image" | "slides" | null>(null);
+  const [uiMode, setUiMode] = useState<"chat" | "image" | "resume" | "slides">(
+    "chat"
+  );
+  const [threadType, setThreadType] = useState<
+    "chat" | "image" | "slides" | null
+  >(null);
   const initialThreadIdRef = useRef(threadId);
   const initialThreadValidatedRef = useRef(!threadId);
   const [threadOpenState, setThreadOpenState] = useState<ThreadOpenState>(
     threadId ? "checking" : "idle"
   );
-  const [threadOpenProblem, setThreadOpenProblem] = useState<ThreadOpenProblem | null>(null);
+  const [threadOpenProblem, setThreadOpenProblem] =
+    useState<ThreadOpenProblem | null>(null);
 
   // Load config
   useEffect(() => {
@@ -900,7 +1022,8 @@ function HomePageInner() {
 
   useEffect(() => {
     const initialThreadId = initialThreadIdRef.current;
-    if (!initialThreadId || initialThreadValidatedRef.current || !config) return;
+    if (!initialThreadId || initialThreadValidatedRef.current || !config)
+      return;
 
     void validateThreadForOpen(initialThreadId, {
       clearQueryOnFailure: true,
@@ -912,7 +1035,8 @@ function HomePageInner() {
   useEffect(() => {
     async function loadThreadModel() {
       if (!threadId || !config) return;
-      if (initialThreadIdRef.current && !initialThreadValidatedRef.current) return;
+      if (initialThreadIdRef.current && !initialThreadValidatedRef.current)
+        return;
 
       try {
         const headers: Record<string, string> = {};
@@ -953,67 +1077,70 @@ function HomePageInner() {
   }, [threadId]);
 
   // Fetch assistant
-  const fetchAssistant = useCallback(async (modelId?: string | null) => {
-    if (!config) return;
+  const fetchAssistant = useCallback(
+    async (modelId?: string | null) => {
+      if (!config) return;
 
-    // Use selected model as graph ID if available, otherwise fall back to config
-    const graphId = modelId || config.assistantId;
+      // Use selected model as graph ID if available, otherwise fall back to config
+      const graphId = modelId || config.assistantId;
 
-    const isUUID =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        graphId
-      );
-
-    if (isUUID) {
-      try {
-        const data = await client.assistants.get(graphId);
-        setAssistant(data);
-      } catch (error) {
-        console.error("Failed to fetch assistant:", error);
-        setAssistant({
-          assistant_id: graphId,
-          graph_id: graphId,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          config: {},
-          metadata: {},
-          version: 1,
-          name: "Assistant",
-          context: {},
-        });
-      }
-    } else {
-      try {
-        const assistants = await client.assistants.search({
-          graphId: graphId,
-          limit: 100,
-        });
-        const defaultAssistant = assistants.find(
-          (assistant) => assistant.metadata?.["created_by"] === "system"
+      const isUUID =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          graphId
         );
-        if (defaultAssistant === undefined) {
-          throw new Error("No default assistant found");
+
+      if (isUUID) {
+        try {
+          const data = await client.assistants.get(graphId);
+          setAssistant(data);
+        } catch (error) {
+          console.error("Failed to fetch assistant:", error);
+          setAssistant({
+            assistant_id: graphId,
+            graph_id: graphId,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            config: {},
+            metadata: {},
+            version: 1,
+            name: "Assistant",
+            context: {},
+          });
         }
-        setAssistant(defaultAssistant);
-      } catch (error) {
-        console.error(
-          "Failed to find default assistant from graph_id:",
-          error
-        );
-        setAssistant({
-          assistant_id: graphId,
-          graph_id: graphId,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          config: {},
-          metadata: {},
-          version: 1,
-          name: graphId,
-          context: {},
-        });
+      } else {
+        try {
+          const assistants = await client.assistants.search({
+            graphId: graphId,
+            limit: 100,
+          });
+          const defaultAssistant = assistants.find(
+            (assistant) => assistant.metadata?.["created_by"] === "system"
+          );
+          if (defaultAssistant === undefined) {
+            throw new Error("No default assistant found");
+          }
+          setAssistant(defaultAssistant);
+        } catch (error) {
+          console.error(
+            "Failed to find default assistant from graph_id:",
+            error
+          );
+          setAssistant({
+            assistant_id: graphId,
+            graph_id: graphId,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            config: {},
+            metadata: {},
+            version: 1,
+            name: graphId,
+            context: {},
+          });
+        }
       }
-    }
-  }, [client, config]);
+    },
+    [client, config]
+  );
 
   // Fetch assistant when model or config changes
   useEffect(() => {
@@ -1022,29 +1149,38 @@ function HomePageInner() {
     }
   }, [fetchAssistant, selectedModel, config]);
 
-  const persistThreadModelSelection = useCallback(async (langgraphThreadId: string, modelId: string | null) => {
-    if (!config || !session?.access_token) return;
+  const persistThreadModelSelection = useCallback(
+    async (langgraphThreadId: string, modelId: string | null) => {
+      if (!config || !session?.access_token) return;
 
-    try {
-      await fetch(`${config.deploymentUrl}/api/threads/${langgraphThreadId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ model_id: modelId }),
-      });
-    } catch (error) {
-      console.error("Failed to persist thread model:", error);
-    }
-  }, [config, session?.access_token]);
+      try {
+        await fetch(
+          `${config.deploymentUrl}/api/threads/${langgraphThreadId}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ model_id: modelId }),
+          }
+        );
+      } catch (error) {
+        console.error("Failed to persist thread model:", error);
+      }
+    },
+    [config, session?.access_token]
+  );
 
-  const handleModelSelect = useCallback((id: string) => {
-    setSelectedModel(id);
-    if (threadId) {
-      void persistThreadModelSelection(threadId, id);
-    }
-  }, [threadId, persistThreadModelSelection]);
+  const handleModelSelect = useCallback(
+    (id: string) => {
+      setSelectedModel(id);
+      if (threadId) {
+        void persistThreadModelSelection(threadId, id);
+      }
+    },
+    [threadId, persistThreadModelSelection]
+  );
 
   const handleNewThread = () => {
     setThreadOpenProblem(null);
@@ -1075,7 +1211,7 @@ function HomePageInner() {
     return (
       <div
         className="flex h-screen items-center justify-center bg-background"
-        style={{ transform: 'translateY(-5vh)' }}
+        style={{ transform: "translateY(-5vh)" }}
       >
         <WaterDropletMascot />
       </div>
@@ -1096,7 +1232,8 @@ function HomePageInner() {
     );
   }
 
-  const shouldGateInitialThread = Boolean(initialThreadIdRef.current) &&
+  const shouldGateInitialThread =
+    Boolean(initialThreadIdRef.current) &&
     (!initialThreadValidatedRef.current || threadOpenProblem);
 
   return (
@@ -1104,7 +1241,9 @@ function HomePageInner() {
       <SearchDialog
         open={searchOpen}
         onOpenChange={setSearchOpen}
-        onThreadSelect={(id) => { handleThreadSelect(id); }}
+        onThreadSelect={(id) => {
+          handleThreadSelect(id);
+        }}
       />
       <LibraryDialog
         open={libraryOpen}
@@ -1117,7 +1256,9 @@ function HomePageInner() {
             onNewThread: handleNewThread,
             onSearch: handleSearch,
             onLibrary: handleLibrary,
-            onThreadSelect: (id: string) => { handleThreadSelect(id); },
+            onThreadSelect: (id: string) => {
+              handleThreadSelect(id);
+            },
             onMutateReady: (fn: () => void) => setMutateThreads(() => fn),
             onInterruptCountChange: undefined,
             activeThreadId: threadId,
@@ -1175,7 +1316,7 @@ export default function HomePage() {
       fallback={
         <div
           className="flex h-screen items-center justify-center bg-background"
-          style={{ transform: 'translateY(-5vh)' }}
+          style={{ transform: "translateY(-5vh)" }}
         >
           <WaterDropletMascot />
         </div>

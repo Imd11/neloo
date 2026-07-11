@@ -74,7 +74,9 @@ function walk(dir) {
 walk(root);
 
 if (violations.length > 0) {
-  console.error(`Found ${violations.length} possible hard-coded Chinese UI strings:\n`);
+  console.error(
+    `Found ${violations.length} possible hard-coded Chinese UI strings:\n`
+  );
   console.error(violations.slice(0, 200).join("\n"));
   if (violations.length > 200) {
     console.error(`\n...and ${violations.length - 200} more`);

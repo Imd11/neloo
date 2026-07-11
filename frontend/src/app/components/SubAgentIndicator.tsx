@@ -2,7 +2,14 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, Loader2, CheckCircle2, XCircle, Clock } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  Clock,
+} from "lucide-react";
 import type { SubAgent } from "@/app/types/types";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/providers/LanguageProvider";
@@ -134,7 +141,11 @@ export const SubAgentIndicator = React.memo<SubAgentIndicatorProps>(
       if (subAgent.status === "active" && startTime) {
         return formatElapsedTime(elapsedTime);
       }
-      if (subAgent.status === "completed" && subAgent.completedAt && startTime) {
+      if (
+        subAgent.status === "completed" &&
+        subAgent.completedAt &&
+        startTime
+      ) {
         return formatElapsedTime(subAgent.completedAt - startTime);
       }
       if (subAgent.status === "completed" && elapsedTime > 0) {
@@ -207,9 +218,15 @@ export const SubAgentIndicator = React.memo<SubAgentIndicatorProps>(
 
               {/* Expand/Collapse chevron */}
               {isExpanded ? (
-                <ChevronUp size={14} className="shrink-0 text-muted-foreground" />
+                <ChevronUp
+                  size={14}
+                  className="shrink-0 text-muted-foreground"
+                />
               ) : (
-                <ChevronDown size={14} className="shrink-0 text-muted-foreground" />
+                <ChevronDown
+                  size={14}
+                  className="shrink-0 text-muted-foreground"
+                />
               )}
             </div>
           </div>

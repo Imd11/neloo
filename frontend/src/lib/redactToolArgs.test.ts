@@ -11,7 +11,7 @@ describe("redactToolArgs", () => {
           authorization: "Bearer private",
           nested: [{ api_key: "secret" }, { subject: "Hello" }],
         },
-      }),
+      })
     ).toEqual({
       app_name: "gmail",
       params: {

@@ -393,7 +393,7 @@ export default {
   plugins: [
     containerQueries,
     typography,
-    forms({ strategy: 'class' }),  // Use class strategy to avoid auto-styling forms
+    forms({ strategy: "class" }), // Use class strategy to avoid auto-styling forms
     tailwindcssAnimate,
     headlessui,
     plugin(({ addUtilities, addBase }) => {
@@ -408,23 +408,23 @@ export default {
           "scrollbar-color": "var(--scrollbar-thumb) var(--bg-primary)",
         },
         "html::-webkit-scrollbar, body::-webkit-scrollbar, *::-webkit-scrollbar":
-        {
-          width: "8px",
-          background: "var(--bg-primary)",
-        },
+          {
+            width: "8px",
+            background: "var(--bg-primary)",
+          },
         "html::-webkit-scrollbar-track, body::-webkit-scrollbar-track, *::-webkit-scrollbar-track":
-        {
-          background: "var(--bg-primary)",
-        },
+          {
+            background: "var(--bg-primary)",
+          },
         "html::-webkit-scrollbar-thumb, body::-webkit-scrollbar-track, *::-webkit-scrollbar-thumb":
-        {
-          background: "var(--scrollbar-thumb)",
-          "border-radius": "4px",
-        },
+          {
+            background: "var(--scrollbar-thumb)",
+            "border-radius": "4px",
+          },
         "html::-webkit-scrollbar-thumb:hover, body::-webkit-scrollbar-thumb:hover, *::-webkit-scrollbar-thumb:hover":
-        {
-          background: "var(--scrollbar-thumb-hover)",
-        },
+          {
+            background: "var(--scrollbar-thumb-hover)",
+          },
       });
       addUtilities({
         ".no-scrollbar": {

@@ -24,7 +24,11 @@ import {
   stripUploadedFilesAnnotation,
   parseUploadedFilesAnnotation,
 } from "@/lib/uploadedFilesAnnotation";
-import { stripArtifacts, parseArtifacts, getStreamingArtifact } from "@/lib/artifactParser";
+import {
+  stripArtifacts,
+  parseArtifacts,
+  getStreamingArtifact,
+} from "@/lib/artifactParser";
 import type { Artifact } from "@/lib/artifactParser";
 import { MessageAttachments } from "@/app/components/MessageAttachments";
 import { ArtifactCard } from "@/app/components/ArtifactCard";
@@ -102,12 +106,12 @@ export const ChatMessage = React.memo<ChatMessageProps>(
   }) => {
     const [copied, setCopied] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
-	    const { t } = useLanguage();
-	    const isUser = message.type === "human";
-	    const rawMessageContent = extractStringFromMessageContent(message);
-	    const visibleUserContent = isUser
-	      ? (getVisibleHumanContent(message) ?? rawMessageContent)
-	      : rawMessageContent;
+    const { t } = useLanguage();
+    const isUser = message.type === "human";
+    const rawMessageContent = extractStringFromMessageContent(message);
+    const visibleUserContent = isUser
+      ? getVisibleHumanContent(message) ?? rawMessageContent
+      : rawMessageContent;
 
     // Parse message content into structured blocks (for AI messages)
     // This handles both OpenAI format (<think> tags) and Anthropic format (thinking blocks)
@@ -117,11 +121,14 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     }, [isUser, message]);
 
     // Cache thinking blocks to prevent them from disappearing if tags are stripped in final message
-    const [cachedThinkingBlocks, setCachedThinkingBlocks] = useState<ContentBlock[]>([]);
+    const [cachedThinkingBlocks, setCachedThinkingBlocks] = useState<
+      ContentBlock[]
+    >([]);
 
     React.useEffect(() => {
       const thinking = contentBlocks.filter(
-        (block) => block.type === "thinking" || block.type === "redacted_thinking"
+        (block) =>
+          block.type === "thinking" || block.type === "redacted_thinking"
       );
       if (thinking.length > 0) {
         setCachedThinkingBlocks(thinking);
@@ -131,9 +138,12 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     // Check if we have any thinking blocks to render (current or cached)
     const displayThinkingBlocks = useMemo(() => {
       const currentThinking = contentBlocks.filter(
-        (block) => block.type === "thinking" || block.type === "redacted_thinking"
+        (block) =>
+          block.type === "thinking" || block.type === "redacted_thinking"
       );
-      return currentThinking.length > 0 ? currentThinking : cachedThinkingBlocks;
+      return currentThinking.length > 0
+        ? currentThinking
+        : cachedThinkingBlocks;
     }, [contentBlocks, cachedThinkingBlocks]);
 
     const hasThinkingBlocks = displayThinkingBlocks.length > 0;
@@ -142,14 +152,17 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     // For AI messages in webDevMode, strip artifact tags (code is shown in right panel)
     // For AI messages with content blocks, we use the blocks directly instead
     const messageContent = useMemo(() => {
-	      if (isUser) {
-	        return stripUploadedFilesAnnotation(visibleUserContent);
-	      }
+      if (isUser) {
+        return stripUploadedFilesAnnotation(visibleUserContent);
+      }
       // If we have content blocks (Anthropic format), extract only text blocks
       // The thinking blocks will be rendered separately
       if (contentBlocks.length > 0 && hasThinkingBlocks) {
         const textContent = contentBlocks
-          .filter((block): block is ContentBlock & { type: "text" } => block.type === "text")
+          .filter(
+            (block): block is ContentBlock & { type: "text" } =>
+              block.type === "text"
+          )
           .map((block) => block.content)
           .join("\n\n");
         // In Web Dev Mode, strip <artifact> tags
@@ -166,11 +179,18 @@ export const ChatMessage = React.memo<ChatMessageProps>(
         content = stripArtifacts(content);
       }
       return content;
-	    }, [isUser, visibleUserContent, rawMessageContent, webDevMode, contentBlocks, hasThinkingBlocks]);
+    }, [
+      isUser,
+      visibleUserContent,
+      rawMessageContent,
+      webDevMode,
+      contentBlocks,
+      hasThinkingBlocks,
+    ]);
 
-	    const userAttachments = isUser
-	      ? parseUploadedFilesAnnotation(visibleUserContent)
-	      : [];
+    const userAttachments = isUser
+      ? parseUploadedFilesAnnotation(visibleUserContent)
+      : [];
 
     // Parse artifacts from AI messages in Web Dev Mode
     const messageArtifacts = useMemo(() => {
@@ -211,7 +231,9 @@ export const ChatMessage = React.memo<ChatMessageProps>(
       return { completed, streaming };
     }, [isUser, webDevMode, rawMessageContent, isLastMessage, isLoading]);
 
-    const hasArtifacts = messageArtifacts.completed.length > 0 || messageArtifacts.streaming !== null;
+    const hasArtifacts =
+      messageArtifacts.completed.length > 0 ||
+      messageArtifacts.streaming !== null;
 
     const hasContent = messageContent && messageContent.trim() !== "";
     const hasToolCalls = toolCalls.length > 0;
@@ -224,7 +246,9 @@ export const ChatMessage = React.memo<ChatMessageProps>(
       !hasThinkingBlocks &&
       !hasArtifacts;
     // Track SubAgent start times for elapsed time calculation
-    const subAgentTimestampsRef = React.useRef<Record<string, { startedAt: number; completedAt?: number }>>({});
+    const subAgentTimestampsRef = React.useRef<
+      Record<string, { startedAt: number; completedAt?: number }>
+    >({});
 
     const subAgents = useMemo(() => {
       return toolCalls
@@ -250,7 +274,10 @@ export const ChatMessage = React.memo<ChatMessageProps>(
             subAgentStatus = toolCall.result ? "completed" : "active";
           } else if (toolCall.status === "completed") {
             subAgentStatus = "completed";
-          } else if (toolCall.status === "error" || toolCall.status === "interrupted") {
+          } else if (
+            toolCall.status === "error" ||
+            toolCall.status === "interrupted"
+          ) {
             subAgentStatus = "error";
           } else {
             subAgentStatus = "pending";
@@ -261,7 +288,10 @@ export const ChatMessage = React.memo<ChatMessageProps>(
           if (!timestamps[toolCall.id]) {
             timestamps[toolCall.id] = { startedAt: Date.now() };
           }
-          if (subAgentStatus === "completed" && !timestamps[toolCall.id].completedAt) {
+          if (
+            subAgentStatus === "completed" &&
+            !timestamps[toolCall.id].completedAt
+          ) {
             timestamps[toolCall.id].completedAt = Date.now();
           }
 
@@ -324,7 +354,13 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     // position="bottom" (AI messages): always visible
     // OPTIMIZATION: Always render buttons in DOM, control visibility with CSS
     // This eliminates the jarring "sudden appear" effect when isLoading becomes false
-    const MessageActions = ({ show, alwaysVisible = false }: { show: boolean; alwaysVisible?: boolean }) => {
+    const MessageActions = ({
+      show,
+      alwaysVisible = false,
+    }: {
+      show: boolean;
+      alwaysVisible?: boolean;
+    }) => {
       if (!show) return null;
 
       // Determine if buttons should be visible
@@ -333,10 +369,12 @@ export const ChatMessage = React.memo<ChatMessageProps>(
 
       return (
         <TooltipProvider delayDuration={0}>
-          <div className={cn(
-            "flex items-center gap-0.5 transition-all duration-300 ease-out",
-            shouldBeVisible ? "opacity-100" : "opacity-0 pointer-events-none"
-          )}>
+          <div
+            className={cn(
+              "flex items-center gap-0.5 transition-all duration-300 ease-out",
+              shouldBeVisible ? "opacity-100" : "pointer-events-none opacity-0"
+            )}
+          >
             {/* Copy button - for both user and AI messages */}
             <Tooltip>
               <TooltipTrigger asChild>
@@ -388,7 +426,9 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                     <RefreshCw className="h-3.5 w-3.5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="top">{t("chat.regenerate")}</TooltipContent>
+                <TooltipContent side="top">
+                  {t("chat.regenerate")}
+                </TooltipContent>
               </Tooltip>
             )}
 
@@ -416,7 +456,7 @@ export const ChatMessage = React.memo<ChatMessageProps>(
     return (
       <div
         className={cn(
-          "flex w-full max-w-full overflow-x-hidden group",
+          "group flex w-full max-w-full overflow-x-hidden",
           isUser && "flex-row-reverse"
         )}
         data-message-id={message.id}
@@ -443,9 +483,16 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                   // Determine if this thinking block is still streaming
                   // It's streaming if: this is the last message, still loading, and it's the last thinking block
                   // AND the current LIVE message actually has thinking content (otherwise we are showing cached static content)
-                  const isLiveThinking = contentBlocks.some(b => b.type === "thinking");
-                  const isLastThinkingBlock = index === displayThinkingBlocks.length - 1;
-                  const isThinkingStreaming = isLastMessage && isLoading && isLastThinkingBlock && isLiveThinking;
+                  const isLiveThinking = contentBlocks.some(
+                    (b) => b.type === "thinking"
+                  );
+                  const isLastThinkingBlock =
+                    index === displayThinkingBlocks.length - 1;
+                  const isThinkingStreaming =
+                    isLastMessage &&
+                    isLoading &&
+                    isLastThinkingBlock &&
+                    isLiveThinking;
 
                   return (
                     <ThinkingBlock
@@ -479,7 +526,12 @@ export const ChatMessage = React.memo<ChatMessageProps>(
 
           {(hasContent || (!isUser && userAttachments.length > 0)) && (
             <div className="relative">
-              <div className={cn("flex items-end gap-2", isUser && "flex-row-reverse")}>
+              <div
+                className={cn(
+                  "flex items-end gap-2",
+                  isUser && "flex-row-reverse"
+                )}
+              >
                 <div
                   className={cn(
                     "mt-2 overflow-hidden break-words text-sm font-normal leading-[150%]",
@@ -504,37 +556,47 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                   ) : null}
                 </div>
                 {/* User message action buttons - show on hover, positioned at right */}
-                {isUser && showActions && <MessageActions show={!!hasContent} />}
+                {isUser && showActions && (
+                  <MessageActions show={!!hasContent} />
+                )}
               </div>
             </div>
           )}
           {/* AI message action buttons - always visible, moved outside hasContent */}
           {!isUser && showActions && (hasContent || hasToolCalls) && (
             <div className="mt-2 flex justify-start">
-              <MessageActions show={true} alwaysVisible={true} />
+              <MessageActions
+                show={true}
+                alwaysVisible={true}
+              />
             </div>
           )}
           {/* Suggested follow-up questions - moved outside hasContent block */}
-          {!isUser && suggestedQuestions && suggestedQuestions.length > 0 && onSuggestionClick && (
-            <div className="mt-4">
-              <div className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span>💡</span>
-                <span>{t("chat.follow_up_suggestions")}</span>
+          {!isUser &&
+            suggestedQuestions &&
+            suggestedQuestions.length > 0 &&
+            onSuggestionClick && (
+              <div className="mt-4">
+                <div className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span>💡</span>
+                  <span>{t("chat.follow_up_suggestions")}</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  {suggestedQuestions.map((question, index) => (
+                    <button
+                      key={index}
+                      onClick={() => onSuggestionClick(question)}
+                      className="group inline-flex w-fit items-center gap-1 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    >
+                      <span>{question}</span>
+                      <span className="text-muted-foreground/50 group-hover:text-foreground">
+                        →
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="flex flex-col gap-1">
-                {suggestedQuestions.map((question, index) => (
-                  <button
-                    key={index}
-                    onClick={() => onSuggestionClick(question)}
-                    className="group inline-flex w-fit items-center gap-1 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  >
-                    <span>{question}</span>
-                    <span className="text-muted-foreground/50 group-hover:text-foreground">→</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+            )}
           {hasToolCalls && !hideTools && (
             <div className="mt-4 flex w-full flex-col">
               {toolCalls.map((toolCall: ToolCall) => {
@@ -627,7 +689,9 @@ export const ChatMessage = React.memo<ChatMessageProps>(
                   artifact={messageArtifacts.streaming}
                   isStreaming={true}
                   isComplete={false}
-                  onPreview={() => onArtifactSelect?.(messageArtifacts.streaming!)}
+                  onPreview={() =>
+                    onArtifactSelect?.(messageArtifacts.streaming!)
+                  }
                 />
               )}
             </div>

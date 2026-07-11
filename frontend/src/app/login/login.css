@@ -69,7 +69,7 @@
 
 /* 基础样式 - 100%复制自GitHub原始 */
 .login-page {
-  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
 }
 
 .login-page * {
@@ -79,20 +79,17 @@
 .login-page h1,
 .login-page h2,
 .login-page h3 {
-  font-family: 'Fraunces', Georgia, serif;
+  font-family: "Fraunces", Georgia, serif;
 }
 
 /* Card阴影效果 - 100%复制自GitHub原始 */
 .login-page .card-elevated {
-  box-shadow:
-    0 1px 2px hsl(var(--foreground) / 0.04),
+  box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04),
     0 4px 8px hsl(var(--foreground) / 0.04),
     0 12px 24px hsl(var(--foreground) / 0.06);
 }
 
 .dark .login-page .card-elevated {
-  box-shadow:
-    0 1px 2px hsl(0 0% 0% / 0.2),
-    0 4px 12px hsl(0 0% 0% / 0.3),
+  box-shadow: 0 1px 2px hsl(0 0% 0% / 0.2), 0 4px 12px hsl(0 0% 0% / 0.3),
     0 0 0 1px hsl(var(--border));
 }

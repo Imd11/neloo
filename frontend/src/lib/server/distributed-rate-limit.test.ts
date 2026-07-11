@@ -12,8 +12,12 @@ describe("DistributedRateLimiter", () => {
     const first = new DistributedRateLimiter(store, "test");
     const second = new DistributedRateLimiter(store, "test");
 
-    expect((await first.consume("image", "guest-1", "192.0.2.1", 1, 600)).allowed).toBe(true);
-    expect((await second.consume("image", "guest-2", "192.0.2.1", 1, 600)).allowed).toBe(false);
+    expect(
+      (await first.consume("image", "guest-1", "192.0.2.1", 1, 600)).allowed
+    ).toBe(true);
+    expect(
+      (await second.consume("image", "guest-2", "192.0.2.1", 1, 600)).allowed
+    ).toBe(false);
   });
 
   it("reserves daily budget atomically", async () => {

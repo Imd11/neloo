@@ -9,16 +9,22 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow hover:bg-primary/90",
-        destructive: "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
-        outline: "border border-border bg-transparent text-foreground hover:bg-hover-bg hover:text-foreground",
-        secondary: "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
+        default:
+          "bg-primary text-primary-foreground shadow hover:bg-primary/90",
+        destructive:
+          "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
+        outline:
+          "border border-border bg-transparent text-foreground hover:bg-hover-bg hover:text-foreground",
+        secondary:
+          "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
         ghost: "text-foreground hover:bg-hover-bg hover:text-foreground",
         link: "text-foreground underline-offset-4 hover:underline",
         icon: "bg-transparent text-muted-foreground hover:text-foreground hover:bg-hover-bg rounded-full",
         send: "bg-foreground text-background rounded-full hover:bg-foreground/90 shadow-subtle",
-        sidebar: "w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-lg",
-        "sidebar-active": "w-full justify-start bg-sidebar-accent text-sidebar-accent-foreground rounded-lg",
+        sidebar:
+          "w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-lg",
+        "sidebar-active":
+          "w-full justify-start bg-sidebar-accent text-sidebar-accent-foreground rounded-lg",
       },
       size: {
         default: "h-9 px-4 py-2",
@@ -45,7 +51,13 @@ export interface ButtonProps
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
-    return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />;
+    return (
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        {...props}
+      />
+    );
   }
 );
 Button.displayName = "Button";

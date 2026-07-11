@@ -1,608 +1,848 @@
 {
-    "common": {
-        "settings": "設定",
-        "cancel": "キャンセル",
-        "confirm": "確認",
-        "save": "保存",
-        "delete": "削除",
-        "edit": "編集",
-        "close": "閉じる",
-        "loading": "読み込み中...",
-        "error": "エラー",
-        "success": "成功",
-        "retry": "再試行",
-        "back": "戻る",
-        "login_required": "先にサインインしてください"
-    },
-    "history": {
-        "thread_not_found_title": "会話が見つかりません",
-        "thread_not_found_description": "この会話は削除されたか、別の環境で作成された可能性があります。",
-        "backend_unavailable_title": "会話を読み込めません",
-        "backend_unavailable_description": "バックエンドに接続できません。バックエンドを起動してから再試行してください。",
-        "history_disabled_title": "履歴が有効になっていません",
-        "history_disabled_description": "保存済みの会話を開くには、先にデータベース永続化を設定してください。",
-        "access_denied_title": "会話を利用できません",
-        "access_denied_description": "現在のローカルユーザーではこの会話を利用できません。",
-        "generic_error_title": "会話を読み込めません",
-        "generic_error_description": "この会話を開けませんでした。",
-        "retry": "再試行",
-        "new_chat": "新しいチャットを開始",
-        "runtime_missing_title": "会話履歴を利用できません",
-        "runtime_missing_description": "この会話の保存済みランタイム状態を復元できませんでした。新しいメッセージを送って会話を続けられます。",
-        "continue_chat": "ここで続ける"
-    },
-    "settings": {
-        "title": "設定",
-        "general": "一般",
-        "notifications": "通知",
-        "personalization": "カスタマイズ",
-        "privacy": "プライバシーとセキュリティ",
-        "data": "データ管理",
-        "help": "ヘルプ",
-        "appearance": "外観",
-        "language": "言語",
-        "theme_light": "ライト",
-        "theme_dark": "ダーク",
-        "theme_system": "システムに従う",
-        "email_notifications": "メール通知",
-        "email_notifications_desc": "重要な更新のメール通知を受け取る",
-        "push_notifications": "プッシュ通知",
-        "push_notifications_desc": "ブラウザでプッシュ通知を受け取る",
-        "product_updates": "製品アップデート",
-        "product_updates_desc": "新機能と改善の通知を受け取る",
-        "exclusive_content": "限定コンテンツ",
-        "exclusive_content_desc": "限定オファー、イベント更新、機能ガイドを入手",
-        "task_notifications": "タスク通知",
-        "task_notifications_desc": "タスクがキューに入り処理開始時に通知",
-        "show_all_models": "すべてのモデルを表示",
-        "show_all_models_desc": "セレクターで利用可能なすべてのモデルを表示",
-        "data_collection": "データ収集",
-        "data_collection_desc": "サービス向上のためのデータ収集を許可",
-        "conversation_history": "会話履歴",
-        "conversation_history_desc": "会話履歴を保存",
-        "manage_cookies": "Cookies を管理",
-        "manage": "管理",
-        "export_data": "データをエクスポート",
-        "export_data_desc": "すべての会話とデータをダウンロード",
-        "export": "エクスポート",
-        "clear_history": "履歴をクリア",
-        "clear_history_desc": "保存されたすべての会話を削除",
-        "clear": "クリア",
-        "delete_account": "アカウントを削除",
-        "delete_account_desc": "アカウントとすべてのデータを完全に削除",
-        "help_center": "ヘルプセンター",
-        "faq": "よくある質問",
-        "contact_support": "サポートに連絡",
-        "service_status": "サービス状態",
-        "legal_info": "法的情報",
-        "privacy_policy": "プライバシーポリシー",
-        "terms_of_service": "利用規約",
-        "connected_apps": "連携アプリ",
-        "connected_apps_desc": "サードパーティアプリを連携して機能を拡張し、作業効率を向上",
-        "search_apps": "アプリを検索...",
-        "category": "カテゴリ",
-        "all_categories": "すべてのカテゴリ",
-        "my_apps": "マイアプリ",
-        "connected_count": "{count} 件連携中",
-        "marketplace": "アプリマーケット",
-        "available_count": "{count} 件利用可能",
-        "no_connected_apps": "まだ連携しているアプリはありません",
-        "no_matching_connected_apps": "一致する連携済みアプリが見つかりません",
-        "no_matching_apps": "一致するアプリが見つかりません",
-        "connect_success": "{name} の連携に成功しました！",
-        "connect_failed": "連携に失敗: {message}",
-        "disconnect_success": "{name} を切断しました",
-        "disconnect_failed": "切断に失敗: {message}",
-        "manage_app": "{name} の設定を管理",
-        "connected_badge": "連携済み",
-        "manage": "管理",
-        "disconnect": "切断",
-        "connect": "連携",
-        "category_productivity": "生産性",
-        "category_communication": "コミュニケーション",
-        "category_development": "開発",
-        "category_crm": "CRM",
-        "category_social": "ソーシャル",
-        "category_storage": "ストレージ",
-        "category_payment": "決済",
-        "category_other": "その他",
-        "apps": {
-            "notion": { "description": "ノート、ドキュメント、ナレッジベース、プロジェクト管理のための統合ワークスペース" },
-            "google_calendar": { "description": "予定管理と会議調整ツール" },
-            "trello": { "description": "ビジュアルなプロジェクト管理とコラボレーションツール" },
-            "asana": { "description": "チームのプロジェクトとタスク管理プラットフォーム" },
-            "slack": { "description": "チームメッセージングとコラボレーションプラットフォーム" },
-            "zoom": { "description": "ビデオ会議とオンライン共同作業ツール" },
-            "discord": { "description": "コミュニティ向け音声、ビデオ、テキストチャットプラットフォーム" },
-            "teams": { "description": "企業向けコラボレーションとコミュニケーションプラットフォーム" },
-            "github": { "description": "コードホスティングとバージョン管理プラットフォーム" },
-            "gitlab": { "description": "コード管理と CI/CD のための DevOps プラットフォーム" },
-            "linear": { "description": "モダンな課題管理とプロジェクト管理ツール" },
-            "jira": { "description": "アジャイルプロジェクト管理と課題追跡ツール" },
-            "salesforce": { "description": "主要な顧客関係管理プラットフォーム" },
-            "hubspot": { "description": "マーケティング、営業、カスタマーサービスプラットフォーム" },
-            "twitter": { "description": "ソーシャルメディアとリアルタイム情報プラットフォーム" },
-            "linkedin": { "description": "プロフェッショナル向けソーシャルネットワーク" },
-            "reddit": { "description": "コミュニティコンテンツ共有と議論のプラットフォーム" },
-            "google_drive": { "description": "クラウドファイル保存と共有サービス" },
-            "dropbox": { "description": "ファイル同期とクラウドストレージサービス" },
-            "onedrive": { "description": "Microsoft のクラウドストレージとファイル共有サービス" },
-            "stripe": { "description": "オンライン決済処理プラットフォーム" },
-            "paypal": { "description": "グローバルなオンライン決済サービス" },
-            "gmail": { "description": "Google のメールサービス" },
-            "zapier": { "description": "アプリ自動化と連携プラットフォーム" },
-            "airtable": { "description": "スプレッドシートとデータベースを組み合わせた共同作業プラットフォーム" },
-            "clickup": { "description": "統合型プロジェクト管理と生産性プラットフォーム" },
-            "google_docs": { "description": "クラウド文書編集と共同作業ツール" },
-            "google_sheets": { "description": "クラウドスプレッドシートとデータ分析ツール" },
-            "outlook": { "description": "Microsoft のメールとカレンダーサービス" },
-            "google_meet": { "description": "Google のビデオ会議サービス" },
-            "bitbucket": { "description": "Atlassian のコードホスティングと共同作業プラットフォーム" },
-            "supabase": { "description": "オープンソースの Firebase 代替バックエンドサービス" },
-            "zendesk": { "description": "カスタマーサービスとサポートプラットフォーム" },
-            "figma": { "description": "共同作業型インターフェースデザインツール" },
-            "mailchimp": { "description": "メールマーケティングと自動化プラットフォーム" },
-            "shopify": { "description": "EC プラットフォームとオンラインストア作成ツール" }
-        }
-    },
-    "canvas": {
-        "ai_edit_image": "AI 画像編集",
-        "ai_edit_text": "AI テキスト編集",
-        "regenerate": "再生成",
-        "download_image": "画像をダウンロード",
-        "delete_image": "画像を削除",
-        "select_tool": "選択",
-        "brush_tool_short": "ブラシ",
-        "eraser_tool_short": "消しゴム",
-        "quota": "クォータ",
-        "confirm_delete_images": "{count} 枚の画像を削除しますか？",
-        "error_regenerate_missing_params": "再生成できません：元のパラメータが不足しています",
-        "error_regenerate_failed": "再生成失敗",
-        "brush_tool": "ブラシツール",
-        "eraser_tool": "消しゴムツール",
-        "rect_tool": "矩形ツール",
-        "brush_size": "ブラシサイズ",
-        "edit_placeholder": "変更したい内容を説明してください...",
-        "edit_text_placeholder": "新しいテキストを入力...",
-        "processing": "処理中...",
-        "edit_image": "画像を編集",
-        "generation_failed": "生成失敗",
-        "generation_failed_desc": "AI が画像を生成できませんでした。再試行してください。",
-        "retry_generation": "再生成",
-        "loading_generate_title": "AI が作成中...",
-        "loading_generate_desc": "初回生成には約30秒かかる場合があります",
-        "loading_edit_title": "AI が編集中...",
-        "loading_edit_desc": "画像を編集中、お待ちください",
-        "downloading": "ダウンロード中...",
-        "download_complete": "ダウンロード完了！",
-        "download_failed": "ダウンロード失敗",
-        "edit_prompt_required": "編集内容を入力してください",
-        "edit_complete": "画像編集が完了しました！",
-        "edit_missing_image": "編集後の画像が返されませんでした",
-        "edit_failed": "画像編集に失敗しました"
-    },
-    "home": {
-        "guest_name": "Guest",
-        "headline_1": "こんにちは{name}、何をお手伝いしましょうか？",
-        "headline_2": "こんにちは{name}、始める準備はできていますか？",
-        "headline_3": "{name}、今日は何を終わらせたいですか？",
-        "headline_4": "こんにちは{name}、どうお手伝いしましょうか？",
-        "headline_5": "{name}、一緒に作りましょう",
-        "headline_6": "こんにちは{name}、次のプロジェクトを始めましょう",
-        "headline_7": "{name}、アイデアが必要ですか？",
-        "headline_8": "こんにちは{name}、アイデアを形にしましょう",
-        "headline_9": "{name}、可能性を探りましょう",
-        "headline_10": "こんにちは{name}、クリエイティブアシスタントの準備ができました",
-        "headline_11": "{name}、何でも聞いてください",
-        "headline_12": "こんにちは{name}、一緒に解決しましょう"
-    },
-    "image": {
-        "ratio": "比率",
-        "resolution": "解像度",
-        "auto": "自動"
-    },
-    "sidebar": {
-        "new_chat": "新しいチャット",
-        "search": "検索",
-        "agents": "エージェント",
-        "library": "ライブラリ",
-        "history": "履歴",
-        "open_sidebar": "サイドバーを開く",
-        "settings": "設定",
-        "share": "共有",
-        "rename": "名前変更",
-        "pin": "ピン留め",
-        "unpin": "ピン留め解除",
-        "delete": "削除",
-        "delete_title": "削除の確認",
-        "delete_description": "「{title}」を削除しますか？この操作は取り消せません。",
-        "share_title": "会話を共有",
-        "share_description": "このリンクがあれば誰でも会話全体を表示できます",
-        "copy": "コピー",
-        "copied": "クリップボードにコピーしました",
-        "rename_prompt": "新しいタイトルを入力",
-        "rename_success": "名前を変更しました",
-        "rename_failed": "名前の変更に失敗しました",
-        "delete_success": "削除しました",
-        "delete_failed": "削除に失敗しました",
-        "share_failed": "共有に失敗しました",
-        "share_login_required": "先にサインインしてください",
-        "share_create_failed": "共有リンクの作成に失敗しました",
-        "try_again_later": "後でもう一度お試しください",
-        "history_empty": "履歴はまだありません",
-        "history_empty_hint": "チャットを開始すると、会話履歴がここに表示されます。",
-        "history_backend_unavailable": "履歴を利用できません",
-        "history_backend_unavailable_hint": "バックエンドに接続できません。バックエンドが起動していることを確認してから再試行してください。",
-        "history_disabled": "履歴が有効になっていません",
-        "history_disabled_hint": "会話履歴を保存して表示するには、データベース永続化を設定してください。",
-        "history_access_denied": "この履歴は利用できません",
-        "history_error": "履歴を読み込めませんでした",
-        "history_refresh_failed": "履歴を更新できませんでした",
-        "history_retry": "再試行"
-    },
-    "chat": {
-        "default_placeholder": "作成したい内容を説明してください...",
-        "webdev_placeholder": "開発したい Web ページを説明してください...",
-        "webdev_mode": "Web 開発",
-        "clear_selected_feature": "選択した機能をクリア",
-        "clear_selected_template": "選択したテンプレートをクリア",
-        "template_example_input": "入力例",
-        "template_example_output": "出力例",
-        "add_from_google_drive": "Google Drive から追加",
-        "choose_from_library": "ライブラリから選択",
-        "add_local_file": "ローカルファイルを追加",
-        "uploaded_file": "ファイルを追加しました: {name}",
-        "follow_up_suggestions": "続けて質問してみませんか：",
-        "copy": "コピー",
-        "copied": "コピーしました",
-        "regenerate": "再生成",
-        "share": "共有",
-        "resume_skip": "スキップして履歴書を手動入力 →",
-        "select_template": "テンプレートを選択",
-        "file_type_image": "画像",
-        "file_type_audio": "音声",
-        "file_type_file": "ファイル",
-        "uploading": " · アップロード中",
-        "uploading_dots": " · アップロード中...",
-        "upload_failed": " · アップロード失敗",
-        "remove_file": "ファイルを削除",
-        "prompt_input": "プロンプト入力",
-        "scroll_to_bottom": "一番下へ",
-        "add_file": "ファイルを追加",
-        "view_files": "ファイルを表示",
-        "artifact_react": "Reactコンポーネント",
-        "artifact_html": "HTMLページ",
-        "artifact_vue": "Vueコンポーネント",
-        "artifact_code": "コード",
-        "artifact_building": "ビルド中...",
-        "artifact_completed": "完了",
-        "artifact_preparing": "準備中",
-        "artifact_generating": "コード生成中",
-        "artifact_preview_title": "コードプレビュー",
-        "artifact_chars": "文字",
-        "artifact_view": "表示",
-        "artifact_preview": "プレビュー",
-        "artifact_view_preview": "プレビューを表示",
-        "preview_generating": "生成中...",
-        "preview_tab": "プレビュー",
-        "preview_code_tab": "コード",
-        "preview_not_ready": "生成完了後にプレビューが利用可能になります",
-        "preview_copy_code": "コードをコピー",
-        "preview_refresh": "プレビューを更新",
-        "preview_open_new_tab": "新しいタブで開く",
-        "preview_deploy": "デプロイ",
-        "preview_deploy_tooltip": "デプロイ (近日対応)",
-        "preview_waiting": "//コードを待っています...",
-        "regenerating": "応答を再生成中...",
-        "regenerated_from_edit": "編集ポイントから履歴メッセージを再開しました",
-        "regenerated_replaced": "以前の AI 応答は置き換えられました",
-        "creating_branch": "新しい分岐を作成中...",
-        "branch_will_regenerate": "このポイントから再生成します",
-        "branch_created": "新しい分岐を作成しました",
-        "branch_send_to_trigger": "メッセージを送信して AI の再生成をトリガーしてください",
-        "branch_failed": "分岐の作成に失敗しました",
-        "share_no_conversation": "先に会話を開始してください",
-        "share_link_copied": "リンクをクリップボードにコピーしました",
-        "share_single_message": "このリンクがあれば誰でもこのメッセージを表示できます",
-        "share_full_conversation": "このリンクがあれば誰でも会話全体を表示できます",
-        "continue_placeholder": "会話を続ける...",
-        "feature_image": "AI 画像",
-        "feature_web_dev": "Web 開発",
-        "feature_fortune": "占い",
-        "feature_slides": "スライド",
-        "feature_resume": "履歴書",
-        "feature_prompt_optimize": "プロンプト最適化",
-        "feature_deai": "DeAI",
-        "image_template_inspiration": "テンプレートのヒント",
-        "image_generation_complete": "画像生成が完了しました！",
-        "image_generation_failed": "画像生成に失敗しました",
-        "image_load_failed": "画像の読み込みに失敗しました",
-        "selected_template_toast": "選択したテンプレート: {name}",
-        "new_conversation_started": "新しいチャットを開始しました",
-        "new_conversation_short": "新規",
-        "add_to_canvas": "キャンバスに追加",
-        "continue_image_placeholder": "説明や編集内容を続ける..."
-    },
-    "features": {
-        "categories": {
-            "all": "すべて",
-            "portrait": "人物 / 映画",
-            "product": "製品",
-            "city": "都市",
-            "infographic": "インフォグラフィック",
-            "landscape": "風景",
-            "art": "アート",
-            "anime": "アニメ",
-            "design": "デザイン"
-        },
-        "video_categories": {
-            "all": "すべて",
-            "portrait": "人物",
-            "landscape": "シーン",
-            "art": "エフェクト",
-            "product": "製品",
-            "anime": "アニメ",
-            "design": "シネマ"
-        },
-        "fortune_form": {
-            "solar_prefix": "私はグレゴリオ暦で",
-            "year_placeholder": "yyyy",
-            "year_suffix": "年",
-            "month_placeholder": "mm",
-            "month_suffix": "月",
-            "day_placeholder": "dd",
-            "day_suffix": "日",
-            "hour_placeholder": "hh",
-            "hour_suffix": "時",
-            "minute_placeholder": "mm",
-            "gender_prefix": "分に生まれ、性別は",
-            "gender_placeholder": "男/女",
-            "birthplace_prefix": "、出生地は",
-            "birthplace_placeholder": "都道府県・市区町村",
-            "validation_prefix": "です。\n過去の検証情報（任意・推奨）：",
-            "validation_placeholder": "例：\"2021年に試験に合格\"",
-            "required_error": "送信前に必須の出生情報をすべて入力してください。"
-        },
-        "image_templates": {
-            "giant_landmark": { "title": "巨大ランドマーク化", "description": "日常の物体を実在感のある巨大な記念碑に変える" },
-            "product_macro": { "title": "食品/製品マクロ展示", "description": "浮遊する水しぶきがある超写実の商品写真" },
-            "city_promo": { "title": "超リアル都市ポスター", "description": "都市ブランディングや旅行宣伝向けの浮遊ミニチュア島ポスター" },
-            "sports_poster": { "title": "スポーツグラフィックポスター", "description": "アスリートや著名人向けのミックスメディア編集ポスター" }
-        },
-        "video_templates": {
-            "talking_portrait": { "title": "話すポートレート", "description": "静止人物をリップシンク付きで動かす" },
-            "dance_motion": { "title": "ダンスモーション", "description": "なめらかな人物ダンス動画を生成" },
-            "landscape_timelapse": { "title": "風景タイムラプス", "description": "雲、日の出、夕日のタイムラプス" },
-            "water_animation": { "title": "水のアニメーション", "description": "川、滝、波などの動的な水シーン" },
-            "morph_transition": { "title": "変形トランジション", "description": "オブジェクト間の滑らかな変形効果" },
-            "particle_effects": { "title": "パーティクル効果", "description": "煙、炎、星屑などの粒子効果" },
-            "product_360": { "title": "製品360°", "description": "製品の360度回転アニメーション" },
-            "unboxing": { "title": "開封アニメーション", "description": "製品の開封とショーケース動画" },
-            "anime_character": { "title": "アニメキャラクター", "description": "二次元キャラクターの動きを生成" },
-            "comic_panels": { "title": "漫画コマ", "description": "静止漫画コマを動くショットに変換" },
-            "cinematic_shot": { "title": "映画風ショット", "description": "プロの映画風カメラワークと映像" },
-            "slow_motion": { "title": "スローモーション", "description": "滑らかな高フレームレートのスロー効果" }
-        },
-        "items": {
-            "web_dev": {
-                "title": "Web 開発",
-                "placeholder": "開発したい Web ページを説明してください...",
-                "templates": {
-                    "company_site": { "title": "企業サイト", "description": "プロフェッショナルな企業サイト" },
-                    "ecommerce": { "title": "EC サイト", "description": "商品表示とカート導線" },
-                    "blog": { "title": "個人ブログ", "description": "シンプルで上品なブログテンプレート" },
-                    "landing": { "title": "ランディングページ", "description": "高コンバージョンのマーケティングページ" },
-                    "admin": { "title": "管理画面", "description": "データダッシュボードと管理システム" },
-                    "saas": { "title": "SaaS 製品", "description": "SaaS 製品向けインターフェース" }
-                }
-            },
-            "image": {
-                "title": "AI 画像",
-                "placeholder": "生成したい画像を説明してください...",
-                "description": "AI で画像を生成し、キャンバスで編集"
-            },
-            "slides": {
-                "title": "スライド",
-                "placeholder": "プレゼンテーションのテーマを説明してください...",
-                "templates": {
-                    "business": { "title": "事業提案", "description": "プロフェッショナルな事業計画デッキ" },
-                    "product": { "title": "製品発表", "description": "新製品発表向けプレゼンテーション" },
-                    "education": { "title": "教育研修", "description": "講座と研修向け資料" },
-                    "report": { "title": "年次報告", "description": "企業の年次サマリーレポート" },
-                    "creative": { "title": "クリエイティブ展示", "description": "視覚的に印象的なプレゼンテーション" },
-                    "minimal": { "title": "ミニマル", "description": "シンプルで余白のあるテンプレート" }
-                }
-            },
-            "resume": {
-                "title": "履歴書",
-                "placeholder": "+ で履歴書をアップロードするか、要望を入力してください",
-                "templates": {
-                    "professional": { "title": "プロ向けミニマル", "description": "ビジネス向けの定番テンプレート" },
-                    "creative": { "title": "クリエイティブ", "description": "デザイナー向けの創造的な履歴書" },
-                    "technical": { "title": "技術職", "description": "プログラマーとエンジニア向け" },
-                    "executive": { "title": "ビジネスエグゼクティブ", "description": "管理職とビジネス職向けテンプレート" },
-                    "academic": { "title": "アカデミック", "description": "研究者と学者向け履歴書" },
-                    "graduate": { "title": "新卒", "description": "新卒向けのフレッシュなテンプレート" }
-                }
-            },
-            "prompt_optimize": {
-                "title": "プロンプト最適化",
-                "placeholder": "改善したいプロンプトを入力してください...",
-                "templates": {
-                    "image": { "title": "画像生成", "description": "AI 描画用プロンプトを改善", "effect": "大まかな画像アイデアを、被写体、構図、光、スタイル、カメラ、比率、制約を含む詳細なプロンプトに整えます。" },
-                    "copy": { "title": "コピーライティング", "description": "マーケティング文案用プロンプトを改善", "effect": "曖昧な文案依頼を、読者、提案、トーン、根拠、反論、出力形式を含む明確な brief に整えます。" },
-                    "code": { "title": "コード生成", "description": "プログラミング関連プロンプトを改善", "effect": "開発依頼を、文脈、制約、境界条件、対象ファイル、検証手順を含む実装しやすいプロンプトにします。" },
-                    "roleplay": { "title": "ロールプレイ", "description": "AI ペルソナ指示を改善", "effect": "ペルソナ案を、範囲、行動ルール、境界、応答スタイルを持つ安定した役割指示に整えます。" },
-                    "data": { "title": "データ分析", "description": "データ処理プロンプトを改善", "effect": "分析アイデアを、データ背景、仮定、手法、出力、品質確認を含む構造化プロンプトにします。" },
-                    "general": { "title": "汎用改善", "description": "プロンプト全体の品質を向上", "effect": "大まかな指示を、役割、タスク、文脈、制約、出力形式が明確なプロンプトに整えます。" }
-                }
-            },
-            "fortune": {
-                "title": "占い",
-                "placeholder": "生年月日と時刻を入力してください...",
-                "templates": {
-                    "bazi": { "title": "八字総合鑑定", "description": "命式、構造、用神、喜忌を分析", "effect": "命式構造、用神、十神、大運、全体の方向性まで広く見る総合的な八字鑑定です。" },
-                    "annual": { "title": "年運", "description": "今年の運勢と近い将来の流れ", "effect": "今年の流れ、重要な月、近い機会、注意が必要な時期に焦点を当てます。" },
-                    "relationship": { "title": "恋愛・結婚", "description": "恋愛、結婚、相手の特徴を分析", "effect": "恋愛の時期、結婚傾向、相手の特徴、関係上のリスクに焦点を当てます。" },
-                    "career": { "title": "キャリア", "description": "職業方向、昇進、適した業界", "effect": "職業方向、適した業界、昇進の時期、職場での注意点に焦点を当てます。" },
-                    "wealth": { "title": "金運", "description": "収入、投資、資産形成の指針", "effect": "収入、臨時収入の傾向、投資上の注意点、金運の時期、資産を守る力に焦点を当てます。" },
-                    "health": { "title": "健康", "description": "健康上の注意点と養生提案", "effect": "五行バランス、健康上の注意点、養生の方向性、特に気をつけたい年に焦点を当てます。" },
-                    "personality": { "title": "性格と才能", "description": "性格特性と強みの分析", "effect": "性格特性、強み、弱点、才能、人間関係の傾向に焦点を当てます。" },
-                    "family": { "title": "家族", "description": "家族との縁と子どもに関する運勢", "effect": "家族関係、親兄弟との縁、子どもに関する運、家庭の調和に焦点を当てます。" }
-                }
-            },
-            "deai": {
-                "title": "AI らしさを減らす",
-                "placeholder": "AI 生成らしさを減らしたい文章を貼り付けてください...",
-                "templates": {
-                    "academic": { "title": "学術論文", "description": "重複感を減らし自然な学術文にする", "effect": "厳密さ、専門用語、引用、論理構成を保ちながら、学術文をより自然にします。" },
-                    "business": { "title": "ビジネス文案", "description": "マーケティング文案を自然にする", "effect": "誇張や定型的なマーケティング表現を減らし、信頼できて具体的な文案にします。" },
-                    "news": { "title": "ニュース記事", "description": "報道文体に変換", "effect": "機械的な言い回しを避け、事実に基づいた簡潔な編集文体に整えます。" },
-                    "social": { "title": "SNS 投稿", "description": "人が書いたような投稿にする", "effect": "元の要点を保ちながら、会話らしく、わかりやすく、自然な投稿にします。" },
-                    "email": { "title": "メール", "description": "ビジネスメールを自然に整える", "effect": "過度に堅い表現や機械的な文を避け、明確で丁寧なメールにします。" },
-                    "creative": { "title": "創作", "description": "文学的な文章スタイルを磨く", "effect": "声、リズム、感情の意図を保ちながら、創作文をより生きた表現にします。" }
-                }
-            },
-            "translate": {
-                "title": "AI 翻訳",
-                "placeholder": "翻訳したいテキストを入力してください...",
-                "description": "複数言語に対応したプロ向け AI 翻訳"
-            }
-        }
-    },
-    "translate": {
-        "empty_error": "翻訳するテキストを入力してください。",
-        "request_failed": "翻訳リクエストに失敗しました。",
-        "failed_error": "翻訳に失敗しました。もう一度お試しください。",
-        "copied": "クリップボードにコピーしました。",
-        "copy_failed": "コピーに失敗しました。",
-        "source_placeholder": "翻訳するテキストを入力...",
-        "result_placeholder": "翻訳結果",
-        "translating": "翻訳中...",
-        "action": "翻訳",
-        "headline_1": "選択中のモデルで翻訳",
-        "headline_2": "意味を保ったまま言語を変える",
-        "headline_3": "一文ずつわかりやすく伝える",
-        "languages": {
-            "auto": "自動検出",
-            "English": "英語",
-            "Chinese (Simplified)": "簡体字中国語",
-            "Chinese (Traditional)": "繁体字中国語",
-            "Japanese": "日本語",
-            "Korean": "韓国語",
-            "French": "フランス語",
-            "German": "ドイツ語",
-            "Spanish": "スペイン語",
-            "Portuguese": "ポルトガル語",
-            "Russian": "ロシア語",
-            "Arabic": "アラビア語",
-            "Italian": "イタリア語",
-            "Dutch": "オランダ語",
-            "Thai": "タイ語",
-            "Vietnamese": "ベトナム語"
-        },
-        "styles": {
-            "general": { "label": "一般", "description": "自然で流暢な表現" },
-            "business_email": { "label": "ビジネス", "description": "丁寧でプロらしい表現" },
-            "academic": { "label": "学術", "description": "厳密な学術表現" },
-            "technical": { "label": "技術", "description": "正確で簡潔な技術文" },
-            "social_media": { "label": "SNS", "description": "自然で会話調の表現" }
-        }
-    },
-    "thinking": {
-        "thinking": "思考中",
-        "duration": "思考時間",
-        "content": "思考プロセス",
-        "redacted": "思考プロセスは非表示です",
-        "completed": "思考完了",
-        "searching": "検索中"
-    },
-    "model_selector": {
-        "search_placeholder": "モデルを検索...",
-        "not_configured": "未設定",
-        "quota": "クォータ",
-        "no_models": "利用可能なモデルはありません",
-        "select_model": "モデルを選択"
-    },
-    "sub_agent": {
-        "pending": "待機中",
-        "active": "実行中",
-        "completed": "完了",
-        "error": "失敗",
-        "unknown": "不明",
-        "name_eda_analyst": "データ探索分析",
-        "name_stats_analyst": "統計分析",
-        "name_regression_analyst": "回帰分析",
-        "name_viz_analyst": "可視化分析",
-        "name_general_purpose": "汎用タスク"
-    },
-    "search": {
-        "placeholder": "チャットを検索...",
-        "new_chat": "新しいチャット",
-        "no_results": "一致するチャットが見つかりません",
-        "earlier": "以前",
-        "history_unavailable": "履歴を利用できません",
-        "history_backend_unavailable": "バックエンドに接続できません。バックエンドを起動してから再試行してください。",
-        "history_disabled": "保存済みの会話を検索するには、データベース永続化を設定してください。",
-        "history_error": "会話履歴を読み込めませんでした。",
-        "history_empty": "保存済みの会話はまだありません",
-        "retry": "再試行"
-    },
-    "thread": {
-        "empty": "タスクはまだありません",
-        "history_title": "履歴",
-        "needs_attention": "要対応",
-        "today": "今日",
-        "yesterday": "昨日",
-        "this_week": "今週",
-        "older": "以前",
-        "all_status": "すべてのステータス",
-        "active_group": "アクティブ",
-        "idle": "アイドル",
-        "running": "実行中",
-        "interrupted": "中断",
-        "error": "エラー",
-        "confirm_delete": "この会話を削除しますか？この操作は取り消せません（ファイルは削除されません）。",
-        "delete_failed": "削除に失敗しました",
-        "title_empty": "タイトルは空にできません",
-        "title_update_failed": "タイトルの更新に失敗しました",
-        "load_more": "もっと読み込む",
-        "loading": "読み込み中...",
-        "failed_load": "スレッドの読み込みに失敗しました"
-    },
-    "files": {
-        "download_failed": "ダウンロードに失敗しました",
-        "login_required": "ダウンロードする前にサインインしてください",
-        "thread_not_ready": "現在の会話の準備ができていません",
-        "file_associating": "ファイルを関連付け中",
-        "try_again": "後でもう一度お試しください。",
-        "search_placeholder": "ファイルを検索...",
-        "no_results": "一致するファイルが見つかりません",
-        "empty": "ファイルはまだありません",
-        "empty_hint": "アップロードしたファイルはここに表示されます",
-        "file_count": "{count} 件のファイル",
-        "selected_count": "{count} 件選択中",
-        "use_selected": "選択したファイルを使用",
-        "download": "ダウンロード",
-        "delete": "削除",
-        "confirm_delete": "このファイルをグローバルに削除しますか？",
-        "confirm_delete_used": "このファイルは {count} 件の会話で使用されています。グローバルに削除しますか？",
-        "library_title": "ファイルライブラリ",
-        "library_select_title": "ライブラリからファイルを選択"
-    },
-    "errors": {
-        "rate_limited": "リクエストが多すぎます。{seconds} 秒後に再試行してください。",
-        "input_too_large": "メッセージが長すぎます。20,000 文字以内にしてください。",
-        "too_many_attachments": "1 回のリクエストに添付できるファイルは 10 個までです。"
-    },
-    "tool_approval": {
-        "required": "承認が必要です", "tool": "ツール", "app": "アプリ", "action": "操作",
-        "risk": "リスク", "unknown": "不明", "external_write": "外部への書き込み",
-        "external_impact": "承認すると、接続済みアプリでデータが作成、変更、送信、または削除される可能性があります。",
-        "edit_arguments": "引数を編集", "arguments": "引数", "rejection_message": "拒否理由（任意）",
-        "rejection_placeholder": "この操作を拒否する理由を入力してください...", "cancel": "キャンセル",
-        "saving": "保存中...", "save_approve": "保存して承認", "rejecting": "拒否中...",
-        "confirm_reject": "拒否を確定", "reject": "拒否", "edit": "編集",
-        "approving": "承認中...", "approve": "承認"
+  "common": {
+    "settings": "設定",
+    "cancel": "キャンセル",
+    "confirm": "確認",
+    "save": "保存",
+    "delete": "削除",
+    "edit": "編集",
+    "close": "閉じる",
+    "loading": "読み込み中...",
+    "error": "エラー",
+    "success": "成功",
+    "retry": "再試行",
+    "back": "戻る",
+    "login_required": "先にサインインしてください"
+  },
+  "history": {
+    "thread_not_found_title": "会話が見つかりません",
+    "thread_not_found_description": "この会話は削除されたか、別の環境で作成された可能性があります。",
+    "backend_unavailable_title": "会話を読み込めません",
+    "backend_unavailable_description": "バックエンドに接続できません。バックエンドを起動してから再試行してください。",
+    "history_disabled_title": "履歴が有効になっていません",
+    "history_disabled_description": "保存済みの会話を開くには、先にデータベース永続化を設定してください。",
+    "access_denied_title": "会話を利用できません",
+    "access_denied_description": "現在のローカルユーザーではこの会話を利用できません。",
+    "generic_error_title": "会話を読み込めません",
+    "generic_error_description": "この会話を開けませんでした。",
+    "retry": "再試行",
+    "new_chat": "新しいチャットを開始",
+    "runtime_missing_title": "会話履歴を利用できません",
+    "runtime_missing_description": "この会話の保存済みランタイム状態を復元できませんでした。新しいメッセージを送って会話を続けられます。",
+    "continue_chat": "ここで続ける"
+  },
+  "settings": {
+    "title": "設定",
+    "general": "一般",
+    "notifications": "通知",
+    "personalization": "カスタマイズ",
+    "privacy": "プライバシーとセキュリティ",
+    "data": "データ管理",
+    "help": "ヘルプ",
+    "appearance": "外観",
+    "language": "言語",
+    "theme_light": "ライト",
+    "theme_dark": "ダーク",
+    "theme_system": "システムに従う",
+    "email_notifications": "メール通知",
+    "email_notifications_desc": "重要な更新のメール通知を受け取る",
+    "push_notifications": "プッシュ通知",
+    "push_notifications_desc": "ブラウザでプッシュ通知を受け取る",
+    "product_updates": "製品アップデート",
+    "product_updates_desc": "新機能と改善の通知を受け取る",
+    "exclusive_content": "限定コンテンツ",
+    "exclusive_content_desc": "限定オファー、イベント更新、機能ガイドを入手",
+    "task_notifications": "タスク通知",
+    "task_notifications_desc": "タスクがキューに入り処理開始時に通知",
+    "show_all_models": "すべてのモデルを表示",
+    "show_all_models_desc": "セレクターで利用可能なすべてのモデルを表示",
+    "data_collection": "データ収集",
+    "data_collection_desc": "サービス向上のためのデータ収集を許可",
+    "conversation_history": "会話履歴",
+    "conversation_history_desc": "会話履歴を保存",
+    "manage_cookies": "Cookies を管理",
+    "manage": "管理",
+    "export_data": "データをエクスポート",
+    "export_data_desc": "すべての会話とデータをダウンロード",
+    "export": "エクスポート",
+    "clear_history": "履歴をクリア",
+    "clear_history_desc": "保存されたすべての会話を削除",
+    "clear": "クリア",
+    "delete_account": "アカウントを削除",
+    "delete_account_desc": "アカウントとすべてのデータを完全に削除",
+    "help_center": "ヘルプセンター",
+    "faq": "よくある質問",
+    "contact_support": "サポートに連絡",
+    "service_status": "サービス状態",
+    "legal_info": "法的情報",
+    "privacy_policy": "プライバシーポリシー",
+    "terms_of_service": "利用規約",
+    "connected_apps": "連携アプリ",
+    "connected_apps_desc": "サードパーティアプリを連携して機能を拡張し、作業効率を向上",
+    "search_apps": "アプリを検索...",
+    "category": "カテゴリ",
+    "all_categories": "すべてのカテゴリ",
+    "my_apps": "マイアプリ",
+    "connected_count": "{count} 件連携中",
+    "marketplace": "アプリマーケット",
+    "available_count": "{count} 件利用可能",
+    "no_connected_apps": "まだ連携しているアプリはありません",
+    "no_matching_connected_apps": "一致する連携済みアプリが見つかりません",
+    "no_matching_apps": "一致するアプリが見つかりません",
+    "connect_success": "{name} の連携に成功しました！",
+    "connect_failed": "連携に失敗: {message}",
+    "disconnect_success": "{name} を切断しました",
+    "disconnect_failed": "切断に失敗: {message}",
+    "manage_app": "{name} の設定を管理",
+    "connected_badge": "連携済み",
+    "manage": "管理",
+    "disconnect": "切断",
+    "connect": "連携",
+    "category_productivity": "生産性",
+    "category_communication": "コミュニケーション",
+    "category_development": "開発",
+    "category_crm": "CRM",
+    "category_social": "ソーシャル",
+    "category_storage": "ストレージ",
+    "category_payment": "決済",
+    "category_other": "その他",
+    "apps": {
+      "notion": {
+        "description": "ノート、ドキュメント、ナレッジベース、プロジェクト管理のための統合ワークスペース"
+      },
+      "google_calendar": { "description": "予定管理と会議調整ツール" },
+      "trello": {
+        "description": "ビジュアルなプロジェクト管理とコラボレーションツール"
+      },
+      "asana": {
+        "description": "チームのプロジェクトとタスク管理プラットフォーム"
+      },
+      "slack": {
+        "description": "チームメッセージングとコラボレーションプラットフォーム"
+      },
+      "zoom": { "description": "ビデオ会議とオンライン共同作業ツール" },
+      "discord": {
+        "description": "コミュニティ向け音声、ビデオ、テキストチャットプラットフォーム"
+      },
+      "teams": {
+        "description": "企業向けコラボレーションとコミュニケーションプラットフォーム"
+      },
+      "github": {
+        "description": "コードホスティングとバージョン管理プラットフォーム"
+      },
+      "gitlab": {
+        "description": "コード管理と CI/CD のための DevOps プラットフォーム"
+      },
+      "linear": { "description": "モダンな課題管理とプロジェクト管理ツール" },
+      "jira": { "description": "アジャイルプロジェクト管理と課題追跡ツール" },
+      "salesforce": { "description": "主要な顧客関係管理プラットフォーム" },
+      "hubspot": {
+        "description": "マーケティング、営業、カスタマーサービスプラットフォーム"
+      },
+      "twitter": {
+        "description": "ソーシャルメディアとリアルタイム情報プラットフォーム"
+      },
+      "linkedin": {
+        "description": "プロフェッショナル向けソーシャルネットワーク"
+      },
+      "reddit": {
+        "description": "コミュニティコンテンツ共有と議論のプラットフォーム"
+      },
+      "google_drive": { "description": "クラウドファイル保存と共有サービス" },
+      "dropbox": { "description": "ファイル同期とクラウドストレージサービス" },
+      "onedrive": {
+        "description": "Microsoft のクラウドストレージとファイル共有サービス"
+      },
+      "stripe": { "description": "オンライン決済処理プラットフォーム" },
+      "paypal": { "description": "グローバルなオンライン決済サービス" },
+      "gmail": { "description": "Google のメールサービス" },
+      "zapier": { "description": "アプリ自動化と連携プラットフォーム" },
+      "airtable": {
+        "description": "スプレッドシートとデータベースを組み合わせた共同作業プラットフォーム"
+      },
+      "clickup": {
+        "description": "統合型プロジェクト管理と生産性プラットフォーム"
+      },
+      "google_docs": { "description": "クラウド文書編集と共同作業ツール" },
+      "google_sheets": {
+        "description": "クラウドスプレッドシートとデータ分析ツール"
+      },
+      "outlook": { "description": "Microsoft のメールとカレンダーサービス" },
+      "google_meet": { "description": "Google のビデオ会議サービス" },
+      "bitbucket": {
+        "description": "Atlassian のコードホスティングと共同作業プラットフォーム"
+      },
+      "supabase": {
+        "description": "オープンソースの Firebase 代替バックエンドサービス"
+      },
+      "zendesk": {
+        "description": "カスタマーサービスとサポートプラットフォーム"
+      },
+      "figma": { "description": "共同作業型インターフェースデザインツール" },
+      "mailchimp": {
+        "description": "メールマーケティングと自動化プラットフォーム"
+      },
+      "shopify": {
+        "description": "EC プラットフォームとオンラインストア作成ツール"
+      }
     }
+  },
+  "canvas": {
+    "ai_edit_image": "AI 画像編集",
+    "ai_edit_text": "AI テキスト編集",
+    "regenerate": "再生成",
+    "download_image": "画像をダウンロード",
+    "delete_image": "画像を削除",
+    "select_tool": "選択",
+    "brush_tool_short": "ブラシ",
+    "eraser_tool_short": "消しゴム",
+    "quota": "クォータ",
+    "confirm_delete_images": "{count} 枚の画像を削除しますか？",
+    "error_regenerate_missing_params": "再生成できません：元のパラメータが不足しています",
+    "error_regenerate_failed": "再生成失敗",
+    "brush_tool": "ブラシツール",
+    "eraser_tool": "消しゴムツール",
+    "rect_tool": "矩形ツール",
+    "brush_size": "ブラシサイズ",
+    "edit_placeholder": "変更したい内容を説明してください...",
+    "edit_text_placeholder": "新しいテキストを入力...",
+    "processing": "処理中...",
+    "edit_image": "画像を編集",
+    "generation_failed": "生成失敗",
+    "generation_failed_desc": "AI が画像を生成できませんでした。再試行してください。",
+    "retry_generation": "再生成",
+    "loading_generate_title": "AI が作成中...",
+    "loading_generate_desc": "初回生成には約30秒かかる場合があります",
+    "loading_edit_title": "AI が編集中...",
+    "loading_edit_desc": "画像を編集中、お待ちください",
+    "downloading": "ダウンロード中...",
+    "download_complete": "ダウンロード完了！",
+    "download_failed": "ダウンロード失敗",
+    "edit_prompt_required": "編集内容を入力してください",
+    "edit_complete": "画像編集が完了しました！",
+    "edit_missing_image": "編集後の画像が返されませんでした",
+    "edit_failed": "画像編集に失敗しました"
+  },
+  "home": {
+    "guest_name": "Guest",
+    "headline_1": "こんにちは{name}、何をお手伝いしましょうか？",
+    "headline_2": "こんにちは{name}、始める準備はできていますか？",
+    "headline_3": "{name}、今日は何を終わらせたいですか？",
+    "headline_4": "こんにちは{name}、どうお手伝いしましょうか？",
+    "headline_5": "{name}、一緒に作りましょう",
+    "headline_6": "こんにちは{name}、次のプロジェクトを始めましょう",
+    "headline_7": "{name}、アイデアが必要ですか？",
+    "headline_8": "こんにちは{name}、アイデアを形にしましょう",
+    "headline_9": "{name}、可能性を探りましょう",
+    "headline_10": "こんにちは{name}、クリエイティブアシスタントの準備ができました",
+    "headline_11": "{name}、何でも聞いてください",
+    "headline_12": "こんにちは{name}、一緒に解決しましょう"
+  },
+  "image": {
+    "ratio": "比率",
+    "resolution": "解像度",
+    "auto": "自動"
+  },
+  "sidebar": {
+    "new_chat": "新しいチャット",
+    "search": "検索",
+    "agents": "エージェント",
+    "library": "ライブラリ",
+    "history": "履歴",
+    "open_sidebar": "サイドバーを開く",
+    "settings": "設定",
+    "share": "共有",
+    "rename": "名前変更",
+    "pin": "ピン留め",
+    "unpin": "ピン留め解除",
+    "delete": "削除",
+    "delete_title": "削除の確認",
+    "delete_description": "「{title}」を削除しますか？この操作は取り消せません。",
+    "share_title": "会話を共有",
+    "share_description": "このリンクがあれば誰でも会話全体を表示できます",
+    "copy": "コピー",
+    "copied": "クリップボードにコピーしました",
+    "rename_prompt": "新しいタイトルを入力",
+    "rename_success": "名前を変更しました",
+    "rename_failed": "名前の変更に失敗しました",
+    "delete_success": "削除しました",
+    "delete_failed": "削除に失敗しました",
+    "share_failed": "共有に失敗しました",
+    "share_login_required": "先にサインインしてください",
+    "share_create_failed": "共有リンクの作成に失敗しました",
+    "try_again_later": "後でもう一度お試しください",
+    "history_empty": "履歴はまだありません",
+    "history_empty_hint": "チャットを開始すると、会話履歴がここに表示されます。",
+    "history_backend_unavailable": "履歴を利用できません",
+    "history_backend_unavailable_hint": "バックエンドに接続できません。バックエンドが起動していることを確認してから再試行してください。",
+    "history_disabled": "履歴が有効になっていません",
+    "history_disabled_hint": "会話履歴を保存して表示するには、データベース永続化を設定してください。",
+    "history_access_denied": "この履歴は利用できません",
+    "history_error": "履歴を読み込めませんでした",
+    "history_refresh_failed": "履歴を更新できませんでした",
+    "history_retry": "再試行"
+  },
+  "chat": {
+    "default_placeholder": "作成したい内容を説明してください...",
+    "webdev_placeholder": "開発したい Web ページを説明してください...",
+    "webdev_mode": "Web 開発",
+    "clear_selected_feature": "選択した機能をクリア",
+    "clear_selected_template": "選択したテンプレートをクリア",
+    "template_example_input": "入力例",
+    "template_example_output": "出力例",
+    "add_from_google_drive": "Google Drive から追加",
+    "choose_from_library": "ライブラリから選択",
+    "add_local_file": "ローカルファイルを追加",
+    "uploaded_file": "ファイルを追加しました: {name}",
+    "follow_up_suggestions": "続けて質問してみませんか：",
+    "copy": "コピー",
+    "copied": "コピーしました",
+    "regenerate": "再生成",
+    "share": "共有",
+    "resume_skip": "スキップして履歴書を手動入力 →",
+    "select_template": "テンプレートを選択",
+    "file_type_image": "画像",
+    "file_type_audio": "音声",
+    "file_type_file": "ファイル",
+    "uploading": " · アップロード中",
+    "uploading_dots": " · アップロード中...",
+    "upload_failed": " · アップロード失敗",
+    "remove_file": "ファイルを削除",
+    "prompt_input": "プロンプト入力",
+    "scroll_to_bottom": "一番下へ",
+    "add_file": "ファイルを追加",
+    "view_files": "ファイルを表示",
+    "artifact_react": "Reactコンポーネント",
+    "artifact_html": "HTMLページ",
+    "artifact_vue": "Vueコンポーネント",
+    "artifact_code": "コード",
+    "artifact_building": "ビルド中...",
+    "artifact_completed": "完了",
+    "artifact_preparing": "準備中",
+    "artifact_generating": "コード生成中",
+    "artifact_preview_title": "コードプレビュー",
+    "artifact_chars": "文字",
+    "artifact_view": "表示",
+    "artifact_preview": "プレビュー",
+    "artifact_view_preview": "プレビューを表示",
+    "preview_generating": "生成中...",
+    "preview_tab": "プレビュー",
+    "preview_code_tab": "コード",
+    "preview_not_ready": "生成完了後にプレビューが利用可能になります",
+    "preview_copy_code": "コードをコピー",
+    "preview_refresh": "プレビューを更新",
+    "preview_open_new_tab": "新しいタブで開く",
+    "preview_deploy": "デプロイ",
+    "preview_deploy_tooltip": "デプロイ (近日対応)",
+    "preview_waiting": "//コードを待っています...",
+    "regenerating": "応答を再生成中...",
+    "regenerated_from_edit": "編集ポイントから履歴メッセージを再開しました",
+    "regenerated_replaced": "以前の AI 応答は置き換えられました",
+    "creating_branch": "新しい分岐を作成中...",
+    "branch_will_regenerate": "このポイントから再生成します",
+    "branch_created": "新しい分岐を作成しました",
+    "branch_send_to_trigger": "メッセージを送信して AI の再生成をトリガーしてください",
+    "branch_failed": "分岐の作成に失敗しました",
+    "share_no_conversation": "先に会話を開始してください",
+    "share_link_copied": "リンクをクリップボードにコピーしました",
+    "share_single_message": "このリンクがあれば誰でもこのメッセージを表示できます",
+    "share_full_conversation": "このリンクがあれば誰でも会話全体を表示できます",
+    "continue_placeholder": "会話を続ける...",
+    "feature_image": "AI 画像",
+    "feature_web_dev": "Web 開発",
+    "feature_fortune": "占い",
+    "feature_slides": "スライド",
+    "feature_resume": "履歴書",
+    "feature_prompt_optimize": "プロンプト最適化",
+    "feature_deai": "DeAI",
+    "image_template_inspiration": "テンプレートのヒント",
+    "image_generation_complete": "画像生成が完了しました！",
+    "image_generation_failed": "画像生成に失敗しました",
+    "image_load_failed": "画像の読み込みに失敗しました",
+    "selected_template_toast": "選択したテンプレート: {name}",
+    "new_conversation_started": "新しいチャットを開始しました",
+    "new_conversation_short": "新規",
+    "add_to_canvas": "キャンバスに追加",
+    "continue_image_placeholder": "説明や編集内容を続ける..."
+  },
+  "features": {
+    "categories": {
+      "all": "すべて",
+      "portrait": "人物 / 映画",
+      "product": "製品",
+      "city": "都市",
+      "infographic": "インフォグラフィック",
+      "landscape": "風景",
+      "art": "アート",
+      "anime": "アニメ",
+      "design": "デザイン"
+    },
+    "video_categories": {
+      "all": "すべて",
+      "portrait": "人物",
+      "landscape": "シーン",
+      "art": "エフェクト",
+      "product": "製品",
+      "anime": "アニメ",
+      "design": "シネマ"
+    },
+    "fortune_form": {
+      "solar_prefix": "私はグレゴリオ暦で",
+      "year_placeholder": "yyyy",
+      "year_suffix": "年",
+      "month_placeholder": "mm",
+      "month_suffix": "月",
+      "day_placeholder": "dd",
+      "day_suffix": "日",
+      "hour_placeholder": "hh",
+      "hour_suffix": "時",
+      "minute_placeholder": "mm",
+      "gender_prefix": "分に生まれ、性別は",
+      "gender_placeholder": "男/女",
+      "birthplace_prefix": "、出生地は",
+      "birthplace_placeholder": "都道府県・市区町村",
+      "validation_prefix": "です。\n過去の検証情報（任意・推奨）：",
+      "validation_placeholder": "例：\"2021年に試験に合格\"",
+      "required_error": "送信前に必須の出生情報をすべて入力してください。"
+    },
+    "image_templates": {
+      "giant_landmark": {
+        "title": "巨大ランドマーク化",
+        "description": "日常の物体を実在感のある巨大な記念碑に変える"
+      },
+      "product_macro": {
+        "title": "食品/製品マクロ展示",
+        "description": "浮遊する水しぶきがある超写実の商品写真"
+      },
+      "city_promo": {
+        "title": "超リアル都市ポスター",
+        "description": "都市ブランディングや旅行宣伝向けの浮遊ミニチュア島ポスター"
+      },
+      "sports_poster": {
+        "title": "スポーツグラフィックポスター",
+        "description": "アスリートや著名人向けのミックスメディア編集ポスター"
+      }
+    },
+    "video_templates": {
+      "talking_portrait": {
+        "title": "話すポートレート",
+        "description": "静止人物をリップシンク付きで動かす"
+      },
+      "dance_motion": {
+        "title": "ダンスモーション",
+        "description": "なめらかな人物ダンス動画を生成"
+      },
+      "landscape_timelapse": {
+        "title": "風景タイムラプス",
+        "description": "雲、日の出、夕日のタイムラプス"
+      },
+      "water_animation": {
+        "title": "水のアニメーション",
+        "description": "川、滝、波などの動的な水シーン"
+      },
+      "morph_transition": {
+        "title": "変形トランジション",
+        "description": "オブジェクト間の滑らかな変形効果"
+      },
+      "particle_effects": {
+        "title": "パーティクル効果",
+        "description": "煙、炎、星屑などの粒子効果"
+      },
+      "product_360": {
+        "title": "製品360°",
+        "description": "製品の360度回転アニメーション"
+      },
+      "unboxing": {
+        "title": "開封アニメーション",
+        "description": "製品の開封とショーケース動画"
+      },
+      "anime_character": {
+        "title": "アニメキャラクター",
+        "description": "二次元キャラクターの動きを生成"
+      },
+      "comic_panels": {
+        "title": "漫画コマ",
+        "description": "静止漫画コマを動くショットに変換"
+      },
+      "cinematic_shot": {
+        "title": "映画風ショット",
+        "description": "プロの映画風カメラワークと映像"
+      },
+      "slow_motion": {
+        "title": "スローモーション",
+        "description": "滑らかな高フレームレートのスロー効果"
+      }
+    },
+    "items": {
+      "web_dev": {
+        "title": "Web 開発",
+        "placeholder": "開発したい Web ページを説明してください...",
+        "templates": {
+          "company_site": {
+            "title": "企業サイト",
+            "description": "プロフェッショナルな企業サイト"
+          },
+          "ecommerce": {
+            "title": "EC サイト",
+            "description": "商品表示とカート導線"
+          },
+          "blog": {
+            "title": "個人ブログ",
+            "description": "シンプルで上品なブログテンプレート"
+          },
+          "landing": {
+            "title": "ランディングページ",
+            "description": "高コンバージョンのマーケティングページ"
+          },
+          "admin": {
+            "title": "管理画面",
+            "description": "データダッシュボードと管理システム"
+          },
+          "saas": {
+            "title": "SaaS 製品",
+            "description": "SaaS 製品向けインターフェース"
+          }
+        }
+      },
+      "image": {
+        "title": "AI 画像",
+        "placeholder": "生成したい画像を説明してください...",
+        "description": "AI で画像を生成し、キャンバスで編集"
+      },
+      "slides": {
+        "title": "スライド",
+        "placeholder": "プレゼンテーションのテーマを説明してください...",
+        "templates": {
+          "business": {
+            "title": "事業提案",
+            "description": "プロフェッショナルな事業計画デッキ"
+          },
+          "product": {
+            "title": "製品発表",
+            "description": "新製品発表向けプレゼンテーション"
+          },
+          "education": {
+            "title": "教育研修",
+            "description": "講座と研修向け資料"
+          },
+          "report": {
+            "title": "年次報告",
+            "description": "企業の年次サマリーレポート"
+          },
+          "creative": {
+            "title": "クリエイティブ展示",
+            "description": "視覚的に印象的なプレゼンテーション"
+          },
+          "minimal": {
+            "title": "ミニマル",
+            "description": "シンプルで余白のあるテンプレート"
+          }
+        }
+      },
+      "resume": {
+        "title": "履歴書",
+        "placeholder": "+ で履歴書をアップロードするか、要望を入力してください",
+        "templates": {
+          "professional": {
+            "title": "プロ向けミニマル",
+            "description": "ビジネス向けの定番テンプレート"
+          },
+          "creative": {
+            "title": "クリエイティブ",
+            "description": "デザイナー向けの創造的な履歴書"
+          },
+          "technical": {
+            "title": "技術職",
+            "description": "プログラマーとエンジニア向け"
+          },
+          "executive": {
+            "title": "ビジネスエグゼクティブ",
+            "description": "管理職とビジネス職向けテンプレート"
+          },
+          "academic": {
+            "title": "アカデミック",
+            "description": "研究者と学者向け履歴書"
+          },
+          "graduate": {
+            "title": "新卒",
+            "description": "新卒向けのフレッシュなテンプレート"
+          }
+        }
+      },
+      "prompt_optimize": {
+        "title": "プロンプト最適化",
+        "placeholder": "改善したいプロンプトを入力してください...",
+        "templates": {
+          "image": {
+            "title": "画像生成",
+            "description": "AI 描画用プロンプトを改善",
+            "effect": "大まかな画像アイデアを、被写体、構図、光、スタイル、カメラ、比率、制約を含む詳細なプロンプトに整えます。"
+          },
+          "copy": {
+            "title": "コピーライティング",
+            "description": "マーケティング文案用プロンプトを改善",
+            "effect": "曖昧な文案依頼を、読者、提案、トーン、根拠、反論、出力形式を含む明確な brief に整えます。"
+          },
+          "code": {
+            "title": "コード生成",
+            "description": "プログラミング関連プロンプトを改善",
+            "effect": "開発依頼を、文脈、制約、境界条件、対象ファイル、検証手順を含む実装しやすいプロンプトにします。"
+          },
+          "roleplay": {
+            "title": "ロールプレイ",
+            "description": "AI ペルソナ指示を改善",
+            "effect": "ペルソナ案を、範囲、行動ルール、境界、応答スタイルを持つ安定した役割指示に整えます。"
+          },
+          "data": {
+            "title": "データ分析",
+            "description": "データ処理プロンプトを改善",
+            "effect": "分析アイデアを、データ背景、仮定、手法、出力、品質確認を含む構造化プロンプトにします。"
+          },
+          "general": {
+            "title": "汎用改善",
+            "description": "プロンプト全体の品質を向上",
+            "effect": "大まかな指示を、役割、タスク、文脈、制約、出力形式が明確なプロンプトに整えます。"
+          }
+        }
+      },
+      "fortune": {
+        "title": "占い",
+        "placeholder": "生年月日と時刻を入力してください...",
+        "templates": {
+          "bazi": {
+            "title": "八字総合鑑定",
+            "description": "命式、構造、用神、喜忌を分析",
+            "effect": "命式構造、用神、十神、大運、全体の方向性まで広く見る総合的な八字鑑定です。"
+          },
+          "annual": {
+            "title": "年運",
+            "description": "今年の運勢と近い将来の流れ",
+            "effect": "今年の流れ、重要な月、近い機会、注意が必要な時期に焦点を当てます。"
+          },
+          "relationship": {
+            "title": "恋愛・結婚",
+            "description": "恋愛、結婚、相手の特徴を分析",
+            "effect": "恋愛の時期、結婚傾向、相手の特徴、関係上のリスクに焦点を当てます。"
+          },
+          "career": {
+            "title": "キャリア",
+            "description": "職業方向、昇進、適した業界",
+            "effect": "職業方向、適した業界、昇進の時期、職場での注意点に焦点を当てます。"
+          },
+          "wealth": {
+            "title": "金運",
+            "description": "収入、投資、資産形成の指針",
+            "effect": "収入、臨時収入の傾向、投資上の注意点、金運の時期、資産を守る力に焦点を当てます。"
+          },
+          "health": {
+            "title": "健康",
+            "description": "健康上の注意点と養生提案",
+            "effect": "五行バランス、健康上の注意点、養生の方向性、特に気をつけたい年に焦点を当てます。"
+          },
+          "personality": {
+            "title": "性格と才能",
+            "description": "性格特性と強みの分析",
+            "effect": "性格特性、強み、弱点、才能、人間関係の傾向に焦点を当てます。"
+          },
+          "family": {
+            "title": "家族",
+            "description": "家族との縁と子どもに関する運勢",
+            "effect": "家族関係、親兄弟との縁、子どもに関する運、家庭の調和に焦点を当てます。"
+          }
+        }
+      },
+      "deai": {
+        "title": "AI らしさを減らす",
+        "placeholder": "AI 生成らしさを減らしたい文章を貼り付けてください...",
+        "templates": {
+          "academic": {
+            "title": "学術論文",
+            "description": "重複感を減らし自然な学術文にする",
+            "effect": "厳密さ、専門用語、引用、論理構成を保ちながら、学術文をより自然にします。"
+          },
+          "business": {
+            "title": "ビジネス文案",
+            "description": "マーケティング文案を自然にする",
+            "effect": "誇張や定型的なマーケティング表現を減らし、信頼できて具体的な文案にします。"
+          },
+          "news": {
+            "title": "ニュース記事",
+            "description": "報道文体に変換",
+            "effect": "機械的な言い回しを避け、事実に基づいた簡潔な編集文体に整えます。"
+          },
+          "social": {
+            "title": "SNS 投稿",
+            "description": "人が書いたような投稿にする",
+            "effect": "元の要点を保ちながら、会話らしく、わかりやすく、自然な投稿にします。"
+          },
+          "email": {
+            "title": "メール",
+            "description": "ビジネスメールを自然に整える",
+            "effect": "過度に堅い表現や機械的な文を避け、明確で丁寧なメールにします。"
+          },
+          "creative": {
+            "title": "創作",
+            "description": "文学的な文章スタイルを磨く",
+            "effect": "声、リズム、感情の意図を保ちながら、創作文をより生きた表現にします。"
+          }
+        }
+      },
+      "translate": {
+        "title": "AI 翻訳",
+        "placeholder": "翻訳したいテキストを入力してください...",
+        "description": "複数言語に対応したプロ向け AI 翻訳"
+      }
+    }
+  },
+  "translate": {
+    "empty_error": "翻訳するテキストを入力してください。",
+    "request_failed": "翻訳リクエストに失敗しました。",
+    "failed_error": "翻訳に失敗しました。もう一度お試しください。",
+    "copied": "クリップボードにコピーしました。",
+    "copy_failed": "コピーに失敗しました。",
+    "source_placeholder": "翻訳するテキストを入力...",
+    "result_placeholder": "翻訳結果",
+    "translating": "翻訳中...",
+    "action": "翻訳",
+    "headline_1": "選択中のモデルで翻訳",
+    "headline_2": "意味を保ったまま言語を変える",
+    "headline_3": "一文ずつわかりやすく伝える",
+    "languages": {
+      "auto": "自動検出",
+      "English": "英語",
+      "Chinese (Simplified)": "簡体字中国語",
+      "Chinese (Traditional)": "繁体字中国語",
+      "Japanese": "日本語",
+      "Korean": "韓国語",
+      "French": "フランス語",
+      "German": "ドイツ語",
+      "Spanish": "スペイン語",
+      "Portuguese": "ポルトガル語",
+      "Russian": "ロシア語",
+      "Arabic": "アラビア語",
+      "Italian": "イタリア語",
+      "Dutch": "オランダ語",
+      "Thai": "タイ語",
+      "Vietnamese": "ベトナム語"
+    },
+    "styles": {
+      "general": { "label": "一般", "description": "自然で流暢な表現" },
+      "business_email": {
+        "label": "ビジネス",
+        "description": "丁寧でプロらしい表現"
+      },
+      "academic": { "label": "学術", "description": "厳密な学術表現" },
+      "technical": { "label": "技術", "description": "正確で簡潔な技術文" },
+      "social_media": { "label": "SNS", "description": "自然で会話調の表現" }
+    }
+  },
+  "thinking": {
+    "thinking": "思考中",
+    "duration": "思考時間",
+    "content": "思考プロセス",
+    "redacted": "思考プロセスは非表示です",
+    "completed": "思考完了",
+    "searching": "検索中"
+  },
+  "model_selector": {
+    "search_placeholder": "モデルを検索...",
+    "not_configured": "未設定",
+    "quota": "クォータ",
+    "no_models": "利用可能なモデルはありません",
+    "select_model": "モデルを選択"
+  },
+  "sub_agent": {
+    "pending": "待機中",
+    "active": "実行中",
+    "completed": "完了",
+    "error": "失敗",
+    "unknown": "不明",
+    "name_eda_analyst": "データ探索分析",
+    "name_stats_analyst": "統計分析",
+    "name_regression_analyst": "回帰分析",
+    "name_viz_analyst": "可視化分析",
+    "name_general_purpose": "汎用タスク"
+  },
+  "search": {
+    "placeholder": "チャットを検索...",
+    "new_chat": "新しいチャット",
+    "no_results": "一致するチャットが見つかりません",
+    "earlier": "以前",
+    "history_unavailable": "履歴を利用できません",
+    "history_backend_unavailable": "バックエンドに接続できません。バックエンドを起動してから再試行してください。",
+    "history_disabled": "保存済みの会話を検索するには、データベース永続化を設定してください。",
+    "history_error": "会話履歴を読み込めませんでした。",
+    "history_empty": "保存済みの会話はまだありません",
+    "retry": "再試行"
+  },
+  "thread": {
+    "empty": "タスクはまだありません",
+    "history_title": "履歴",
+    "needs_attention": "要対応",
+    "today": "今日",
+    "yesterday": "昨日",
+    "this_week": "今週",
+    "older": "以前",
+    "all_status": "すべてのステータス",
+    "active_group": "アクティブ",
+    "idle": "アイドル",
+    "running": "実行中",
+    "interrupted": "中断",
+    "error": "エラー",
+    "confirm_delete": "この会話を削除しますか？この操作は取り消せません（ファイルは削除されません）。",
+    "delete_failed": "削除に失敗しました",
+    "title_empty": "タイトルは空にできません",
+    "title_update_failed": "タイトルの更新に失敗しました",
+    "load_more": "もっと読み込む",
+    "loading": "読み込み中...",
+    "failed_load": "スレッドの読み込みに失敗しました"
+  },
+  "files": {
+    "download_failed": "ダウンロードに失敗しました",
+    "login_required": "ダウンロードする前にサインインしてください",
+    "thread_not_ready": "現在の会話の準備ができていません",
+    "file_associating": "ファイルを関連付け中",
+    "try_again": "後でもう一度お試しください。",
+    "search_placeholder": "ファイルを検索...",
+    "no_results": "一致するファイルが見つかりません",
+    "empty": "ファイルはまだありません",
+    "empty_hint": "アップロードしたファイルはここに表示されます",
+    "file_count": "{count} 件のファイル",
+    "selected_count": "{count} 件選択中",
+    "use_selected": "選択したファイルを使用",
+    "download": "ダウンロード",
+    "delete": "削除",
+    "confirm_delete": "このファイルをグローバルに削除しますか？",
+    "confirm_delete_used": "このファイルは {count} 件の会話で使用されています。グローバルに削除しますか？",
+    "library_title": "ファイルライブラリ",
+    "library_select_title": "ライブラリからファイルを選択"
+  },
+  "errors": {
+    "rate_limited": "リクエストが多すぎます。{seconds} 秒後に再試行してください。",
+    "input_too_large": "メッセージが長すぎます。20,000 文字以内にしてください。",
+    "too_many_attachments": "1 回のリクエストに添付できるファイルは 10 個までです。"
+  },
+  "tool_approval": {
+    "required": "承認が必要です",
+    "tool": "ツール",
+    "app": "アプリ",
+    "action": "操作",
+    "risk": "リスク",
+    "unknown": "不明",
+    "external_write": "外部への書き込み",
+    "external_impact": "承認すると、接続済みアプリでデータが作成、変更、送信、または削除される可能性があります。",
+    "edit_arguments": "引数を編集",
+    "arguments": "引数",
+    "rejection_message": "拒否理由（任意）",
+    "rejection_placeholder": "この操作を拒否する理由を入力してください...",
+    "cancel": "キャンセル",
+    "saving": "保存中...",
+    "save_approve": "保存して承認",
+    "rejecting": "拒否中...",
+    "confirm_reject": "拒否を確定",
+    "reject": "拒否",
+    "edit": "編集",
+    "approving": "承認中...",
+    "approve": "承認"
+  }
 }

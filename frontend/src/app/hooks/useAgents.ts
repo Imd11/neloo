@@ -9,65 +9,78 @@ import { useAuth } from "@/providers/AuthProvider";
 // =============================================================================
 
 export interface Agent {
-    id: string;
-    user_id: string;
-    name: string;
-    icon: string;
-    description: string;
-    system_prompt: string;
-    tools: string[];
-    is_public: boolean;
-    usage_count: number;
-    favorite_count?: number;  // Number of times added to user collections
-    creator_name?: string;    // Display name of the creator
-    created_at: string;
-    updated_at: string;
+  id: string;
+  user_id: string;
+  name: string;
+  icon: string;
+  description: string;
+  system_prompt: string;
+  tools: string[];
+  is_public: boolean;
+  usage_count: number;
+  favorite_count?: number; // Number of times added to user collections
+  creator_name?: string; // Display name of the creator
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AgentCreateInput {
-    name: string;
-    icon: string;
-    description: string;
-    system_prompt: string;
-    tools: string[];
-    is_public: boolean;
+  name: string;
+  icon: string;
+  description: string;
+  system_prompt: string;
+  tools: string[];
+  is_public: boolean;
 }
 
 export interface AgentUpdateInput {
-    name?: string;
-    icon?: string;
-    description?: string;
-    system_prompt?: string;
-    tools?: string[];
-    is_public?: boolean;
+  name?: string;
+  icon?: string;
+  description?: string;
+  system_prompt?: string;
+  tools?: string[];
+  is_public?: boolean;
 }
 
 export interface UseAgentsResult {
-    // My agents
-    myAgents: Agent[];
-    myAgentsLoading: boolean;
-    myAgentsError: string | null;
-    refreshMyAgents: () => Promise<void>;
+  // My agents
+  myAgents: Agent[];
+  myAgentsLoading: boolean;
+  myAgentsError: string | null;
+  refreshMyAgents: () => Promise<void>;
 
-    // Store agents
-    storeAgents: Agent[];
-    storeAgentsLoading: boolean;
-    storeAgentsError: string | null;
-    refreshStoreAgents: (search?: string, sortBy?: "popular" | "newest") => Promise<void>;
+  // Store agents
+  storeAgents: Agent[];
+  storeAgentsLoading: boolean;
+  storeAgentsError: string | null;
+  refreshStoreAgents: (
+    search?: string,
+    sortBy?: "popular" | "newest"
+  ) => Promise<void>;
 
-    // CRUD operations
-    createAgent: (data: AgentCreateInput) => Promise<Agent | null>;
-    updateAgent: (id: string, data: AgentUpdateInput) => Promise<Agent | null>;
-    deleteAgent: (id: string) => Promise<boolean>;
-    copyAgent: (id: string) => Promise<Agent | null>;
-    useAgent: (id: string) => Promise<{ system_prompt: string; tools: string[] } | null>;
-    generatePrompt: (name: string, description: string, tools: string[]) => Promise<string | null>;
-    generateAgent: (name: string, description: string, tools: string[]) => Promise<{ system_prompt: string; icon_url: string } | null>;
+  // CRUD operations
+  createAgent: (data: AgentCreateInput) => Promise<Agent | null>;
+  updateAgent: (id: string, data: AgentUpdateInput) => Promise<Agent | null>;
+  deleteAgent: (id: string) => Promise<boolean>;
+  copyAgent: (id: string) => Promise<Agent | null>;
+  useAgent: (
+    id: string
+  ) => Promise<{ system_prompt: string; tools: string[] } | null>;
+  generatePrompt: (
+    name: string,
+    description: string,
+    tools: string[]
+  ) => Promise<string | null>;
+  generateAgent: (
+    name: string,
+    description: string,
+    tools: string[]
+  ) => Promise<{ system_prompt: string; icon_url: string } | null>;
 
-    // Loading states for mutations
-    isCreating: boolean;
-    isUpdating: boolean;
-    isDeleting: boolean;
+  // Loading states for mutations
+  isCreating: boolean;
+  isUpdating: boolean;
+  isDeleting: boolean;
 }
 
 // =============================================================================
@@ -75,18 +88,18 @@ export interface UseAgentsResult {
 // =============================================================================
 
 function getAuthHeaders(accessToken?: string): Record<string, string> {
-    const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-    };
-    if (accessToken) {
-        headers["Authorization"] = `Bearer ${accessToken}`;
-    }
-    return headers;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (accessToken) {
+    headers["Authorization"] = `Bearer ${accessToken}`;
+  }
+  return headers;
 }
 
 function getBaseUrl(): string {
-    const config = getConfig();
-    return config?.deploymentUrl || "";
+  const config = getConfig();
+  return config?.deploymentUrl || "";
 }
 
 // =============================================================================
@@ -94,278 +107,333 @@ function getBaseUrl(): string {
 // =============================================================================
 
 export function useAgents(): UseAgentsResult {
-    const { session } = useAuth();
-    // State for my agents
-    const [myAgents, setMyAgents] = useState<Agent[]>([]);
-    const [myAgentsLoading, setMyAgentsLoading] = useState(false);
-    const [myAgentsError, setMyAgentsError] = useState<string | null>(null);
+  const { session } = useAuth();
+  // State for my agents
+  const [myAgents, setMyAgents] = useState<Agent[]>([]);
+  const [myAgentsLoading, setMyAgentsLoading] = useState(false);
+  const [myAgentsError, setMyAgentsError] = useState<string | null>(null);
 
-    // State for store agents
-    const [storeAgents, setStoreAgents] = useState<Agent[]>([]);
-    const [storeAgentsLoading, setStoreAgentsLoading] = useState(false);
-    const [storeAgentsError, setStoreAgentsError] = useState<string | null>(null);
+  // State for store agents
+  const [storeAgents, setStoreAgents] = useState<Agent[]>([]);
+  const [storeAgentsLoading, setStoreAgentsLoading] = useState(false);
+  const [storeAgentsError, setStoreAgentsError] = useState<string | null>(null);
 
-    // Mutation loading states
-    const [isCreating, setIsCreating] = useState(false);
-    const [isUpdating, setIsUpdating] = useState(false);
-    const [isDeleting, setIsDeleting] = useState(false);
+  // Mutation loading states
+  const [isCreating, setIsCreating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-    // Fetch my agents
-    const refreshMyAgents = useCallback(async () => {
-        setMyAgentsLoading(true);
-        setMyAgentsError(null);
-        try {
-            const headers = getAuthHeaders(session?.access_token);
-            const response = await fetch(`${getBaseUrl()}/api/agents`, {
-                method: "GET",
-                headers,
-            });
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || `Failed to fetch agents: ${response.status}`);
-            }
-            const data = await response.json();
-            setMyAgents(data.agents || []);
-        } catch (error) {
-            console.error("Error fetching my agents:", error);
-            setMyAgentsError(error instanceof Error ? error.message : "Unknown error");
-        } finally {
-            setMyAgentsLoading(false);
+  // Fetch my agents
+  const refreshMyAgents = useCallback(async () => {
+    setMyAgentsLoading(true);
+    setMyAgentsError(null);
+    try {
+      const headers = getAuthHeaders(session?.access_token);
+      const response = await fetch(`${getBaseUrl()}/api/agents`, {
+        method: "GET",
+        headers,
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.detail || `Failed to fetch agents: ${response.status}`
+        );
+      }
+      const data = await response.json();
+      setMyAgents(data.agents || []);
+    } catch (error) {
+      console.error("Error fetching my agents:", error);
+      setMyAgentsError(
+        error instanceof Error ? error.message : "Unknown error"
+      );
+    } finally {
+      setMyAgentsLoading(false);
+    }
+  }, [session?.access_token]);
+
+  // Fetch store agents
+  const refreshStoreAgents = useCallback(
+    async (search?: string, sortBy: "popular" | "newest" = "popular") => {
+      setStoreAgentsLoading(true);
+      setStoreAgentsError(null);
+      try {
+        const headers = getAuthHeaders(session?.access_token);
+        const params = new URLSearchParams({ sort_by: sortBy });
+        if (search) {
+          params.set("search", search);
         }
-    }, [session?.access_token]);
-
-    // Fetch store agents
-    const refreshStoreAgents = useCallback(async (
-        search?: string,
-        sortBy: "popular" | "newest" = "popular"
-    ) => {
-        setStoreAgentsLoading(true);
-        setStoreAgentsError(null);
-        try {
-            const headers = getAuthHeaders(session?.access_token);
-            const params = new URLSearchParams({ sort_by: sortBy });
-            if (search) {
-                params.set("search", search);
-            }
-            const response = await fetch(`${getBaseUrl()}/api/agents/store?${params}`, {
-                method: "GET",
-                headers,
-            });
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || `Failed to fetch store agents: ${response.status}`);
-            }
-            const data = await response.json();
-            setStoreAgents(data.agents || []);
-        } catch (error) {
-            console.error("Error fetching store agents:", error);
-            setStoreAgentsError(error instanceof Error ? error.message : "Unknown error");
-        } finally {
-            setStoreAgentsLoading(false);
+        const response = await fetch(
+          `${getBaseUrl()}/api/agents/store?${params}`,
+          {
+            method: "GET",
+            headers,
+          }
+        );
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(
+            errorData.detail ||
+              `Failed to fetch store agents: ${response.status}`
+          );
         }
-    }, [session?.access_token]);
+        const data = await response.json();
+        setStoreAgents(data.agents || []);
+      } catch (error) {
+        console.error("Error fetching store agents:", error);
+        setStoreAgentsError(
+          error instanceof Error ? error.message : "Unknown error"
+        );
+      } finally {
+        setStoreAgentsLoading(false);
+      }
+    },
+    [session?.access_token]
+  );
 
-    // Create agent
-    const createAgent = useCallback(async (data: AgentCreateInput): Promise<Agent | null> => {
-        setIsCreating(true);
-        try {
-            const headers = getAuthHeaders(session?.access_token);
-            const response = await fetch(`${getBaseUrl()}/api/agents`, {
-                method: "POST",
-                headers,
-                body: JSON.stringify(data),
-            });
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || `Failed to create agent: ${response.status}`);
-            }
-            const agent = await response.json();
-            // Refresh my agents list
-            await refreshMyAgents();
-            return agent;
-        } catch (error) {
-            console.error("Error creating agent:", error);
-            throw error;
-        } finally {
-            setIsCreating(false);
+  // Create agent
+  const createAgent = useCallback(
+    async (data: AgentCreateInput): Promise<Agent | null> => {
+      setIsCreating(true);
+      try {
+        const headers = getAuthHeaders(session?.access_token);
+        const response = await fetch(`${getBaseUrl()}/api/agents`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(data),
+        });
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(
+            errorData.detail || `Failed to create agent: ${response.status}`
+          );
         }
-    }, [refreshMyAgents, session?.access_token]);
+        const agent = await response.json();
+        // Refresh my agents list
+        await refreshMyAgents();
+        return agent;
+      } catch (error) {
+        console.error("Error creating agent:", error);
+        throw error;
+      } finally {
+        setIsCreating(false);
+      }
+    },
+    [refreshMyAgents, session?.access_token]
+  );
 
-    // Update agent
-    const updateAgent = useCallback(async (id: string, data: AgentUpdateInput): Promise<Agent | null> => {
-        setIsUpdating(true);
-        try {
-            const headers = getAuthHeaders(session?.access_token);
-            const response = await fetch(`${getBaseUrl()}/api/agents/${id}`, {
-                method: "PUT",
-                headers,
-                body: JSON.stringify(data),
-            });
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || `Failed to update agent: ${response.status}`);
-            }
-            const agent = await response.json();
-            // Refresh my agents list
-            await refreshMyAgents();
-            return agent;
-        } catch (error) {
-            console.error("Error updating agent:", error);
-            throw error;
-        } finally {
-            setIsUpdating(false);
+  // Update agent
+  const updateAgent = useCallback(
+    async (id: string, data: AgentUpdateInput): Promise<Agent | null> => {
+      setIsUpdating(true);
+      try {
+        const headers = getAuthHeaders(session?.access_token);
+        const response = await fetch(`${getBaseUrl()}/api/agents/${id}`, {
+          method: "PUT",
+          headers,
+          body: JSON.stringify(data),
+        });
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(
+            errorData.detail || `Failed to update agent: ${response.status}`
+          );
         }
-    }, [refreshMyAgents, session?.access_token]);
+        const agent = await response.json();
+        // Refresh my agents list
+        await refreshMyAgents();
+        return agent;
+      } catch (error) {
+        console.error("Error updating agent:", error);
+        throw error;
+      } finally {
+        setIsUpdating(false);
+      }
+    },
+    [refreshMyAgents, session?.access_token]
+  );
 
-    // Delete agent
-    const deleteAgent = useCallback(async (id: string): Promise<boolean> => {
-        setIsDeleting(true);
-        try {
-            const headers = getAuthHeaders(session?.access_token);
-            const response = await fetch(`${getBaseUrl()}/api/agents/${id}`, {
-                method: "DELETE",
-                headers,
-            });
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || `Failed to delete agent: ${response.status}`);
-            }
-            // Refresh my agents list
-            await refreshMyAgents();
-            return true;
-        } catch (error) {
-            console.error("Error deleting agent:", error);
-            throw error;
-        } finally {
-            setIsDeleting(false);
+  // Delete agent
+  const deleteAgent = useCallback(
+    async (id: string): Promise<boolean> => {
+      setIsDeleting(true);
+      try {
+        const headers = getAuthHeaders(session?.access_token);
+        const response = await fetch(`${getBaseUrl()}/api/agents/${id}`, {
+          method: "DELETE",
+          headers,
+        });
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(
+            errorData.detail || `Failed to delete agent: ${response.status}`
+          );
         }
-    }, [refreshMyAgents, session?.access_token]);
+        // Refresh my agents list
+        await refreshMyAgents();
+        return true;
+      } catch (error) {
+        console.error("Error deleting agent:", error);
+        throw error;
+      } finally {
+        setIsDeleting(false);
+      }
+    },
+    [refreshMyAgents, session?.access_token]
+  );
 
-    // Copy agent from store
-    const copyAgent = useCallback(async (id: string): Promise<Agent | null> => {
-        try {
-            const headers = getAuthHeaders(session?.access_token);
-            const response = await fetch(`${getBaseUrl()}/api/agents/${id}/copy`, {
-                method: "POST",
-                headers,
-            });
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || `Failed to copy agent: ${response.status}`);
-            }
-            const agent = await response.json();
-            // Refresh my agents list
-            await refreshMyAgents();
-            return agent;
-        } catch (error) {
-            console.error("Error copying agent:", error);
-            throw error;
+  // Copy agent from store
+  const copyAgent = useCallback(
+    async (id: string): Promise<Agent | null> => {
+      try {
+        const headers = getAuthHeaders(session?.access_token);
+        const response = await fetch(`${getBaseUrl()}/api/agents/${id}/copy`, {
+          method: "POST",
+          headers,
+        });
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(
+            errorData.detail || `Failed to copy agent: ${response.status}`
+          );
         }
-    }, [refreshMyAgents, session?.access_token]);
+        const agent = await response.json();
+        // Refresh my agents list
+        await refreshMyAgents();
+        return agent;
+      } catch (error) {
+        console.error("Error copying agent:", error);
+        throw error;
+      }
+    },
+    [refreshMyAgents, session?.access_token]
+  );
 
-    // Use agent (get system prompt for conversation)
-    const useAgent = useCallback(async (id: string): Promise<{ system_prompt: string; tools: string[] } | null> => {
-        try {
-            const headers = getAuthHeaders(session?.access_token);
-            const response = await fetch(`${getBaseUrl()}/api/agents/${id}/use`, {
-                method: "POST",
-                headers,
-            });
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || `Failed to use agent: ${response.status}`);
-            }
-            return await response.json();
-        } catch (error) {
-            console.error("Error using agent:", error);
-            throw error;
+  // Use agent (get system prompt for conversation)
+  const useAgent = useCallback(
+    async (
+      id: string
+    ): Promise<{ system_prompt: string; tools: string[] } | null> => {
+      try {
+        const headers = getAuthHeaders(session?.access_token);
+        const response = await fetch(`${getBaseUrl()}/api/agents/${id}/use`, {
+          method: "POST",
+          headers,
+        });
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(
+            errorData.detail || `Failed to use agent: ${response.status}`
+          );
         }
-    }, [session?.access_token]);
+        return await response.json();
+      } catch (error) {
+        console.error("Error using agent:", error);
+        throw error;
+      }
+    },
+    [session?.access_token]
+  );
 
-    // Generate prompt from description
-    const generatePrompt = useCallback(async (
-        name: string,
-        description: string,
-        tools: string[]
+  // Generate prompt from description
+  const generatePrompt = useCallback(
+    async (
+      name: string,
+      description: string,
+      tools: string[]
     ): Promise<string | null> => {
-        try {
-            const headers = getAuthHeaders(session?.access_token);
-            const response = await fetch(`${getBaseUrl()}/api/agents/generate-prompt`, {
-                method: "POST",
-                headers,
-                body: JSON.stringify({ name, description, tools }),
-            });
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || `Failed to generate prompt: ${response.status}`);
-            }
-            const data = await response.json();
-            return data.system_prompt;
-        } catch (error) {
-            console.error("Error generating prompt:", error);
-            throw error;
+      try {
+        const headers = getAuthHeaders(session?.access_token);
+        const response = await fetch(
+          `${getBaseUrl()}/api/agents/generate-prompt`,
+          {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ name, description, tools }),
+          }
+        );
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(
+            errorData.detail || `Failed to generate prompt: ${response.status}`
+          );
         }
-    }, [session?.access_token]);
+        const data = await response.json();
+        return data.system_prompt;
+      } catch (error) {
+        console.error("Error generating prompt:", error);
+        throw error;
+      }
+    },
+    [session?.access_token]
+  );
 
-    // Generate full agent (prompt + icon) from description
-    const generateAgent = useCallback(async (
-        name: string,
-        description: string,
-        tools: string[]
+  // Generate full agent (prompt + icon) from description
+  const generateAgent = useCallback(
+    async (
+      name: string,
+      description: string,
+      tools: string[]
     ): Promise<{ system_prompt: string; icon_url: string } | null> => {
-        try {
-            const headers = getAuthHeaders(session?.access_token);
-            const response = await fetch(`${getBaseUrl()}/api/agents/generate-agent`, {
-                method: "POST",
-                headers,
-                body: JSON.stringify({ name, description, tools }),
-            });
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || `Failed to generate agent: ${response.status}`);
-            }
-            const data = await response.json();
-            return {
-                system_prompt: data.system_prompt,
-                icon_url: data.icon_url || "",
-            };
-        } catch (error) {
-            console.error("Error generating agent:", error);
-            throw error;
+      try {
+        const headers = getAuthHeaders(session?.access_token);
+        const response = await fetch(
+          `${getBaseUrl()}/api/agents/generate-agent`,
+          {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ name, description, tools }),
+          }
+        );
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(
+            errorData.detail || `Failed to generate agent: ${response.status}`
+          );
         }
-    }, [session?.access_token]);
+        const data = await response.json();
+        return {
+          system_prompt: data.system_prompt,
+          icon_url: data.icon_url || "",
+        };
+      } catch (error) {
+        console.error("Error generating agent:", error);
+        throw error;
+      }
+    },
+    [session?.access_token]
+  );
 
-    // Initial data fetch
-    useEffect(() => {
-        refreshMyAgents();
-        refreshStoreAgents();
-    }, [refreshMyAgents, refreshStoreAgents]);
+  // Initial data fetch
+  useEffect(() => {
+    refreshMyAgents();
+    refreshStoreAgents();
+  }, [refreshMyAgents, refreshStoreAgents]);
 
-    return {
-        // My agents
-        myAgents,
-        myAgentsLoading,
-        myAgentsError,
-        refreshMyAgents,
+  return {
+    // My agents
+    myAgents,
+    myAgentsLoading,
+    myAgentsError,
+    refreshMyAgents,
 
-        // Store agents
-        storeAgents,
-        storeAgentsLoading,
-        storeAgentsError,
-        refreshStoreAgents,
+    // Store agents
+    storeAgents,
+    storeAgentsLoading,
+    storeAgentsError,
+    refreshStoreAgents,
 
-        // CRUD operations
-        createAgent,
-        updateAgent,
-        deleteAgent,
-        copyAgent,
-        useAgent,
-        generatePrompt,
-        generateAgent,
+    // CRUD operations
+    createAgent,
+    updateAgent,
+    deleteAgent,
+    copyAgent,
+    useAgent,
+    generatePrompt,
+    generateAgent,
 
-        // Loading states
-        isCreating,
-        isUpdating,
-        isDeleting,
-    };
+    // Loading states
+    isCreating,
+    isUpdating,
+    isDeleting,
+  };
 }

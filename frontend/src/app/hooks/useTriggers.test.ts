@@ -24,7 +24,7 @@ describe("useTriggers authentication", () => {
       new Response(JSON.stringify([]), {
         status: 200,
         headers: { "Content-Type": "application/json" },
-      }),
+      })
     );
 
     renderHook(() => useTriggers("agent-1"));
@@ -34,7 +34,7 @@ describe("useTriggers authentication", () => {
 
     expect(request[0]).toBe("http://backend.test/api/triggers");
     expect((request[1]?.headers as Record<string, string>).Authorization).toBe(
-      "Bearer signed-trigger-token",
+      "Bearer signed-trigger-token"
     );
   });
 });

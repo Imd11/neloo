@@ -75,11 +75,17 @@ export function ModelSelector({
 
   // Get display name for current selection
   const currentModel = models.find((m) => m.id === selectedModel);
-  const displayName = currentModel?.display_name || selectedModel || "Select Model";
+  const displayName =
+    currentModel?.display_name || selectedModel || "Select Model";
 
   if (isLoading) {
     return (
-      <Button variant="ghost" size="sm" disabled className="gap-2">
+      <Button
+        variant="ghost"
+        size="sm"
+        disabled
+        className="gap-2"
+      >
         <Loader2 className="h-4 w-4 animate-spin" />
         <span className="text-sm">Loading...</span>
       </Button>
@@ -88,9 +94,16 @@ export function ModelSelector({
 
   if (models.length === 0) {
     return (
-      <Button variant="ghost" size="sm" disabled className="gap-2">
+      <Button
+        variant="ghost"
+        size="sm"
+        disabled
+        className="gap-2"
+      >
         <Bot className="h-4 w-4" />
-        <span className="text-sm text-muted-foreground">{t("model_selector.no_models")}</span>
+        <span className="text-sm text-muted-foreground">
+          {t("model_selector.no_models")}
+        </span>
       </Button>
     );
   }
@@ -109,27 +122,36 @@ export function ModelSelector({
           <ChevronDown className="h-3 w-3 opacity-50" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-48">
-        <DropdownMenuLabel>{t("model_selector.select_model")}</DropdownMenuLabel>
+      <DropdownMenuContent
+        align="start"
+        className="w-48"
+      >
+        <DropdownMenuLabel>
+          {t("model_selector.select_model")}
+        </DropdownMenuLabel>
         <DropdownMenuSeparator />
         {models.map((model) => (
           <DropdownMenuItem
             key={model.id}
             disabled={!model.available}
             onClick={() => onModelChange(model.id)}
-            className={
-              [
-                model.id === selectedModel ? "bg-accent font-medium" : "",
-                !model.available ? "opacity-50 cursor-not-allowed" : "",
-              ].filter(Boolean).join(" ")
-            }
+            className={[
+              model.id === selectedModel ? "bg-accent font-medium" : "",
+              !model.available ? "cursor-not-allowed opacity-50" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
           >
             <span className="flex-1">{model.display_name}</span>
             {!model.available && (
-              <span className="text-xs text-muted-foreground ml-2">{t("model_selector.not_configured")}</span>
+              <span className="ml-2 text-xs text-muted-foreground">
+                {t("model_selector.not_configured")}
+              </span>
             )}
             {model.id === defaultModel && (
-              <span className="text-xs text-muted-foreground ml-2">default</span>
+              <span className="ml-2 text-xs text-muted-foreground">
+                default
+              </span>
             )}
           </DropdownMenuItem>
         ))}

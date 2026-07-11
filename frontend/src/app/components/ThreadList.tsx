@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState, useRef, useCallback, KeyboardEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  useRef,
+  useCallback,
+  KeyboardEvent,
+} from "react";
 import { format } from "date-fns";
 import { Loader2, MessageSquare, Trash2, Pencil, Check, X } from "lucide-react";
 import { useQueryState } from "nuqs";
@@ -224,7 +231,14 @@ export function ThreadList({
         });
       }
     },
-    [config?.deploymentUrl, currentThreadId, session?.access_token, setCurrentThreadId, threads, t]
+    [
+      config?.deploymentUrl,
+      currentThreadId,
+      session?.access_token,
+      setCurrentThreadId,
+      threads,
+      t,
+    ]
   );
 
   const startEditingTitle = useCallback(
@@ -330,7 +344,9 @@ export function ThreadList({
     <div className="absolute inset-0 flex flex-col">
       {/* Header with title and filter */}
       <div className="grid flex-shrink-0 grid-cols-[1fr_auto] items-center gap-3 border-b border-border p-4">
-        <h2 className="text-lg font-semibold tracking-tight">{t("thread.history_title")}</h2>
+        <h2 className="text-lg font-semibold tracking-tight">
+          {t("thread.history_title")}
+        </h2>
         <div className="flex items-center gap-2">
           <Select
             value={statusFilter}
@@ -386,7 +402,9 @@ export function ThreadList({
           <LoadingState />
         )}
 
-        {!threads.error && !threads.isLoading && isEmpty && <EmptyState message={t("thread.empty")} />}
+        {!threads.error && !threads.isLoading && isEmpty && (
+          <EmptyState message={t("thread.empty")} />
+        )}
 
         {!threads.error && !isEmpty && (
           <div className="box-border w-full max-w-full overflow-hidden p-2">
@@ -424,12 +442,17 @@ export function ThreadList({
                           {/* Title + Timestamp Row */}
                           <div className="mb-1 flex items-center justify-between">
                             {editingThreadId === thread.id ? (
-                              <div className="flex flex-1 items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                              <div
+                                className="flex flex-1 items-center gap-1"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <input
                                   ref={editInputRef}
                                   type="text"
                                   value={editingTitle}
-                                  onChange={(e) => setEditingTitle(e.target.value)}
+                                  onChange={(e) =>
+                                    setEditingTitle(e.target.value)
+                                  }
                                   onKeyDown={(e) => handleKeyDown(e, thread.id)}
                                   className="h-6 flex-1 rounded border border-input bg-background px-2 text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-ring"
                                 />
@@ -467,7 +490,10 @@ export function ThreadList({
                                     className="h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      startEditingTitle(thread.id, thread.title);
+                                      startEditingTitle(
+                                        thread.id,
+                                        thread.title
+                                      );
                                     }}
                                     aria-label="Edit title"
                                   >

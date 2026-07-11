@@ -195,10 +195,13 @@ export function LibraryDialog({
       );
       if (!ok) return;
 
-      const response = await fetch(`${apiUrl}/api/files/${encodeURIComponent(file.id)}`, {
-        method: "DELETE",
-        headers,
-      });
+      const response = await fetch(
+        `${apiUrl}/api/files/${encodeURIComponent(file.id)}`,
+        {
+          method: "DELETE",
+          headers,
+        }
+      );
       if (!response.ok) return;
 
       setFiles((prev) => prev.filter((f) => f.id !== file.id));
@@ -235,12 +238,17 @@ export function LibraryDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl h-[80vh] max-h-[80vh] flex flex-col overflow-hidden">
+    <Dialog
+      open={open}
+      onOpenChange={onOpenChange}
+    >
+      <DialogContent className="flex h-[80vh] max-h-[80vh] max-w-3xl flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FolderOpen className="h-5 w-5" />
-            {mode === "select" ? t("files.library_select_title") : t("files.library_title")}
+            {mode === "select"
+              ? t("files.library_select_title")
+              : t("files.library_title")}
           </DialogTitle>
         </DialogHeader>
 
@@ -256,7 +264,7 @@ export function LibraryDialog({
         </div>
 
         {/* File list */}
-        <ScrollArea className="flex-1 min-h-0">
+        <ScrollArea className="min-h-0 flex-1">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -281,17 +289,17 @@ export function LibraryDialog({
                     mode === "select" && "cursor-pointer",
                     selectedFiles.has(file.id)
                       ? "bg-primary/10 border border-primary"
-                      : "hover:bg-accent border border-transparent"
+                      : "border border-transparent hover:bg-accent"
                   )}
                   onClick={() => mode === "select" && toggleSelection(file)}
                 >
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
                     {mode === "select" && (
                       <div
                         className={cn(
                           "flex h-5 w-5 items-center justify-center rounded border",
                           selectedFiles.has(file.id)
-                            ? "bg-primary border-primary text-primary-foreground"
+                            ? "text-primary-foreground border-primary bg-primary"
                             : "border-muted-foreground"
                         )}
                       >
@@ -312,12 +320,12 @@ export function LibraryDialog({
                     </div>
                   </div>
                   <div
-                    className="absolute right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute right-3 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <button
                       onClick={() => handleDownload(file)}
-                      className="p-1.5 rounded hover:bg-muted"
+                      className="rounded p-1.5 hover:bg-muted"
                       title={t("files.download")}
                       disabled={isDownloading === file.id}
                     >
@@ -330,7 +338,7 @@ export function LibraryDialog({
                     <button
                       onClick={() => handleDelete(file)}
                       disabled={isDeleting === file.id}
-                      className="p-1.5 rounded hover:bg-destructive/10"
+                      className="rounded p-1.5 hover:bg-destructive/10"
                       title={t("files.delete")}
                     >
                       {isDeleting === file.id ? (
@@ -351,7 +359,9 @@ export function LibraryDialog({
           <div className="text-sm text-muted-foreground">
             {t("files.file_count", { count: files.length })}
             {mode === "select" && selectedFiles.size > 0 && (
-              <span className="ml-2">· {t("files.selected_count", { count: selectedFiles.size })}</span>
+              <span className="ml-2">
+                · {t("files.selected_count", { count: selectedFiles.size })}
+              </span>
             )}
           </div>
           <div className="flex items-center gap-2">

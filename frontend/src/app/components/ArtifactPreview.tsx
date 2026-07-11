@@ -5,12 +5,10 @@ import {
   Loader2,
   Code2,
   X,
-  Eye,
   Upload,
   ExternalLink,
   Copy,
   Check,
-  Maximize2,
   RefreshCw,
 } from "lucide-react";
 import {
@@ -19,10 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  SandpackProvider,
-  SandpackPreview,
-} from "@codesandbox/sandpack-react";
+import { SandpackProvider, SandpackPreview } from "@codesandbox/sandpack-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Artifact, ArtifactType } from "@/lib/artifactParser";
@@ -63,7 +58,7 @@ function wrapCode(type: ArtifactType, code: string): Record<string, string> {
     case "vue":
       return { "/src/App.vue": code };
     case "html":
-    default:
+    default: {
       const isFullDocument =
         code.toLowerCase().includes("<!doctype") ||
         code.toLowerCase().includes("<html");
@@ -123,6 +118,7 @@ function wrapCode(type: ArtifactType, code: string): Record<string, string> {
 <body>${code}</body>
 </html>`,
       };
+    }
   }
 }
 
@@ -171,7 +167,11 @@ export function ArtifactPreview({
     // 1. Streaming just finished (transition from true to false)
     // 2. We haven't already auto-switched
     // 3. We're currently in code view
-    if (justFinishedStreaming && !hasAutoSwitchedRef.current && viewMode === "code") {
+    if (
+      justFinishedStreaming &&
+      !hasAutoSwitchedRef.current &&
+      viewMode === "code"
+    ) {
       const timer = setTimeout(() => {
         setViewMode("preview");
         hasAutoSwitchedRef.current = true;
@@ -184,7 +184,7 @@ export function ArtifactPreview({
   useEffect(() => {
     hasAutoSwitchedRef.current = false;
     prevIsStreamingRef.current = isStreaming;
-  }, [artifact.id]);
+  }, [artifact.id, isStreaming]);
 
   // Auto-scroll code during streaming
   useEffect(() => {
@@ -217,10 +217,10 @@ export function ArtifactPreview({
 
   return (
     <div
-      className={cn("h-full flex flex-col bg-background border-l", className)}
+      className={cn("flex h-full flex-col border-l bg-background", className)}
     >
       {/* Header with tabs */}
-      <div className="h-12 px-3 flex items-center justify-between border-b bg-muted/30 flex-shrink-0">
+      <div className="flex h-12 flex-shrink-0 items-center justify-between border-b bg-muted/30 px-3">
         <div className="flex items-center gap-2">
           {/* Icon based on status */}
           {isStreaming ? (
@@ -228,17 +228,20 @@ export function ArtifactPreview({
           ) : (
             <Code2 className="h-4 w-4 text-primary" />
           )}
-          <span className="text-sm font-medium truncate max-w-[150px]">
-            {artifact.title || (isStreaming ? t("chat.preview_generating") : t("chat.preview_tab"))}
+          <span className="max-w-[150px] truncate text-sm font-medium">
+            {artifact.title ||
+              (isStreaming
+                ? t("chat.preview_generating")
+                : t("chat.preview_tab"))}
           </span>
         </div>
 
         {/* Tab switcher */}
-        <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
+        <div className="flex items-center gap-1 rounded-lg bg-muted p-0.5">
           <button
             onClick={() => setViewMode("code")}
             className={cn(
-              "px-3 py-1 text-xs font-medium rounded-md transition-colors",
+              "rounded-md px-3 py-1 text-xs font-medium transition-colors",
               viewMode === "code"
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
@@ -252,11 +255,11 @@ export function ArtifactPreview({
                 <button
                   onClick={() => !isStreaming && setViewMode("preview")}
                   className={cn(
-                    "px-3 py-1 text-xs font-medium rounded-md transition-colors",
+                    "rounded-md px-3 py-1 text-xs font-medium transition-colors",
                     viewMode === "preview"
                       ? "bg-background text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground",
-                    isStreaming && "opacity-50 cursor-not-allowed"
+                    isStreaming && "cursor-not-allowed opacity-50"
                   )}
                 >
                   {t("chat.preview_tab")}
@@ -319,7 +322,7 @@ export function ArtifactPreview({
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 px-2 gap-1 text-xs"
+              className="h-7 gap-1 px-2 text-xs"
               title={t("chat.preview_deploy_tooltip")}
               disabled
             >
@@ -343,27 +346,27 @@ export function ArtifactPreview({
       </div>
 
       {/* Content area */}
-      <div className="flex-1 min-h-0 overflow-hidden">
+      <div className="min-h-0 flex-1 overflow-hidden">
         {viewMode === "code" ? (
           /* Code view */
-          <div className="h-full flex flex-col">
+          <div className="flex h-full flex-col">
             {/* Code display */}
             <pre
               ref={codeRef}
-              className="flex-1 p-4 text-sm font-mono bg-zinc-900 text-zinc-100 overflow-auto whitespace-pre-wrap break-words"
+              className="flex-1 overflow-auto whitespace-pre-wrap break-words bg-zinc-900 p-4 font-mono text-sm text-zinc-100"
             >
               {artifact.code || t("chat.preview_waiting")}
             </pre>
             {/* Type badge */}
-            <div className="px-4 py-2 border-t bg-muted/30 flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="px-2 py-0.5 bg-muted rounded font-medium">
+            <div className="flex items-center gap-2 border-t bg-muted/30 px-4 py-2 text-xs text-muted-foreground">
+              <span className="rounded bg-muted px-2 py-0.5 font-medium">
                 {artifact.type.toUpperCase()}
               </span>
             </div>
           </div>
         ) : (
           /* Preview view - only show preview, no code editor */
-          <div className="h-full sandpack-preview-container">
+          <div className="sandpack-preview-container h-full">
             <SandpackProvider
               key={sandpackKey}
               template={template}
@@ -384,7 +387,10 @@ export function ArtifactPreview({
                 style={{ height: "100%" }}
               />
             </SandpackProvider>
-            <style jsx global>{`
+            <style
+              jsx
+              global
+            >{`
               .sandpack-preview-container .sp-wrapper,
               .sandpack-preview-container .sp-layout,
               .sandpack-preview-container .sp-stack,
@@ -422,7 +428,11 @@ export function ArtifactPreviewOnly({
 
   return (
     <div className={cn("h-full", className)}>
-      <SandpackProvider template={template} files={files} theme="auto">
+      <SandpackProvider
+        template={template}
+        files={files}
+        theme="auto"
+      >
         <SandpackPreview
           showRefreshButton
           showOpenInCodeSandbox={false}

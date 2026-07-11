@@ -17,7 +17,10 @@ export async function POST() {
   if (!secret) {
     if (process.env.NODE_ENV === "production") {
       return NextResponse.json(
-        { error: "ANONYMOUS_SESSION_SECRET must be configured for production guest mode." },
+        {
+          error:
+            "ANONYMOUS_SESSION_SECRET must be configured for production guest mode.",
+        },
         { status: 503 }
       );
     }
@@ -29,8 +32,13 @@ export async function POST() {
     });
   }
 
-  const encodedPayload = encodePayload({ sub: userId, exp: Math.floor(expiresAt / 1000) });
-  const signature = createHmac("sha256", secret).update(encodedPayload).digest("hex");
+  const encodedPayload = encodePayload({
+    sub: userId,
+    exp: Math.floor(expiresAt / 1000),
+  });
+  const signature = createHmac("sha256", secret)
+    .update(encodedPayload)
+    .digest("hex");
 
   return NextResponse.json({
     token: `neloo-anon-v1.${encodedPayload}.${signature}`,

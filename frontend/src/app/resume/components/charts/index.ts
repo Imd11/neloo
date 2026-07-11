@@ -1,2 +1,2 @@
-export { BubbleDiagram } from './BubbleDiagram';
-export { WheelChart } from './WheelChart';
+export { BubbleDiagram } from "./BubbleDiagram";
+export { WheelChart } from "./WheelChart";

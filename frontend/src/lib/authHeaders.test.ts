@@ -11,7 +11,11 @@ describe("buildBearerHeaders", () => {
   });
 
   it("does not create a fake authorization header", () => {
-    expect(buildBearerHeaders("")).toEqual({ "Content-Type": "application/json" });
-    expect(buildBearerHeaders(undefined)).toEqual({ "Content-Type": "application/json" });
+    expect(buildBearerHeaders("")).toEqual({
+      "Content-Type": "application/json",
+    });
+    expect(buildBearerHeaders(undefined)).toEqual({
+      "Content-Type": "application/json",
+    });
   });
 });

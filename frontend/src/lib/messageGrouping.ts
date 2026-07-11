@@ -1,449 +1,493 @@
 import { Message } from "@langchain/langgraph-sdk";
-import { extractStringFromMessageContent, parseMessageContentBlocks, stripThinkTags } from "@/app/utils/utils";
+import {
+  extractStringFromMessageContent,
+  parseMessageContentBlocks,
+  stripThinkTags,
+} from "@/app/utils/utils";
 
 export interface ToolCall {
-    toolName: string;
-    args: any;
-    toolCallId: string;
-    result?: string;
-    status: "running" | "complete" | "error";
+  toolName: string;
+  args: any;
+  toolCallId: string;
+  result?: string;
+  status: "running" | "complete" | "error";
 }
 
 // Helper to estimate reading/generation time
 function estimateDuration(content: string): number {
-    // Estimate: 50ms per character (approx 20 chars/sec, conservative for thinking)
-    // Minimum 2 seconds
-    return Math.max(2000, content.length * 50);
+  // Estimate: 50ms per character (approx 20 chars/sec, conservative for thinking)
+  // Minimum 2 seconds
+  return Math.max(2000, content.length * 50);
 }
 
 export interface ThinkingContent {
-    content: string;
-    startTime: number;
-    endTime?: number;
-    isStreaming: boolean;
-    duration?: number;
+  content: string;
+  startTime: number;
+  endTime?: number;
+  isStreaming: boolean;
+  duration?: number;
 }
 
-
 export interface TaskGroup {
-    id: string;
-    type: "task";
-    title: string;
-    status: "pending" | "in_progress" | "completed" | "failed";
-    items: (ToolCall | ThinkingContent | Message)[]; // Can contain tools, thoughts, or raw messages
-    startTime: number;
+  id: string;
+  type: "task";
+  title: string;
+  status: "pending" | "in_progress" | "completed" | "failed";
+  items: (ToolCall | ThinkingContent | Message)[]; // Can contain tools, thoughts, or raw messages
+  startTime: number;
 }
 
 export interface MessageGroup {
-    id: string;
-    type: "message";
-    message: Message;
+  id: string;
+  type: "message";
+  message: Message;
 }
 
 export interface GlobalThinkingGroup {
-    id: string;
-    type: "global_thinking";
-    items: ThinkingContent[];
+  id: string;
+  type: "global_thinking";
+  items: ThinkingContent[];
 }
 
 // New timeline item types for flat rendering
 export interface TimelineThinking {
-    id: string;
-    type: "timeline_thinking";
-    content: string;
-    duration?: number;
+  id: string;
+  type: "timeline_thinking";
+  content: string;
+  duration?: number;
 }
 
 export interface TimelineToolCall {
-    id: string;
-    type: "timeline_tool_call";
-    toolName: string;
-    args: string;
-    toolCallId: string;
-    status: "running" | "complete" | "error";
-    result?: string;
+  id: string;
+  type: "timeline_tool_call";
+  toolName: string;
+  args: string;
+  toolCallId: string;
+  status: "running" | "complete" | "error";
+  result?: string;
 }
 
 export interface TimelineText {
-    id: string;
-    type: "timeline_text";
-    content: string;
-    messageId?: string;
+  id: string;
+  type: "timeline_text";
+  content: string;
+  messageId?: string;
 }
 
-export type TimelineItem = TimelineThinking | TimelineToolCall | TimelineText | MessageGroup;
+export type TimelineItem =
+  | TimelineThinking
+  | TimelineToolCall
+  | TimelineText
+  | MessageGroup;
 
-export type ChatItem = TaskGroup | MessageGroup | GlobalThinkingGroup | TimelineItem;
+export type ChatItem =
+  | TaskGroup
+  | MessageGroup
+  | GlobalThinkingGroup
+  | TimelineItem;
 
 /**
  * Flat Timeline Logic - NEW
- * 
+ *
  * Renders each content block in the exact order received from backend.
  * No grouping, no reordering. Simple and predictable.
  */
 export function flattenMessagesToTimeline(messages: Message[]): ChatItem[] {
-    const items: ChatItem[] = [];
-    const toolCallMap = new Map<string, TimelineToolCall>();
-    let blockIndex = 0;
+  const items: ChatItem[] = [];
+  const toolCallMap = new Map<string, TimelineToolCall>();
+  let blockIndex = 0;
 
-    for (const msg of messages) {
-        const role = msg.type === "human" ? "user" : (msg.type === "ai" ? "assistant" : (msg.type === "tool" ? "tool" : "other"));
+  for (const msg of messages) {
+    const role =
+      msg.type === "human"
+        ? "user"
+        : msg.type === "ai"
+        ? "assistant"
+        : msg.type === "tool"
+        ? "tool"
+        : "other";
 
-        if (role === "user") {
-            // User messages always render as MessageGroup
-            items.push({
-                id: msg.id || `user-${blockIndex++}`,
-                type: "message",
-                message: msg
-            });
-            continue;
-        }
-
-        if (role === "tool") {
-            // Tool result - update the corresponding tool call OR create standalone result
-            const anyMsg = msg as any;
-            const toolCallId = anyMsg.tool_call_id;
-            const toolContent = extractStringFromMessageContent(msg);
-
-            if (toolCallId && toolCallMap.has(toolCallId)) {
-                // Found matching tool call - update it
-                const toolItem = toolCallMap.get(toolCallId)!;
-                toolItem.result = toolContent;
-                toolItem.status = "complete";
-            } else {
-                // No matching tool call found (history reload scenario)
-                // Create a standalone tool result item
-                items.push({
-                    id: `tool-result-${msg.id || toolCallId || blockIndex++}`,
-                    type: "timeline_tool_call",
-                    toolName: "Tool Result",  // We don't know the tool name from ToolMessage alone
-                    args: "",
-                    toolCallId: toolCallId || "",
-                    status: "complete",
-                    result: toolContent
-                });
-            }
-            continue;
-        }
-
-        if (role === "assistant") {
-            // Parse content blocks in order
-            const blocks = parseMessageContentBlocks(msg);
-
-            // Check for injected thinking duration
-            const content = extractStringFromMessageContent(msg);
-            const durationRegex = /<!-- think_duration: (\d+) -->/;
-            const match = content.match(durationRegex);
-            const injectedDuration = match ? parseInt(match[1], 10) : undefined;
-
-            // Process each block in array order (time order)
-            for (const block of blocks) {
-                if (block.type === "thinking") {
-                    const duration = injectedDuration ?? estimateDuration(block.content);
-                    items.push({
-                        id: `thinking-${msg.id}-${blockIndex++}`,
-                        type: "timeline_thinking",
-                        content: block.content,
-                        duration: duration
-                    });
-                } else if (block.type === "text") {
-                    if (block.content.trim()) {
-                        items.push({
-                            id: `text-${msg.id}-${blockIndex++}`,
-                            type: "timeline_text",
-                            content: block.content,
-                            messageId: msg.id
-                        });
-                    }
-                } else if (block.type === "tool_use") {
-                    // Skip write_todos (control tool)
-                    if (block.name === "write_todos") continue;
-
-                    const toolItem: TimelineToolCall = {
-                        id: `tool-${block.id}-${blockIndex++}`,
-                        type: "timeline_tool_call",
-                        toolName: block.name,
-                        args: typeof block.input === 'string' ? block.input : JSON.stringify(block.input),
-                        toolCallId: block.id,
-                        status: "running"
-                    };
-                    toolCallMap.set(block.id, toolItem);
-                    items.push(toolItem);
-                }
-            }
-
-            // Also check msg.tool_calls for tools not in content array
-            const anyMsg = msg as any;
-            const toolCalls = anyMsg.tool_calls || anyMsg.additional_kwargs?.tool_calls || [];
-            for (const tool of toolCalls) {
-                const toolId = tool.id || tool.function?.id;
-                const toolName = tool.function?.name || tool.name;
-
-                // Skip if already added from content blocks
-                if (toolCallMap.has(toolId)) continue;
-                // Skip control tool
-                if (toolName === "write_todos") continue;
-
-                const argsString = tool.function?.arguments || tool.args;
-                const toolItem: TimelineToolCall = {
-                    id: `tool-${toolId}-${blockIndex++}`,
-                    type: "timeline_tool_call",
-                    toolName: toolName,
-                    args: typeof argsString === 'string' ? argsString : JSON.stringify(argsString),
-                    toolCallId: toolId,
-                    status: "running"
-                };
-                toolCallMap.set(toolId, toolItem);
-                items.push(toolItem);
-            }
-
-            // If no blocks were extracted but there's text content, add as text
-            if (blocks.length === 0) {
-                const textContent = stripThinkTags(content);
-                if (textContent.trim()) {
-                    items.push({
-                        id: `text-${msg.id}-${blockIndex++}`,
-                        type: "timeline_text",
-                        content: textContent,
-                        messageId: msg.id
-                    });
-                }
-            }
-        }
+    if (role === "user") {
+      // User messages always render as MessageGroup
+      items.push({
+        id: msg.id || `user-${blockIndex++}`,
+        type: "message",
+        message: msg,
+      });
+      continue;
     }
 
-    return items;
+    if (role === "tool") {
+      // Tool result - update the corresponding tool call OR create standalone result
+      const anyMsg = msg as any;
+      const toolCallId = anyMsg.tool_call_id;
+      const toolContent = extractStringFromMessageContent(msg);
+
+      if (toolCallId && toolCallMap.has(toolCallId)) {
+        // Found matching tool call - update it
+        const toolItem = toolCallMap.get(toolCallId)!;
+        toolItem.result = toolContent;
+        toolItem.status = "complete";
+      } else {
+        // No matching tool call found (history reload scenario)
+        // Create a standalone tool result item
+        items.push({
+          id: `tool-result-${msg.id || toolCallId || blockIndex++}`,
+          type: "timeline_tool_call",
+          toolName: "Tool Result", // We don't know the tool name from ToolMessage alone
+          args: "",
+          toolCallId: toolCallId || "",
+          status: "complete",
+          result: toolContent,
+        });
+      }
+      continue;
+    }
+
+    if (role === "assistant") {
+      // Parse content blocks in order
+      const blocks = parseMessageContentBlocks(msg);
+
+      // Check for injected thinking duration
+      const content = extractStringFromMessageContent(msg);
+      const durationRegex = /<!-- think_duration: (\d+) -->/;
+      const match = content.match(durationRegex);
+      const injectedDuration = match ? parseInt(match[1], 10) : undefined;
+
+      // Process each block in array order (time order)
+      for (const block of blocks) {
+        if (block.type === "thinking") {
+          const duration = injectedDuration ?? estimateDuration(block.content);
+          items.push({
+            id: `thinking-${msg.id}-${blockIndex++}`,
+            type: "timeline_thinking",
+            content: block.content,
+            duration: duration,
+          });
+        } else if (block.type === "text") {
+          if (block.content.trim()) {
+            items.push({
+              id: `text-${msg.id}-${blockIndex++}`,
+              type: "timeline_text",
+              content: block.content,
+              messageId: msg.id,
+            });
+          }
+        } else if (block.type === "tool_use") {
+          // Skip write_todos (control tool)
+          if (block.name === "write_todos") continue;
+
+          const toolItem: TimelineToolCall = {
+            id: `tool-${block.id}-${blockIndex++}`,
+            type: "timeline_tool_call",
+            toolName: block.name,
+            args:
+              typeof block.input === "string"
+                ? block.input
+                : JSON.stringify(block.input),
+            toolCallId: block.id,
+            status: "running",
+          };
+          toolCallMap.set(block.id, toolItem);
+          items.push(toolItem);
+        }
+      }
+
+      // Also check msg.tool_calls for tools not in content array
+      const anyMsg = msg as any;
+      const toolCalls =
+        anyMsg.tool_calls || anyMsg.additional_kwargs?.tool_calls || [];
+      for (const tool of toolCalls) {
+        const toolId = tool.id || tool.function?.id;
+        const toolName = tool.function?.name || tool.name;
+
+        // Skip if already added from content blocks
+        if (toolCallMap.has(toolId)) continue;
+        // Skip control tool
+        if (toolName === "write_todos") continue;
+
+        const argsString = tool.function?.arguments || tool.args;
+        const toolItem: TimelineToolCall = {
+          id: `tool-${toolId}-${blockIndex++}`,
+          type: "timeline_tool_call",
+          toolName: toolName,
+          args:
+            typeof argsString === "string"
+              ? argsString
+              : JSON.stringify(argsString),
+          toolCallId: toolId,
+          status: "running",
+        };
+        toolCallMap.set(toolId, toolItem);
+        items.push(toolItem);
+      }
+
+      // If no blocks were extracted but there's text content, add as text
+      if (blocks.length === 0) {
+        const textContent = stripThinkTags(content);
+        if (textContent.trim()) {
+          items.push({
+            id: `text-${msg.id}-${blockIndex++}`,
+            type: "timeline_text",
+            content: textContent,
+            messageId: msg.id,
+          });
+        }
+      }
+    }
+  }
+
+  return items;
 }
 
 /**
  * Legacy groupMessagesByTask - kept for backwards compatibility
- * 
+ *
  * Now just wraps flattenMessagesToTimeline.
  * TaskGroup is no longer used - everything renders as timeline items.
  */
 export function groupMessagesByTask(messages: Message[]): ChatItem[] {
-    return flattenMessagesToTimeline(messages);
+  return flattenMessagesToTimeline(messages);
 }
 
 /**
  * Hierarchical Todo Grouping (Manus-style)
- * 
+ *
  * Groups timeline items under their corresponding todos.
  * Uses write_todos tool calls as task boundaries:
  * - Items before first write_todos → "top-level" (todoId = null)
  * - Items after write_todos(id=X, status=in_progress) → todoId = X
- * 
+ *
  * @param messages - Raw messages from stream
  * @param todos - Todo items from stream.values.todos
  * @returns Object with topLevel items and grouped items per todo
  */
 export interface TodoGroup {
-    todoId: string;
-    title: string;
-    status: "pending" | "in_progress" | "completed";
-    items: TimelineItem[];
+  todoId: string;
+  title: string;
+  status: "pending" | "in_progress" | "completed";
+  items: TimelineItem[];
 }
 
 export interface HierarchicalTimeline {
-    topLevel: TimelineItem[];  // Items before any todo (intro text, initial thinking)
-    todoGroups: TodoGroup[];   // Items grouped by todo
+  topLevel: TimelineItem[]; // Items before any todo (intro text, initial thinking)
+  todoGroups: TodoGroup[]; // Items grouped by todo
 }
 
 export function groupMessagesByTodo(
-    messages: Message[],
-    todos: Array<{ id: string; content: string; status: "pending" | "in_progress" | "completed" }>
+  messages: Message[],
+  todos: Array<{
+    id: string;
+    content: string;
+    status: "pending" | "in_progress" | "completed";
+  }>
 ): HierarchicalTimeline {
-    const result: HierarchicalTimeline = {
-        topLevel: [],
-        todoGroups: []
-    };
+  const result: HierarchicalTimeline = {
+    topLevel: [],
+    todoGroups: [],
+  };
 
-    // Create groups for each todo
-    const groupsById = new Map<string, TodoGroup>();
-    for (const todo of todos) {
-        const group: TodoGroup = {
-            todoId: todo.id,
-            title: todo.content,
-            status: todo.status,
-            items: []
-        };
-        groupsById.set(todo.id, group);
-        result.todoGroups.push(group);
+  // Create groups for each todo
+  const groupsById = new Map<string, TodoGroup>();
+  for (const todo of todos) {
+    const group: TodoGroup = {
+      todoId: todo.id,
+      title: todo.content,
+      status: todo.status,
+      items: [],
+    };
+    groupsById.set(todo.id, group);
+    result.todoGroups.push(group);
+  }
+
+  // Track current active todo
+  let currentTodoId: string | null = null;
+  const toolCallMap = new Map<string, TimelineToolCall>();
+  let blockIndex = 0;
+
+  for (const msg of messages) {
+    const role =
+      msg.type === "human"
+        ? "user"
+        : msg.type === "ai"
+        ? "assistant"
+        : msg.type === "tool"
+        ? "tool"
+        : "other";
+
+    if (role === "user") {
+      // User messages go to current group or top-level
+      const item: MessageGroup = {
+        id: msg.id || `user-${blockIndex++}`,
+        type: "message",
+        message: msg,
+      };
+      addItemToGroup(result, currentTodoId, groupsById, item);
+      continue;
     }
 
-    // Track current active todo
-    let currentTodoId: string | null = null;
-    const toolCallMap = new Map<string, TimelineToolCall>();
-    let blockIndex = 0;
+    if (role === "tool") {
+      // Tool result - update matching tool call
+      const anyMsg = msg as any;
+      const toolCallId = anyMsg.tool_call_id;
+      const toolContent = extractStringFromMessageContent(msg);
 
-    for (const msg of messages) {
-        const role = msg.type === "human" ? "user" : (msg.type === "ai" ? "assistant" : (msg.type === "tool" ? "tool" : "other"));
+      if (toolCallId && toolCallMap.has(toolCallId)) {
+        const toolItem = toolCallMap.get(toolCallId)!;
+        toolItem.result = toolContent;
+        toolItem.status = "complete";
+      }
+      continue;
+    }
 
-        if (role === "user") {
-            // User messages go to current group or top-level
-            const item: MessageGroup = {
-                id: msg.id || `user-${blockIndex++}`,
-                type: "message",
-                message: msg
+    if (role === "assistant") {
+      // Check for write_todos calls to update current todo
+      const anyMsg = msg as any;
+      const toolCalls =
+        anyMsg.tool_calls || anyMsg.additional_kwargs?.tool_calls || [];
+
+      for (const tool of toolCalls) {
+        const toolName = tool.function?.name || tool.name;
+        if (toolName === "write_todos") {
+          // Parse the todos being written
+          const argsStr = tool.function?.arguments || tool.args;
+          try {
+            const args =
+              typeof argsStr === "string" ? JSON.parse(argsStr) : argsStr;
+            const writtenTodos = args.todos || [];
+
+            // Find in_progress todo to set as current
+            for (const wt of writtenTodos) {
+              if (wt.status === "in_progress") {
+                currentTodoId = wt.id;
+                break;
+              }
+            }
+          } catch {
+            // Parse error, continue
+          }
+        }
+      }
+
+      // Also check content[] for tool_use blocks (backend sends write_todos here)
+      if (Array.isArray(msg.content)) {
+        for (const block of msg.content as any[]) {
+          if (block?.type === "tool_use" && block?.name === "write_todos") {
+            const args = block.input;
+            const writtenTodos = args?.todos || [];
+            for (const wt of writtenTodos) {
+              if (wt.status === "in_progress") {
+                currentTodoId = wt.id;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      // Parse content blocks
+      const blocks = parseMessageContentBlocks(msg);
+      const content = extractStringFromMessageContent(msg);
+      const durationRegex = /<!-- think_duration: (\d+) -->/;
+      const match = content.match(durationRegex);
+      const injectedDuration = match ? parseInt(match[1], 10) : undefined;
+
+      for (const block of blocks) {
+        if (block.type === "thinking") {
+          const duration = injectedDuration ?? estimateDuration(block.content);
+          const item: TimelineThinking = {
+            id: `thinking-${msg.id}-${blockIndex++}`,
+            type: "timeline_thinking",
+            content: block.content,
+            duration: duration,
+          };
+          addItemToGroup(result, currentTodoId, groupsById, item);
+        } else if (block.type === "text") {
+          const textContent = block.content.trim();
+          // Filter out system log text from write_todos
+          if (textContent && !/^Updated todo list to \[/i.test(textContent)) {
+            const item: TimelineText = {
+              id: `text-${msg.id}-${blockIndex++}`,
+              type: "timeline_text",
+              content: block.content,
+              messageId: msg.id,
             };
             addItemToGroup(result, currentTodoId, groupsById, item);
-            continue;
+          }
+        } else if (block.type === "tool_use") {
+          if (block.name === "write_todos") continue;
+
+          const toolItem: TimelineToolCall = {
+            id: `tool-${block.id}-${blockIndex++}`,
+            type: "timeline_tool_call",
+            toolName: block.name,
+            args:
+              typeof block.input === "string"
+                ? block.input
+                : JSON.stringify(block.input),
+            toolCallId: block.id,
+            status: "running",
+          };
+          toolCallMap.set(block.id, toolItem);
+          addItemToGroup(result, currentTodoId, groupsById, toolItem);
         }
+      }
 
-        if (role === "tool") {
-            // Tool result - update matching tool call
-            const anyMsg = msg as any;
-            const toolCallId = anyMsg.tool_call_id;
-            const toolContent = extractStringFromMessageContent(msg);
+      // Process tool calls not in content array
+      for (const tool of toolCalls) {
+        const toolId = tool.id || tool.function?.id;
+        const toolName = tool.function?.name || tool.name;
 
-            if (toolCallId && toolCallMap.has(toolCallId)) {
-                const toolItem = toolCallMap.get(toolCallId)!;
-                toolItem.result = toolContent;
-                toolItem.status = "complete";
-            }
-            continue;
+        if (toolCallMap.has(toolId)) continue;
+        if (toolName === "write_todos") continue;
+
+        const argsString = tool.function?.arguments || tool.args;
+        const toolItem: TimelineToolCall = {
+          id: `tool-${toolId}-${blockIndex++}`,
+          type: "timeline_tool_call",
+          toolName: toolName,
+          args:
+            typeof argsString === "string"
+              ? argsString
+              : JSON.stringify(argsString),
+          toolCallId: toolId,
+          status: "running",
+        };
+        toolCallMap.set(toolId, toolItem);
+        addItemToGroup(result, currentTodoId, groupsById, toolItem);
+      }
+
+      // Fallback for messages with no blocks
+      if (blocks.length === 0) {
+        const textContent = stripThinkTags(content);
+        if (textContent.trim()) {
+          const item: TimelineText = {
+            id: `text-${msg.id}-${blockIndex++}`,
+            type: "timeline_text",
+            content: textContent,
+            messageId: msg.id,
+          };
+          addItemToGroup(result, currentTodoId, groupsById, item);
         }
-
-        if (role === "assistant") {
-            // Check for write_todos calls to update current todo
-            const anyMsg = msg as any;
-            const toolCalls = anyMsg.tool_calls || anyMsg.additional_kwargs?.tool_calls || [];
-
-            for (const tool of toolCalls) {
-                const toolName = tool.function?.name || tool.name;
-                if (toolName === "write_todos") {
-                    // Parse the todos being written
-                    const argsStr = tool.function?.arguments || tool.args;
-                    try {
-                        const args = typeof argsStr === 'string' ? JSON.parse(argsStr) : argsStr;
-                        const writtenTodos = args.todos || [];
-
-                        // Find in_progress todo to set as current
-                        for (const wt of writtenTodos) {
-                            if (wt.status === "in_progress") {
-                                currentTodoId = wt.id;
-                                break;
-                            }
-                        }
-                    } catch {
-                        // Parse error, continue
-                    }
-                }
-            }
-
-            // Also check content[] for tool_use blocks (backend sends write_todos here)
-            if (Array.isArray(msg.content)) {
-                for (const block of msg.content as any[]) {
-                    if (block?.type === "tool_use" && block?.name === "write_todos") {
-                        const args = block.input;
-                        const writtenTodos = args?.todos || [];
-                        for (const wt of writtenTodos) {
-                            if (wt.status === "in_progress") {
-                                currentTodoId = wt.id;
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Parse content blocks
-            const blocks = parseMessageContentBlocks(msg);
-            const content = extractStringFromMessageContent(msg);
-            const durationRegex = /<!-- think_duration: (\d+) -->/;
-            const match = content.match(durationRegex);
-            const injectedDuration = match ? parseInt(match[1], 10) : undefined;
-
-            for (const block of blocks) {
-                if (block.type === "thinking") {
-                    const duration = injectedDuration ?? estimateDuration(block.content);
-                    const item: TimelineThinking = {
-                        id: `thinking-${msg.id}-${blockIndex++}`,
-                        type: "timeline_thinking",
-                        content: block.content,
-                        duration: duration
-                    };
-                    addItemToGroup(result, currentTodoId, groupsById, item);
-                } else if (block.type === "text") {
-                    const textContent = block.content.trim();
-                    // Filter out system log text from write_todos
-                    if (textContent && !/^Updated todo list to \[/i.test(textContent)) {
-                        const item: TimelineText = {
-                            id: `text-${msg.id}-${blockIndex++}`,
-                            type: "timeline_text",
-                            content: block.content,
-                            messageId: msg.id
-                        };
-                        addItemToGroup(result, currentTodoId, groupsById, item);
-                    }
-                } else if (block.type === "tool_use") {
-                    if (block.name === "write_todos") continue;
-
-                    const toolItem: TimelineToolCall = {
-                        id: `tool-${block.id}-${blockIndex++}`,
-                        type: "timeline_tool_call",
-                        toolName: block.name,
-                        args: typeof block.input === 'string' ? block.input : JSON.stringify(block.input),
-                        toolCallId: block.id,
-                        status: "running"
-                    };
-                    toolCallMap.set(block.id, toolItem);
-                    addItemToGroup(result, currentTodoId, groupsById, toolItem);
-                }
-            }
-
-            // Process tool calls not in content array
-            for (const tool of toolCalls) {
-                const toolId = tool.id || tool.function?.id;
-                const toolName = tool.function?.name || tool.name;
-
-                if (toolCallMap.has(toolId)) continue;
-                if (toolName === "write_todos") continue;
-
-                const argsString = tool.function?.arguments || tool.args;
-                const toolItem: TimelineToolCall = {
-                    id: `tool-${toolId}-${blockIndex++}`,
-                    type: "timeline_tool_call",
-                    toolName: toolName,
-                    args: typeof argsString === 'string' ? argsString : JSON.stringify(argsString),
-                    toolCallId: toolId,
-                    status: "running"
-                };
-                toolCallMap.set(toolId, toolItem);
-                addItemToGroup(result, currentTodoId, groupsById, toolItem);
-            }
-
-            // Fallback for messages with no blocks
-            if (blocks.length === 0) {
-                const textContent = stripThinkTags(content);
-                if (textContent.trim()) {
-                    const item: TimelineText = {
-                        id: `text-${msg.id}-${blockIndex++}`,
-                        type: "timeline_text",
-                        content: textContent,
-                        messageId: msg.id
-                    };
-                    addItemToGroup(result, currentTodoId, groupsById, item);
-                }
-            }
-        }
+      }
     }
+  }
 
-    return result;
+  return result;
 }
 
 // Helper to add item to correct group
 function addItemToGroup(
-    result: HierarchicalTimeline,
-    currentTodoId: string | null,
-    groupsById: Map<string, TodoGroup>,
-    item: TimelineItem
+  result: HierarchicalTimeline,
+  currentTodoId: string | null,
+  groupsById: Map<string, TodoGroup>,
+  item: TimelineItem
 ): void {
-    if (currentTodoId && groupsById.has(currentTodoId)) {
-        groupsById.get(currentTodoId)!.items.push(item);
-    } else {
-        result.topLevel.push(item);
-    }
+  if (currentTodoId && groupsById.has(currentTodoId)) {
+    groupsById.get(currentTodoId)!.items.push(item);
+  } else {
+    result.topLevel.push(item);
+  }
 }
 
 // =============================================================================
@@ -457,22 +501,22 @@ function addItemToGroup(
  * - epilogue: Content after all todos completed
  */
 export interface ManusTimeline {
-    prelude: TimelineItem[];       // Items before any todo
-    visibleTodos: ManusNode[];     // Only done + running nodes
-    hiddenPlan: ManusNode[];       // Pending nodes (optional reveal)
-    epilogue: TimelineItem[];      // Items after all todos done
+  prelude: TimelineItem[]; // Items before any todo
+  visibleTodos: ManusNode[]; // Only done + running nodes
+  hiddenPlan: ManusNode[]; // Pending nodes (optional reveal)
+  epilogue: TimelineItem[]; // Items after all todos done
 }
 
 export interface ManusNode {
-    id: string;
-    title: string;
-    status: 'running' | 'done';
-    children: TimelineItem[];
+  id: string;
+  title: string;
+  status: "running" | "done";
+  children: TimelineItem[];
 }
 
 /**
  * Build Manus-style timeline from messages.
- * 
+ *
  * Position-based logic:
  * 1. write_todos with in_progress = signal to render new todo node
  * 2. Content after write_todos gets indented under that todo
@@ -481,257 +525,285 @@ export interface ManusNode {
  * 5. epilogue = final text content (no tool_use in same message)
  */
 export function buildManusTimeline(
-    messages: Message[],
-    todos: Array<{ id: string; content: string; status: "pending" | "in_progress" | "completed" }>
+  messages: Message[],
+  todos: Array<{
+    id: string;
+    content: string;
+    status: "pending" | "in_progress" | "completed";
+  }>
 ): ManusTimeline {
-    const result: ManusTimeline = {
-        prelude: [],
-        visibleTodos: [],
-        hiddenPlan: [],
-        epilogue: []
-    };
+  const result: ManusTimeline = {
+    prelude: [],
+    visibleTodos: [],
+    hiddenPlan: [],
+    epilogue: [],
+  };
 
-    // Track rendered todos by id
-    const renderedTodoIds = new Set<string>();
-    const nodesById = new Map<string, ManusNode>();
+  // Track rendered todos by id
+  const renderedTodoIds = new Set<string>();
+  const nodesById = new Map<string, ManusNode>();
 
-    // Current active todo (for content mounting)
-    let currentTodoId: string | null = null;
-    let seenAnyTodo = false;
+  // Current active todo (for content mounting)
+  let currentTodoId: string | null = null;
+  let seenAnyTodo = false;
 
-    const toolCallMap = new Map<string, TimelineToolCall>();
-    let blockIndex = 0;
+  const toolCallMap = new Map<string, TimelineToolCall>();
+  let blockIndex = 0;
 
-    // Find the last AI message index for epilogue detection
-    let lastAiMessageIndex = -1;
-    for (let i = messages.length - 1; i >= 0; i--) {
-        if (messages[i].type === 'ai') {
-            lastAiMessageIndex = i;
-            break;
-        }
+  // Find the last AI message index for epilogue detection
+  let lastAiMessageIndex = -1;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].type === "ai") {
+      lastAiMessageIndex = i;
+      break;
+    }
+  }
+
+  // Helper to check if a message is epilogue (last AI message with only text, no tool_use)
+  function isEpilogueMessage(msg: Message, msgIndex: number): boolean {
+    if (msgIndex !== lastAiMessageIndex) return false;
+    if (!Array.isArray(msg.content)) return false;
+
+    const hasToolUse = (msg.content as any[]).some(
+      (b) => b?.type === "tool_use"
+    );
+    const hasText = (msg.content as any[]).some((b) => b?.type === "text");
+
+    return hasText && !hasToolUse;
+  }
+
+  // Helper to add item to correct location
+  function addItem(item: TimelineItem, isEpilogue: boolean = false) {
+    if (isEpilogue) {
+      result.epilogue.push(item);
+    } else if (!seenAnyTodo) {
+      result.prelude.push(item);
+    } else if (currentTodoId && nodesById.has(currentTodoId)) {
+      nodesById.get(currentTodoId)!.children.push(item);
+    } else if (result.visibleTodos.length > 0) {
+      // Fallback: add to last visible todo's children
+      result.visibleTodos[result.visibleTodos.length - 1].children.push(item);
+    } else {
+      result.prelude.push(item);
+    }
+  }
+
+  // Process messages in order
+  for (let msgIndex = 0; msgIndex < messages.length; msgIndex++) {
+    const msg = messages[msgIndex];
+    const role =
+      msg.type === "human"
+        ? "user"
+        : msg.type === "ai"
+        ? "assistant"
+        : msg.type === "tool"
+        ? "tool"
+        : "other";
+
+    const isEpilogue = role === "assistant" && isEpilogueMessage(msg, msgIndex);
+
+    if (role === "user") {
+      const item: MessageGroup = {
+        id: msg.id || `user-${blockIndex++}`,
+        type: "message",
+        message: msg,
+      };
+      addItem(item);
+      continue;
     }
 
-    // Helper to check if a message is epilogue (last AI message with only text, no tool_use)
-    function isEpilogueMessage(msg: Message, msgIndex: number): boolean {
-        if (msgIndex !== lastAiMessageIndex) return false;
-        if (!Array.isArray(msg.content)) return false;
+    if (role === "tool") {
+      const anyMsg = msg as any;
+      const toolCallId = anyMsg.tool_call_id;
+      const toolContent = extractStringFromMessageContent(msg);
 
-        const hasToolUse = (msg.content as any[]).some(b => b?.type === 'tool_use');
-        const hasText = (msg.content as any[]).some(b => b?.type === 'text');
-
-        return hasText && !hasToolUse;
+      if (toolCallId && toolCallMap.has(toolCallId)) {
+        const toolItem = toolCallMap.get(toolCallId)!;
+        toolItem.result = toolContent;
+        toolItem.status = "complete";
+      }
+      continue;
     }
 
-    // Helper to add item to correct location
-    function addItem(item: TimelineItem, isEpilogue: boolean = false) {
-        if (isEpilogue) {
-            result.epilogue.push(item);
-        } else if (!seenAnyTodo) {
-            result.prelude.push(item);
-        } else if (currentTodoId && nodesById.has(currentTodoId)) {
-            nodesById.get(currentTodoId)!.children.push(item);
-        } else if (result.visibleTodos.length > 0) {
-            // Fallback: add to last visible todo's children
-            result.visibleTodos[result.visibleTodos.length - 1].children.push(item);
-        } else {
-            result.prelude.push(item);
-        }
-    }
+    if (role === "assistant") {
+      const anyMsg = msg as any;
+      const toolCalls =
+        anyMsg.tool_calls || anyMsg.additional_kwargs?.tool_calls || [];
 
-    // Process messages in order
-    for (let msgIndex = 0; msgIndex < messages.length; msgIndex++) {
-        const msg = messages[msgIndex];
-        const role = msg.type === "human" ? "user" :
-            (msg.type === "ai" ? "assistant" :
-                (msg.type === "tool" ? "tool" : "other"));
+      // Process write_todos FIRST to update current todo before adding content
+      for (const tool of toolCalls) {
+        const toolName = tool.function?.name || tool.name;
+        if (toolName === "write_todos") {
+          const argsStr = tool.function?.arguments || tool.args;
+          try {
+            const args =
+              typeof argsStr === "string" ? JSON.parse(argsStr) : argsStr;
+            const writtenTodos = args.todos || [];
 
-        const isEpilogue = role === "assistant" && isEpilogueMessage(msg, msgIndex);
+            for (const wt of writtenTodos) {
+              // Use content as id since write_todos doesn't include id field
+              const todoId = wt.id || wt.content;
 
-        if (role === "user") {
-            const item: MessageGroup = {
-                id: msg.id || `user-${blockIndex++}`,
-                type: "message",
-                message: msg
-            };
-            addItem(item);
-            continue;
-        }
-
-        if (role === "tool") {
-            const anyMsg = msg as any;
-            const toolCallId = anyMsg.tool_call_id;
-            const toolContent = extractStringFromMessageContent(msg);
-
-            if (toolCallId && toolCallMap.has(toolCallId)) {
-                const toolItem = toolCallMap.get(toolCallId)!;
-                toolItem.result = toolContent;
-                toolItem.status = "complete";
-            }
-            continue;
-        }
-
-        if (role === "assistant") {
-            const anyMsg = msg as any;
-            const toolCalls = anyMsg.tool_calls || anyMsg.additional_kwargs?.tool_calls || [];
-
-            // Process write_todos FIRST to update current todo before adding content
-            for (const tool of toolCalls) {
-                const toolName = tool.function?.name || tool.name;
-                if (toolName === "write_todos") {
-                    const argsStr = tool.function?.arguments || tool.args;
-                    try {
-                        const args = typeof argsStr === 'string' ? JSON.parse(argsStr) : argsStr;
-                        const writtenTodos = args.todos || [];
-
-                        for (const wt of writtenTodos) {
-                            // Use content as id since write_todos doesn't include id field
-                            const todoId = wt.id || wt.content;
-
-                            if (wt.status === "in_progress" && !renderedTodoIds.has(todoId)) {
-                                // New todo node - render it
-                                seenAnyTodo = true;
-                                const node: ManusNode = {
-                                    id: todoId,
-                                    title: wt.content,
-                                    status: 'running',
-                                    children: []
-                                };
-                                renderedTodoIds.add(todoId);
-                                nodesById.set(todoId, node);
-                                result.visibleTodos.push(node);
-                                currentTodoId = todoId;
-                            } else if (wt.status === "completed" && nodesById.has(todoId)) {
-                                // Update existing node status ○→✓
-                                nodesById.get(todoId)!.status = 'done';
-                            }
-                            // pending: don't render
-                        }
-                    } catch {
-                        // ignore parse errors
-                    }
-                }
-            }
-
-            // Also check content[] for tool_use blocks (write_todos)
-            if (Array.isArray(msg.content)) {
-                for (const block of msg.content as any[]) {
-                    if (block?.type === "tool_use" && block?.name === "write_todos") {
-                        const args = block.input;
-                        const writtenTodos = args?.todos || [];
-
-                        for (const wt of writtenTodos) {
-                            const todoId = wt.id || wt.content;
-                            if (wt.status === "in_progress" && todoId && !renderedTodoIds.has(todoId)) {
-                                // New todo node - render it
-                                seenAnyTodo = true;
-                                const node: ManusNode = {
-                                    id: todoId,
-                                    title: wt.content,
-                                    status: 'running',
-                                    children: []
-                                };
-                                renderedTodoIds.add(todoId);
-                                nodesById.set(todoId, node);
-                                result.visibleTodos.push(node);
-                                currentTodoId = todoId;
-                            } else if (wt.status === "completed" && todoId && nodesById.has(todoId)) {
-                                // Update existing node status ○→✓
-                                nodesById.get(todoId)!.status = 'done';
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Parse content blocks and add to timeline
-            const blocks = parseMessageContentBlocks(msg);
-            const content = extractStringFromMessageContent(msg);
-            const durationRegex = /<!-- think_duration: (\d+) -->/;
-            const match = content.match(durationRegex);
-            const injectedDuration = match ? parseInt(match[1], 10) : undefined;
-
-            for (const block of blocks) {
-                if (block.type === "thinking") {
-                    const duration = injectedDuration ?? estimateDuration(block.content);
-                    const item: TimelineThinking = {
-                        id: `thinking-${msg.id}-${blockIndex++}`,
-                        type: "timeline_thinking",
-                        content: block.content,
-                        duration: duration
-                    };
-                    addItem(item, isEpilogue);
-                } else if (block.type === "text") {
-                    const textContent = block.content.trim();
-                    if (textContent && !/^Updated todo list to \[/i.test(textContent)) {
-                        const item: TimelineText = {
-                            id: `text-${msg.id}-${blockIndex++}`,
-                            type: "timeline_text",
-                            content: block.content,
-                            messageId: msg.id
-                        };
-                        addItem(item, isEpilogue);
-                    }
-                } else if (block.type === "tool_use") {
-                    if (block.name === "write_todos") continue;
-
-                    const toolItem: TimelineToolCall = {
-                        id: `tool-${block.id}-${blockIndex++}`,
-                        type: "timeline_tool_call",
-                        toolName: block.name,
-                        args: typeof block.input === 'string' ? block.input : JSON.stringify(block.input),
-                        toolCallId: block.id,
-                        status: "running"
-                    };
-                    toolCallMap.set(block.id, toolItem);
-                    addItem(toolItem, isEpilogue);
-                }
-            }
-
-            // Process tool calls not in content array
-            for (const tool of toolCalls) {
-                const toolId = tool.id || tool.function?.id;
-                const toolName = tool.function?.name || tool.name;
-
-                if (toolCallMap.has(toolId)) continue;
-                if (toolName === "write_todos") continue;
-
-                const argsString = tool.function?.arguments || tool.args;
-                const toolItem: TimelineToolCall = {
-                    id: `tool-${toolId}-${blockIndex++}`,
-                    type: "timeline_tool_call",
-                    toolName: toolName,
-                    args: typeof argsString === 'string' ? argsString : JSON.stringify(argsString),
-                    toolCallId: toolId,
-                    status: "running"
+              if (wt.status === "in_progress" && !renderedTodoIds.has(todoId)) {
+                // New todo node - render it
+                seenAnyTodo = true;
+                const node: ManusNode = {
+                  id: todoId,
+                  title: wt.content,
+                  status: "running",
+                  children: [],
                 };
-                toolCallMap.set(toolId, toolItem);
-                addItem(toolItem, isEpilogue);
+                renderedTodoIds.add(todoId);
+                nodesById.set(todoId, node);
+                result.visibleTodos.push(node);
+                currentTodoId = todoId;
+              } else if (wt.status === "completed" && nodesById.has(todoId)) {
+                // Update existing node status ○→✓
+                nodesById.get(todoId)!.status = "done";
+              }
+              // pending: don't render
             }
+          } catch {
+            // ignore parse errors
+          }
+        }
+      }
 
-            // Fallback for messages with no blocks
-            if (blocks.length === 0) {
-                const textContent = stripThinkTags(content);
-                if (textContent.trim()) {
-                    const item: TimelineText = {
-                        id: `text-${msg.id}-${blockIndex++}`,
-                        type: "timeline_text",
-                        content: textContent,
-                        messageId: msg.id
-                    };
-                    addItem(item, isEpilogue);
-                }
+      // Also check content[] for tool_use blocks (write_todos)
+      if (Array.isArray(msg.content)) {
+        for (const block of msg.content as any[]) {
+          if (block?.type === "tool_use" && block?.name === "write_todos") {
+            const args = block.input;
+            const writtenTodos = args?.todos || [];
+
+            for (const wt of writtenTodos) {
+              const todoId = wt.id || wt.content;
+              if (
+                wt.status === "in_progress" &&
+                todoId &&
+                !renderedTodoIds.has(todoId)
+              ) {
+                // New todo node - render it
+                seenAnyTodo = true;
+                const node: ManusNode = {
+                  id: todoId,
+                  title: wt.content,
+                  status: "running",
+                  children: [],
+                };
+                renderedTodoIds.add(todoId);
+                nodesById.set(todoId, node);
+                result.visibleTodos.push(node);
+                currentTodoId = todoId;
+              } else if (
+                wt.status === "completed" &&
+                todoId &&
+                nodesById.has(todoId)
+              ) {
+                // Update existing node status ○→✓
+                nodesById.get(todoId)!.status = "done";
+              }
             }
+          }
         }
-    }
+      }
 
-    // Update final status from todos array (for history reload)
-    for (const todo of todos) {
-        if (nodesById.has(todo.id)) {
-            nodesById.get(todo.id)!.status = todo.status === 'completed' ? 'done' : 'running';
+      // Parse content blocks and add to timeline
+      const blocks = parseMessageContentBlocks(msg);
+      const content = extractStringFromMessageContent(msg);
+      const durationRegex = /<!-- think_duration: (\d+) -->/;
+      const match = content.match(durationRegex);
+      const injectedDuration = match ? parseInt(match[1], 10) : undefined;
+
+      for (const block of blocks) {
+        if (block.type === "thinking") {
+          const duration = injectedDuration ?? estimateDuration(block.content);
+          const item: TimelineThinking = {
+            id: `thinking-${msg.id}-${blockIndex++}`,
+            type: "timeline_thinking",
+            content: block.content,
+            duration: duration,
+          };
+          addItem(item, isEpilogue);
+        } else if (block.type === "text") {
+          const textContent = block.content.trim();
+          if (textContent && !/^Updated todo list to \[/i.test(textContent)) {
+            const item: TimelineText = {
+              id: `text-${msg.id}-${blockIndex++}`,
+              type: "timeline_text",
+              content: block.content,
+              messageId: msg.id,
+            };
+            addItem(item, isEpilogue);
+          }
+        } else if (block.type === "tool_use") {
+          if (block.name === "write_todos") continue;
+
+          const toolItem: TimelineToolCall = {
+            id: `tool-${block.id}-${blockIndex++}`,
+            type: "timeline_tool_call",
+            toolName: block.name,
+            args:
+              typeof block.input === "string"
+                ? block.input
+                : JSON.stringify(block.input),
+            toolCallId: block.id,
+            status: "running",
+          };
+          toolCallMap.set(block.id, toolItem);
+          addItem(toolItem, isEpilogue);
         }
-    }
+      }
 
-    return result;
+      // Process tool calls not in content array
+      for (const tool of toolCalls) {
+        const toolId = tool.id || tool.function?.id;
+        const toolName = tool.function?.name || tool.name;
+
+        if (toolCallMap.has(toolId)) continue;
+        if (toolName === "write_todos") continue;
+
+        const argsString = tool.function?.arguments || tool.args;
+        const toolItem: TimelineToolCall = {
+          id: `tool-${toolId}-${blockIndex++}`,
+          type: "timeline_tool_call",
+          toolName: toolName,
+          args:
+            typeof argsString === "string"
+              ? argsString
+              : JSON.stringify(argsString),
+          toolCallId: toolId,
+          status: "running",
+        };
+        toolCallMap.set(toolId, toolItem);
+        addItem(toolItem, isEpilogue);
+      }
+
+      // Fallback for messages with no blocks
+      if (blocks.length === 0) {
+        const textContent = stripThinkTags(content);
+        if (textContent.trim()) {
+          const item: TimelineText = {
+            id: `text-${msg.id}-${blockIndex++}`,
+            type: "timeline_text",
+            content: textContent,
+            messageId: msg.id,
+          };
+          addItem(item, isEpilogue);
+        }
+      }
+    }
+  }
+
+  // Update final status from todos array (for history reload)
+  for (const todo of todos) {
+    if (nodesById.has(todo.id)) {
+      nodesById.get(todo.id)!.status =
+        todo.status === "completed" ? "done" : "running";
+    }
+  }
+
+  return result;
 }
 
 // =============================================================================
@@ -739,255 +811,258 @@ export function buildManusTimeline(
 // =============================================================================
 
 export type EventTimelineEvent =
-    | {
-        id: string;
-        type: "todo_node";
-        todoKey: string;
-        title: string;
-        status: "running" | "done";
+  | {
+      id: string;
+      type: "todo_node";
+      todoKey: string;
+      title: string;
+      status: "running" | "done";
     }
-    | {
-        id: string;
-        type: "content";
-        indent: boolean;
-        item: TimelineItem;
+  | {
+      id: string;
+      type: "content";
+      indent: boolean;
+      item: TimelineItem;
     };
 
 export interface EventTimeline {
-    events: EventTimelineEvent[];
+  events: EventTimelineEvent[];
 }
 
 function getToolCallsFromMessage(msg: Message): any[] {
-    const anyMsg = msg as any;
-    return anyMsg.tool_calls || anyMsg.additional_kwargs?.tool_calls || [];
+  const anyMsg = msg as any;
+  return anyMsg.tool_calls || anyMsg.additional_kwargs?.tool_calls || [];
 }
 
 function parseWriteTodosArgs(tool: any): any | null {
-    const toolName = tool.function?.name || tool.name;
-    if (toolName !== "write_todos") return null;
-    const argsStr = tool.function?.arguments || tool.args;
-    try {
-        return typeof argsStr === "string" ? JSON.parse(argsStr) : argsStr;
-    } catch {
-        return null;
-    }
+  const toolName = tool.function?.name || tool.name;
+  if (toolName !== "write_todos") return null;
+  const argsStr = tool.function?.arguments || tool.args;
+  try {
+    return typeof argsStr === "string" ? JSON.parse(argsStr) : argsStr;
+  } catch {
+    return null;
+  }
 }
 
 export function buildEventTimeline(messages: Message[]): EventTimeline {
-    const events: EventTimelineEvent[] = [];
-    const toolCallMap = new Map<string, TimelineToolCall>();
-    const todoNodesByKey = new Map<string, Extract<EventTimelineEvent, { type: "todo_node" }>>();
+  const events: EventTimelineEvent[] = [];
+  const toolCallMap = new Map<string, TimelineToolCall>();
+  const todoNodesByKey = new Map<
+    string,
+    Extract<EventTimelineEvent, { type: "todo_node" }>
+  >();
 
-    let currentTodoKey: string | null = null;
-    let inFinal = false;
-    let blockIndex = 0;
+  let currentTodoKey: string | null = null;
+  let inFinal = false;
+  let blockIndex = 0;
 
-    const normalizeTodoKey = (todo: { id?: string; content?: string }) =>
-        (todo.id || todo.content || "").trim();
+  const normalizeTodoKey = (todo: { id?: string; content?: string }) =>
+    (todo.id || todo.content || "").trim();
 
-    const pushContent = (item: TimelineItem, forceTopLevel = false) => {
-        const indent = !forceTopLevel && !inFinal && currentTodoKey !== null;
-        events.push({
-            id: `evt-${item.id || blockIndex++}`,
-            type: "content",
-            indent,
-            item,
-        });
+  const pushContent = (item: TimelineItem, forceTopLevel = false) => {
+    const indent = !forceTopLevel && !inFinal && currentTodoKey !== null;
+    events.push({
+      id: `evt-${item.id || blockIndex++}`,
+      type: "content",
+      indent,
+      item,
+    });
+  };
+
+  const ensureTodoNode = (todoKey: string, title: string) => {
+    if (!todoKey) return null;
+    const existing = todoNodesByKey.get(todoKey);
+    if (existing) return existing;
+    const node: Extract<EventTimelineEvent, { type: "todo_node" }> = {
+      id: `todo-${todoKey}`,
+      type: "todo_node",
+      todoKey,
+      title,
+      status: "running",
     };
+    todoNodesByKey.set(todoKey, node);
+    events.push(node);
+    return node;
+  };
 
-    const ensureTodoNode = (todoKey: string, title: string) => {
-        if (!todoKey) return null;
-        const existing = todoNodesByKey.get(todoKey);
-        if (existing) return existing;
-        const node: Extract<EventTimelineEvent, { type: "todo_node" }> = {
-            id: `todo-${todoKey}`,
-            type: "todo_node",
-            todoKey,
-            title,
-            status: "running",
-        };
-        todoNodesByKey.set(todoKey, node);
-        events.push(node);
-        return node;
-    };
+  const applyWriteTodosSnapshot = (todosRaw: any) => {
+    const todosList: Array<{ id?: string; content?: string; status?: string }> =
+      Array.isArray(todosRaw) ? todosRaw : [];
 
-    const applyWriteTodosSnapshot = (todosRaw: any) => {
-        const todosList: Array<{ id?: string; content?: string; status?: string }> =
-            Array.isArray(todosRaw) ? todosRaw : [];
-
-        // Update completed statuses
-        for (const t of todosList) {
-            if (t.status !== "completed") continue;
-            const key = normalizeTodoKey(t);
-            if (!key) continue;
-            const node = ensureTodoNode(key, t.content || key);
-            if (node) node.status = "done";
-        }
-
-        // Anchor to the unique in_progress todo, if any
-        const inProgress = todosList.find((t) => t.status === "in_progress");
-        if (inProgress) {
-            const key = normalizeTodoKey(inProgress);
-            if (!key) return;
-            inFinal = false;
-            const node = ensureTodoNode(key, inProgress.content || key);
-            if (node) node.status = "running";
-            currentTodoKey = key;
-            return;
-        }
-
-        // No in_progress => stop indenting (final answer mode)
-        currentTodoKey = null;
-        inFinal = true;
-    };
-
-    for (const msg of messages) {
-        const role =
-            msg.type === "human"
-                ? "user"
-                : msg.type === "ai"
-                    ? "assistant"
-                    : msg.type === "tool"
-                        ? "tool"
-                        : "other";
-
-        if (role === "user") {
-            const item: MessageGroup = {
-                id: msg.id || `user-${blockIndex++}`,
-                type: "message",
-                message: msg,
-            };
-            // User messages always top-level
-            pushContent(item, true);
-            continue;
-        }
-
-        if (role === "tool") {
-            const anyMsg = msg as any;
-            const toolName = anyMsg.name;
-            // Ignore write_todos tool-result spam
-            if (toolName === "write_todos") continue;
-
-            const toolCallId = anyMsg.tool_call_id;
-            const toolContent = extractStringFromMessageContent(msg);
-
-            if (toolCallId && toolCallMap.has(toolCallId)) {
-                const toolItem = toolCallMap.get(toolCallId)!;
-                toolItem.result = toolContent;
-                toolItem.status = "complete";
-            } else {
-                // Standalone tool result (history edge case)
-                const toolItem: TimelineToolCall = {
-                    id: `tool-result-${msg.id || toolCallId || blockIndex++}`,
-                    type: "timeline_tool_call",
-                    toolName: toolName || "Tool Result",
-                    args: "",
-                    toolCallId: toolCallId || `unknown-${blockIndex++}`,
-                    status: "complete",
-                    result: toolContent,
-                };
-                pushContent(toolItem);
-            }
-            continue;
-        }
-
-        if (role === "assistant") {
-            // 1) Process textual blocks first so prelude shows correctly
-            const blocks = parseMessageContentBlocks(msg);
-            const content = extractStringFromMessageContent(msg);
-            const durationRegex = /<!-- think_duration: (\d+) -->/;
-            const match = content.match(durationRegex);
-            const injectedDuration = match ? parseInt(match[1], 10) : undefined;
-
-            for (const block of blocks) {
-                if (block.type === "thinking") {
-                    const duration = injectedDuration ?? estimateDuration(block.content);
-                    const item: TimelineThinking = {
-                        id: `thinking-${msg.id}-${blockIndex++}`,
-                        type: "timeline_thinking",
-                        content: block.content,
-                        duration,
-                    };
-                    pushContent(item);
-                } else if (block.type === "text") {
-                    const textContent = block.content.trim();
-                    if (textContent && !/^Updated todo list to \[/i.test(textContent)) {
-                        const item: TimelineText = {
-                            id: `text-${msg.id}-${blockIndex++}`,
-                            type: "timeline_text",
-                            content: block.content,
-                            messageId: msg.id,
-                        };
-                        pushContent(item);
-                    }
-                } else if (block.type === "tool_use") {
-                    if (block.name === "write_todos") {
-                        const args = block.input as any;
-                        applyWriteTodosSnapshot(args?.todos);
-                        continue;
-                    }
-
-                    const toolItem: TimelineToolCall = {
-                        id: `tool-${block.id}-${blockIndex++}`,
-                        type: "timeline_tool_call",
-                        toolName: block.name,
-                        args:
-                            typeof block.input === "string"
-                                ? block.input
-                                : JSON.stringify(block.input),
-                        toolCallId: block.id,
-                        status: "running",
-                    };
-                    toolCallMap.set(block.id, toolItem);
-                    pushContent(toolItem);
-                }
-            }
-
-            // 2) If no blocks extracted, fallback to plain text (still before tool_calls)
-            if (blocks.length === 0) {
-                const textContent = stripThinkTags(content);
-                if (textContent.trim()) {
-                    const item: TimelineText = {
-                        id: `text-${msg.id}-${blockIndex++}`,
-                        type: "timeline_text",
-                        content: textContent,
-                        messageId: msg.id,
-                    };
-                    pushContent(item);
-                }
-            }
-
-            // 3) Process tool_calls (DeepSeek puts write_todos here)
-            const toolCalls = getToolCallsFromMessage(msg);
-            for (const tool of toolCalls) {
-                const toolId = tool.id || tool.function?.id;
-                const toolName = tool.function?.name || tool.name;
-
-                if (toolName === "write_todos") {
-                    const args = parseWriteTodosArgs(tool);
-                    applyWriteTodosSnapshot(args?.todos);
-                    continue;
-                }
-
-                if (toolCallMap.has(toolId)) continue;
-
-                const argsString = tool.function?.arguments || tool.args;
-                const toolItem: TimelineToolCall = {
-                    id: `tool-${toolId}-${blockIndex++}`,
-                    type: "timeline_tool_call",
-                    toolName,
-                    args:
-                        typeof argsString === "string"
-                            ? argsString
-                            : JSON.stringify(argsString),
-                    toolCallId: toolId,
-                    status: "running",
-                };
-                toolCallMap.set(toolId, toolItem);
-                pushContent(toolItem);
-            }
-        }
+    // Update completed statuses
+    for (const t of todosList) {
+      if (t.status !== "completed") continue;
+      const key = normalizeTodoKey(t);
+      if (!key) continue;
+      const node = ensureTodoNode(key, t.content || key);
+      if (node) node.status = "done";
     }
 
-    return { events };
+    // Anchor to the unique in_progress todo, if any
+    const inProgress = todosList.find((t) => t.status === "in_progress");
+    if (inProgress) {
+      const key = normalizeTodoKey(inProgress);
+      if (!key) return;
+      inFinal = false;
+      const node = ensureTodoNode(key, inProgress.content || key);
+      if (node) node.status = "running";
+      currentTodoKey = key;
+      return;
+    }
+
+    // No in_progress => stop indenting (final answer mode)
+    currentTodoKey = null;
+    inFinal = true;
+  };
+
+  for (const msg of messages) {
+    const role =
+      msg.type === "human"
+        ? "user"
+        : msg.type === "ai"
+        ? "assistant"
+        : msg.type === "tool"
+        ? "tool"
+        : "other";
+
+    if (role === "user") {
+      const item: MessageGroup = {
+        id: msg.id || `user-${blockIndex++}`,
+        type: "message",
+        message: msg,
+      };
+      // User messages always top-level
+      pushContent(item, true);
+      continue;
+    }
+
+    if (role === "tool") {
+      const anyMsg = msg as any;
+      const toolName = anyMsg.name;
+      // Ignore write_todos tool-result spam
+      if (toolName === "write_todos") continue;
+
+      const toolCallId = anyMsg.tool_call_id;
+      const toolContent = extractStringFromMessageContent(msg);
+
+      if (toolCallId && toolCallMap.has(toolCallId)) {
+        const toolItem = toolCallMap.get(toolCallId)!;
+        toolItem.result = toolContent;
+        toolItem.status = "complete";
+      } else {
+        // Standalone tool result (history edge case)
+        const toolItem: TimelineToolCall = {
+          id: `tool-result-${msg.id || toolCallId || blockIndex++}`,
+          type: "timeline_tool_call",
+          toolName: toolName || "Tool Result",
+          args: "",
+          toolCallId: toolCallId || `unknown-${blockIndex++}`,
+          status: "complete",
+          result: toolContent,
+        };
+        pushContent(toolItem);
+      }
+      continue;
+    }
+
+    if (role === "assistant") {
+      // 1) Process textual blocks first so prelude shows correctly
+      const blocks = parseMessageContentBlocks(msg);
+      const content = extractStringFromMessageContent(msg);
+      const durationRegex = /<!-- think_duration: (\d+) -->/;
+      const match = content.match(durationRegex);
+      const injectedDuration = match ? parseInt(match[1], 10) : undefined;
+
+      for (const block of blocks) {
+        if (block.type === "thinking") {
+          const duration = injectedDuration ?? estimateDuration(block.content);
+          const item: TimelineThinking = {
+            id: `thinking-${msg.id}-${blockIndex++}`,
+            type: "timeline_thinking",
+            content: block.content,
+            duration,
+          };
+          pushContent(item);
+        } else if (block.type === "text") {
+          const textContent = block.content.trim();
+          if (textContent && !/^Updated todo list to \[/i.test(textContent)) {
+            const item: TimelineText = {
+              id: `text-${msg.id}-${blockIndex++}`,
+              type: "timeline_text",
+              content: block.content,
+              messageId: msg.id,
+            };
+            pushContent(item);
+          }
+        } else if (block.type === "tool_use") {
+          if (block.name === "write_todos") {
+            const args = block.input as any;
+            applyWriteTodosSnapshot(args?.todos);
+            continue;
+          }
+
+          const toolItem: TimelineToolCall = {
+            id: `tool-${block.id}-${blockIndex++}`,
+            type: "timeline_tool_call",
+            toolName: block.name,
+            args:
+              typeof block.input === "string"
+                ? block.input
+                : JSON.stringify(block.input),
+            toolCallId: block.id,
+            status: "running",
+          };
+          toolCallMap.set(block.id, toolItem);
+          pushContent(toolItem);
+        }
+      }
+
+      // 2) If no blocks extracted, fallback to plain text (still before tool_calls)
+      if (blocks.length === 0) {
+        const textContent = stripThinkTags(content);
+        if (textContent.trim()) {
+          const item: TimelineText = {
+            id: `text-${msg.id}-${blockIndex++}`,
+            type: "timeline_text",
+            content: textContent,
+            messageId: msg.id,
+          };
+          pushContent(item);
+        }
+      }
+
+      // 3) Process tool_calls (DeepSeek puts write_todos here)
+      const toolCalls = getToolCallsFromMessage(msg);
+      for (const tool of toolCalls) {
+        const toolId = tool.id || tool.function?.id;
+        const toolName = tool.function?.name || tool.name;
+
+        if (toolName === "write_todos") {
+          const args = parseWriteTodosArgs(tool);
+          applyWriteTodosSnapshot(args?.todos);
+          continue;
+        }
+
+        if (toolCallMap.has(toolId)) continue;
+
+        const argsString = tool.function?.arguments || tool.args;
+        const toolItem: TimelineToolCall = {
+          id: `tool-${toolId}-${blockIndex++}`,
+          type: "timeline_tool_call",
+          toolName,
+          args:
+            typeof argsString === "string"
+              ? argsString
+              : JSON.stringify(argsString),
+          toolCallId: toolId,
+          status: "running",
+        };
+        toolCallMap.set(toolId, toolItem);
+        pushContent(toolItem);
+      }
+    }
+  }
+
+  return { events };
 }

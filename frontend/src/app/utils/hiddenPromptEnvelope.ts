@@ -1,6 +1,10 @@
 import type { Message } from "@langchain/langgraph-sdk";
 
-export type HiddenPromptFeature = "fortune" | "prompt-optimize" | "deai" | "agent";
+export type HiddenPromptFeature =
+  | "fortune"
+  | "prompt-optimize"
+  | "deai"
+  | "agent";
 
 export interface HiddenPromptContext {
   feature: HiddenPromptFeature;
@@ -73,7 +77,9 @@ export function getVisibleHumanContent(message: Message): string | null {
 
 export function sanitizeLegacyHiddenPromptContent(content: string): string {
   const stripped = content.trimStart();
-  if (!LEGACY_HIDDEN_PREFIX_MARKERS.some((marker) => stripped.startsWith(marker))) {
+  if (
+    !LEGACY_HIDDEN_PREFIX_MARKERS.some((marker) => stripped.startsWith(marker))
+  ) {
     return content;
   }
 
@@ -87,7 +93,9 @@ export function sanitizeLegacyHiddenPromptContent(content: string): string {
   return content;
 }
 
-export function sanitizeHiddenPromptMessageForPersistence(message: Message): Message {
+export function sanitizeHiddenPromptMessageForPersistence(
+  message: Message
+): Message {
   if (message.type !== "human") return message;
 
   const additional = (message as MessageWithAdditionalKwargs).additional_kwargs;
@@ -104,12 +112,16 @@ export function sanitizeHiddenPromptMessageForPersistence(message: Message): Mes
     additional_kwargs: {
       ...(additional ?? {}),
       [HIDDEN_PROMPT_KEY]: {
-        ...(typeof hiddenPayload === "object" && hiddenPayload ? hiddenPayload : {}),
+        ...(typeof hiddenPayload === "object" && hiddenPayload
+          ? hiddenPayload
+          : {}),
       },
     },
   } as Message;
 }
 
-export function sanitizeHiddenPromptMessagesForPersistence(messages: Message[]): Message[] {
+export function sanitizeHiddenPromptMessagesForPersistence(
+  messages: Message[]
+): Message[] {
   return messages.map(sanitizeHiddenPromptMessageForPersistence);
 }

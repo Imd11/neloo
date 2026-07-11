@@ -24,7 +24,7 @@ interface GeneratedFile {
   filename: string;
   size?: number;
   sandbox_path?: string;
-  download_url?: string;  // New format: /generated-files/{file_id}?sig={signature}
+  download_url?: string; // New format: /generated-files/{file_id}?sig={signature}
   file_id?: string;
   content_type?: string;
 }
@@ -42,7 +42,7 @@ function parseGeneratedFiles(result: any): GeneratedFile[] {
 
   try {
     // Result might be a string (JSON) or already parsed
-    const parsed = typeof result === 'string' ? JSON.parse(result) : result;
+    const parsed = typeof result === "string" ? JSON.parse(result) : result;
     if (parsed && Array.isArray(parsed.generated_files)) {
       return parsed.generated_files;
     }
@@ -111,7 +111,9 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
       }
 
       // Fallback to old sandbox/files endpoint for backwards compatibility
-      return `${cleanBaseUrl}/sandbox/files/${encodeURIComponent(file.filename)}`;
+      return `${cleanBaseUrl}/sandbox/files/${encodeURIComponent(
+        file.filename
+      )}`;
     }, []);
 
     const statusIcon = useMemo(() => {
@@ -294,16 +296,24 @@ export const ToolCallBox = React.memo<ToolCallBoxProps>(
                           rel="noopener noreferrer"
                           className="flex items-center gap-3 rounded-md border border-border bg-muted/30 p-2 transition-colors hover:bg-muted/50"
                         >
-                          <FileIcon size={16} className="shrink-0 text-muted-foreground" />
-                          <div className="flex-1 min-w-0">
+                          <FileIcon
+                            size={16}
+                            className="shrink-0 text-muted-foreground"
+                          />
+                          <div className="min-w-0 flex-1">
                             <div className="truncate text-sm font-medium text-foreground">
                               {file.filename}
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              {file.size ? formatFileSize(file.size) : file.content_type || "File"}
+                              {file.size
+                                ? formatFileSize(file.size)
+                                : file.content_type || "File"}
                             </div>
                           </div>
-                          <Download size={16} className="shrink-0 text-muted-foreground" />
+                          <Download
+                            size={16}
+                            className="shrink-0 text-muted-foreground"
+                          />
                         </a>
                       ))}
                     </div>

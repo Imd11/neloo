@@ -3,346 +3,354 @@
    Warm Charcoal with Gold Accents - Sophisticated Professional
    ============================================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Source+Sans+3:wght@300;400;500;600&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Source+Sans+3:wght@300;400;500;600&display=swap");
 
 /* ─── Container ──────────────────────────────────────────────────────────── */
 
 .luxsleek-container {
-    display: grid;
-    grid-template-columns: var(--sidebar-width, 33%) 1fr;
-    width: var(--page-width, 210mm);
-    height: var(--page-height, 297mm);
-    overflow: hidden;
-    font-family: 'Source Sans 3', -apple-system, sans-serif;
-    font-size: var(--font-size, 9.5pt);
-    line-height: var(--line-height, 1.55);
-    background: #fdfcfb;
-    color: #2d2d2d;
+  display: grid;
+  grid-template-columns: var(--sidebar-width, 33%) 1fr;
+  width: var(--page-width, 210mm);
+  height: var(--page-height, 297mm);
+  overflow: hidden;
+  font-family: "Source Sans 3", -apple-system, sans-serif;
+  font-size: var(--font-size, 9.5pt);
+  line-height: var(--line-height, 1.55);
+  background: #fdfcfb;
+  color: #2d2d2d;
 }
 
 /* ─── Sidebar ────────────────────────────────────────────────────────────── */
 
 .luxsleek-sidebar {
-    background: linear-gradient(175deg, var(--primary-color, #2c2c2c) 0%, var(--primary-dark, #1a1a1a) 100%);
-    color: #e8e6e3;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
+  background: linear-gradient(
+    175deg,
+    var(--primary-color, #2c2c2c) 0%,
+    var(--primary-dark, #1a1a1a) 100%
+  );
+  color: #e8e6e3;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Photo */
 .luxsleek-photo-container {
-    padding: 36px 28px 24px;
-    display: flex;
-    justify-content: center;
-    background: linear-gradient(180deg, rgba(212, 175, 55, 0.08) 0%, transparent 100%);
+  padding: 36px 28px 24px;
+  display: flex;
+  justify-content: center;
+  background: linear-gradient(
+    180deg,
+    rgba(212, 175, 55, 0.08) 0%,
+    transparent 100%
+  );
 }
 
 .luxsleek-photo {
-    width: 110px;
-    height: 110px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 3px solid #d4af37;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #d4af37;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 /* Sections */
 .luxsleek-section {
-    padding: 18px 24px;
-    border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+  padding: 18px 24px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.15);
 }
 
 .luxsleek-section:last-child {
-    border-bottom: none;
+  border-bottom: none;
 }
 
 .luxsleek-section-title {
-    font-family: 'Playfair Display', Georgia, serif;
-    font-size: calc(10pt * var(--scale, 1));
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.2em;
-    color: #d4af37;
-    margin-bottom: 14px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: calc(10pt * var(--scale, 1));
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: #d4af37;
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
 }
 
 /* Profile */
 .luxsleek-profile-text {
-    font-size: calc(9pt * var(--scale, 1));
-    line-height: 1.7;
-    color: #c7c4c0;
-    font-style: italic;
+  font-size: calc(9pt * var(--scale, 1));
+  line-height: 1.7;
+  color: #c7c4c0;
+  font-style: italic;
 }
 
 /* Contact */
 .luxsleek-contact-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .luxsleek-contact-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-size: calc(8.5pt * var(--scale, 1));
-    color: #d5d2ce;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: calc(8.5pt * var(--scale, 1));
+  color: #d5d2ce;
 }
 
 .luxsleek-contact-icon {
-    font-size: calc(10pt * var(--scale, 1));
-    color: #d4af37;
-    width: 16px;
-    text-align: center;
-    flex-shrink: 0;
+  font-size: calc(10pt * var(--scale, 1));
+  color: #d4af37;
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
 }
 
 /* Personal Info */
 .luxsleek-info-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .luxsleek-info-item {
-    font-size: calc(8.5pt * var(--scale, 1));
-    color: #d5d2ce;
+  font-size: calc(8.5pt * var(--scale, 1));
+  color: #d5d2ce;
 }
 
 .luxsleek-info-label {
-    font-weight: 600;
-    color: #a8a5a0;
-    margin-right: 6px;
-    text-transform: uppercase;
-    font-size: calc(7.5pt * var(--scale, 1));
-    letter-spacing: 0.05em;
+  font-weight: 600;
+  color: #a8a5a0;
+  margin-right: 6px;
+  text-transform: uppercase;
+  font-size: calc(7.5pt * var(--scale, 1));
+  letter-spacing: 0.05em;
 }
 
 /* Skills */
 .luxsleek-skills-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .luxsleek-skill-item {
-    font-size: calc(9pt * var(--scale, 1));
-    color: #d5d2ce;
-    padding-left: 16px;
-    position: relative;
+  font-size: calc(9pt * var(--scale, 1));
+  color: #d5d2ce;
+  padding-left: 16px;
+  position: relative;
 }
 
 .luxsleek-skill-item::before {
-    content: '◆';
-    position: absolute;
-    left: 0;
-    color: #d4af37;
-    font-size: 6px;
-    top: 4px;
+  content: "◆";
+  position: absolute;
+  left: 0;
+  color: #d4af37;
+  font-size: 6px;
+  top: 4px;
 }
 
 /* Languages */
 .luxsleek-languages {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .luxsleek-language-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: calc(8.5pt * var(--scale, 1));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: calc(8.5pt * var(--scale, 1));
 }
 
 .luxsleek-language-name {
-    color: #e8e6e3;
-    font-weight: 500;
+  color: #e8e6e3;
+  font-weight: 500;
 }
 
 .luxsleek-language-level {
-    color: #a8a5a0;
-    font-style: italic;
-    font-size: calc(8pt * var(--scale, 1));
+  color: #a8a5a0;
+  font-style: italic;
+  font-size: calc(8pt * var(--scale, 1));
 }
 
 /* ─── Main Content ───────────────────────────────────────────────────────── */
 
 .luxsleek-main {
-    padding: 36px 40px;
-    background: #fdfcfb;
+  padding: 36px 40px;
+  background: #fdfcfb;
 }
 
 /* Header */
 .luxsleek-header {
-    margin-bottom: 28px;
-    text-align: left;
+  margin-bottom: 28px;
+  text-align: left;
 }
 
 .luxsleek-name {
-    font-family: 'Playfair Display', Georgia, serif;
-    font-size: calc(32pt * var(--scale, 1));
-    font-weight: 400;
-    color: #1a1a1a;
-    letter-spacing: 0.04em;
-    margin: 0 0 8px 0;
-    line-height: 1.1;
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: calc(32pt * var(--scale, 1));
+  font-weight: 400;
+  color: #1a1a1a;
+  letter-spacing: 0.04em;
+  margin: 0 0 8px 0;
+  line-height: 1.1;
 }
 
 .luxsleek-title {
-    font-size: calc(11pt * var(--scale, 1));
-    color: #6b6b6b;
-    font-weight: 400;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+  font-size: calc(11pt * var(--scale, 1));
+  color: #6b6b6b;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 /* Main Sections */
 .luxsleek-main-section {
-    margin-bottom: 26px;
+  margin-bottom: 26px;
 }
 
 .luxsleek-main-title {
-    font-family: 'Playfair Display', Georgia, serif;
-    font-size: calc(12pt * var(--scale, 1));
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
-    color: #1a1a1a;
-    margin-bottom: 16px;
-    padding-bottom: 8px;
-    border-bottom: 2px solid #d4af37;
-    display: inline-block;
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: calc(12pt * var(--scale, 1));
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: #1a1a1a;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #d4af37;
+  display: inline-block;
 }
 
 /* Entries */
 .luxsleek-entries {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
 
 .luxsleek-entry {
-    position: relative;
-    padding-left: 14px;
-    border-left: 2px solid #e8e6e3;
+  position: relative;
+  padding-left: 14px;
+  border-left: 2px solid #e8e6e3;
 }
 
 .luxsleek-entry-header {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 8px;
-    margin-bottom: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
 }
 
 .luxsleek-entry-role {
-    font-weight: 600;
-    font-size: calc(10pt * var(--scale, 1));
-    color: #1a1a1a;
-    letter-spacing: 0.01em;
+  font-weight: 600;
+  font-size: calc(10pt * var(--scale, 1));
+  color: #1a1a1a;
+  letter-spacing: 0.01em;
 }
 
 .luxsleek-entry-company {
-    font-size: calc(9.5pt * var(--scale, 1));
-    color: #5a5a5a;
-    font-style: italic;
+  font-size: calc(9.5pt * var(--scale, 1));
+  color: #5a5a5a;
+  font-style: italic;
 }
 
 .luxsleek-entry-dates {
-    font-size: calc(8.5pt * var(--scale, 1));
-    color: #888;
-    margin-left: auto;
-    font-weight: 500;
-    letter-spacing: 0.02em;
+  font-size: calc(8.5pt * var(--scale, 1));
+  color: #888;
+  margin-left: auto;
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 
 .luxsleek-entry-institution {
-    font-size: calc(9pt * var(--scale, 1));
-    color: #5a5a5a;
-    font-style: italic;
-    margin-bottom: 4px;
+  font-size: calc(9pt * var(--scale, 1));
+  color: #5a5a5a;
+  font-style: italic;
+  margin-bottom: 4px;
 }
 
 .luxsleek-entry-description {
-    font-size: calc(9pt * var(--scale, 1));
-    color: #4a4a4a;
-    line-height: 1.65;
-    margin: 6px 0 0 0;
+  font-size: calc(9pt * var(--scale, 1));
+  color: #4a4a4a;
+  line-height: 1.65;
+  margin: 6px 0 0 0;
 }
 
 /* Highlights */
 .luxsleek-highlights {
-    list-style: none;
-    padding: 0;
-    margin: 8px 0 0 0;
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0 0;
 }
 
 .luxsleek-highlights li {
-    font-size: calc(9pt * var(--scale, 1));
-    color: #4a4a4a;
-    line-height: 1.6;
-    margin-bottom: 4px;
-    padding-left: 14px;
-    position: relative;
+  font-size: calc(9pt * var(--scale, 1));
+  color: #4a4a4a;
+  line-height: 1.6;
+  margin-bottom: 4px;
+  padding-left: 14px;
+  position: relative;
 }
 
 .luxsleek-highlights li::before {
-    content: '—';
-    position: absolute;
-    left: 0;
-    color: #d4af37;
+  content: "—";
+  position: absolute;
+  left: 0;
+  color: #d4af37;
 }
 
 /* Publications */
 .luxsleek-publication {
-    font-size: calc(9pt * var(--scale, 1));
-    color: #4a4a4a;
-    line-height: 1.65;
-    margin-bottom: 8px;
+  font-size: calc(9pt * var(--scale, 1));
+  color: #4a4a4a;
+  line-height: 1.65;
+  margin-bottom: 8px;
 }
 
 .luxsleek-publication em {
-    font-style: italic;
-    color: #6b6b6b;
+  font-style: italic;
+  color: #6b6b6b;
 }
 
 /* Hobbies */
 .luxsleek-hobbies {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .luxsleek-hobby {
-    font-size: calc(8.5pt * var(--scale, 1));
-    color: #5a5a5a;
-    padding: 6px 14px;
-    background: #f5f3f0;
-    border-radius: 20px;
-    border: 1px solid #e8e6e3;
+  font-size: calc(8.5pt * var(--scale, 1));
+  color: #5a5a5a;
+  padding: 6px 14px;
+  background: #f5f3f0;
+  border-radius: 20px;
+  border: 1px solid #e8e6e3;
 }
 
 .luxsleek-hobby strong {
-    font-weight: 600;
-    color: #3a3a3a;
+  font-weight: 600;
+  color: #3a3a3a;
 }
 
 /* ─── Print Styles ───────────────────────────────────────────────────────── */
 
 @media print {
-    .luxsleek-container {
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
+  .luxsleek-container {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
 
-    .luxsleek-sidebar {
-        background: #2c2c2c !important;
-    }
+  .luxsleek-sidebar {
+    background: #2c2c2c !important;
+  }
 }

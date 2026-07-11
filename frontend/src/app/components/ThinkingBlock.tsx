@@ -69,9 +69,7 @@ export function ThinkingBlock({
   className,
 }: ThinkingBlockProps) {
   // Default: expanded when streaming, collapsed when complete
-  const [isExpanded, setIsExpanded] = useState(
-    defaultExpanded ?? isStreaming
-  );
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded ?? isStreaming);
   const { t } = useLanguage();
   const [elapsedTime, setElapsedTime] = useState(0);
   const startTimeRef = useRef(startTime || Date.now());
@@ -109,7 +107,9 @@ export function ThinkingBlock({
     // Take first 60 chars, trim to last complete word
     const truncated = content.slice(0, 60);
     const lastSpace = truncated.lastIndexOf(" ");
-    return lastSpace > 20 ? truncated.slice(0, lastSpace) + "..." : truncated + "...";
+    return lastSpace > 20
+      ? truncated.slice(0, lastSpace) + "..."
+      : truncated + "...";
   };
 
   // For redacted thinking, show a placeholder message
@@ -155,7 +155,7 @@ export function ThinkingBlock({
             className={cn(
               "h-3.5 w-3.5 transition-colors duration-300",
               isStreaming
-                ? "text-violet-500 animate-pulse"
+                ? "animate-pulse text-violet-500"
                 : "text-gray-400 dark:text-gray-500"
             )}
           />
@@ -163,7 +163,7 @@ export function ThinkingBlock({
         {/* Thread line - extends down */}
         <div
           className={cn(
-            "w-0.5 flex-1 min-h-[16px] transition-colors duration-300",
+            "min-h-[16px] w-0.5 flex-1 transition-colors duration-300",
             isStreaming
               ? "bg-gradient-to-b from-violet-300 to-transparent dark:from-violet-700"
               : "bg-gradient-to-b from-gray-200 to-transparent dark:from-gray-700"
@@ -172,7 +172,7 @@ export function ThinkingBlock({
       </div>
 
       {/* Main content area */}
-      <div className="flex-1 pb-4 min-w-0">
+      <div className="min-w-0 flex-1 pb-4">
         {/* Header - clickable to toggle */}
         <button
           type="button"
@@ -209,7 +209,7 @@ export function ThinkingBlock({
           )}
 
           {/* Expand/collapse indicator */}
-          <span className="ml-auto flex items-center text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors">
+          <span className="ml-auto flex items-center text-gray-400 transition-colors group-hover:text-gray-600 dark:group-hover:text-gray-300">
             {isExpanded ? (
               <ChevronDown className="h-4 w-4" />
             ) : (
@@ -220,7 +220,7 @@ export function ThinkingBlock({
 
         {/* Summary preview when collapsed */}
         {!isExpanded && content && (
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 line-clamp-1">
+          <p className="mt-1 line-clamp-1 text-sm text-gray-500 dark:text-gray-400">
             {getSummary()}
           </p>
         )}

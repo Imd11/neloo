@@ -9,7 +9,8 @@ export function TypingIndicator({
   className?: string;
   dotClassName?: string;
 }) {
-  const resolvedDotClassName = dotClassName ?? "w-2 h-2 bg-foreground/60 rounded-full";
+  const resolvedDotClassName =
+    dotClassName ?? "w-2 h-2 bg-foreground/60 rounded-full";
   return (
     <div className={className ?? "flex items-center gap-1.5 py-2"}>
       <motion.span

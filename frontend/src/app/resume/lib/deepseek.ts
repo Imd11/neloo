@@ -2,28 +2,28 @@
 // Using OpenAI-compatible API format
 
 export interface ChatMessage {
-    role: 'system' | 'user' | 'assistant';
-    content: string;
+  role: "system" | "user" | "assistant";
+  content: string;
 }
 
 export interface DeepSeekResponse {
-    id: string;
-    choices: {
-        index: number;
-        message: {
-            role: string;
-            content: string;
-        };
-        finish_reason: string;
-    }[];
+  id: string;
+  choices: {
+    index: number;
+    message: {
+      role: string;
+      content: string;
+    };
+    finish_reason: string;
+  }[];
 }
 
 // Suggestion structure for applying changes
 export interface Suggestion {
-    field: string;        // e.g., "personal.summary" or "experience.0.description"
-    before: string;       // Original value
-    after: string;        // Suggested new value
-    reason?: string;      // Why this change is recommended
+  field: string; // e.g., "personal.summary" or "experience.0.description"
+  before: string; // Original value
+  after: string; // Suggested new value
+  reason?: string; // Why this change is recommended
 }
 
 // System prompt for resume optimization with structured suggestions
@@ -69,95 +69,104 @@ Response rules:
 - JSON must be wrapped in \`\`\`json fences.`;
 
 // Backend URL for API proxy
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || '';
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 export async function sendMessage(
-    messages: ChatMessage[],
-    onStream?: (chunk: string) => void
+  messages: ChatMessage[],
+  onStream?: (chunk: string) => void
 ): Promise<string> {
-    // Call backend proxy instead of direct DeepSeek API
-    // This avoids exposing API keys in frontend
-    const response = await fetch(`${BACKEND_URL}/api/resume/optimize`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            messages: messages.map(m => ({ role: m.role, content: m.content })),
-            stream: false,  // Streaming not supported via proxy yet
-        }),
-    });
+  // Call backend proxy instead of direct DeepSeek API
+  // This avoids exposing API keys in frontend
+  const response = await fetch(`${BACKEND_URL}/api/resume/optimize`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      messages: messages.map((m) => ({ role: m.role, content: m.content })),
+      stream: false, // Streaming not supported via proxy yet
+    }),
+  });
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `API error: ${response.status}`);
-    }
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `API error: ${response.status}`);
+  }
 
-    const data = await response.json();
+  const data = await response.json();
 
-    if (!data.success) {
-        throw new Error(data.detail || 'Optimization failed');
-    }
+  if (!data.success) {
+    throw new Error(data.detail || "Optimization failed");
+  }
 
-    const content = data.content || '';
+  const content = data.content || "";
 
-    // If onStream callback provided, simulate streaming with full content
-    if (onStream && content) {
-        onStream(content);
-    }
+  // If onStream callback provided, simulate streaming with full content
+  if (onStream && content) {
+    onStream(content);
+  }
 
-    return content;
+  return content;
 }
 
 // Helper to create a context message with current resume data
 export function createResumeContext(resumeData: unknown): string {
-    return `Current resume data:\n\`\`\`json\n${JSON.stringify(resumeData, null, 2)}\n\`\`\``;
+  return `Current resume data:\n\`\`\`json\n${JSON.stringify(
+    resumeData,
+    null,
+    2
+  )}\n\`\`\``;
 }
 
 // Parse AI response to extract suggestion if present
-export function parseAIResponse(content: string): { message: string; suggestion?: Suggestion } {
-    // Try to extract JSON from the response
-    const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
+export function parseAIResponse(content: string): {
+  message: string;
+  suggestion?: Suggestion;
+} {
+  // Try to extract JSON from the response
+  const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
 
-    if (jsonMatch) {
-        try {
-            const parsed = JSON.parse(jsonMatch[1]);
-            if (parsed.suggestion) {
-                return {
-                    message: parsed.message || '',
-                    suggestion: parsed.suggestion,
-                };
-            }
-        } catch {
-            // Not valid JSON, return as plain message
-        }
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[1]);
+      if (parsed.suggestion) {
+        return {
+          message: parsed.message || "",
+          suggestion: parsed.suggestion,
+        };
+      }
+    } catch {
+      // Not valid JSON, return as plain message
     }
+  }
 
-    // Return as plain message if no suggestion found
-    return { message: content };
+  // Return as plain message if no suggestion found
+  return { message: content };
 }
 
 // Apply suggestion to resume data
 export function applySuggestion(
-    resumeData: Record<string, unknown>,
-    suggestion: Suggestion
+  resumeData: Record<string, unknown>,
+  suggestion: Suggestion
 ): Record<string, unknown> {
-    const newData = JSON.parse(JSON.stringify(resumeData)); // Deep clone
-    const path = suggestion.field.split('.');
+  const newData = JSON.parse(JSON.stringify(resumeData)); // Deep clone
+  const path = suggestion.field.split(".");
 
-    let current: Record<string, unknown> = newData;
-    for (let i = 0; i < path.length - 1; i++) {
-        const key = path[i];
-        // Handle array indices like "experience.0"
-        if (!isNaN(Number(key))) {
-            current = (current as unknown as Record<string, unknown>[])[Number(key)] as Record<string, unknown>;
-        } else {
-            current = current[key] as Record<string, unknown>;
-        }
+  let current: Record<string, unknown> = newData;
+  for (let i = 0; i < path.length - 1; i++) {
+    const key = path[i];
+    // Handle array indices like "experience.0"
+    if (!isNaN(Number(key))) {
+      current = (current as unknown as Record<string, unknown>[])[
+        Number(key)
+      ] as Record<string, unknown>;
+    } else {
+      current = current[key] as Record<string, unknown>;
     }
+  }
 
-    const lastKey = path[path.length - 1];
-    current[lastKey] = suggestion.after;
+  const lastKey = path[path.length - 1];
+  current[lastKey] = suggestion.after;
 
-    return newData;
+  return newData;
 }

@@ -24,7 +24,7 @@ export function TemplateCard({
     <button
       onClick={onClick}
       className={cn(
-        "group relative w-full aspect-[4/5] rounded-2xl overflow-hidden",
+        "group relative aspect-[4/5] w-full overflow-hidden rounded-2xl",
         "border border-border hover:border-ring",
         "transition-all duration-300",
         "hover:scale-[1.02] hover:shadow-subtle",
@@ -45,15 +45,15 @@ export function TemplateCard({
           className={cn(
             "absolute inset-0",
             gradient,
-            "opacity-80 group-hover:opacity-100 transition-opacity"
+            "opacity-80 transition-opacity group-hover:opacity-100"
           )}
         />
       )}
 
       {/* Model Badge */}
       {model && (
-        <div className="absolute top-2 left-2">
-          <span className="px-1.5 py-0.5 text-[10px] font-medium bg-background/80 backdrop-blur-sm rounded text-foreground/80">
+        <div className="absolute left-2 top-2">
+          <span className="rounded bg-background/80 px-1.5 py-0.5 text-[10px] font-medium text-foreground/80 backdrop-blur-sm">
             {model}
           </span>
         </div>
@@ -67,10 +67,20 @@ export function TemplateCard({
 
       {/* Content */}
       <div className="absolute inset-0 flex flex-col justify-end p-4">
-        <h3 className={cn("text-sm font-medium mb-1 text-left", previewImage ? "text-white" : "text-foreground")}>
+        <h3
+          className={cn(
+            "mb-1 text-left text-sm font-medium",
+            previewImage ? "text-white" : "text-foreground"
+          )}
+        >
           {title}
         </h3>
-        <p className={cn("text-xs text-left line-clamp-2", previewImage ? "text-white/75" : "text-muted-foreground")}>
+        <p
+          className={cn(
+            "line-clamp-2 text-left text-xs",
+            previewImage ? "text-white/75" : "text-muted-foreground"
+          )}
+        >
           {description}
         </p>
       </div>

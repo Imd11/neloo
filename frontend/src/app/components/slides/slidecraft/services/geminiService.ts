@@ -1,7 +1,7 @@
-import { Slide, Attachment, StyleDimensions } from '../types';
-import { buildStyleInstructions } from '../data/styleInstructions';
-import { buildPresetPromptContext } from '../data/presets';
-import { getConfig } from '@/lib/config';
+import { Slide, Attachment, StyleDimensions } from "../types";
+import { buildStyleInstructions } from "../data/styleInstructions";
+import { buildPresetPromptContext } from "../data/presets";
+import { getConfig } from "@/lib/config";
 
 const BAOYU_OUTLINE_RULES = `## Content & Deck Rules
 - Respect reader attention: each slide communicates ONE main idea
@@ -50,49 +50,58 @@ You are "The Architect" - a master visual storyteller creating presentation slid
 - Use the same language and punctuation style as the provided slide content`;
 
 function getApiBaseUrl(): string {
-    return (getConfig()?.deploymentUrl || process.env.NEXT_PUBLIC_API_URL || '').replace(/\/+$/, '');
+  return (
+    getConfig()?.deploymentUrl ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    ""
+  ).replace(/\/+$/, "");
 }
 
 async function generateSlidesText(
-    system: string,
-    prompt: string,
-    signal?: AbortSignal,
-    modelId?: string | null,
-    attachments: Attachment[] = [],
-    accessToken?: string
+  system: string,
+  prompt: string,
+  signal?: AbortSignal,
+  modelId?: string | null,
+  attachments: Attachment[] = [],
+  accessToken?: string
 ): Promise<string> {
-    const baseUrl = getApiBaseUrl();
-    const response = await fetch(`${baseUrl}/api/slides/generate`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-        },
-        body: JSON.stringify({
-            system,
-            prompt,
-            model_id: modelId,
-            attachments: attachments.map((attachment) => ({
-                name: attachment.name,
-                mime_type: attachment.mimeType,
-                data: attachment.data,
-            })),
-        }),
-        signal,
-    });
+  const baseUrl = getApiBaseUrl();
+  const response = await fetch(`${baseUrl}/api/slides/generate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    },
+    body: JSON.stringify({
+      system,
+      prompt,
+      model_id: modelId,
+      attachments: attachments.map((attachment) => ({
+        name: attachment.name,
+        mime_type: attachment.mimeType,
+        data: attachment.data,
+      })),
+    }),
+    signal,
+  });
 
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Slides generation failed: ${response.status} ${errorText}`);
-    }
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Slides generation failed: ${response.status} ${errorText}`
+    );
+  }
 
-    const data = await response.json();
-    return data.text || '';
+  const data = await response.json();
+  return data.text || "";
 }
-function buildOutlineSystemPrompt(style?: StyleDimensions, presetId?: string): string {
-    const styleBlock = style ? buildStyleInstructions(style, presetId) : '';
+function buildOutlineSystemPrompt(
+  style?: StyleDimensions,
+  presetId?: string
+): string {
+  const styleBlock = style ? buildStyleInstructions(style, presetId) : "";
 
-    return `You are a world-class presentation designer and content strategist.
+  return `You are a world-class presentation designer and content strategist.
 
 ## Content Analysis
 Before generating slides, analyze the input to identify:
@@ -135,93 +144,111 @@ Return ONLY the JSON array. No markdown fences, no explanation.`;
 }
 
 export async function generateOutlineStream(
-    topic: string,
-    attachments: Attachment[],
-    style: StyleDimensions | undefined,
-    onChunk: (text: string) => void,
-    signal?: AbortSignal,
-    presetId?: string,
-    modelId?: string | null,
-    accessToken?: string
+  topic: string,
+  attachments: Attachment[],
+  style: StyleDimensions | undefined,
+  onChunk: (text: string) => void,
+  signal?: AbortSignal,
+  presetId?: string,
+  modelId?: string | null,
+  accessToken?: string
 ): Promise<string> {
-    const presetContext = buildPresetPromptContext(presetId);
-    const attachmentSummary = attachments.length > 0
-        ? `\n\nAttached files:\n${attachments
-            .map(att => `- ${att.name} (${att.mimeType || 'unknown'})`)
-            .join('\n')}`
-        : '';
-    const fullText = await generateSlidesText(
-        buildOutlineSystemPrompt(style, presetId),
-        `Create a presentation about: ${topic || 'the provided content'}.${attachmentSummary}${presetContext ? `\n\n${presetContext}\n\nUse this preset faithfully in the deck's narrative, visual direction, layout choice, and information density.` : ''}`,
-        signal,
-        modelId,
-        attachments,
-        accessToken
-    );
-    onChunk(fullText);
+  const presetContext = buildPresetPromptContext(presetId);
+  const attachmentSummary =
+    attachments.length > 0
+      ? `\n\nAttached files:\n${attachments
+          .map((att) => `- ${att.name} (${att.mimeType || "unknown"})`)
+          .join("\n")}`
+      : "";
+  const fullText = await generateSlidesText(
+    buildOutlineSystemPrompt(style, presetId),
+    `Create a presentation about: ${
+      topic || "the provided content"
+    }.${attachmentSummary}${
+      presetContext
+        ? `\n\n${presetContext}\n\nUse this preset faithfully in the deck's narrative, visual direction, layout choice, and information density.`
+        : ""
+    }`,
+    signal,
+    modelId,
+    attachments,
+    accessToken
+  );
+  onChunk(fullText);
 
-    return fullText;
+  return fullText;
 }
 
 export async function generateSingleSlide(
-    topic: string,
-    existingSlides: Slide[],
-    insertIndex: number,
-    style?: StyleDimensions,
-    presetId?: string,
-    modelId?: string | null,
-    accessToken?: string
+  topic: string,
+  existingSlides: Slide[],
+  insertIndex: number,
+  style?: StyleDimensions,
+  presetId?: string,
+  modelId?: string | null,
+  accessToken?: string
 ): Promise<Slide | null> {
-    const styleBlock = style ? buildStyleInstructions(style, presetId) : '';
-    const presetContext = buildPresetPromptContext(presetId);
-    const context = existingSlides.map((s, i) => `Slide ${i + 1}: ${s.title}`).join('\n');
+  const styleBlock = style ? buildStyleInstructions(style, presetId) : "";
+  const presetContext = buildPresetPromptContext(presetId);
+  const context = existingSlides
+    .map((s, i) => `Slide ${i + 1}: ${s.title}`)
+    .join("\n");
 
-    const text = await generateSlidesText(
-        `You are a presentation designer. Generate ONE slide to insert at position ${insertIndex + 1}.
+  const text = await generateSlidesText(
+    `You are a presentation designer. Generate ONE slide to insert at position ${
+      insertIndex + 1
+    }.
 ${BAOYU_OUTLINE_RULES}
 ${styleBlock}
 Return a single JSON object with: title, content, visualDescription, slideType ("content"), layout (one of: title-left, split-screen, big-statement, top-title, quote-callout, bottom-heavy), narrativeGoal.
 Return ONLY JSON. No markdown.`,
-        `Topic: ${topic}\n\nExisting outline:\n${context}\n\nGenerate a new slide for position ${insertIndex + 1}.${presetContext ? `\n\n${presetContext}` : ''}`,
-        undefined,
-        modelId,
-        [],
-        accessToken
-    );
-    try {
-        const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-        const slide = JSON.parse(cleaned);
-        return {
-            id: crypto.randomUUID(),
-            title: slide.title || 'New Slide',
-            content: slide.content || '',
-            visualDescription: slide.visualDescription || '',
-            slideType: slide.slideType || 'content',
-            layout: slide.layout || 'title-left',
-            narrativeGoal: slide.narrativeGoal || '',
-        };
-    } catch { return null; }
+    `Topic: ${topic}\n\nExisting outline:\n${context}\n\nGenerate a new slide for position ${
+      insertIndex + 1
+    }.${presetContext ? `\n\n${presetContext}` : ""}`,
+    undefined,
+    modelId,
+    [],
+    accessToken
+  );
+  try {
+    const cleaned = text
+      .replace(/```json\s*/g, "")
+      .replace(/```\s*/g, "")
+      .trim();
+    const slide = JSON.parse(cleaned);
+    return {
+      id: crypto.randomUUID(),
+      title: slide.title || "New Slide",
+      content: slide.content || "",
+      visualDescription: slide.visualDescription || "",
+      slideType: slide.slideType || "content",
+      layout: slide.layout || "title-left",
+      narrativeGoal: slide.narrativeGoal || "",
+    };
+  } catch {
+    return null;
+  }
 }
 
 export async function generateSlideImage(
-    slide: Slide,
-    style?: StyleDimensions,
-    signal?: AbortSignal,
-    presetId?: string
+  slide: Slide,
+  style?: StyleDimensions,
+  signal?: AbortSignal,
+  presetId?: string
 ): Promise<string> {
-    const styleBlock = style ? buildStyleInstructions(style, presetId) : '';
-    const presetContext = buildPresetPromptContext(presetId);
-    const layoutGuidance = getLayoutGuidance(slide.layout, slide.slideType);
+  const styleBlock = style ? buildStyleInstructions(style, presetId) : "";
+  const presetContext = buildPresetPromptContext(presetId);
+  const layoutGuidance = getLayoutGuidance(slide.layout, slide.slideType);
 
-    const prompt = `Create a stunning, high-quality 16:9 presentation slide image.
+  const prompt = `Create a stunning, high-quality 16:9 presentation slide image.
 
 ${BAOYU_IMAGE_BASE_PROMPT}
 
-${presetContext ? `## Selected Preset\n${presetContext}` : ''}
+${presetContext ? `## Selected Preset\n${presetContext}` : ""}
 
 ## Slide Content
 Slide Type:
-${slide.slideType || 'content'}
+${slide.slideType || "content"}
 
 Title:
 ${slide.title}
@@ -229,7 +256,7 @@ ${slide.title}
 Body Copy:
 ${slide.content}
 
-${slide.narrativeGoal ? `Narrative Goal:\n${slide.narrativeGoal}\n` : ''}
+${slide.narrativeGoal ? `Narrative Goal:\n${slide.narrativeGoal}\n` : ""}
 
 ## Visual Direction
 ${slide.visualDescription}
@@ -251,61 +278,69 @@ ${styleBlock}
 - Aspect ratio MUST be 16:9 (landscape)
 - High resolution, professional quality`;
 
-    const response = await fetch('/api/generate-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            prompt,
-            size: '16x9',
-            resolution: '1k',
-        }),
-        signal,
+  const response = await fetch("/api/generate-image", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      prompt,
+      size: "16x9",
+      resolution: "1k",
+    }),
+    signal,
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Image API error: ${response.status} - ${errText}`);
+  }
+
+  const data = await response.json();
+
+  const image = data.images?.[0];
+  if (!image) {
+    throw new Error("No image data returned");
+  }
+  if (image.startsWith("data:image/")) {
+    return image.split(",")[1] || "";
+  }
+  if (image.startsWith("http")) {
+    const imageResponse = await fetch(image);
+    const imageBlob = await imageResponse.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = (reader.result as string).split(",")[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(imageBlob);
     });
-
-    if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Image API error: ${response.status} - ${errText}`);
-    }
-
-    const data = await response.json();
-
-    const image = data.images?.[0];
-    if (!image) {
-        throw new Error('No image data returned');
-    }
-    if (image.startsWith('data:image/')) {
-        return image.split(',')[1] || '';
-    }
-    if (image.startsWith('http')) {
-        const imageResponse = await fetch(image);
-        const imageBlob = await imageResponse.blob();
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                const base64 = (reader.result as string).split(',')[1];
-                resolve(base64);
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(imageBlob);
-        });
-    }
-    return image;
+  }
+  return image;
 }
 
 function getLayoutGuidance(layout?: string, slideType?: string): string {
-    const layoutMap: Record<string, string> = {
-        'title-hero': 'Large centered title plus supporting line below. Best for cover slides and section breaks. Strong hero composition, spacious margins, visual hook first.',
-        'title-left': 'Left-aligned title with supporting content below. Best for straightforward narrative slides. Clean editorial hierarchy, comfortable margins, clear reading flow.',
-        'split-screen': 'Half text, half visual. Best for feature highlights or comparisons. Keep the split intentional and balanced, not cluttered.',
-        'big-statement': 'Single dominant statement with minimal supporting copy. Best for impact moments or key takeaways. Let scale and whitespace carry the message.',
-        'top-title': 'Title anchored across the top with organized content below. Best for structured explanatory slides. Keep the body area disciplined and easy to scan.',
-        'quote-callout': 'Featured quote or insight with supporting context. Best for memorable statements with strong attribution feel. Use elevated typography and central focus.',
-        'bottom-heavy': 'Large visual area above, text concentrated below. Best when the visual should lead and the explanation should land afterward.',
-        'closing': 'Memorable ending slide with a clean, confident closing statement. Best for final takeaway or call-to-action. Avoid generic thank-you energy.',
-    };
+  const layoutMap: Record<string, string> = {
+    "title-hero":
+      "Large centered title plus supporting line below. Best for cover slides and section breaks. Strong hero composition, spacious margins, visual hook first.",
+    "title-left":
+      "Left-aligned title with supporting content below. Best for straightforward narrative slides. Clean editorial hierarchy, comfortable margins, clear reading flow.",
+    "split-screen":
+      "Half text, half visual. Best for feature highlights or comparisons. Keep the split intentional and balanced, not cluttered.",
+    "big-statement":
+      "Single dominant statement with minimal supporting copy. Best for impact moments or key takeaways. Let scale and whitespace carry the message.",
+    "top-title":
+      "Title anchored across the top with organized content below. Best for structured explanatory slides. Keep the body area disciplined and easy to scan.",
+    "quote-callout":
+      "Featured quote or insight with supporting context. Best for memorable statements with strong attribution feel. Use elevated typography and central focus.",
+    "bottom-heavy":
+      "Large visual area above, text concentrated below. Best when the visual should lead and the explanation should land afterward.",
+    closing:
+      "Memorable ending slide with a clean, confident closing statement. Best for final takeaway or call-to-action. Avoid generic thank-you energy.",
+  };
 
-    if (layout && layoutMap[layout]) return layoutMap[layout];
-    if (slideType === 'cover') return layoutMap['title-hero'];
-    if (slideType === 'back-cover') return layoutMap['closing'];
-    return layoutMap['title-left'];
+  if (layout && layoutMap[layout]) return layoutMap[layout];
+  if (slideType === "cover") return layoutMap["title-hero"];
+  if (slideType === "back-cover") return layoutMap["closing"];
+  return layoutMap["title-left"];
 }

@@ -9,7 +9,10 @@ interface UserAvatarProps {
   dropdownDirection?: "up" | "down";
 }
 
-export function UserAvatar({ className = "", dropdownDirection = "down" }: UserAvatarProps) {
+export function UserAvatar({
+  className = "",
+  dropdownDirection = "down",
+}: UserAvatarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { user, loading } = useAuth();
@@ -39,9 +42,9 @@ export function UserAvatar({ className = "", dropdownDirection = "down" }: UserA
     return (
       <div
         className={`
-        w-9 h-9 rounded-full
+        h-9 w-9 animate-pulse
+        rounded-full
         bg-[var(--color-surface)]
-        animate-pulse
         ${className}
       `}
       />
@@ -49,12 +52,15 @@ export function UserAvatar({ className = "", dropdownDirection = "down" }: UserA
   }
 
   return (
-    <div ref={dropdownRef} className={`relative ${className}`}>
+    <div
+      ref={dropdownRef}
+      className={`relative ${className}`}
+    >
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`
-          w-9 h-9 rounded-full
-          flex items-center justify-center
+          flex h-9 w-9
+          items-center justify-center rounded-full
           text-sm font-medium
           transition-all duration-200
           ${
@@ -66,30 +72,31 @@ export function UserAvatar({ className = "", dropdownDirection = "down" }: UserA
         `}
         aria-label="User menu"
       >
-        {user.email ? getInitials(user.email) : <User className="w-4 h-4" />}
+        {user.email ? getInitials(user.email) : <User className="h-4 w-4" />}
       </button>
 
       {/* Dropdown menu */}
       {isOpen && (
         <div
           className={`
-            absolute w-56
-            bg-[var(--color-surface)]
-            border border-[var(--color-border)]
-            rounded-lg shadow-lg
-            py-1 z-50
-            ${dropdownDirection === "up"
-              ? "bottom-full mb-2 left-0 animate-in fade-in slide-in-from-bottom-2 duration-200"
-              : "top-full mt-2 right-0 animate-in fade-in slide-in-from-top-2 duration-200"
+            absolute z-50
+            w-56
+            rounded-lg border
+            border-[var(--color-border)] bg-[var(--color-surface)]
+            py-1 shadow-lg
+            ${
+              dropdownDirection === "up"
+                ? "bottom-full left-0 mb-2 duration-200 animate-in fade-in slide-in-from-bottom-2"
+                : "right-0 top-full mt-2 duration-200 animate-in fade-in slide-in-from-top-2"
             }
           `}
         >
           {/* User info */}
-          <div className="px-4 py-3 border-b border-[var(--color-border)]">
-            <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">
+          <div className="border-b border-[var(--color-border)] px-4 py-3">
+            <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
               {user.email}
             </p>
-            <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">
+            <p className="mt-0.5 text-xs text-[var(--color-text-secondary)]">
               Local guest
             </p>
           </div>
@@ -102,16 +109,15 @@ export function UserAvatar({ className = "", dropdownDirection = "down" }: UserA
                 // TODO: Navigate to settings
               }}
               className="
-                w-full flex items-center gap-3 px-4 py-2
+                flex w-full items-center gap-3 px-4 py-2
                 text-sm text-[var(--color-text-primary)]
-                hover:bg-[var(--color-border-light)]
                 transition-colors
+                hover:bg-[var(--color-border-light)]
               "
             >
-              <Settings className="w-4 h-4 text-[var(--color-text-secondary)]" />
+              <Settings className="h-4 w-4 text-[var(--color-text-secondary)]" />
               Settings
             </button>
-
           </div>
         </div>
       )}

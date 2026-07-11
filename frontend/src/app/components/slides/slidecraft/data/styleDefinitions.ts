@@ -4,8 +4,7 @@
  */
 
 export const STYLE_DEFINITIONS: Record<string, string> = {
-
-    blueprint: `# blueprint
+  blueprint: `# blueprint
 
 Precise technical blueprint style with professional analytical visual presentation
 
@@ -73,7 +72,7 @@ Tiempos Text or similar elegant serif for body explanations. Clean, readable at 
 
 Technical architecture, system design, data analysis, professional business presentations, engineering documentation, process flows`,
 
-    chalkboard: `# chalkboard
+  chalkboard: `# chalkboard
 
 Black chalkboard background with colorful chalk drawing style
 
@@ -142,7 +141,7 @@ Neater chalk handwriting for readability. Consistent sizing with natural variati
 
 Educational presentations, classroom content, tutorials, teaching materials, back-to-school themes, workshop presentations, informal learning sessions, knowledge sharing`,
 
-    corporate: `# corporate
+  corporate: `# corporate
 
 Professional business style with navy/gold palette and structured layouts
 
@@ -212,7 +211,7 @@ Humanist sans-serif (Source Sans Pro style) for body text. Friendly yet professi
 
 Business presentations, investor decks, quarterly reports, executive summaries, client proposals, corporate communications, board meetings`,
 
-    minimal: `# minimal
+  minimal: `# minimal
 
 Ultra-clean keynote style with maximum whitespace and zen-like simplicity
 
@@ -277,7 +276,7 @@ Same family as headlines in lighter weight. Minimal size contrast. Clean, airy f
 
 Executive briefings, keynote presentations, premium brand communications, minimalist products, investor meetings, high-level strategy`,
 
-    'sketch-notes': `# sketch-notes
+  "sketch-notes": `# sketch-notes
 
 Soft hand-drawn illustration style with fresh, refined minimalist editorial aesthetic
 
@@ -344,7 +343,7 @@ Clear handwritten round or hard-pen style mimicking everyday notes. Consistent s
 
 Educational content, knowledge sharing, technical explanations, friendly presentations, tutorials, onboarding materials`,
 
-    watercolor: `# watercolor
+  watercolor: `# watercolor
 
 Soft watercolor illustration style with hand-painted textures and natural warmth
 
@@ -413,7 +412,7 @@ Clean rounded sans-serif or casual handwriting style. Readable at smaller sizes.
 
 Lifestyle content, wellness presentations, travel guides, food and cooking content, personal stories, creative workshops, artistic portfolios, warm educational content`,
 
-    'dark-atmospheric': `# dark-atmospheric
+  "dark-atmospheric": `# dark-atmospheric
 
 Dark moody aesthetic with deep colors and glowing accent elements
 
@@ -483,7 +482,7 @@ Clean sans-serif in light gray or muted white. Readable against dark backgrounds
 
 Entertainment presentations, music and audio content, creative agency pitches, evening events, premium brand reveals, gaming content, cinematic storytelling, tech product launches`,
 
-    notion: `# notion
+  notion: `# notion
 
 SaaS dashboard aesthetic with clean data focus and productivity tool styling
 
@@ -553,7 +552,7 @@ Same family in regular weight. Optimized for screen reading. Comfortable line he
 
 Product demos, SaaS presentations, productivity tool pitches, metrics dashboards, feature walkthroughs, B2B presentations, technical product marketing`,
 
-    'bold-editorial': `# bold-editorial
+  "bold-editorial": `# bold-editorial
 
 High-impact magazine editorial style with bold visual expression
 
@@ -623,7 +622,7 @@ Clean sans-serif such as Inter, SF Pro, or Helvetica Neue. Medium weight for bod
 
 Product launches, marketing presentations, keynote speeches, brand showcases, investor pitches, high-stakes presentations`,
 
-    'editorial-infographic': `# editorial-infographic
+  "editorial-infographic": `# editorial-infographic
 
 Modern magazine-style editorial infographic with clear visual storytelling
 
@@ -697,7 +696,7 @@ Humanist sans-serif optimized for reading. Clean, professional, accessible. Comf
 
 Technology explainers, science communication, research summaries, policy briefings, investigative content, educational deep-dives, thought leadership pieces`,
 
-    'fantasy-animation': `# fantasy-animation
+  "fantasy-animation": `# fantasy-animation
 
 Whimsical hand-drawn animation style inspired by classic fantasy illustration
 
@@ -767,7 +766,7 @@ Rounded sans-serif or casual handwritten style. Friendly and readable. Maintains
 
 Educational content, children's presentations, storytelling, creative workshops, book presentations, fantasy/gaming content, inspirational talks, family-friendly events`,
 
-    'intuition-machine': `# intuition-machine
+  "intuition-machine": `# intuition-machine
 
 Technical briefing infographic style with aged paper texture and bilingual explanatory text boxes
 
@@ -840,7 +839,7 @@ Clean geometric sans-serif for text box content. Readable at smaller sizes. Cons
 
 Technical explanations, concept breakdowns, academic presentations, knowledge documentation, research summaries, educational content with depth, bilingual audiences`,
 
-    'pixel-art': `# pixel-art
+  "pixel-art": `# pixel-art
 
 Retro 8-bit pixel art aesthetic with nostalgic gaming visual style
 
@@ -908,7 +907,7 @@ Smaller pixel font with consistent 8x8 or 16x16 character grid. High contrast ag
 
 Gaming presentations, tech tutorials, nostalgic content, developer talks, retro-themed events, educational content for younger audiences, creative tech presentations`,
 
-    scientific: `# scientific
+  scientific: `# scientific
 
 Educational scientific illustration style for pathways, processes, and technical diagrams
 
@@ -982,7 +981,7 @@ Serif for body paragraphs, sans-serif for bullet points and lists. Academic publ
 
 Biology lectures, chemistry presentations, medical education, research presentations, academic papers, scientific conferences, textbook illustrations, process documentation`,
 
-    'vector-illustration': `# vector-illustration
+  "vector-illustration": `# vector-illustration
 
 Flat vector illustration style with clear black outlines and retro soft color palette
 
@@ -1055,7 +1054,7 @@ Clean geometric sans-serif for readability. Futura, Avenir, or similar. Consiste
 
 Educational presentations, creative proposals, children's content, brand showcases, warm approachable topics, explainer content`,
 
-    vintage: `# vintage
+  vintage: `# vintage
 
 Vintage aged-paper aesthetic for historical and expedition-style presentations
 
@@ -1128,9 +1127,8 @@ Readable serif for longer text. Traditional book typography. Comfortable reading
 ## Best For
 
 Historical presentations, travel and exploration content, museum exhibits, heritage brand storytelling, biography presentations, scientific discovery narratives, educational history content`,
-
 };
 
 export function getStyleDefinition(presetId: string): string {
-    return STYLE_DEFINITIONS[presetId] || STYLE_DEFINITIONS.blueprint;
+  return STYLE_DEFINITIONS[presetId] || STYLE_DEFINITIONS.blueprint;
 }

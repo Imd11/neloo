@@ -11,7 +11,7 @@ export interface ThreadItem {
   title: string;
   description: string;
   assistantId?: string;
-  type?: "chat" | "image" | "slides";  // 对话类型
+  type?: "chat" | "image" | "slides"; // 对话类型
 }
 
 export type ThreadHistoryStatus =
@@ -92,10 +92,12 @@ function readThreadsCache(cacheKey: string | null): ThreadItem[] {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
 
-    return parsed.map((item: any): ThreadItem => ({
-      ...item,
-      updatedAt: new Date(item.updatedAt),
-    }));
+    return parsed.map(
+      (item: any): ThreadItem => ({
+        ...item,
+        updatedAt: new Date(item.updatedAt),
+      })
+    );
   } catch (error) {
     console.warn("[useThreads] Failed to read local cache:", error);
     return [];
@@ -179,20 +181,29 @@ export function useThreads(props: {
       });
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), THREADS_FETCH_TIMEOUT_MS);
+      const timeoutId = setTimeout(
+        () => controller.abort(),
+        THREADS_FETCH_TIMEOUT_MS
+      );
 
       try {
-        const resp = await fetch(`${deploymentUrl}/api/threads?${params.toString()}`, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-          signal: controller.signal,
-        });
+        const resp = await fetch(
+          `${deploymentUrl}/api/threads?${params.toString()}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+            signal: controller.signal,
+          }
+        );
 
         if (!resp.ok) {
           const detail = await readErrorDetail(resp);
 
-          if (resp.status === 503 && detail.toLowerCase().includes("database")) {
+          if (
+            resp.status === 503 &&
+            detail.toLowerCase().includes("database")
+          ) {
             throw new ThreadHistoryRequestError({
               code: "history_disabled",
               status: resp.status,
@@ -204,7 +215,8 @@ export function useThreads(props: {
             throw new ThreadHistoryRequestError({
               code: "access_denied",
               status: resp.status,
-              message: "This conversation history is not available to the current user.",
+              message:
+                "This conversation history is not available to the current user.",
             });
           }
 
@@ -227,18 +239,22 @@ export function useThreads(props: {
         const threads = Array.isArray(data?.threads) ? data.threads : [];
 
         // DB threads do not contain LangGraph status or message previews; keep UI stable with defaults.
-        return threads.map((t: any): ThreadItem => ({
-          id: t.langgraph_thread_id,
-          updatedAt: new Date(t.updated_at || t.created_at || Date.now()),
-          status: "idle" as Thread["status"],
-          title: t.title || "Untitled Thread",
-          description: "",
-          assistantId: undefined,
-          type: t.type || "chat",  // 默认为 chat
-        }));
+        return threads.map(
+          (t: any): ThreadItem => ({
+            id: t.langgraph_thread_id,
+            updatedAt: new Date(t.updated_at || t.created_at || Date.now()),
+            status: "idle" as Thread["status"],
+            title: t.title || "Untitled Thread",
+            description: "",
+            assistantId: undefined,
+            type: t.type || "chat", // 默认为 chat
+          })
+        );
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") {
-          console.warn(`[useThreads] Request timeout after ${THREADS_FETCH_TIMEOUT_MS}ms`);
+          console.warn(
+            `[useThreads] Request timeout after ${THREADS_FETCH_TIMEOUT_MS}ms`
+          );
         } else {
           console.error("[useThreads] Failed to fetch threads:", error);
         }
@@ -248,7 +264,10 @@ export function useThreads(props: {
       }
     },
     {
-      fallbackData: cachedThreads.length > 0 ? [cachedThreads.slice(0, pageSize)] : undefined,
+      fallbackData:
+        cachedThreads.length > 0
+          ? [cachedThreads.slice(0, pageSize)]
+          : undefined,
       revalidateFirstPage: true,
       revalidateOnFocus: true,
       shouldRetryOnError: false,
@@ -264,12 +283,14 @@ export function useThreads(props: {
   const flattened = swr.data?.flat() ?? [];
   const historyProblem = swr.error ? makeThreadHistoryProblem(swr.error) : null;
   const historyStatus: ThreadHistoryStatus = historyProblem
-    ? (flattened.length > 0 ? "ready" : historyProblem.code)
+    ? flattened.length > 0
+      ? "ready"
+      : historyProblem.code
     : swr.isLoading && !swr.data
-      ? "loading"
-      : flattened.length > 0
-        ? "ready"
-        : "empty";
+    ? "loading"
+    : flattened.length > 0
+    ? "ready"
+    : "empty";
 
   return {
     ...swr,

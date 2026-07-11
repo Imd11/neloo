@@ -2,10 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Search, MessageSquarePlus, X, Loader2 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -82,12 +79,14 @@ export function SearchDialog({
     results.push({ id: "new", title: t("search.new_chat"), type: "new" });
 
     // Filter history based on query
-    const filtered = flattened.filter(item =>
-      item.title.toLowerCase().includes(query.toLowerCase()) ||
-      (item.description && item.description.toLowerCase().includes(query.toLowerCase()))
+    const filtered = flattened.filter(
+      (item) =>
+        item.title.toLowerCase().includes(query.toLowerCase()) ||
+        (item.description &&
+          item.description.toLowerCase().includes(query.toLowerCase()))
     );
 
-    filtered.forEach(item => {
+    filtered.forEach((item) => {
       results.push({
         id: item.id,
         title: item.title,
@@ -114,15 +113,18 @@ export function SearchDialog({
     }
   }, [open]);
 
-  const handleSelect = useCallback((id: string, type: string) => {
-    if (type === "new") {
-      // Handle new conversation
-      onOpenChange(false);
-    } else {
-      onThreadSelect(id);
-      onOpenChange(false);
-    }
-  }, [onOpenChange, onThreadSelect]);
+  const handleSelect = useCallback(
+    (id: string, type: string) => {
+      if (type === "new") {
+        // Handle new conversation
+        onOpenChange(false);
+      } else {
+        onThreadSelect(id);
+        onOpenChange(false);
+      }
+    },
+    [onOpenChange, onThreadSelect]
+  );
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -132,11 +134,11 @@ export function SearchDialog({
       switch (e.key) {
         case "ArrowDown":
           e.preventDefault();
-          setSelectedIndex(i => Math.min(i + 1, filteredResults.length - 1));
+          setSelectedIndex((i) => Math.min(i + 1, filteredResults.length - 1));
           break;
         case "ArrowUp":
           e.preventDefault();
-          setSelectedIndex(i => Math.max(i - 1, 0));
+          setSelectedIndex((i) => Math.max(i - 1, 0));
           break;
         case "Enter": {
           e.preventDefault();
@@ -158,13 +160,13 @@ export function SearchDialog({
     const groups: { label: string; items: typeof filteredResults }[] = [];
 
     // First, the "new" type item
-    const newItem = filteredResults.find(r => r.type === "new");
+    const newItem = filteredResults.find((r) => r.type === "new");
     if (newItem) {
       groups.push({ label: "", items: [newItem] });
     }
 
     // Then group history
-    const historyItems = filteredResults.filter(r => r.type === "history");
+    const historyItems = filteredResults.filter((r) => r.type === "history");
     if (historyItems.length > 0) {
       groups.push({ label: t("search.earlier"), items: historyItems });
     }
@@ -172,8 +174,12 @@ export function SearchDialog({
     return groups;
   }, [filteredResults, t]);
 
-  const hasHistoryResults = filteredResults.some((item) => item.type === "history");
-  const showHistoryProblem = Boolean(threads.historyProblem && !hasHistoryResults);
+  const hasHistoryResults = filteredResults.some(
+    (item) => item.type === "history"
+  );
+  const showHistoryProblem = Boolean(
+    threads.historyProblem && !hasHistoryResults
+  );
   const showHistoryEmpty =
     !threads.historyProblem &&
     !threads.isLoading &&
@@ -181,24 +187,27 @@ export function SearchDialog({
     !query;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[550px] p-0 gap-0 overflow-hidden bg-popover border-border [&>button:last-child]:hidden">
+    <Dialog
+      open={open}
+      onOpenChange={onOpenChange}
+    >
+      <DialogContent className="gap-0 overflow-hidden border-border bg-popover p-0 sm:max-w-[550px] [&>button:last-child]:hidden">
         {/* Search Input */}
-        <div className="flex items-center px-4 border-b border-border">
-          <Search className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+        <div className="flex items-center border-b border-border px-4">
+          <Search className="h-5 w-5 flex-shrink-0 text-muted-foreground" />
           <input
             type="text"
             placeholder={t("search.placeholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="flex-1 px-3 py-4 text-base bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none"
+            className="flex-1 bg-transparent px-3 py-4 text-base text-foreground placeholder:text-muted-foreground focus:outline-none"
             autoFocus
           />
           <button
             onClick={() => onOpenChange(false)}
-            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
-            <X className="w-4 h-4" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
@@ -236,31 +245,42 @@ export function SearchDialog({
                           onClick={() => handleSelect(item.id, item.type)}
                           onMouseEnter={() => setSelectedIndex(absoluteIndex)}
                           className={cn(
-                            "flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors",
+                            "flex cursor-pointer items-start gap-3 px-4 py-3 transition-colors",
                             isSelected ? "bg-accent" : "hover:bg-accent/50"
                           )}
                         >
                           {/* Icon */}
-                          <div className="flex-shrink-0 mt-0.5">
+                          <div className="mt-0.5 flex-shrink-0">
                             {item.type === "new" ? (
-                              <MessageSquarePlus className="w-5 h-5 text-muted-foreground" />
+                              <MessageSquarePlus className="h-5 w-5 text-muted-foreground" />
                             ) : (
-                              <div className={cn(
-                                "w-5 h-5 rounded-full border-2 flex items-center justify-center",
-                                item.status ? "" : "border-muted-foreground/50"
-                              )}>
+                              <div
+                                className={cn(
+                                  "flex h-5 w-5 items-center justify-center rounded-full border-2",
+                                  item.status
+                                    ? ""
+                                    : "border-muted-foreground/50"
+                                )}
+                              >
                                 {item.status && (
-                                  <div className={cn("w-2 h-2 rounded-full", getThreadColor(item.status))} />
+                                  <div
+                                    className={cn(
+                                      "h-2 w-2 rounded-full",
+                                      getThreadColor(item.status)
+                                    )}
+                                  />
                                 )}
                               </div>
                             )}
                           </div>
 
                           {/* Content */}
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm text-foreground truncate">{item.title}</div>
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-sm text-foreground">
+                              {item.title}
+                            </div>
                             {item.subtitle && (
-                              <div className="text-xs text-muted-foreground truncate mt-0.5">
+                              <div className="mt-0.5 truncate text-xs text-muted-foreground">
                                 {item.subtitle}
                               </div>
                             )}
@@ -280,11 +300,13 @@ export function SearchDialog({
               })}
 
               {/* Empty state */}
-              {filteredResults.length === 1 && filteredResults[0].type === "new" && query && (
-                <div className="px-4 py-6 text-center text-sm text-muted-foreground">
-                  {t("search.no_results")}
-                </div>
-              )}
+              {filteredResults.length === 1 &&
+                filteredResults[0].type === "new" &&
+                query && (
+                  <div className="px-4 py-6 text-center text-sm text-muted-foreground">
+                    {t("search.no_results")}
+                  </div>
+                )}
 
               {showHistoryProblem && threads.historyProblem && (
                 <div className="px-4 py-5 text-sm text-muted-foreground">
@@ -297,7 +319,9 @@ export function SearchDialog({
                   <button
                     type="button"
                     className="mt-3 text-xs text-foreground underline-offset-4 hover:underline"
-                    onClick={() => { void threads.retryHistory(); }}
+                    onClick={() => {
+                      void threads.retryHistory();
+                    }}
                   >
                     {t("search.retry")}
                   </button>

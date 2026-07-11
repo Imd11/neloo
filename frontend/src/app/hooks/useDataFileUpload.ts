@@ -40,8 +40,8 @@ interface UseDataFileUploadReturn {
   files: DataFile[];
   isUploading: boolean;
   uploadedFiles: UploadedFileInfo[];
-  stagedFiles: StagedFile[];  // Files ready to be committed
-  isImporting: boolean;  // Whether importing from library
+  stagedFiles: StagedFile[]; // Files ready to be committed
+  isImporting: boolean; // Whether importing from library
 
   // Actions
   addFiles: (fileList: FileList | File[]) => void;
@@ -71,7 +71,7 @@ export function useDataFileUpload({
   accessToken,
   maxFiles = 5,
   threadId,
-  autoUpload = true,  // Default to true for immediate upload
+  autoUpload = true, // Default to true for immediate upload
 }: UseDataFileUploadOptions): UseDataFileUploadReturn {
   const [files, setFiles] = useState<DataFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -88,7 +88,7 @@ export function useDataFileUpload({
    */
   const getHeaders = useCallback((): Record<string, string> => {
     if (accessToken) {
-      return { "Authorization": `Bearer ${accessToken}` };
+      return { Authorization: `Bearer ${accessToken}` };
     }
     return { "X-User-Id": "default" };
   }, [accessToken]);
@@ -96,147 +96,159 @@ export function useDataFileUpload({
   /**
    * Initialize upload session for a file (Phase 1)
    */
-  const initUpload = useCallback(async (file: File): Promise<{ fileId: string; uploadUrl: string } | null> => {
-    try {
-      const response = await fetch(`${apiUrl}/uploads/init`, {
-        method: "POST",
-        headers: {
-          ...getHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          filename: file.name,
-          size: file.size,
-        }),
-      });
+  const initUpload = useCallback(
+    async (
+      file: File
+    ): Promise<{ fileId: string; uploadUrl: string } | null> => {
+      try {
+        const response = await fetch(`${apiUrl}/uploads/init`, {
+          method: "POST",
+          headers: {
+            ...getHeaders(),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            filename: file.name,
+            size: file.size,
+          }),
+        });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || "Failed to initialize upload");
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.detail || "Failed to initialize upload");
+        }
+
+        const data = await response.json();
+        return {
+          fileId: data.file_id,
+          uploadUrl: data.upload_url,
+        };
+      } catch (error) {
+        console.error("Failed to init upload:", error);
+        return null;
       }
-
-      const data = await response.json();
-      return {
-        fileId: data.file_id,
-        uploadUrl: data.upload_url,
-      };
-    } catch (error) {
-      console.error("Failed to init upload:", error);
-      return null;
-    }
-  }, [apiUrl, getHeaders]);
+    },
+    [apiUrl, getHeaders]
+  );
 
   /**
    * Upload file data (Phase 2)
    */
-  const uploadFileData = useCallback(async (
-    fileId: string,
-    uploadUrl: string,
-    file: File,
-  ): Promise<StagedFile | null> => {
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
+  const uploadFileData = useCallback(
+    async (
+      fileId: string,
+      uploadUrl: string,
+      file: File
+    ): Promise<StagedFile | null> => {
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
 
-      const response = await fetch(`${apiUrl}${uploadUrl}`, {
-        method: "POST",
-        headers: getHeaders(),
-        body: formData,
-      });
+        const response = await fetch(`${apiUrl}${uploadUrl}`, {
+          method: "POST",
+          headers: getHeaders(),
+          body: formData,
+        });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || "Upload failed");
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.detail || "Upload failed");
+        }
+
+        const data = await response.json();
+        return {
+          fileId: data.file_id,
+          filename: data.filename,
+          size: data.size,
+          sandboxPath: data.sandbox_path,
+          status: "uploaded" as const,
+        };
+      } catch (error) {
+        console.error("Failed to upload file data:", error);
+        return null;
       }
-
-      const data = await response.json();
-      return {
-        fileId: data.file_id,
-        filename: data.filename,
-        size: data.size,
-        sandboxPath: data.sandbox_path,
-        status: "uploaded" as const,
-      };
-    } catch (error) {
-      console.error("Failed to upload file data:", error);
-      return null;
-    }
-  }, [apiUrl, getHeaders]);
+    },
+    [apiUrl, getHeaders]
+  );
 
   /**
    * Upload a single file using two-phase pattern
    */
-  const uploadSingleFile = useCallback(async (dataFile: DataFile): Promise<StagedFile | null> => {
-    // Prevent duplicate uploads
-    if (uploadingFileIds.current.has(dataFile.id)) {
-      return null;
-    }
-    uploadingFileIds.current.add(dataFile.id);
-
-    // Update status to uploading
-    setFiles((prev) =>
-      prev.map((f) =>
-        f.id === dataFile.id ? { ...f, status: "uploading" as const } : f
-      )
-    );
-
-    try {
-      // Phase 1: Initialize upload
-      const initResult = await initUpload(dataFile.file);
-      if (!initResult) {
-        throw new Error("Failed to initialize upload");
+  const uploadSingleFile = useCallback(
+    async (dataFile: DataFile): Promise<StagedFile | null> => {
+      // Prevent duplicate uploads
+      if (uploadingFileIds.current.has(dataFile.id)) {
+        return null;
       }
+      uploadingFileIds.current.add(dataFile.id);
 
-      // Phase 2: Upload file data
-      const staged = await uploadFileData(
-        initResult.fileId,
-        initResult.uploadUrl,
-        dataFile.file,
-      );
-
-      if (!staged) {
-        throw new Error("Failed to upload file");
-      }
-
-      // Update file status to uploaded
+      // Update status to uploading
       setFiles((prev) =>
         prev.map((f) =>
-          f.id === dataFile.id
-            ? {
-                ...f,
-                status: "uploaded" as const,
-                storagePath: staged.sandboxPath,
-                sandboxPath: staged.sandboxPath,
-              }
-            : f
+          f.id === dataFile.id ? { ...f, status: "uploading" as const } : f
         )
       );
 
-      // Add to staged files
-      setStagedFiles((prev) => [...prev, staged]);
+      try {
+        // Phase 1: Initialize upload
+        const initResult = await initUpload(dataFile.file);
+        if (!initResult) {
+          throw new Error("Failed to initialize upload");
+        }
 
-      return staged;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Upload failed";
+        // Phase 2: Upload file data
+        const staged = await uploadFileData(
+          initResult.fileId,
+          initResult.uploadUrl,
+          dataFile.file
+        );
 
-      // Update status to error
-      setFiles((prev) =>
-        prev.map((f) =>
-          f.id === dataFile.id
-            ? { ...f, status: "error" as const, error: errorMessage }
-            : f
-        )
-      );
+        if (!staged) {
+          throw new Error("Failed to upload file");
+        }
 
-      toast.error(`Failed to upload ${dataFile.file.name}`, {
-        description: errorMessage,
-      });
+        // Update file status to uploaded
+        setFiles((prev) =>
+          prev.map((f) =>
+            f.id === dataFile.id
+              ? {
+                  ...f,
+                  status: "uploaded" as const,
+                  storagePath: staged.sandboxPath,
+                  sandboxPath: staged.sandboxPath,
+                }
+              : f
+          )
+        );
 
-      return null;
-    } finally {
-      uploadingFileIds.current.delete(dataFile.id);
-    }
-  }, [initUpload, uploadFileData]);
+        // Add to staged files
+        setStagedFiles((prev) => [...prev, staged]);
+
+        return staged;
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Upload failed";
+
+        // Update status to error
+        setFiles((prev) =>
+          prev.map((f) =>
+            f.id === dataFile.id
+              ? { ...f, status: "error" as const, error: errorMessage }
+              : f
+          )
+        );
+
+        toast.error(`Failed to upload ${dataFile.file.name}`, {
+          description: errorMessage,
+        });
+
+        return null;
+      } finally {
+        uploadingFileIds.current.delete(dataFile.id);
+      }
+    },
+    [initUpload, uploadFileData]
+  );
 
   /**
    * Add files to the upload queue
@@ -383,10 +395,13 @@ export function useDataFileUpload({
         }
 
         if (importedFiles.length > 0) {
-          toast.success(`Imported ${importedFiles.length} file(s) from library`);
+          toast.success(
+            `Imported ${importedFiles.length} file(s) from library`
+          );
         }
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Import failed";
+        const errorMessage =
+          error instanceof Error ? error.message : "Import failed";
         toast.error("Failed to import files", { description: errorMessage });
       } finally {
         setIsImporting(false);
@@ -398,23 +413,26 @@ export function useDataFileUpload({
   /**
    * Remove a file from the queue
    */
-  const removeFile = useCallback((fileId: string) => {
-    // Get the filename before removing from files (for fallback matching)
-    const fileToRemove = files.find((f) => f.id === fileId);
-    const filenameToRemove = fileToRemove?.file.name;
+  const removeFile = useCallback(
+    (fileId: string) => {
+      // Get the filename before removing from files (for fallback matching)
+      const fileToRemove = files.find((f) => f.id === fileId);
+      const filenameToRemove = fileToRemove?.file.name;
 
-    setFiles((prev) => prev.filter((f) => f.id !== fileId));
-    setStagedFiles((prev) => prev.filter((f) => f.fileId !== fileId));
-    setUploadedFiles((prev) =>
-      prev.filter((f) => {
-        // Match by fileId if available, otherwise by filename
-        if (f.fileId) {
-          return f.fileId !== fileId;
-        }
-        return f.filename !== filenameToRemove;
-      })
-    );
-  }, [files]);
+      setFiles((prev) => prev.filter((f) => f.id !== fileId));
+      setStagedFiles((prev) => prev.filter((f) => f.fileId !== fileId));
+      setUploadedFiles((prev) =>
+        prev.filter((f) => {
+          // Match by fileId if available, otherwise by filename
+          if (f.fileId) {
+            return f.fileId !== fileId;
+          }
+          return f.filename !== filenameToRemove;
+        })
+      );
+    },
+    [files]
+  );
 
   /**
    * Upload all pending files
@@ -465,39 +483,42 @@ export function useDataFileUpload({
    * Commit staged files to a thread
    * This is called when the message is sent
    */
-  const commitFiles = useCallback(async (targetThreadId: string): Promise<void> => {
-    const uploadedStaged = stagedFiles.filter((f) => f.status === "uploaded");
-    if (uploadedStaged.length === 0) return;
+  const commitFiles = useCallback(
+    async (targetThreadId: string): Promise<void> => {
+      const uploadedStaged = stagedFiles.filter((f) => f.status === "uploaded");
+      if (uploadedStaged.length === 0) return;
 
-    try {
-      const response = await fetch(`${apiUrl}/uploads/commit`, {
-        method: "POST",
-        headers: {
-          ...getHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          file_ids: uploadedStaged.map((f) => f.fileId),
-          thread_id: targetThreadId,
-        }),
-      });
+      try {
+        const response = await fetch(`${apiUrl}/uploads/commit`, {
+          method: "POST",
+          headers: {
+            ...getHeaders(),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            file_ids: uploadedStaged.map((f) => f.fileId),
+            thread_id: targetThreadId,
+          }),
+        });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || "Failed to commit files");
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.detail || "Failed to commit files");
+        }
+
+        const data = await response.json();
+        if (!data.success) {
+          console.warn("Some files failed to commit:", data.errors);
+        }
+      } catch (error) {
+        console.error("Failed to commit files:", error);
+        toast.error("Failed to associate files with message", {
+          description: error instanceof Error ? error.message : "Unknown error",
+        });
       }
-
-      const data = await response.json();
-      if (!data.success) {
-        console.warn("Some files failed to commit:", data.errors);
-      }
-    } catch (error) {
-      console.error("Failed to commit files:", error);
-      toast.error("Failed to associate files with message", {
-        description: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  }, [apiUrl, getHeaders, stagedFiles]);
+    },
+    [apiUrl, getHeaders, stagedFiles]
+  );
 
   /**
    * Clear all files

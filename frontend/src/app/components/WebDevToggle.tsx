@@ -32,10 +32,10 @@ export function WebDevToggle({
     return (
       <div
         className={cn(
-          "flex items-center gap-2 px-3 py-1.5 rounded-full",
+          "flex items-center gap-2 rounded-full px-3 py-1.5",
           "bg-gradient-to-r from-violet-500 to-purple-600",
           "text-white shadow-md shadow-purple-500/30",
-          "border border-purple-400/50",
+          "border-purple-400/50 border",
           "animate-pulse-subtle",
           className
         )}
@@ -55,12 +55,16 @@ export function WebDevToggle({
       onClick={onEnable}
       disabled={locked}
       className={cn(
-        "gap-2 h-8 transition-all duration-200",
+        "h-8 gap-2 transition-all duration-200",
         "hover:border-purple-400 hover:bg-purple-50 hover:text-purple-700",
         "dark:hover:bg-purple-950/30 dark:hover:text-purple-300",
         className
       )}
-      title={locked ? "Cannot change mode after messages have been sent" : "Enable Web Development mode"}
+      title={
+        locked
+          ? "Cannot change mode after messages have been sent"
+          : "Enable Web Development mode"
+      }
     >
       <Code2 className="h-4 w-4" />
       <span className="text-sm">Web Dev</span>

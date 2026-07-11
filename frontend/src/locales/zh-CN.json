@@ -107,7 +107,9 @@
     "category_payment": "支付",
     "category_other": "其他",
     "apps": {
-      "notion": { "description": "一体化工作空间，用于笔记、文档、知识库和项目管理" },
+      "notion": {
+        "description": "一体化工作空间，用于笔记、文档、知识库和项目管理"
+      },
       "google_calendar": { "description": "日程管理和会议安排工具" },
       "trello": { "description": "可视化项目管理和协作工具" },
       "asana": { "description": "团队项目和任务管理平台" },
@@ -364,34 +366,91 @@
       "required_error": "请先填写完整的出生信息再发送。"
     },
     "image_templates": {
-      "giant_landmark": { "title": "普通物体巨型地标", "description": "把日常物体变成真实世界的巨型地标" },
-      "product_macro": { "title": "食品/产品微距展示", "description": "带悬浮水花细节的超写实商业产品图" },
-      "city_promo": { "title": "超逼真城市宣传", "description": "适合城市品牌和旅行宣传的悬浮微缩岛海报" },
-      "sports_poster": { "title": "高端体育平面海报", "description": "适合运动员和公众人物的混合媒介编辑海报" }
+      "giant_landmark": {
+        "title": "普通物体巨型地标",
+        "description": "把日常物体变成真实世界的巨型地标"
+      },
+      "product_macro": {
+        "title": "食品/产品微距展示",
+        "description": "带悬浮水花细节的超写实商业产品图"
+      },
+      "city_promo": {
+        "title": "超逼真城市宣传",
+        "description": "适合城市品牌和旅行宣传的悬浮微缩岛海报"
+      },
+      "sports_poster": {
+        "title": "高端体育平面海报",
+        "description": "适合运动员和公众人物的混合媒介编辑海报"
+      }
     },
     "video_templates": {
-      "talking_portrait": { "title": "人物说话", "description": "让静态人物开口说话，口型同步" },
-      "dance_motion": { "title": "舞蹈动作", "description": "生成流畅的人物舞蹈视频" },
-      "landscape_timelapse": { "title": "风景延时", "description": "云卷云舒、日出日落延时摄影" },
-      "water_animation": { "title": "水流动画", "description": "河流、瀑布、海浪等水体动态" },
-      "morph_transition": { "title": "变形过渡", "description": "物体间的丝滑变形转换效果" },
-      "particle_effects": { "title": "粒子特效", "description": "烟雾、火焰、星尘等粒子效果" },
-      "product_360": { "title": "产品360°", "description": "产品360度旋转展示动画" },
-      "unboxing": { "title": "开箱动画", "description": "产品开箱与展示动态效果" },
-      "anime_character": { "title": "动漫角色", "description": "二次元角色动态动画生成" },
-      "comic_panels": { "title": "漫画分镜", "description": "静态漫画转动态分镜视频" },
-      "cinematic_shot": { "title": "电影镜头", "description": "专业电影级运镜与画面感" },
-      "slow_motion": { "title": "慢动作", "description": "高帧率丝滑慢动作特效" }
+      "talking_portrait": {
+        "title": "人物说话",
+        "description": "让静态人物开口说话，口型同步"
+      },
+      "dance_motion": {
+        "title": "舞蹈动作",
+        "description": "生成流畅的人物舞蹈视频"
+      },
+      "landscape_timelapse": {
+        "title": "风景延时",
+        "description": "云卷云舒、日出日落延时摄影"
+      },
+      "water_animation": {
+        "title": "水流动画",
+        "description": "河流、瀑布、海浪等水体动态"
+      },
+      "morph_transition": {
+        "title": "变形过渡",
+        "description": "物体间的丝滑变形转换效果"
+      },
+      "particle_effects": {
+        "title": "粒子特效",
+        "description": "烟雾、火焰、星尘等粒子效果"
+      },
+      "product_360": {
+        "title": "产品360°",
+        "description": "产品360度旋转展示动画"
+      },
+      "unboxing": {
+        "title": "开箱动画",
+        "description": "产品开箱与展示动态效果"
+      },
+      "anime_character": {
+        "title": "动漫角色",
+        "description": "二次元角色动态动画生成"
+      },
+      "comic_panels": {
+        "title": "漫画分镜",
+        "description": "静态漫画转动态分镜视频"
+      },
+      "cinematic_shot": {
+        "title": "电影镜头",
+        "description": "专业电影级运镜与画面感"
+      },
+      "slow_motion": {
+        "title": "慢动作",
+        "description": "高帧率丝滑慢动作特效"
+      }
     },
     "items": {
       "web_dev": {
         "title": "网页开发",
         "placeholder": "描述你想要开发的网页...",
         "templates": {
-          "company_site": { "title": "企业官网", "description": "专业的企业形象展示网站" },
-          "ecommerce": { "title": "电商平台", "description": "商品展示与购物车功能" },
+          "company_site": {
+            "title": "企业官网",
+            "description": "专业的企业形象展示网站"
+          },
+          "ecommerce": {
+            "title": "电商平台",
+            "description": "商品展示与购物车功能"
+          },
           "blog": { "title": "个人博客", "description": "简洁优雅的博客模板" },
-          "landing": { "title": "落地页", "description": "高转化率的营销落地页" },
+          "landing": {
+            "title": "落地页",
+            "description": "高转化率的营销落地页"
+          },
           "admin": { "title": "后台管理", "description": "数据看板与管理系统" },
           "saas": { "title": "SaaS产品", "description": "软件即服务产品界面" }
         }
@@ -405,62 +464,175 @@
         "title": "制作幻灯片",
         "placeholder": "描述你的演示文稿主题...",
         "templates": {
-          "business": { "title": "商业提案", "description": "专业的商业计划书模板" },
-          "product": { "title": "产品发布", "description": "新产品发布会演示稿" },
-          "education": { "title": "教育培训", "description": "课程与培训演示材料" },
+          "business": {
+            "title": "商业提案",
+            "description": "专业的商业计划书模板"
+          },
+          "product": {
+            "title": "产品发布",
+            "description": "新产品发布会演示稿"
+          },
+          "education": {
+            "title": "教育培训",
+            "description": "课程与培训演示材料"
+          },
           "report": { "title": "年度报告", "description": "企业年度总结报告" },
-          "creative": { "title": "创意展示", "description": "视觉冲击力的创意演示" },
-          "minimal": { "title": "极简风格", "description": "简约大气的演示模板" }
+          "creative": {
+            "title": "创意展示",
+            "description": "视觉冲击力的创意演示"
+          },
+          "minimal": {
+            "title": "极简风格",
+            "description": "简约大气的演示模板"
+          }
         }
       },
       "resume": {
         "title": "制作简历",
         "placeholder": "点击左侧 + 上传简历，或直接输入描述",
         "templates": {
-          "professional": { "title": "专业简约", "description": "适合职场人士的经典模板" },
-          "creative": { "title": "创意设计", "description": "适合设计师的创意简历" },
-          "technical": { "title": "技术极客", "description": "程序员与工程师专属" },
-          "executive": { "title": "商务精英", "description": "高管与商务人士模板" },
-          "academic": { "title": "学术研究", "description": "学者与研究人员简历" },
-          "graduate": { "title": "应届生版", "description": "清新活力的毕业生简历" }
+          "professional": {
+            "title": "专业简约",
+            "description": "适合职场人士的经典模板"
+          },
+          "creative": {
+            "title": "创意设计",
+            "description": "适合设计师的创意简历"
+          },
+          "technical": {
+            "title": "技术极客",
+            "description": "程序员与工程师专属"
+          },
+          "executive": {
+            "title": "商务精英",
+            "description": "高管与商务人士模板"
+          },
+          "academic": {
+            "title": "学术研究",
+            "description": "学者与研究人员简历"
+          },
+          "graduate": {
+            "title": "应届生版",
+            "description": "清新活力的毕业生简历"
+          }
         }
       },
       "prompt_optimize": {
         "title": "提示词优化",
         "placeholder": "输入你想要优化的提示词...",
         "templates": {
-          "image": { "title": "图像生成", "description": "优化AI绘图提示词", "effect": "把粗略的图像想法改成包含主体、构图、光线、风格、镜头、比例和限制条件的详细提示词。" },
-          "copy": { "title": "文案写作", "description": "优化营销文案提示词", "effect": "把模糊的文案需求整理成清晰 brief，包含受众、卖点、语气、证据、异议和输出格式。" },
-          "code": { "title": "代码生成", "description": "优化编程相关提示词", "effect": "把编程需求改成可执行提示词，补齐上下文、限制、边界情况、相关文件和验证步骤。" },
-          "roleplay": { "title": "角色扮演", "description": "优化AI角色设定词", "effect": "把角色想法整理成稳定的人设指令，包含范围、行为规则、边界和回复风格。" },
-          "data": { "title": "数据分析", "description": "优化数据处理提示词", "effect": "把分析想法改成结构化提示词，包含数据背景、假设、方法、输出和质量检查。" },
-          "general": { "title": "通用优化", "description": "全面提升提示词质量", "effect": "把粗略指令改成更清楚的提示词，包含角色、任务、上下文、限制和输出格式。" }
+          "image": {
+            "title": "图像生成",
+            "description": "优化AI绘图提示词",
+            "effect": "把粗略的图像想法改成包含主体、构图、光线、风格、镜头、比例和限制条件的详细提示词。"
+          },
+          "copy": {
+            "title": "文案写作",
+            "description": "优化营销文案提示词",
+            "effect": "把模糊的文案需求整理成清晰 brief，包含受众、卖点、语气、证据、异议和输出格式。"
+          },
+          "code": {
+            "title": "代码生成",
+            "description": "优化编程相关提示词",
+            "effect": "把编程需求改成可执行提示词，补齐上下文、限制、边界情况、相关文件和验证步骤。"
+          },
+          "roleplay": {
+            "title": "角色扮演",
+            "description": "优化AI角色设定词",
+            "effect": "把角色想法整理成稳定的人设指令，包含范围、行为规则、边界和回复风格。"
+          },
+          "data": {
+            "title": "数据分析",
+            "description": "优化数据处理提示词",
+            "effect": "把分析想法改成结构化提示词，包含数据背景、假设、方法、输出和质量检查。"
+          },
+          "general": {
+            "title": "通用优化",
+            "description": "全面提升提示词质量",
+            "effect": "把粗略指令改成更清楚的提示词，包含角色、任务、上下文、限制和输出格式。"
+          }
         }
       },
       "fortune": {
         "title": "五行算命",
         "placeholder": "输入你的出生年月日时...",
         "templates": {
-          "bazi": { "title": "八字全解", "description": "综合排盘、格局、用神、喜忌分析", "effect": "提供完整八字分析，覆盖命盘结构、用神喜忌、十神配置、大运走势和整体方向。" },
-          "annual": { "title": "流年运势", "description": "今年运势、近年走向预测", "effect": "聚焦今年运势、关键月份、近期机会，以及需要谨慎的时间段。" },
-          "relationship": { "title": "姻缘桃花", "description": "感情婚姻、配偶特征分析", "effect": "聚焦感情时机、婚恋倾向、伴侣特征和关系中的风险点。" },
-          "career": { "title": "事业发展", "description": "职业方向、升迁、适合行业", "effect": "聚焦职业方向、适合行业、晋升时机和职场风险。" },
-          "wealth": { "title": "财运分析", "description": "正财偏财、投资理财指引", "effect": "聚焦收入、偏财倾向、投资谨慎点、财富时机和守财能力。" },
-          "health": { "title": "健康指引", "description": "身体注意事项、养生建议", "effect": "聚焦五行平衡、健康注意点、养生方向和需要额外留意的年份。" },
-          "personality": { "title": "性格天赋", "description": "性格特征、天赋优势分析", "effect": "聚焦性格特点、天赋优势、盲点、潜能和人际模式。" },
-          "family": { "title": "子女亲缘", "description": "与家人的缘分、子女运势", "effect": "聚焦家庭关系、父母兄弟缘分、子女缘和家庭和谐度。" }
+          "bazi": {
+            "title": "八字全解",
+            "description": "综合排盘、格局、用神、喜忌分析",
+            "effect": "提供完整八字分析，覆盖命盘结构、用神喜忌、十神配置、大运走势和整体方向。"
+          },
+          "annual": {
+            "title": "流年运势",
+            "description": "今年运势、近年走向预测",
+            "effect": "聚焦今年运势、关键月份、近期机会，以及需要谨慎的时间段。"
+          },
+          "relationship": {
+            "title": "姻缘桃花",
+            "description": "感情婚姻、配偶特征分析",
+            "effect": "聚焦感情时机、婚恋倾向、伴侣特征和关系中的风险点。"
+          },
+          "career": {
+            "title": "事业发展",
+            "description": "职业方向、升迁、适合行业",
+            "effect": "聚焦职业方向、适合行业、晋升时机和职场风险。"
+          },
+          "wealth": {
+            "title": "财运分析",
+            "description": "正财偏财、投资理财指引",
+            "effect": "聚焦收入、偏财倾向、投资谨慎点、财富时机和守财能力。"
+          },
+          "health": {
+            "title": "健康指引",
+            "description": "身体注意事项、养生建议",
+            "effect": "聚焦五行平衡、健康注意点、养生方向和需要额外留意的年份。"
+          },
+          "personality": {
+            "title": "性格天赋",
+            "description": "性格特征、天赋优势分析",
+            "effect": "聚焦性格特点、天赋优势、盲点、潜能和人际模式。"
+          },
+          "family": {
+            "title": "子女亲缘",
+            "description": "与家人的缘分、子女运势",
+            "effect": "聚焦家庭关系、父母兄弟缘分、子女缘和家庭和谐度。"
+          }
         }
       },
       "deai": {
         "title": "去AI化",
         "placeholder": "粘贴需要去AI化的文本...",
         "templates": {
-          "academic": { "title": "学术论文", "description": "论文降重与人性化改写", "effect": "让学术文本更自然，同时保留严谨性、术语、引用和逻辑结构。" },
-          "business": { "title": "商业文案", "description": "营销文案自然化处理", "effect": "让商业文案更可信、直接、具体，去掉夸张和套路化营销语言。" },
-          "news": { "title": "新闻稿件", "description": "新闻报道风格转换", "effect": "让文章表达更事实、简洁、有编辑感，避免机械化措辞。" },
-          "social": { "title": "社交媒体", "description": "让帖子更像真人撰写", "effect": "让社交内容更口语、清楚、自然，同时保留用户原本的重点。" },
-          "email": { "title": "邮件往来", "description": "商务邮件人性化改写", "effect": "让邮件更清楚、温和、得体，同时避免过度正式或机械。" },
-          "creative": { "title": "创意写作", "description": "文学作品风格润色", "effect": "让创意写作更生动、更像真人表达，同时保留声音、节奏和情绪意图。" }
+          "academic": {
+            "title": "学术论文",
+            "description": "论文降重与人性化改写",
+            "effect": "让学术文本更自然，同时保留严谨性、术语、引用和逻辑结构。"
+          },
+          "business": {
+            "title": "商业文案",
+            "description": "营销文案自然化处理",
+            "effect": "让商业文案更可信、直接、具体，去掉夸张和套路化营销语言。"
+          },
+          "news": {
+            "title": "新闻稿件",
+            "description": "新闻报道风格转换",
+            "effect": "让文章表达更事实、简洁、有编辑感，避免机械化措辞。"
+          },
+          "social": {
+            "title": "社交媒体",
+            "description": "让帖子更像真人撰写",
+            "effect": "让社交内容更口语、清楚、自然，同时保留用户原本的重点。"
+          },
+          "email": {
+            "title": "邮件往来",
+            "description": "商务邮件人性化改写",
+            "effect": "让邮件更清楚、温和、得体，同时避免过度正式或机械。"
+          },
+          "creative": {
+            "title": "创意写作",
+            "description": "文学作品风格润色",
+            "effect": "让创意写作更生动、更像真人表达，同时保留声音、节奏和情绪意图。"
+          }
         }
       },
       "translate": {
@@ -590,19 +762,32 @@
     "library_title": "文件库",
     "library_select_title": "从库中选择文件"
   },
-    "errors": {
-        "rate_limited": "请求过多，请在 {seconds} 秒后重试。",
-        "input_too_large": "消息过长，请控制在 20,000 个字符以内。",
-        "too_many_attachments": "每次请求最多可添加 10 个附件。"
-    },
-    "tool_approval": {
-    "required": "需要审批", "tool": "工具", "app": "应用", "action": "操作",
-    "risk": "风险", "unknown": "未知", "external_write": "外部写操作",
+  "errors": {
+    "rate_limited": "请求过多，请在 {seconds} 秒后重试。",
+    "input_too_large": "消息过长，请控制在 20,000 个字符以内。",
+    "too_many_attachments": "每次请求最多可添加 10 个附件。"
+  },
+  "tool_approval": {
+    "required": "需要审批",
+    "tool": "工具",
+    "app": "应用",
+    "action": "操作",
+    "risk": "风险",
+    "unknown": "未知",
+    "external_write": "外部写操作",
     "external_impact": "批准后可能在已连接的应用中创建、修改、发送或删除数据。",
-    "edit_arguments": "编辑参数", "arguments": "参数", "rejection_message": "拒绝原因（可选）",
-    "rejection_placeholder": "说明拒绝此操作的原因...", "cancel": "取消",
-    "saving": "保存中...", "save_approve": "保存并批准", "rejecting": "拒绝中...",
-    "confirm_reject": "确认拒绝", "reject": "拒绝", "edit": "编辑",
-    "approving": "批准中...", "approve": "批准"
+    "edit_arguments": "编辑参数",
+    "arguments": "参数",
+    "rejection_message": "拒绝原因（可选）",
+    "rejection_placeholder": "说明拒绝此操作的原因...",
+    "cancel": "取消",
+    "saving": "保存中...",
+    "save_approve": "保存并批准",
+    "rejecting": "拒绝中...",
+    "confirm_reject": "确认拒绝",
+    "reject": "拒绝",
+    "edit": "编辑",
+    "approving": "批准中...",
+    "approve": "批准"
   }
 }

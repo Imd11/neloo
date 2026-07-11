@@ -10,10 +10,7 @@ import {
   FolderOpen,
   X,
   Loader2,
-  Copy,
-  Edit,
   Eye,
-  Image as ImageIcon,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -82,21 +79,30 @@ function SectionHeader({
   return (
     <button
       onClick={onToggle}
-      className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-muted/50 transition-colors"
+      className="flex w-full items-center justify-between px-3 py-2 text-left transition-colors hover:bg-muted/50"
     >
       <div className="flex items-center gap-2">
-        <Icon size={14} className="text-muted-foreground" />
+        <Icon
+          size={14}
+          className="text-muted-foreground"
+        />
         <span className="text-xs font-medium">{title}</span>
         {count > 0 && (
-          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/10 px-1.5 text-[10px] font-medium text-primary">
+          <span className="bg-primary/10 flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-medium text-primary">
             {count}
           </span>
         )}
       </div>
       {isOpen ? (
-        <ChevronDown size={14} className="text-muted-foreground" />
+        <ChevronDown
+          size={14}
+          className="text-muted-foreground"
+        />
       ) : (
-        <ChevronRight size={14} className="text-muted-foreground" />
+        <ChevronRight
+          size={14}
+          className="text-muted-foreground"
+        />
       )}
     </button>
   );
@@ -119,29 +125,35 @@ function FileItem({
 }) {
   return (
     <div
-      className="group flex items-center justify-between gap-2 rounded-md py-1.5 pl-3 pr-10 hover:bg-muted/50 transition-colors cursor-pointer"
+      className="group flex cursor-pointer items-center justify-between gap-2 rounded-md py-1.5 pl-3 pr-10 transition-colors hover:bg-muted/50"
       onClick={onPreview}
     >
-      <div className="flex items-center gap-2 min-w-0 flex-1">
-        <FileText size={14} className="text-muted-foreground flex-shrink-0" />
-        <span className="text-xs truncate">{filename}</span>
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <FileText
+          size={14}
+          className="flex-shrink-0 text-muted-foreground"
+        />
+        <span className="truncate text-xs">{filename}</span>
         {size !== undefined && (
-          <span className="text-[10px] text-muted-foreground flex-shrink-0">
+          <span className="flex-shrink-0 text-[10px] text-muted-foreground">
             {formatFileSize(size)}
           </span>
         )}
       </div>
-      <div className="relative z-10 flex flex-shrink-0 items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="relative z-10 flex flex-shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
         {onPreview && (
           <button
             onClick={(e) => {
               e.stopPropagation();
               onPreview();
             }}
-            className="p-1 rounded hover:bg-muted"
+            className="rounded p-1 hover:bg-muted"
             title="Preview"
           >
-            <Eye size={12} className="text-muted-foreground" />
+            <Eye
+              size={12}
+              className="text-muted-foreground"
+            />
           </button>
         )}
         <button
@@ -150,13 +162,19 @@ function FileItem({
             onDownload();
           }}
           disabled={isLoading}
-          className="p-1 rounded hover:bg-muted"
+          className="rounded p-1 hover:bg-muted"
           title="Download"
         >
           {isLoading ? (
-            <Loader2 size={12} className="animate-spin" />
+            <Loader2
+              size={12}
+              className="animate-spin"
+            />
           ) : (
-            <Download size={12} className="text-muted-foreground" />
+            <Download
+              size={12}
+              className="text-muted-foreground"
+            />
           )}
         </button>
         {onDelete && (
@@ -165,10 +183,13 @@ function FileItem({
               e.stopPropagation();
               onDelete();
             }}
-            className="p-1 rounded hover:bg-destructive/10"
+            className="rounded p-1 hover:bg-destructive/10"
             title="Delete"
           >
-            <Trash2 size={12} className="text-destructive" />
+            <Trash2
+              size={12}
+              className="text-destructive"
+            />
           </button>
         )}
       </div>
@@ -180,7 +201,12 @@ function FileItem({
 // Main Component
 // ============================================================================
 
-export function FilePanel({ messages, threadId, onClose, isStreamComplete }: FilePanelProps) {
+export function FilePanel({
+  messages,
+  threadId,
+  onClose,
+  isStreamComplete,
+}: FilePanelProps) {
   const config = getConfig();
   const apiUrl = config?.deploymentUrl || "";
   const { session } = useAuth();
@@ -278,15 +304,20 @@ export function FilePanel({ messages, threadId, onClose, isStreamComplete }: Fil
   }, [dbFiles]);
 
   const downloadDbFile = useCallback(
-    async (file: { id?: string; download_url?: string; filename: string; original_filename?: string }) => {
+    async (file: {
+      id?: string;
+      download_url?: string;
+      filename: string;
+      original_filename?: string;
+    }) => {
       if (!apiUrl) return;
       const url = file.download_url
         ? file.download_url.startsWith("http")
           ? file.download_url
           : `${apiUrl}${file.download_url}`
         : file.id
-          ? `${apiUrl}/api/files/${encodeURIComponent(file.id)}/download`
-          : "";
+        ? `${apiUrl}/api/files/${encodeURIComponent(file.id)}/download`
+        : "";
       if (!url) return;
       const response = await fetch(url, { headers: getAuthHeaders() });
       if (!response.ok) return;
@@ -307,7 +338,9 @@ export function FilePanel({ messages, threadId, onClose, isStreamComplete }: Fil
     async (fileId: string) => {
       if (!apiUrl || !threadId) return;
       const response = await fetch(
-        `${apiUrl}/api/threads/${encodeURIComponent(threadId)}/files/${encodeURIComponent(fileId)}`,
+        `${apiUrl}/api/threads/${encodeURIComponent(
+          threadId
+        )}/files/${encodeURIComponent(fileId)}`,
         { method: "DELETE", headers: getAuthHeaders() }
       );
       if (response.ok) {
@@ -328,8 +361,8 @@ export function FilePanel({ messages, threadId, onClose, isStreamComplete }: Fil
           ? file.download_url
           : `${apiUrl}${file.download_url}`
         : file.id
-          ? `${apiUrl}/api/files/${encodeURIComponent(file.id)}/download`
-          : "";
+        ? `${apiUrl}/api/files/${encodeURIComponent(file.id)}/download`
+        : "";
 
       // Set initial preview state (loading)
       setPreviewFile({
@@ -346,25 +379,65 @@ export function FilePanel({ messages, threadId, onClose, isStreamComplete }: Fil
       const filename = file.original_filename || file.filename;
       const ext = filename.split(".").pop()?.toLowerCase() || "";
       const textExtensions = [
-        "txt", "md", "markdown", "json", "xml", "html", "css", "scss", "less",
-        "js", "jsx", "ts", "tsx", "py", "rb", "go", "rs", "java", "cpp", "c",
-        "cs", "php", "swift", "kt", "scala", "sh", "bash", "zsh", "sql",
-        "yaml", "yml", "toml", "ini", "dockerfile", "makefile", "csv",
+        "txt",
+        "md",
+        "markdown",
+        "json",
+        "xml",
+        "html",
+        "css",
+        "scss",
+        "less",
+        "js",
+        "jsx",
+        "ts",
+        "tsx",
+        "py",
+        "rb",
+        "go",
+        "rs",
+        "java",
+        "cpp",
+        "c",
+        "cs",
+        "php",
+        "swift",
+        "kt",
+        "scala",
+        "sh",
+        "bash",
+        "zsh",
+        "sql",
+        "yaml",
+        "yml",
+        "toml",
+        "ini",
+        "dockerfile",
+        "makefile",
+        "csv",
       ];
-      const imageExtensions = ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp"];
+      const imageExtensions = [
+        "png",
+        "jpg",
+        "jpeg",
+        "gif",
+        "webp",
+        "svg",
+        "bmp",
+      ];
 
       // For images, just set the URL, no content fetch needed
       if (imageExtensions.includes(ext)) {
-        setPreviewFile((prev) =>
-          prev ? { ...prev, isLoading: false } : null
-        );
+        setPreviewFile((prev) => (prev ? { ...prev, isLoading: false } : null));
         return;
       }
 
       // For text files, fetch content
       if (textExtensions.includes(ext) && downloadUrl) {
         try {
-          const response = await fetch(downloadUrl, { headers: getAuthHeaders() });
+          const response = await fetch(downloadUrl, {
+            headers: getAuthHeaders(),
+          });
           if (response.ok) {
             const text = await response.text();
             setPreviewFile((prev) =>
@@ -383,9 +456,7 @@ export function FilePanel({ messages, threadId, onClose, isStreamComplete }: Fil
         }
       } else {
         // Non-text file, just show download option
-        setPreviewFile((prev) =>
-          prev ? { ...prev, isLoading: false } : null
-        );
+        setPreviewFile((prev) => (prev ? { ...prev, isLoading: false } : null));
       }
     },
     [apiUrl, getAuthHeaders]
@@ -403,10 +474,13 @@ export function FilePanel({ messages, threadId, onClose, isStreamComplete }: Fil
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-3 py-2">
         <div className="flex items-center gap-2">
-          <FolderOpen size={16} className="text-muted-foreground" />
+          <FolderOpen
+            size={16}
+            className="text-muted-foreground"
+          />
           <span className="text-sm font-medium">Files & Code</span>
           {totalItems > 0 && (
-            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-medium text-primary-foreground">
+            <span className="text-primary-foreground flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-medium">
               {totalItems}
             </span>
           )}
@@ -414,16 +488,19 @@ export function FilePanel({ messages, threadId, onClose, isStreamComplete }: Fil
         {onClose && (
           <button
             onClick={onClose}
-            className="p-1 rounded hover:bg-muted"
+            className="rounded p-1 hover:bg-muted"
             title="Close panel"
           >
-            <X size={16} className="text-muted-foreground" />
+            <X
+              size={16}
+              className="text-muted-foreground"
+            />
           </button>
         )}
       </div>
 
       {/* Content */}
-      <ScrollArea className="flex-1 min-h-0">
+      <ScrollArea className="min-h-0 flex-1">
         <div className="py-2">
           {/* Uploaded Files Section */}
           <div className="mb-1">
@@ -438,7 +515,10 @@ export function FilePanel({ messages, threadId, onClose, isStreamComplete }: Fil
               <div className="px-1 py-1">
                 {isLoading ? (
                   <div className="flex items-center justify-center py-4">
-                    <Loader2 size={16} className="animate-spin text-muted-foreground" />
+                    <Loader2
+                      size={16}
+                      className="animate-spin text-muted-foreground"
+                    />
                   </div>
                 ) : !threadId ? (
                   <p className="px-3 py-2 text-xs text-muted-foreground">
@@ -457,9 +537,7 @@ export function FilePanel({ messages, threadId, onClose, isStreamComplete }: Fil
                       onPreview={() => previewDbFile(file)}
                       onDownload={() => downloadDbFile(file)}
                       onDelete={
-                        threadId
-                          ? () => unlinkFromThread(file.id)
-                          : undefined
+                        threadId ? () => unlinkFromThread(file.id) : undefined
                       }
                     />
                   ))
@@ -481,7 +559,10 @@ export function FilePanel({ messages, threadId, onClose, isStreamComplete }: Fil
               <div className="px-1 py-1">
                 {isLoading ? (
                   <div className="flex items-center justify-center py-4">
-                    <Loader2 size={16} className="animate-spin text-muted-foreground" />
+                    <Loader2
+                      size={16}
+                      className="animate-spin text-muted-foreground"
+                    />
                   </div>
                 ) : !threadId ? (
                   <p className="px-3 py-2 text-xs text-muted-foreground">
@@ -499,7 +580,9 @@ export function FilePanel({ messages, threadId, onClose, isStreamComplete }: Fil
                       size={file.size}
                       onPreview={() => previewDbFile(file)}
                       onDownload={() => downloadDbFile(file)}
-                      onDelete={threadId ? () => unlinkFromThread(file.id) : undefined}
+                      onDelete={
+                        threadId ? () => unlinkFromThread(file.id) : undefined
+                      }
                     />
                   ))
                 )}
@@ -520,7 +603,10 @@ export function FilePanel({ messages, threadId, onClose, isStreamComplete }: Fil
               <div className="px-1 py-1">
                 {isLoading ? (
                   <div className="flex items-center justify-center py-4">
-                    <Loader2 size={16} className="animate-spin text-muted-foreground" />
+                    <Loader2
+                      size={16}
+                      className="animate-spin text-muted-foreground"
+                    />
                   </div>
                 ) : !threadId ? (
                   <p className="px-3 py-2 text-xs text-muted-foreground">
@@ -538,7 +624,9 @@ export function FilePanel({ messages, threadId, onClose, isStreamComplete }: Fil
                       size={file.size}
                       onPreview={() => previewDbFile(file)}
                       onDownload={() => downloadDbFile(file)}
-                      onDelete={threadId ? () => unlinkFromThread(file.id) : undefined}
+                      onDelete={
+                        threadId ? () => unlinkFromThread(file.id) : undefined
+                      }
                     />
                   ))
                 )}
@@ -559,7 +647,10 @@ export function FilePanel({ messages, threadId, onClose, isStreamComplete }: Fil
               <div className="px-1 py-1">
                 {isLoading ? (
                   <div className="flex items-center justify-center py-4">
-                    <Loader2 size={16} className="animate-spin text-muted-foreground" />
+                    <Loader2
+                      size={16}
+                      className="animate-spin text-muted-foreground"
+                    />
                   </div>
                 ) : !threadId ? (
                   <p className="px-3 py-2 text-xs text-muted-foreground">
@@ -577,7 +668,9 @@ export function FilePanel({ messages, threadId, onClose, isStreamComplete }: Fil
                       size={file.size}
                       onPreview={() => previewDbFile(file)}
                       onDownload={() => downloadDbFile(file)}
-                      onDelete={threadId ? () => unlinkFromThread(file.id) : undefined}
+                      onDelete={
+                        threadId ? () => unlinkFromThread(file.id) : undefined
+                      }
                     />
                   ))
                 )}
@@ -597,7 +690,10 @@ export function FilePanel({ messages, threadId, onClose, isStreamComplete }: Fil
           disabled={isLoading}
         >
           {isLoading ? (
-            <Loader2 size={12} className="mr-2 animate-spin" />
+            <Loader2
+              size={12}
+              className="mr-2 animate-spin"
+            />
           ) : null}
           Refresh
         </Button>

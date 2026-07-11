@@ -119,7 +119,7 @@ export interface DataFile {
 }
 
 export interface UploadedFileInfo {
-  fileId?: string;  // Used for tracking/removal
+  fileId?: string; // Used for tracking/removal
   filename: string;
   originalFilename: string;
   storagePath: string;
@@ -156,7 +156,9 @@ export function validateDataFile(file: File): {
     const ext = getFileExtension(file.name) || "unknown";
     return {
       valid: false,
-      error: `File type "${ext}" is not supported. Allowed: ${ALLOWED_EXTENSIONS.join(", ")}`,
+      error: `File type "${ext}" is not supported. Allowed: ${ALLOWED_EXTENSIONS.join(
+        ", "
+      )}`,
     };
   }
 
@@ -212,9 +214,7 @@ export function getAcceptAttribute(): string {
 export function formatFilesForMessage(files: UploadedFileInfo[]): string {
   if (files.length === 0) return "";
 
-  const lines = files.map(
-    (f) => `- ${f.originalFilename} (${f.sandboxPath})`
-  );
+  const lines = files.map((f) => `- ${f.originalFilename} (${f.sandboxPath})`);
 
   return `\n\n[Uploaded Data Files]\n${lines.join("\n")}`;
 }

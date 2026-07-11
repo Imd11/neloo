@@ -33,13 +33,20 @@ export function MessageAttachments({
   const { t } = useLanguage();
   const [threadId] = useQueryState("threadId");
   const [downloading, setDownloading] = useState<string | null>(null);
-  const threadFilesCache = useRef<{ threadId: string; files: DatabaseFile[] } | null>(null);
+  const threadFilesCache = useRef<{
+    threadId: string;
+    files: DatabaseFile[];
+  } | null>(null);
 
   const getAuthHeaders = useCallback((): Record<string, string> => {
-    return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
+    return session?.access_token
+      ? { Authorization: `Bearer ${session.access_token}` }
+      : {};
   }, [session?.access_token]);
 
-  const fetchThreadFiles = useCallback(async (): Promise<DatabaseFile[] | null> => {
+  const fetchThreadFiles = useCallback(async (): Promise<
+    DatabaseFile[] | null
+  > => {
     if (!apiUrl || !threadId) return null;
     if (!session?.access_token) return null;
 
@@ -48,12 +55,17 @@ export function MessageAttachments({
       return cached.files;
     }
 
-    const resp = await fetch(`${apiUrl}/api/threads/${encodeURIComponent(threadId)}/files`, {
-      headers: getAuthHeaders(),
-    });
+    const resp = await fetch(
+      `${apiUrl}/api/threads/${encodeURIComponent(threadId)}/files`,
+      {
+        headers: getAuthHeaders(),
+      }
+    );
     if (!resp.ok) return null;
     const data = await resp.json();
-    const files = Array.isArray(data?.files) ? (data.files as DatabaseFile[]) : [];
+    const files = Array.isArray(data?.files)
+      ? (data.files as DatabaseFile[])
+      : [];
     threadFilesCache.current = { threadId, files };
     return files;
   }, [apiUrl, getAuthHeaders, session?.access_token, threadId]);
@@ -73,18 +85,23 @@ export function MessageAttachments({
       try {
         const threadFiles = await fetchThreadFiles();
         if (!threadFiles || threadFiles.length === 0) {
-          toast.message(t("files.file_associating"), { description: t("files.try_again") });
+          toast.message(t("files.file_associating"), {
+            description: t("files.try_again"),
+          });
           return;
         }
 
         const normalize = (s: string) => s.trim().toLowerCase();
         const target = normalize(attachment.filename);
         const match =
-          threadFiles.find((f) => normalize(f.original_filename || f.filename) === target) ||
-          threadFiles.find((f) => normalize(f.filename) === target);
+          threadFiles.find(
+            (f) => normalize(f.original_filename || f.filename) === target
+          ) || threadFiles.find((f) => normalize(f.filename) === target);
 
         if (!match?.id) {
-          toast.message(t("files.file_associating"), { description: t("files.try_again") });
+          toast.message(t("files.file_associating"), {
+            description: t("files.try_again"),
+          });
           return;
         }
 
@@ -109,12 +126,21 @@ export function MessageAttachments({
         document.body.removeChild(a);
         URL.revokeObjectURL(blobUrl);
       } catch (e) {
-        toast.error(t("files.download_failed"), { description: e instanceof Error ? e.message : String(e) });
+        toast.error(t("files.download_failed"), {
+          description: e instanceof Error ? e.message : String(e),
+        });
       } finally {
         setDownloading(null);
       }
     },
-    [apiUrl, fetchThreadFiles, getAuthHeaders, session?.access_token, threadId, t]
+    [
+      apiUrl,
+      fetchThreadFiles,
+      getAuthHeaders,
+      session?.access_token,
+      threadId,
+      t,
+    ]
   );
 
   if (!hasAttachments) {
@@ -122,7 +148,7 @@ export function MessageAttachments({
   }
 
   return (
-    <div className={cn("flex flex-wrap gap-2 mb-2", className)}>
+    <div className={cn("mb-2 flex flex-wrap gap-2", className)}>
       {attachments.map((attachment, index) => (
         <AttachmentChip
           key={`${attachment.filename}-${index}`}
@@ -141,7 +167,11 @@ interface AttachmentChipProps {
   onDownload?: (attachment: ParsedAttachment) => void;
 }
 
-function AttachmentChip({ attachment, isDownloading, onDownload }: AttachmentChipProps) {
+function AttachmentChip({
+  attachment,
+  isDownloading,
+  onDownload,
+}: AttachmentChipProps) {
   const { filename, type } = attachment;
 
   // Truncate filename if too long
@@ -155,8 +185,8 @@ function AttachmentChip({ attachment, isDownloading, onDownload }: AttachmentChi
     <button
       type="button"
       className={cn(
-        "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs",
-        "bg-green-500/10 border border-green-500/50",
+        "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs",
+        "border border-green-500/50 bg-green-500/10",
         "cursor-pointer hover:bg-green-500/15"
       )}
       title={filename}
@@ -165,22 +195,18 @@ function AttachmentChip({ attachment, isDownloading, onDownload }: AttachmentChi
     >
       {/* File Icon */}
       {isDownloading ? (
-        <Loader2 className="h-3.5 w-3.5 animate-spin text-green-500 flex-shrink-0" />
+        <Loader2 className="h-3.5 w-3.5 flex-shrink-0 animate-spin text-green-500" />
       ) : (
-        <FileSpreadsheet className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+        <FileSpreadsheet className="h-3.5 w-3.5 flex-shrink-0 text-green-500" />
       )}
 
       {/* Filename */}
-      <span className="text-foreground truncate max-w-[180px]">
+      <span className="max-w-[180px] truncate text-foreground">
         {displayName}
       </span>
 
       {/* Type (if available) */}
-      {type && (
-        <span className="text-muted-foreground">
-          ({type})
-        </span>
-      )}
+      {type && <span className="text-muted-foreground">({type})</span>}
     </button>
   );
 }

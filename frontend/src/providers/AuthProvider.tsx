@@ -23,7 +23,9 @@ interface AnonymousSessionRecord {
 function readStoredAnonymousSession(): AnonymousSessionRecord | null {
   if (typeof window === "undefined") return null;
   try {
-    const value = JSON.parse(window.localStorage.getItem(ANONYMOUS_SESSION_STORAGE_KEY) || "null");
+    const value = JSON.parse(
+      window.localStorage.getItem(ANONYMOUS_SESSION_STORAGE_KEY) || "null"
+    );
     if (
       typeof value?.token === "string" &&
       typeof value?.userId === "string" &&
@@ -85,7 +87,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [displayName, setDisplayName] = useState("Guest");
-  const [anonymousSession, setAnonymousSession] = useState<AnonymousSessionRecord | null>(null);
+  const [anonymousSession, setAnonymousSession] =
+    useState<AnonymousSessionRecord | null>(null);
 
   useEffect(() => {
     const storedName = window.localStorage.getItem(DISPLAY_NAME_STORAGE_KEY);
@@ -100,11 +103,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     const createSession = async () => {
       try {
-        const response = await fetch("/api/anonymous-session", { method: "POST" });
+        const response = await fetch("/api/anonymous-session", {
+          method: "POST",
+        });
         if (!response.ok) throw new Error("Unable to create a guest session");
-        const session = await response.json() as AnonymousSessionRecord;
+        const session = (await response.json()) as AnonymousSessionRecord;
         if (!cancelled) {
-          window.localStorage.setItem(ANONYMOUS_SESSION_STORAGE_KEY, JSON.stringify(session));
+          window.localStorage.setItem(
+            ANONYMOUS_SESSION_STORAGE_KEY,
+            JSON.stringify(session)
+          );
           setAnonymousSession(session);
         }
       } catch (error) {
@@ -119,7 +127,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const user = useMemo(
-    () => createAnonymousUser(anonymousSession?.userId || PENDING_USER_ID, displayName),
+    () =>
+      createAnonymousUser(
+        anonymousSession?.userId || PENDING_USER_ID,
+        displayName
+      ),
     [anonymousSession?.userId, displayName]
   );
   const session = useMemo(

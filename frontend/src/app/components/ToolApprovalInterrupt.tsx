@@ -34,8 +34,14 @@ export function ToolApprovalInterrupt({
     "edit",
   ];
   const redactedArgs = redactToolArgs(actionRequest.args);
-  const appName = typeof actionRequest.args.app_name === "string" ? actionRequest.args.app_name : null;
-  const actionName = typeof actionRequest.args.action === "string" ? actionRequest.args.action : actionRequest.name;
+  const appName =
+    typeof actionRequest.args.app_name === "string"
+      ? actionRequest.args.app_name
+      : null;
+  const actionName =
+    typeof actionRequest.args.action === "string"
+      ? actionRequest.args.action
+      : actionRequest.name;
   const isIntegrationWrite = actionRequest.name === "integrations_execute";
 
   const handleApprove = () => {
@@ -144,10 +150,27 @@ export function ToolApprovalInterrupt({
 
         {isIntegrationWrite && (
           <div className="mb-3 grid gap-2 text-sm sm:grid-cols-3">
-            <div><span className="text-muted-foreground">{t("tool_approval.app")}: </span>{appName || t("tool_approval.unknown")}</div>
-            <div><span className="text-muted-foreground">{t("tool_approval.action")}: </span>{actionName}</div>
-            <div><span className="text-muted-foreground">{t("tool_approval.risk")}: </span>{t("tool_approval.external_write")}</div>
-            <p className="sm:col-span-3 text-muted-foreground">{t("tool_approval.external_impact")}</p>
+            <div>
+              <span className="text-muted-foreground">
+                {t("tool_approval.app")}:{" "}
+              </span>
+              {appName || t("tool_approval.unknown")}
+            </div>
+            <div>
+              <span className="text-muted-foreground">
+                {t("tool_approval.action")}:{" "}
+              </span>
+              {actionName}
+            </div>
+            <div>
+              <span className="text-muted-foreground">
+                {t("tool_approval.risk")}:{" "}
+              </span>
+              {t("tool_approval.external_write")}
+            </div>
+            <p className="text-muted-foreground sm:col-span-3">
+              {t("tool_approval.external_impact")}
+            </p>
           </div>
         )}
 
@@ -165,12 +188,24 @@ export function ToolApprovalInterrupt({
                   <Textarea
                     value={
                       editedArgs[key] !== undefined
-                        ? typeof redactToolArgs({ [key]: editedArgs[key] })[key] === "string"
-                          ? (redactToolArgs({ [key]: editedArgs[key] })[key] as string)
-                          : JSON.stringify(redactToolArgs({ [key]: editedArgs[key] })[key], null, 2)
+                        ? typeof redactToolArgs({ [key]: editedArgs[key] })[
+                            key
+                          ] === "string"
+                          ? (redactToolArgs({ [key]: editedArgs[key] })[
+                              key
+                            ] as string)
+                          : JSON.stringify(
+                              redactToolArgs({ [key]: editedArgs[key] })[key],
+                              null,
+                              2
+                            )
                         : typeof value === "string"
                         ? String(redactToolArgs({ [key]: value })[key])
-                        : JSON.stringify(redactToolArgs({ [key]: value })[key], null, 2)
+                        : JSON.stringify(
+                            redactToolArgs({ [key]: value })[key],
+                            null,
+                            2
+                          )
                     }
                     onChange={(e) => updateEditedArg(key, e.target.value)}
                     className="font-mono text-xs"
@@ -231,7 +266,9 @@ export function ToolApprovalInterrupt({
               className="bg-green-600 text-white hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
             >
               <Check size={14} />
-              {isLoading ? t("tool_approval.saving") : t("tool_approval.save_approve")}
+              {isLoading
+                ? t("tool_approval.saving")
+                : t("tool_approval.save_approve")}
             </Button>
           </>
         ) : showRejectionInput ? (
@@ -253,7 +290,9 @@ export function ToolApprovalInterrupt({
               onClick={handleRejectConfirm}
               disabled={isLoading}
             >
-              {isLoading ? t("tool_approval.rejecting") : t("tool_approval.confirm_reject")}
+              {isLoading
+                ? t("tool_approval.rejecting")
+                : t("tool_approval.confirm_reject")}
             </Button>
           </>
         ) : (
@@ -292,7 +331,9 @@ export function ToolApprovalInterrupt({
                 )}
               >
                 <Check size={14} />
-                {isLoading ? t("tool_approval.approving") : t("tool_approval.approve")}
+                {isLoading
+                  ? t("tool_approval.approving")
+                  : t("tool_approval.approve")}
               </Button>
             )}
           </>

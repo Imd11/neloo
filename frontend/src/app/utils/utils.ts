@@ -24,8 +24,11 @@ export function parseMessageContentBlocks(message: Message): ContentBlock[] {
 
   // Check for DeepSeek reasoning_content in additional_kwargs
   // DeepSeek format: { content: "...", additional_kwargs: { reasoning_content: "..." } }
-  const additionalKwargs = (message as Record<string, unknown>).additional_kwargs as Record<string, unknown> | undefined;
-  const reasoningContent = additionalKwargs?.reasoning_content as string | undefined;
+  const additionalKwargs = (message as Record<string, unknown>)
+    .additional_kwargs as Record<string, unknown> | undefined;
+  const reasoningContent = additionalKwargs?.reasoning_content as
+    | string
+    | undefined;
 
   if (reasoningContent?.trim()) {
     blocks.push({ type: "thinking", content: reasoningContent });
@@ -37,7 +40,7 @@ export function parseMessageContentBlocks(message: Message): ContentBlock[] {
     // If we already have reasoning_content, only add text blocks from string parsing
     // to avoid duplicate thinking blocks
     if (blocks.length > 0) {
-      blocks.push(...stringBlocks.filter(b => b.type === "text"));
+      blocks.push(...stringBlocks.filter((b) => b.type === "text"));
     } else {
       blocks.push(...stringBlocks);
     }
@@ -197,7 +200,9 @@ function parseThinkTagsFromString(content: string): ContentBlock[] {
 
   if (unclosedThinkMatch) {
     // Add text before the unclosed think tag
-    const textBefore = remainingContent.slice(0, unclosedThinkMatch.index).trim();
+    const textBefore = remainingContent
+      .slice(0, unclosedThinkMatch.index)
+      .trim();
     if (textBefore) {
       blocks.push({ type: "text", content: textBefore });
     }
@@ -234,7 +239,7 @@ export function extractStringFromMessageContent(message: Message): string {
   return typeof message.content === "string"
     ? message.content
     : Array.isArray(message.content)
-      ? message.content
+    ? message.content
         .filter(
           (c: unknown) =>
             (typeof c === "object" &&
@@ -247,11 +252,11 @@ export function extractStringFromMessageContent(message: Message): string {
           typeof c === "string"
             ? c
             : typeof c === "object" && c !== null && "text" in c
-              ? (c as { text?: string }).text || ""
-              : ""
+            ? (c as { text?: string }).text || ""
+            : ""
         )
         .join("")
-      : "";
+    : "";
 }
 
 export function extractSubAgentContent(data: unknown): string {

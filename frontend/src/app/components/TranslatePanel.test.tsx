@@ -23,9 +23,12 @@ describe("TranslatePanel authentication", () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     render(<TranslatePanel onBack={() => undefined} />);
 
-    fireEvent.change(screen.getByPlaceholderText("translate.source_placeholder"), {
-      target: { value: "Hello" },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText("translate.source_placeholder"),
+      {
+        target: { value: "Hello" },
+      }
+    );
     fireEvent.click(screen.getByRole("button", { name: "translate.action" }));
 
     expect(fetchSpy).not.toHaveBeenCalled();

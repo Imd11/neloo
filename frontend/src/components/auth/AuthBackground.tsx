@@ -81,7 +81,14 @@ export function AuthBackground() {
       };
 
       // Draw grid lines
-      const drawLine = (x1: number, z1: number, x2: number, z2: number, opacity: number, lineWidth: number) => {
+      const drawLine = (
+        x1: number,
+        z1: number,
+        x2: number,
+        z2: number,
+        opacity: number,
+        lineWidth: number
+      ) => {
         const p1 = project(x1, z1);
         const p2 = project(x2, z2);
         if (!p1 || !p2) return;
@@ -118,13 +125,21 @@ export function AuthBackground() {
 
         const distanceFromCenter = Math.abs(x) / gridCountX;
         const pulse = Math.sin(time * 2 + x * 0.1) * 0.5 + 0.5;
-        const opacity = (0.12 + (1 - distanceFromCenter) * 0.18) * (0.7 + pulse * 0.3);
+        const opacity =
+          (0.12 + (1 - distanceFromCenter) * 0.18) * (0.7 + pulse * 0.3);
         const lineWidth = 0.5 + (1 - distanceFromCenter) * 0.6;
 
         ctx.shadowBlur = 4 + pulse * 4;
         ctx.shadowColor = `rgba(${glowColor.join(",")}, ${opacity * 0.5})`;
 
-        drawLine(xPos, 0.5, xPos, gridCountZ * gridCellSize, opacity, lineWidth);
+        drawLine(
+          xPos,
+          0.5,
+          xPos,
+          gridCountZ * gridCellSize,
+          opacity,
+          lineWidth
+        );
       }
 
       ctx.shadowBlur = 0;
@@ -172,13 +187,17 @@ export function AuthBackground() {
       <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-secondary/20" />
 
       {/* Animated canvas with 3D grid and floating numbers */}
-      <canvas ref={canvasRef} className="absolute inset-0" />
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0"
+      />
 
       {/* Soft ambient glow */}
       <div
-        className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[50%]"
+        className="absolute left-1/2 top-0 h-[50%] w-full -translate-x-1/2"
         style={{
-          background: "radial-gradient(ellipse at center top, hsl(var(--primary) / 0.03), transparent 70%)",
+          background:
+            "radial-gradient(ellipse at center top, hsl(var(--primary) / 0.03), transparent 70%)",
         }}
       />
     </div>

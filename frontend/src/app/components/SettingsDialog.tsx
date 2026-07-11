@@ -2,14 +2,7 @@
 
 import { useState } from "react";
 import { useTheme } from "next-themes";
-import {
-  Settings,
-  ExternalLink,
-  Sun,
-  Moon,
-  Monitor,
-  Plug,
-} from "lucide-react";
+import { Settings, ExternalLink, Sun, Moon, Monitor, Plug } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -26,7 +19,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { useLanguage, LOCALE_NAMES, type Locale, SUPPORTED_LOCALES } from "@/providers/LanguageProvider";
+import {
+  useLanguage,
+  LOCALE_NAMES,
+  type Locale,
+  SUPPORTED_LOCALES,
+} from "@/providers/LanguageProvider";
 import { ConnectedAppsTab } from "@/app/components/settings/ConnectedAppsTab";
 
 interface SettingsDialogProps {
@@ -51,7 +49,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     { id: "connected-apps", label: t("settings.connected_apps"), icon: Plug },
   ];
 
-  const themeOptions: { value: ThemeOption; label: string; icon: typeof Sun }[] = [
+  const themeOptions: {
+    value: ThemeOption;
+    label: string;
+    icon: typeof Sun;
+  }[] = [
     { value: "light", label: t("settings.theme_light"), icon: Sun },
     { value: "dark", label: t("settings.theme_dark"), icon: Moon },
     { value: "system", label: t("settings.theme_system"), icon: Monitor },
@@ -63,66 +65,80 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-medium text-foreground mb-4">{t("settings.general")}</h3>
+              <h3 className="mb-4 text-lg font-medium text-foreground">
+                {t("settings.general")}
+              </h3>
 
               {/* Theme Selector */}
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm text-foreground mb-3 block">{t("settings.appearance")}</label>
+                  <label className="mb-3 block text-sm text-foreground">
+                    {t("settings.appearance")}
+                  </label>
                   <div className="flex gap-3">
                     {themeOptions.map((option) => (
                       <button
                         key={option.value}
                         onClick={() => setTheme(option.value)}
                         className={cn(
-                          "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
+                          "flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all",
                           "hover:border-muted-foreground/50",
                           theme === option.value
                             ? "border-primary bg-accent"
-                            : "border-border bg-card",
+                            : "border-border bg-card"
                         )}
                       >
                         <div
                           className={cn(
-                            "w-16 h-12 rounded-lg flex items-center justify-center",
+                            "flex h-12 w-16 items-center justify-center rounded-lg",
                             option.value === "light"
-                              ? "bg-white border border-gray-200"
+                              ? "border border-gray-200 bg-white"
                               : "",
                             option.value === "dark"
-                              ? "bg-zinc-800 border border-zinc-700"
+                              ? "border border-zinc-700 bg-zinc-800"
                               : "",
                             option.value === "system"
-                              ? "bg-gradient-to-r from-white to-zinc-800 border border-gray-300"
-                              : "",
+                              ? "border border-gray-300 bg-gradient-to-r from-white to-zinc-800"
+                              : ""
                           )}
                         >
                           <option.icon
                             className={cn(
-                              "w-5 h-5",
+                              "h-5 w-5",
                               option.value === "light" ? "text-gray-700" : "",
                               option.value === "dark" ? "text-gray-300" : "",
-                              option.value === "system" ? "text-gray-500" : "",
+                              option.value === "system" ? "text-gray-500" : ""
                             )}
                           />
                         </div>
-                        <span className="text-xs text-foreground">{option.label}</span>
+                        <span className="text-xs text-foreground">
+                          {option.label}
+                        </span>
                       </button>
                     ))}
                   </div>
                 </div>
 
                 {/* Language Selector */}
-                <div className="flex items-center justify-between py-3 border-t border-border">
+                <div className="flex items-center justify-between border-t border-border py-3">
                   <div>
-                    <label className="text-sm text-foreground">{t("settings.language")}</label>
+                    <label className="text-sm text-foreground">
+                      {t("settings.language")}
+                    </label>
                   </div>
-                  <Select value={locale} onValueChange={(value) => setLocale(value as Locale)}>
+                  <Select
+                    value={locale}
+                    onValueChange={(value) => setLocale(value as Locale)}
+                  >
                     <SelectTrigger className="w-40 bg-card">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-popover border-border">
+                    <SelectContent className="border-border bg-popover">
                       {SUPPORTED_LOCALES.map((loc) => (
-                        <SelectItem key={loc} value={loc}>
+                        <SelectItem
+                          key={loc}
+                          value={loc}
+                        >
                           {LOCALE_NAMES[loc]}
                         </SelectItem>
                       ))}
@@ -137,12 +153,16 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       case "notifications":
         return (
           <div className="space-y-6">
-            <h3 className="text-lg font-medium text-foreground mb-4">{t("settings.notifications")}</h3>
+            <h3 className="mb-4 text-lg font-medium text-foreground">
+              {t("settings.notifications")}
+            </h3>
 
             <div className="space-y-4">
-              <div className="flex items-center justify-between py-3 border-b border-border">
+              <div className="flex items-center justify-between border-b border-border py-3">
                 <div>
-                  <p className="text-sm text-foreground">{t("settings.email_notifications")}</p>
+                  <p className="text-sm text-foreground">
+                    {t("settings.email_notifications")}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     {t("settings.email_notifications_desc")}
                   </p>
@@ -155,9 +175,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 />
               </div>
 
-              <div className="flex items-center justify-between py-3 border-b border-border">
+              <div className="flex items-center justify-between border-b border-border py-3">
                 <div>
-                  <p className="text-sm text-foreground">{t("settings.push_notifications")}</p>
+                  <p className="text-sm text-foreground">
+                    {t("settings.push_notifications")}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     {t("settings.push_notifications_desc")}
                   </p>
@@ -170,9 +192,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 />
               </div>
 
-              <div className="flex items-center justify-between py-3 border-b border-border">
+              <div className="flex items-center justify-between border-b border-border py-3">
                 <div>
-                  <p className="text-sm text-foreground">{t("settings.product_updates")}</p>
+                  <p className="text-sm text-foreground">
+                    {t("settings.product_updates")}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     {t("settings.product_updates_desc")}
                   </p>
@@ -194,14 +218,16 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       case "personalization":
         return (
           <div className="space-y-6">
-            <h3 className="text-lg font-medium text-foreground mb-4">
+            <h3 className="mb-4 text-lg font-medium text-foreground">
               {t("settings.personalization")}
             </h3>
 
             <div className="space-y-4">
-              <div className="flex items-center justify-between py-3 border-b border-border">
+              <div className="flex items-center justify-between border-b border-border py-3">
                 <div>
-                  <p className="text-sm text-foreground">{t("settings.exclusive_content")}</p>
+                  <p className="text-sm text-foreground">
+                    {t("settings.exclusive_content")}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     {t("settings.exclusive_content_desc")}
                   </p>
@@ -209,9 +235,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 <Switch defaultChecked />
               </div>
 
-              <div className="flex items-center justify-between py-3 border-b border-border">
+              <div className="flex items-center justify-between border-b border-border py-3">
                 <div>
-                  <p className="text-sm text-foreground">{t("settings.task_notifications")}</p>
+                  <p className="text-sm text-foreground">
+                    {t("settings.task_notifications")}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     {t("settings.task_notifications_desc")}
                   </p>
@@ -219,9 +247,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 <Switch defaultChecked />
               </div>
 
-              <div className="flex items-center justify-between py-3 border-b border-border">
+              <div className="flex items-center justify-between border-b border-border py-3">
                 <div>
-                  <p className="text-sm text-foreground">{t("settings.show_all_models")}</p>
+                  <p className="text-sm text-foreground">
+                    {t("settings.show_all_models")}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     {t("settings.show_all_models_desc")}
                   </p>
@@ -235,14 +265,16 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       case "privacy":
         return (
           <div className="space-y-6">
-            <h3 className="text-lg font-medium text-foreground mb-4">
+            <h3 className="mb-4 text-lg font-medium text-foreground">
               {t("settings.privacy")}
             </h3>
 
             <div className="space-y-4">
-              <div className="flex items-center justify-between py-3 border-b border-border">
+              <div className="flex items-center justify-between border-b border-border py-3">
                 <div>
-                  <p className="text-sm text-foreground">{t("settings.data_collection")}</p>
+                  <p className="text-sm text-foreground">
+                    {t("settings.data_collection")}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     {t("settings.data_collection_desc")}
                   </p>
@@ -250,9 +282,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 <Switch />
               </div>
 
-              <div className="flex items-center justify-between py-3 border-b border-border">
+              <div className="flex items-center justify-between border-b border-border py-3">
                 <div>
-                  <p className="text-sm text-foreground">{t("settings.conversation_history")}</p>
+                  <p className="text-sm text-foreground">
+                    {t("settings.conversation_history")}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     {t("settings.conversation_history_desc")}
                   </p>
@@ -260,11 +294,16 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 <Switch defaultChecked />
               </div>
 
-              <div className="flex items-center justify-between py-3 border-b border-border">
+              <div className="flex items-center justify-between border-b border-border py-3">
                 <div>
-                  <p className="text-sm text-foreground">{t("settings.manage_cookies")}</p>
+                  <p className="text-sm text-foreground">
+                    {t("settings.manage_cookies")}
+                  </p>
                 </div>
-                <Button variant="outline" size="sm">
+                <Button
+                  variant="outline"
+                  size="sm"
+                >
                   {t("settings.manage")}
                 </Button>
               </div>
@@ -272,7 +311,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
             {/* Legal Info Section */}
             <div className="pt-4">
-              <h4 className="text-sm font-medium text-muted-foreground mb-3">
+              <h4 className="mb-3 text-sm font-medium text-muted-foreground">
                 {t("settings.legal_info")}
               </h4>
               <div className="space-y-1">
@@ -280,19 +319,23 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   href="/privacy"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-between py-3 px-4 rounded-lg hover:bg-accent transition-colors"
+                  className="flex items-center justify-between rounded-lg px-4 py-3 transition-colors hover:bg-accent"
                 >
-                  <span className="text-sm text-foreground">{t("settings.privacy_policy")}</span>
-                  <ExternalLink className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm text-foreground">
+                    {t("settings.privacy_policy")}
+                  </span>
+                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
                 </a>
                 <a
                   href="/terms"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-between py-3 px-4 rounded-lg hover:bg-accent transition-colors"
+                  className="flex items-center justify-between rounded-lg px-4 py-3 transition-colors hover:bg-accent"
                 >
-                  <span className="text-sm text-foreground">{t("settings.terms_of_service")}</span>
-                  <ExternalLink className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm text-foreground">
+                    {t("settings.terms_of_service")}
+                  </span>
+                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
                 </a>
               </div>
             </div>
@@ -302,26 +345,33 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       case "data":
         return (
           <div className="space-y-6">
-            <h3 className="text-lg font-medium text-foreground mb-4">
+            <h3 className="mb-4 text-lg font-medium text-foreground">
               {t("settings.data")}
             </h3>
 
             <div className="space-y-4">
-              <div className="flex items-center justify-between py-3 border-b border-border">
+              <div className="flex items-center justify-between border-b border-border py-3">
                 <div>
-                  <p className="text-sm text-foreground">{t("settings.export_data")}</p>
+                  <p className="text-sm text-foreground">
+                    {t("settings.export_data")}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     {t("settings.export_data_desc")}
                   </p>
                 </div>
-                <Button variant="outline" size="sm">
+                <Button
+                  variant="outline"
+                  size="sm"
+                >
                   {t("settings.export")}
                 </Button>
               </div>
 
-              <div className="flex items-center justify-between py-3 border-b border-border">
+              <div className="flex items-center justify-between border-b border-border py-3">
                 <div>
-                  <p className="text-sm text-foreground">{t("settings.clear_history")}</p>
+                  <p className="text-sm text-foreground">
+                    {t("settings.clear_history")}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     {t("settings.clear_history_desc")}
                   </p>
@@ -337,7 +387,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
               <div className="flex items-center justify-between py-3">
                 <div>
-                  <p className="text-sm text-foreground">{t("settings.delete_account")}</p>
+                  <p className="text-sm text-foreground">
+                    {t("settings.delete_account")}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     {t("settings.delete_account_desc")}
                   </p>
@@ -357,41 +409,49 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       case "help":
         return (
           <div className="space-y-6">
-            <h3 className="text-lg font-medium text-foreground mb-4">
+            <h3 className="mb-4 text-lg font-medium text-foreground">
               {t("settings.help")}
             </h3>
 
             <div className="space-y-2">
               <a
                 href="#"
-                className="flex items-center justify-between py-3 px-4 rounded-lg hover:bg-accent transition-colors"
+                className="flex items-center justify-between rounded-lg px-4 py-3 transition-colors hover:bg-accent"
               >
-                <span className="text-sm text-foreground">{t("settings.help_center")}</span>
-                <ExternalLink className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm text-foreground">
+                  {t("settings.help_center")}
+                </span>
+                <ExternalLink className="h-4 w-4 text-muted-foreground" />
               </a>
 
               <a
                 href="#"
-                className="flex items-center justify-between py-3 px-4 rounded-lg hover:bg-accent transition-colors"
+                className="flex items-center justify-between rounded-lg px-4 py-3 transition-colors hover:bg-accent"
               >
-                <span className="text-sm text-foreground">{t("settings.faq")}</span>
-                <ExternalLink className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm text-foreground">
+                  {t("settings.faq")}
+                </span>
+                <ExternalLink className="h-4 w-4 text-muted-foreground" />
               </a>
 
               <a
                 href="#"
-                className="flex items-center justify-between py-3 px-4 rounded-lg hover:bg-accent transition-colors"
+                className="flex items-center justify-between rounded-lg px-4 py-3 transition-colors hover:bg-accent"
               >
-                <span className="text-sm text-foreground">{t("settings.contact_support")}</span>
-                <ExternalLink className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm text-foreground">
+                  {t("settings.contact_support")}
+                </span>
+                <ExternalLink className="h-4 w-4 text-muted-foreground" />
               </a>
 
               <a
                 href="#"
-                className="flex items-center justify-between py-3 px-4 rounded-lg hover:bg-accent transition-colors"
+                className="flex items-center justify-between rounded-lg px-4 py-3 transition-colors hover:bg-accent"
               >
-                <span className="text-sm text-foreground">{t("settings.service_status")}</span>
-                <ExternalLink className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm text-foreground">
+                  {t("settings.service_status")}
+                </span>
+                <ExternalLink className="h-4 w-4 text-muted-foreground" />
               </a>
             </div>
           </div>
@@ -403,15 +463,18 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl p-0 gap-0 bg-card border-border overflow-hidden">
+    <Dialog
+      open={open}
+      onOpenChange={onOpenChange}
+    >
+      <DialogContent className="max-w-4xl gap-0 overflow-hidden border-border bg-card p-0">
         <div className="flex h-[500px]">
           {/* Sidebar */}
           <div className="w-52 border-r border-border bg-sidebar p-4">
             <DialogHeader className="mb-4">
               <DialogTitle className="flex items-center gap-2 text-lg">
-                <div className="w-7 h-7 rounded-lg bg-foreground flex items-center justify-center">
-                  <span className="text-background font-bold text-xs">M</span>
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-foreground">
+                  <span className="text-xs font-bold text-background">M</span>
                 </div>
                 <span className="text-foreground">{t("settings.title")}</span>
               </DialogTitle>
@@ -423,13 +486,13 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
+                    "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                     activeTab === tab.id
                       ? "bg-accent text-accent-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-accent/50",
+                      : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
                   )}
                 >
-                  <tab.icon className="w-4 h-4" />
+                  <tab.icon className="h-4 w-4" />
                   {tab.label}
                 </button>
               ))}
@@ -437,7 +500,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           </div>
 
           {/* Content */}
-          <div className="flex-1 p-6 overflow-y-auto">{renderTabContent()}</div>
+          <div className="flex-1 overflow-y-auto p-6">{renderTabContent()}</div>
         </div>
       </DialogContent>
     </Dialog>

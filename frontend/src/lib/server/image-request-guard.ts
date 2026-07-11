@@ -1,11 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getDistributedRateLimiter, verifyGuestToken } from "./distributed-rate-limit";
+import {
+  getDistributedRateLimiter,
+  verifyGuestToken,
+} from "./distributed-rate-limit";
 
 function clientKey(request: NextRequest): string | null {
-  const forwarded = request.headers.get("x-forwarded-for")?.split(",").map((part) => part.trim()).filter(Boolean) || [];
-  const hops = Math.max(0, Number.parseInt(process.env.TRUSTED_PROXY_HOPS || "0", 10));
-  return forwarded.length > hops ? forwarded[forwarded.length - 1 - hops] : request.headers.get("x-real-ip");
+  const forwarded =
+    request.headers
+      .get("x-forwarded-for")
+      ?.split(",")
+      .map((part) => part.trim())
+      .filter(Boolean) || [];
+  const hops = Math.max(
+    0,
+    Number.parseInt(process.env.TRUSTED_PROXY_HOPS || "0", 10)
+  );
+  return forwarded.length > hops
+    ? forwarded[forwarded.length - 1 - hops]
+    : request.headers.get("x-real-ip");
 }
 
 export async function rejectUnsafeImageRequest(
@@ -14,12 +27,18 @@ export async function rejectUnsafeImageRequest(
 ): Promise<NextResponse | null> {
   const origin = request.headers.get("origin");
   if (origin && origin !== request.nextUrl.origin) {
-    return NextResponse.json({ error: "Cross-origin image requests are not allowed" }, { status: 403 });
+    return NextResponse.json(
+      { error: "Cross-origin image requests are not allowed" },
+      { status: 403 }
+    );
   }
 
   const authorization = request.headers.get("authorization");
   if (!authorization?.startsWith("Bearer ")) {
-    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Authentication required" },
+      { status: 401 }
+    );
   }
   let guestId: string;
   try {
@@ -41,7 +60,13 @@ export async function rejectUnsafeImageRequest(
       { status: 503 }
     );
   }
-  const decision = await limiter.consume("image", guestId, clientKey(request), maxRequests, 600);
+  const decision = await limiter.consume(
+    "image",
+    guestId,
+    clientKey(request),
+    maxRequests,
+    600
+  );
   if (!decision.allowed) {
     return NextResponse.json(
       { error: "Too many image requests. Please try again shortly." },
@@ -65,12 +90,13 @@ export async function rejectUnsafeImageRequest(
 export function assertSafeRemoteImageUrl(value: string): URL {
   const url = new URL(value);
   const hostname = url.hostname.toLowerCase();
-  const blocked = hostname === "localhost"
-    || hostname.endsWith(".localhost")
-    || hostname.endsWith(".local")
-    || hostname === "127.0.0.1"
-    || hostname === "0.0.0.0"
-    || hostname === "::1";
+  const blocked =
+    hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
+    hostname.endsWith(".local") ||
+    hostname === "127.0.0.1" ||
+    hostname === "0.0.0.0" ||
+    hostname === "::1";
 
   if (url.protocol !== "https:" || blocked) {
     throw new Error("Only public HTTPS image URLs are supported");

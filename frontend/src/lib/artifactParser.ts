@@ -30,7 +30,8 @@ const ARTIFACT_REGEX =
 /**
  * Regex to detect an opening <artifact> tag (for streaming detection).
  */
-const ARTIFACT_OPEN_REGEX = /<artifact\s+type="(\w+)"(?:\s+title="([^"]*)")?\s*>/;
+const ARTIFACT_OPEN_REGEX =
+  /<artifact\s+type="(\w+)"(?:\s+title="([^"]*)")?\s*>/;
 
 /**
  * Parse all complete artifacts from content.
@@ -78,7 +79,8 @@ export function getStreamingArtifact(content: string): {
   partialCode?: string;
 } {
   // Count opening and closing tags
-  const openMatches = content.match(/<artifact\s+type="\w+"(?:\s+title="[^"]*")?\s*>/g) || [];
+  const openMatches =
+    content.match(/<artifact\s+type="\w+"(?:\s+title="[^"]*")?\s*>/g) || [];
   const closeMatches = content.match(/<\/artifact>/g) || [];
 
   // If there are more opens than closes, we have a streaming artifact

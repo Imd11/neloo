@@ -1,9 +1,7 @@
 import assert from "node:assert/strict";
 
-const {
-  getVisibleHumanContent,
-  sanitizeLegacyHiddenPromptContent,
-} = await import("../src/app/utils/hiddenPromptEnvelope.ts");
+const { getVisibleHumanContent, sanitizeLegacyHiddenPromptContent } =
+  await import("../src/app/utils/hiddenPromptEnvelope.ts");
 
 const promptOptimizeContent =
   "You are a senior prompt engineer.\n\n" +
@@ -25,4 +23,3 @@ assert.equal(
 );
 
 assert.equal(sanitizeLegacyHiddenPromptContent("hello world"), "hello world");
-

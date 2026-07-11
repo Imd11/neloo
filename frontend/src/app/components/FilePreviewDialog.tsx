@@ -11,11 +11,7 @@ import {
   Loader2,
   Image as ImageIcon,
 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -183,7 +179,10 @@ export const FilePreviewDialog = React.memo<FilePreviewDialogProps>(
     if (!file) return null;
 
     return (
-      <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
+      <Dialog
+        open={open}
+        onOpenChange={(open) => !open && onClose()}
+      >
         <DialogContent className="flex h-[80vh] max-h-[80vh] min-w-[60vw] flex-col p-6">
           <DialogTitle className="sr-only">{file.filename}</DialogTitle>
 
@@ -191,9 +190,9 @@ export const FilePreviewDialog = React.memo<FilePreviewDialogProps>(
           <div className="mb-4 flex items-center justify-between border-b border-border pb-4">
             <div className="flex min-w-0 items-center gap-2">
               {isImage ? (
-                <ImageIcon className="h-5 w-5 shrink-0 text-primary/50" />
+                <ImageIcon className="text-primary/50 h-5 w-5 shrink-0" />
               ) : (
-                <FileText className="h-5 w-5 shrink-0 text-primary/50" />
+                <FileText className="text-primary/50 h-5 w-5 shrink-0" />
               )}
               <span className="overflow-hidden text-ellipsis whitespace-nowrap text-base font-medium text-primary">
                 {file.filename}
@@ -215,7 +214,10 @@ export const FilePreviewDialog = React.memo<FilePreviewDialogProps>(
                       className="h-8 px-2"
                       disabled={file.isLoading}
                     >
-                      <Edit size={16} className="mr-1" />
+                      <Edit
+                        size={16}
+                        className="mr-1"
+                      />
                       Edit
                     </Button>
                   )}
@@ -226,7 +228,10 @@ export const FilePreviewDialog = React.memo<FilePreviewDialogProps>(
                     className="h-8 px-2"
                     disabled={file.isLoading || !file.content}
                   >
-                    <Copy size={16} className="mr-1" />
+                    <Copy
+                      size={16}
+                      className="mr-1"
+                    />
                     Copy
                   </Button>
                 </>
@@ -238,7 +243,10 @@ export const FilePreviewDialog = React.memo<FilePreviewDialogProps>(
                 className="h-8 px-2"
                 disabled={file.isLoading}
               >
-                <Download size={16} className="mr-1" />
+                <Download
+                  size={16}
+                  className="mr-1"
+                />
                 Download
               </Button>
             </div>
@@ -258,16 +266,18 @@ export const FilePreviewDialog = React.memo<FilePreviewDialogProps>(
                 className="h-full min-h-[400px] resize-none font-mono text-sm"
               />
             ) : isImage ? (
-              <div className="flex h-full items-center justify-center bg-muted/30 rounded-md">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
+              <div className="flex h-full items-center justify-center rounded-md bg-muted/30">
                 <img
-                  src={file.downloadUrl || `data:${file.mimeType};base64,${file.content}`}
+                  src={
+                    file.downloadUrl ||
+                    `data:${file.mimeType};base64,${file.content}`
+                  }
                   alt={file.filename}
                   className="max-h-full max-w-full object-contain"
                 />
               </div>
             ) : (
-              <ScrollArea className="h-full rounded-md bg-surface">
+              <ScrollArea className="bg-surface h-full rounded-md">
                 <div className="p-4">
                   {file.content ? (
                     isMarkdown ? (
@@ -309,8 +319,15 @@ export const FilePreviewDialog = React.memo<FilePreviewDialogProps>(
           {/* Edit Mode Footer */}
           {isEditingMode && (
             <div className="mt-4 flex justify-end gap-2 border-t border-border pt-4">
-              <Button onClick={handleCancel} variant="outline" size="sm">
-                <X size={16} className="mr-1" />
+              <Button
+                onClick={handleCancel}
+                variant="outline"
+                size="sm"
+              >
+                <X
+                  size={16}
+                  className="mr-1"
+                />
                 Cancel
               </Button>
               <Button
@@ -319,9 +336,15 @@ export const FilePreviewDialog = React.memo<FilePreviewDialogProps>(
                 disabled={isSaving || !editedContent.trim()}
               >
                 {isSaving ? (
-                  <Loader2 size={16} className="mr-1 animate-spin" />
+                  <Loader2
+                    size={16}
+                    className="mr-1 animate-spin"
+                  />
                 ) : (
-                  <Save size={16} className="mr-1" />
+                  <Save
+                    size={16}
+                    className="mr-1"
+                  />
                 )}
                 Save
               </Button>

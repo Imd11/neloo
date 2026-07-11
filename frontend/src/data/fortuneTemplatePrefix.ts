@@ -6,7 +6,7 @@
  */
 
 export const FORTUNE_TEMPLATE_PREFIX: Record<number, string> = {
-    1: `Analysis direction: Full BaZi reading.
+  1: `Analysis direction: Full BaZi reading.
 Provide a comprehensive BaZi analysis for the user, including:
 - Four pillars and heavenly stems / earthly branches
 - Chart structure and strength assessment
@@ -17,7 +17,7 @@ Provide a comprehensive BaZi analysis for the user, including:
 User information:
 `,
 
-    2: `Analysis direction: Annual luck.
+  2: `Analysis direction: Annual luck.
 Focus on the user's annual and near-term luck, including:
 - Overall flow for 2026, the Bing-Wu year
 - Monthly changes and key months
@@ -28,7 +28,7 @@ Focus on the user's annual and near-term luck, including:
 User information:
 `,
 
-    3: `Analysis direction: Relationship and romance.
+  3: `Analysis direction: Relationship and romance.
 Focus on the user's relationship and marriage tendencies, including:
 - Romance indicators and peach-blossom signs
 - Likely timing for meaningful relationships
@@ -39,7 +39,7 @@ Focus on the user's relationship and marriage tendencies, including:
 User information:
 `,
 
-    4: `Analysis direction: Career.
+  4: `Analysis direction: Career.
 Focus on the user's career development, including:
 - Suitable industries based on five-element balance
 - Official-star and resource-star configuration
@@ -50,7 +50,7 @@ Focus on the user's career development, including:
 User information:
 `,
 
-    5: `Analysis direction: Wealth.
+  5: `Analysis direction: Wealth.
 Focus on the user's wealth profile, including:
 - Regular income tendencies
 - Windfall, investment, and speculative money tendencies
@@ -61,7 +61,7 @@ Focus on the user's wealth profile, including:
 User information:
 `,
 
-    6: `Analysis direction: Health.
+  6: `Analysis direction: Health.
 Focus on the user's health tendencies, including:
 - Possible weak areas based on five-element imbalance
 - Types of health issues that deserve attention
@@ -72,7 +72,7 @@ Focus on the user's health tendencies, including:
 User information:
 `,
 
-    7: `Analysis direction: Personality and talent.
+  7: `Analysis direction: Personality and talent.
 Focus on the user's personality and natural strengths, including:
 - Personality traits from day master and ten-god configuration
 - Natural strengths and potential abilities
@@ -83,7 +83,7 @@ Focus on the user's personality and natural strengths, including:
 User information:
 `,
 
-    8: `Analysis direction: Family.
+  8: `Analysis direction: Family.
 Focus on the user's family relationships, including:
 - Affinity with parents, siblings, and close relatives
 - Child-related luck and family continuity
@@ -96,5 +96,5 @@ User information:
 };
 
 export function getFortuneTemplatePrefix(templateId: number): string {
-    return FORTUNE_TEMPLATE_PREFIX[templateId] || "";
+  return FORTUNE_TEMPLATE_PREFIX[templateId] || "";
 }

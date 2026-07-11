@@ -24,7 +24,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-  TooltipProvider
+  TooltipProvider,
 } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
@@ -59,7 +59,11 @@ export interface AppSidebarProps {
   onThreadSelect?: (id: string) => void;
   onMutateReady?: (mutate: () => void) => void;
   onInterruptCountChange?: (count: number) => void;
-  onUseAgent?: (agentId: string, agentName: string, systemPrompt: string) => void;
+  onUseAgent?: (
+    agentId: string,
+    agentName: string,
+    systemPrompt: string
+  ) => void;
   activeThreadId?: string | null;
 }
 
@@ -110,11 +114,26 @@ export function AppSidebar({
   const { t } = useLanguage();
 
   // Define nav items - "search" has special behavior
-  const navItems: { icon: typeof MessageSquarePlus; label: string; path: string | null; action: string }[] = [
-    { icon: MessageSquarePlus, label: t("sidebar.new_chat"), path: "/", action: "new" },
+  const navItems: {
+    icon: typeof MessageSquarePlus;
+    label: string;
+    path: string | null;
+    action: string;
+  }[] = [
+    {
+      icon: MessageSquarePlus,
+      label: t("sidebar.new_chat"),
+      path: "/",
+      action: "new",
+    },
     { icon: Search, label: t("sidebar.search"), path: null, action: "search" },
     { icon: Bot, label: t("sidebar.agents"), path: null, action: "agent" },
-    { icon: FolderOpen, label: t("sidebar.library"), path: null, action: "library" },
+    {
+      icon: FolderOpen,
+      label: t("sidebar.library"),
+      path: null,
+      action: "library",
+    },
   ];
 
   const [logoHovered, setLogoHovered] = useState(false);
@@ -127,7 +146,10 @@ export function AppSidebar({
 
   // Local state for actions
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
@@ -187,9 +209,9 @@ export function AppSidebar({
   );
 
   const handlePin = (threadId: string) => {
-    setPinnedIds(prev =>
+    setPinnedIds((prev) =>
       prev.includes(threadId)
-        ? prev.filter(id => id !== threadId)
+        ? prev.filter((id) => id !== threadId)
         : [...prev, threadId]
     );
   };
@@ -228,11 +250,14 @@ export function AppSidebar({
   };
 
   const confirmDelete = async () => {
-    if (!itemToDelete || !config?.deploymentUrl || !session?.access_token) return;
+    if (!itemToDelete || !config?.deploymentUrl || !session?.access_token)
+      return;
 
     try {
       const resp = await fetch(
-        `${config.deploymentUrl}/api/threads/${encodeURIComponent(itemToDelete.id)}`,
+        `${config.deploymentUrl}/api/threads/${encodeURIComponent(
+          itemToDelete.id
+        )}`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${session.access_token}` },
@@ -256,7 +281,9 @@ export function AppSidebar({
   // Handle share entire thread - opens dialog with share link
   const handleShareThread = async (threadId: string) => {
     if (!config?.deploymentUrl || !session?.access_token) {
-      toast.error(t("sidebar.share_failed"), { description: t("sidebar.share_login_required") });
+      toast.error(t("sidebar.share_failed"), {
+        description: t("sidebar.share_login_required"),
+      });
       return;
     }
 
@@ -266,14 +293,16 @@ export function AppSidebar({
 
     try {
       const response = await fetch(
-        `${config.deploymentUrl}/api/threads/${encodeURIComponent(threadId)}/share`,
+        `${config.deploymentUrl}/api/threads/${encodeURIComponent(
+          threadId
+        )}/share`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify({ target_ai_message_id: null }),  // null = share entire conversation
+          body: JSON.stringify({ target_ai_message_id: null }), // null = share entire conversation
         }
       );
 
@@ -292,7 +321,8 @@ export function AppSidebar({
       console.error("Failed to share thread:", error);
       setShareDialogOpen(false);
       toast.error(t("sidebar.share_failed"), {
-        description: error instanceof Error ? error.message : t("sidebar.try_again_later"),
+        description:
+          error instanceof Error ? error.message : t("sidebar.try_again_later"),
       });
     } finally {
       setShareLoading(false);
@@ -316,7 +346,10 @@ export function AppSidebar({
   };
 
   // Get display name from user_metadata, fallback to email prefix
-  const userDisplayName = (user?.user_metadata?.display_name as string) || user?.email?.split("@")[0] || "User";
+  const userDisplayName =
+    (user?.user_metadata?.display_name as string) ||
+    user?.email?.split("@")[0] ||
+    "User";
 
   const userInitials = userDisplayName.substring(0, 2).toUpperCase();
 
@@ -326,16 +359,21 @@ export function AppSidebar({
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          "h-full w-full bg-sidebar border-r border-sidebar-border flex flex-col overflow-hidden",
+          "flex h-full w-full flex-col overflow-hidden border-r border-sidebar-border bg-sidebar",
           collapsed && "transition-[width] duration-200 ease-out"
         )}
       >
         {/* Logo Row */}
-        <div className="flex items-center h-12">
+        <div className="flex h-12 items-center">
           {/* Icon Column - fixed width */}
-          <div className={cn(iconColWidth, "flex-shrink-0 flex items-center justify-center")}>
+          <div
+            className={cn(
+              iconColWidth,
+              "flex flex-shrink-0 items-center justify-center"
+            )}
+          >
             <div
-              className="relative w-7 h-7 cursor-pointer"
+              className="relative h-7 w-7 cursor-pointer"
               onMouseEnter={() => setLogoHovered(true)}
               onMouseLeave={() => setLogoHovered(false)}
               onClick={collapsed ? toggle : undefined}
@@ -343,14 +381,14 @@ export function AppSidebar({
               {/* Logo Image */}
               <div
                 className={cn(
-                  "absolute inset-0 rounded-lg overflow-hidden transition-opacity duration-150",
+                  "absolute inset-0 overflow-hidden rounded-lg transition-opacity duration-150",
                   collapsed && logoHovered ? "opacity-0" : "opacity-100"
                 )}
               >
                 <img
                   src="/meloo-logo.png"
                   alt="Neloo"
-                  className="w-full h-full object-cover"
+                  className="h-full w-full object-cover"
                 />
               </div>
               {/* Expand button when collapsed */}
@@ -359,11 +397,11 @@ export function AppSidebar({
                   <TooltipTrigger asChild>
                     <div
                       className={cn(
-                        "absolute inset-0 rounded-lg bg-sidebar-accent flex items-center justify-center transition-opacity duration-150",
+                        "absolute inset-0 flex items-center justify-center rounded-lg bg-sidebar-accent transition-opacity duration-150",
                         logoHovered ? "opacity-100" : "opacity-0"
                       )}
                     >
-                      <PanelLeft className="w-4 h-4 text-foreground" />
+                      <PanelLeft className="h-4 w-4 text-foreground" />
                     </div>
                   </TooltipTrigger>
                   <TooltipContent side="right">
@@ -376,12 +414,12 @@ export function AppSidebar({
           {/* Text Column - expandable */}
           <div
             className={cn(
-              "flex items-center justify-between flex-1 pr-2 transition-opacity duration-200",
-              collapsed ? "opacity-0 pointer-events-none" : "opacity-100"
+              "flex flex-1 items-center justify-between pr-2 transition-opacity duration-200",
+              collapsed ? "pointer-events-none opacity-0" : "opacity-100"
             )}
           >
             <span
-              className="font-semibold text-foreground text-sm"
+              className="text-sm font-semibold text-foreground"
               style={{ fontFamily: "'Nunito', sans-serif" }}
             >
               Neloo
@@ -389,23 +427,23 @@ export function AppSidebar({
             <Button
               variant="ghost"
               size="icon"
-              className="w-7 h-7 text-muted-foreground hover:text-foreground"
+              className="h-7 w-7 text-muted-foreground hover:text-foreground"
               onClick={toggle}
             >
-              <PanelLeft className="w-4 h-4" />
+              <PanelLeft className="h-4 w-4" />
             </Button>
           </div>
         </div>
 
         {/* Navigation */}
-        <nav className="py-2 space-y-0.5">
+        <nav className="space-y-0.5 py-2">
           {navItems.map((item) => {
             const isActive = item.path ? pathname === item.path : false;
 
             const row = (
               <div
                 className={cn(
-                  "group relative flex items-center h-10 transition-colors",
+                  "group relative flex h-10 items-center transition-colors",
                   isActive
                     ? "text-sidebar-accent-foreground"
                     : "text-sidebar-foreground"
@@ -431,13 +469,13 @@ export function AppSidebar({
                     <div
                       className={cn(
                         iconColWidth,
-                        "relative z-10 flex-shrink-0 flex items-center justify-center h-10 rounded-lg transition-colors",
+                        "relative z-10 flex h-10 flex-shrink-0 items-center justify-center rounded-lg transition-colors",
                         // Collapsed state: background only on the icon cell
                         collapsed && isActive && "bg-sidebar-accent",
                         collapsed && !isActive && "hover:bg-sidebar-accent/50"
                       )}
                     >
-                      <item.icon className="w-[18px] h-[18px]" />
+                      <item.icon className="h-[18px] w-[18px]" />
                     </div>
                   </TooltipTrigger>
                   {collapsed && (
@@ -450,7 +488,7 @@ export function AppSidebar({
                 {/* Text Column */}
                 <span
                   className={cn(
-                    "relative z-10 text-sm whitespace-nowrap transition-opacity duration-200",
+                    "relative z-10 whitespace-nowrap text-sm transition-opacity duration-200",
                     collapsed ? "opacity-0" : "opacity-100"
                   )}
                 >
@@ -459,16 +497,27 @@ export function AppSidebar({
               </div>
             );
 
-            if (item.path && item.action !== "new" && item.action !== "search") {
+            if (
+              item.path &&
+              item.action !== "new" &&
+              item.action !== "search"
+            ) {
               return (
-                <Link key={item.path} href={item.path} className="block cursor-pointer">
+                <Link
+                  key={item.path}
+                  href={item.path}
+                  className="block cursor-pointer"
+                >
                   {row}
                 </Link>
               );
             }
 
             return (
-              <div key={item.label} className="block cursor-pointer">
+              <div
+                key={item.label}
+                className="block cursor-pointer"
+              >
                 {row}
               </div>
             );
@@ -486,17 +535,17 @@ export function AppSidebar({
         {/* History Section */}
         <div
           className={cn(
-            "flex-1 overflow-hidden flex flex-col px-3 transition-opacity duration-200",
-            collapsed ? "opacity-0 pointer-events-none" : "opacity-100"
+            "flex flex-1 flex-col overflow-hidden px-3 transition-opacity duration-200",
+            collapsed ? "pointer-events-none opacity-0" : "opacity-100"
           )}
         >
-          <div className="text-xs text-sidebar-muted uppercase tracking-wider px-2 mb-2">
+          <div className="mb-2 px-2 text-xs uppercase tracking-wider text-sidebar-muted">
             {t("sidebar.history")}
           </div>
-          <div className="flex-1 overflow-y-auto space-y-0.5">
+          <div className="flex-1 space-y-0.5 overflow-y-auto">
             {showHistoryLoading && (
               <div className="flex justify-center p-4">
-                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
               </div>
             )}
 
@@ -520,7 +569,9 @@ export function AppSidebar({
                     variant="ghost"
                     size="sm"
                     className="mt-2 h-7 px-2 text-xs"
-                    onClick={() => { void threads.retryHistory(); }}
+                    onClick={() => {
+                      void threads.retryHistory();
+                    }}
                   >
                     {t("sidebar.history_retry")}
                   </Button>
@@ -537,33 +588,46 @@ export function AppSidebar({
                 <div
                   key={item.id}
                   className={cn(
-                    "group relative w-full flex items-center px-2 py-2 rounded-lg text-sm text-sidebar-foreground cursor-pointer",
+                    "group relative flex w-full cursor-pointer items-center rounded-lg px-2 py-2 text-sm text-sidebar-foreground",
                     "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                     "transition-colors duration-150",
-                    isMenuOpen && "bg-sidebar-accent text-sidebar-accent-foreground",
-                    isActive && "bg-sidebar-accent text-sidebar-accent-foreground"
+                    isMenuOpen &&
+                      "bg-sidebar-accent text-sidebar-accent-foreground",
+                    isActive &&
+                      "bg-sidebar-accent text-sidebar-accent-foreground"
                   )}
                   onClick={() => onThreadSelect?.(item.id)}
                 >
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
                     {item.type === "image" ? (
-                      <Image className="w-4 h-4 flex-shrink-0 text-sidebar-muted group-hover:text-sidebar-accent-foreground" />
+                      <Image className="h-4 w-4 flex-shrink-0 text-sidebar-muted group-hover:text-sidebar-accent-foreground" />
                     ) : item.type === "slides" ? (
-                      <Presentation className="w-4 h-4 flex-shrink-0 text-sidebar-muted group-hover:text-sidebar-accent-foreground" />
+                      <Presentation className="h-4 w-4 flex-shrink-0 text-sidebar-muted group-hover:text-sidebar-accent-foreground" />
                     ) : (
-                      <MessageSquarePlus className="w-4 h-4 flex-shrink-0 text-sidebar-muted group-hover:text-sidebar-accent-foreground" />
+                      <MessageSquarePlus className="h-4 w-4 flex-shrink-0 text-sidebar-muted group-hover:text-sidebar-accent-foreground" />
                     )}
                     <span className="truncate">{item.title}</span>
                   </div>
 
                   {/* Right Actions - visible on hover or when menu is open */}
-                  <div className={cn(
-                    "flex items-center gap-1 transition-opacity",
-                    isMenuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                  )}>
-                    {isPinned && <Pin className="w-3 h-3 text-sidebar-muted mr-1" />}
+                  <div
+                    className={cn(
+                      "flex items-center gap-1 transition-opacity",
+                      isMenuOpen
+                        ? "opacity-100"
+                        : "opacity-0 group-hover:opacity-100"
+                    )}
+                  >
+                    {isPinned && (
+                      <Pin className="mr-1 h-3 w-3 text-sidebar-muted" />
+                    )}
 
-                    <DropdownMenu open={isMenuOpen} onOpenChange={(open) => setOpenMenuId(open ? item.id : null)}>
+                    <DropdownMenu
+                      open={isMenuOpen}
+                      onOpenChange={(open) =>
+                        setOpenMenuId(open ? item.id : null)
+                      }
+                    >
                       <DropdownMenuTrigger asChild>
                         <Button
                           variant="ghost"
@@ -571,27 +635,49 @@ export function AppSidebar({
                           className="h-6 w-6 hover:bg-foreground/15"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <MoreHorizontal className="w-3 h-3" />
+                          <MoreHorizontal className="h-3 w-3" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent side="right" align="start" className="w-32">
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleShareThread(item.id); }}>
-                          <Share2 className="w-4 h-4 mr-2" />
+                      <DropdownMenuContent
+                        side="right"
+                        align="start"
+                        className="w-32"
+                      >
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleShareThread(item.id);
+                          }}
+                        >
+                          <Share2 className="mr-2 h-4 w-4" />
                           {t("sidebar.share")}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handlePin(item.id); }}>
-                          <Pin className="w-4 h-4 mr-2" />
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePin(item.id);
+                          }}
+                        >
+                          <Pin className="mr-2 h-4 w-4" />
                           {isPinned ? t("sidebar.unpin") : t("sidebar.pin")}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleRename(item.id, item.title); }}>
-                          <Pencil className="w-4 h-4 mr-2" />
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRename(item.id, item.title);
+                          }}
+                        >
+                          <Pencil className="mr-2 h-4 w-4" />
                           {t("sidebar.rename")}
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={(e) => { e.stopPropagation(); handleDeleteClick(item); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteClick(item);
+                          }}
                           className="text-destructive focus:text-destructive"
                         >
-                          <Trash2 className="w-4 h-4 mr-2" />
+                          <Trash2 className="mr-2 h-4 w-4" />
                           {t("sidebar.delete")}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -615,11 +701,14 @@ export function AppSidebar({
         />
 
         {/* Bottom Section */}
-        <div className="py-2 space-y-0.5">
+        <div className="space-y-0.5 py-2">
           {/* Settings */}
 
-          <div onClick={() => setSettingsOpen(true)} className="block cursor-pointer">
-            <div className="group relative flex items-center h-10 transition-colors text-sidebar-foreground">
+          <div
+            onClick={() => setSettingsOpen(true)}
+            className="block cursor-pointer"
+          >
+            <div className="group relative flex h-10 items-center text-sidebar-foreground transition-colors">
               {!collapsed && (
                 <div
                   aria-hidden
@@ -635,11 +724,11 @@ export function AppSidebar({
                   <div
                     className={cn(
                       iconColWidth,
-                      "relative z-10 flex-shrink-0 flex items-center justify-center h-10 rounded-lg transition-colors",
+                      "relative z-10 flex h-10 flex-shrink-0 items-center justify-center rounded-lg transition-colors",
                       collapsed && "hover:bg-sidebar-accent/50"
                     )}
                   >
-                    <Settings className="w-[18px] h-[18px]" />
+                    <Settings className="h-[18px] w-[18px]" />
                   </div>
                 </TooltipTrigger>
                 {collapsed && (
@@ -651,7 +740,7 @@ export function AppSidebar({
 
               <span
                 className={cn(
-                  "relative z-10 text-sm whitespace-nowrap transition-opacity duration-200",
+                  "relative z-10 whitespace-nowrap text-sm transition-opacity duration-200",
                   collapsed ? "opacity-0" : "opacity-100"
                 )}
               >
@@ -662,11 +751,16 @@ export function AppSidebar({
 
           {/* Share */}
           <div
-            className={cn("block", activeThreadId ? "cursor-pointer" : "cursor-not-allowed opacity-50")}
+            className={cn(
+              "block",
+              activeThreadId
+                ? "cursor-pointer"
+                : "cursor-not-allowed opacity-50"
+            )}
             onClick={() => activeThreadId && handleShareThread(activeThreadId)}
             title={activeThreadId ? undefined : t("chat.share_no_conversation")}
           >
-            <div className="group relative flex items-center h-10 transition-colors text-sidebar-foreground">
+            <div className="group relative flex h-10 items-center text-sidebar-foreground transition-colors">
               {!collapsed && (
                 <div
                   aria-hidden
@@ -682,11 +776,11 @@ export function AppSidebar({
                   <div
                     className={cn(
                       iconColWidth,
-                      "relative z-10 flex-shrink-0 flex items-center justify-center h-10 rounded-lg transition-colors",
+                      "relative z-10 flex h-10 flex-shrink-0 items-center justify-center rounded-lg transition-colors",
                       collapsed && "hover:bg-sidebar-accent/50"
                     )}
                   >
-                    <Share2 className="w-[18px] h-[18px]" />
+                    <Share2 className="h-[18px] w-[18px]" />
                   </div>
                 </TooltipTrigger>
                 {collapsed && (
@@ -698,7 +792,7 @@ export function AppSidebar({
 
               <span
                 className={cn(
-                  "relative z-10 text-sm whitespace-nowrap transition-opacity duration-200",
+                  "relative z-10 whitespace-nowrap text-sm transition-opacity duration-200",
                   collapsed ? "opacity-0" : "opacity-100"
                 )}
               >
@@ -708,8 +802,11 @@ export function AppSidebar({
           </div>
 
           {/* User Profile */}
-          <div onClick={() => setProfileOpen(true)} className="block cursor-pointer">
-            <div className="group relative flex items-center h-10 transition-colors">
+          <div
+            onClick={() => setProfileOpen(true)}
+            className="block cursor-pointer"
+          >
+            <div className="group relative flex h-10 items-center transition-colors">
               {!collapsed && (
                 <div
                   aria-hidden
@@ -726,11 +823,11 @@ export function AppSidebar({
                   <div
                     className={cn(
                       iconColWidth,
-                      "relative z-10 flex-shrink-0 flex items-center justify-center h-10 rounded-lg transition-colors",
+                      "relative z-10 flex h-10 flex-shrink-0 items-center justify-center rounded-lg transition-colors",
                       collapsed && "hover:bg-sidebar-accent/50"
                     )}
                   >
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-[10px] text-white font-medium">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-[10px] font-medium text-white">
                       {userInitials}
                     </div>
                   </div>
@@ -745,16 +842,17 @@ export function AppSidebar({
               {/* User info */}
               <div
                 className={cn(
-                  "relative z-10 flex-1 min-w-0 transition-opacity duration-200",
+                  "relative z-10 min-w-0 flex-1 transition-opacity duration-200",
                   collapsed ? "opacity-0" : "opacity-100"
                 )}
               >
-                <div className="text-sm text-foreground truncate">{userDisplayName}</div>
+                <div className="truncate text-sm text-foreground">
+                  {userDisplayName}
+                </div>
               </div>
             </div>
           </div>
         </div>
-
       </aside>
 
       {/* Agent Dialog */}
@@ -773,23 +871,37 @@ export function AppSidebar({
       />
 
       {/* Settings Dialog */}
-      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <SettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+      />
 
       {/* User Profile Dialog */}
-      <UserProfileDialog open={profileOpen} onOpenChange={setProfileOpen} />
+      <UserProfileDialog
+        open={profileOpen}
+        onOpenChange={setProfileOpen}
+      />
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("sidebar.delete_title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t("sidebar.delete_description", { title: itemToDelete?.title ?? "" })}
+              {t("sidebar.delete_description", {
+                title: itemToDelete?.title ?? "",
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               {t("sidebar.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -797,7 +909,10 @@ export function AppSidebar({
       </AlertDialog>
 
       {/* Share Dialog */}
-      <AlertDialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+      <AlertDialog
+        open={shareDialogOpen}
+        onOpenChange={setShareDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("sidebar.share_title")}</AlertDialogTitle>

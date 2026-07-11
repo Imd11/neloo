@@ -2,37 +2,57 @@
  * Additional Step AI Logic - Redesigned
  * Two prompts: optimize existing modules + recommend new modules
  */
-import type { ResumeData, Project, Certificate, Award, Publication, Hobby, Volunteer } from '../types/resume';
+import type {
+  ResumeData,
+  Project,
+  Certificate,
+  Award,
+  Publication,
+  Hobby,
+  Volunteer,
+} from "../types/resume";
 
 // ============================================================================
 // Types
 // ============================================================================
 
-export type ModuleKey = 'projects' | 'certificates' | 'awards' | 'publications' | 'hobbies' | 'volunteer';
+export type ModuleKey =
+  | "projects"
+  | "certificates"
+  | "awards"
+  | "publications"
+  | "hobbies"
+  | "volunteer";
 
 // Optimization for existing modules (same as other wizard steps)
 export interface ModuleOptimization {
-    moduleType: ModuleKey;
-    suggestions: {
-        itemId: string;
-        field: string;
-        original: string;
-        optimized: string;
-        reason: string;
-    }[];
-    generalTips: string[];
+  moduleType: ModuleKey;
+  suggestions: {
+    itemId: string;
+    field: string;
+    original: string;
+    optimized: string;
+    reason: string;
+  }[];
+  generalTips: string[];
 }
 
 // New module recommendation with generated content
 export interface NewModuleRecommendation {
-    moduleType: ModuleKey;
-    moduleName: string;
-    reason: string;
-    suggestedContent: Project[] | Certificate[] | Award[] | Publication[] | Hobby[] | Volunteer[];
+  moduleType: ModuleKey;
+  moduleName: string;
+  reason: string;
+  suggestedContent:
+    | Project[]
+    | Certificate[]
+    | Award[]
+    | Publication[]
+    | Hobby[]
+    | Volunteer[];
 }
 
 export interface RecommendNewModulesResponse {
-    recommendations: NewModuleRecommendation[];
+  recommendations: NewModuleRecommendation[];
 }
 
 // ============================================================================
@@ -40,30 +60,30 @@ export interface RecommendNewModulesResponse {
 // ============================================================================
 
 export const MODULE_LABELS: Record<ModuleKey, string> = {
-    projects: '项目经历',
-    certificates: '证书资质',
-    awards: '获奖荣誉',
-    publications: '出版物',
-    hobbies: '兴趣爱好',
-    volunteer: '志愿者经历',
+  projects: "项目经历",
+  certificates: "证书资质",
+  awards: "获奖荣誉",
+  publications: "出版物",
+  hobbies: "兴趣爱好",
+  volunteer: "志愿者经历",
 };
 
 const MODULE_PROMPT_LABELS: Record<ModuleKey, string> = {
-    projects: 'projects',
-    certificates: 'certifications',
-    awards: 'awards',
-    publications: 'publications',
-    hobbies: 'hobbies',
-    volunteer: 'volunteer experience',
+  projects: "projects",
+  certificates: "certifications",
+  awards: "awards",
+  publications: "publications",
+  hobbies: "hobbies",
+  volunteer: "volunteer experience",
 };
 
 export const MODULE_ICONS: Record<ModuleKey, string> = {
-    projects: '💼',
-    certificates: '📜',
-    awards: '🏆',
-    publications: '📚',
-    hobbies: '🎯',
-    volunteer: '🤝',
+  projects: "💼",
+  certificates: "📜",
+  awards: "🏆",
+  publications: "📚",
+  hobbies: "🎯",
+  volunteer: "🤝",
 };
 
 // ============================================================================
@@ -71,18 +91,23 @@ export const MODULE_ICONS: Record<ModuleKey, string> = {
 // ============================================================================
 
 export function buildOptimizeExistingPrompt(
-    moduleType: ModuleKey,
-    moduleData: any[],
-    resumeContext: ResumeData
+  moduleType: ModuleKey,
+  moduleData: any[],
+  resumeContext: ResumeData
 ): string {
-    const promptModuleLabel = MODULE_PROMPT_LABELS[moduleType];
+  const promptModuleLabel = MODULE_PROMPT_LABELS[moduleType];
 
-    return `You are a professional resume optimization specialist. Help optimize the user's ${promptModuleLabel} content.
+  return `You are a professional resume optimization specialist. Help optimize the user's ${promptModuleLabel} content.
 
 ## User Background
-- Target role: ${resumeContext.personal.title || 'not specified'}
+- Target role: ${resumeContext.personal.title || "not specified"}
 - Approximate years of experience: ${resumeContext.experience.length * 2}
-- Skill keywords: ${resumeContext.skills.slice(0, 5).map(s => s.name).join(', ') || 'none'}
+- Skill keywords: ${
+    resumeContext.skills
+      .slice(0, 5)
+      .map((s) => s.name)
+      .join(", ") || "none"
+  }
 
 ## Current ${promptModuleLabel} Content
 ${JSON.stringify(moduleData, null, 2)}
@@ -117,35 +142,53 @@ Return JSON only, with no extra text:
 // ============================================================================
 
 export function buildRecommendNewModulesPrompt(data: ResumeData): string {
-    // Identify which modules user already has
-    const existingModules: string[] = [];
-    if (data.projects.length > 0) existingModules.push('projects');
-    if (data.certificates.length > 0) existingModules.push('certificates');
-    if (data.awards.length > 0) existingModules.push('awards');
-    if (data.publications.length > 0) existingModules.push('publications');
-    if (data.hobbies.length > 0) existingModules.push('hobbies');
-    if (data.volunteer.length > 0) existingModules.push('volunteer');
+  // Identify which modules user already has
+  const existingModules: string[] = [];
+  if (data.projects.length > 0) existingModules.push("projects");
+  if (data.certificates.length > 0) existingModules.push("certificates");
+  if (data.awards.length > 0) existingModules.push("awards");
+  if (data.publications.length > 0) existingModules.push("publications");
+  if (data.hobbies.length > 0) existingModules.push("hobbies");
+  if (data.volunteer.length > 0) existingModules.push("volunteer");
 
-    return `You are a senior resume consultant. Based on the user's existing resume information, analyze their career background and recommend additional resume modules that can improve competitiveness.
+  return `You are a senior resume consultant. Based on the user's existing resume information, analyze their career background and recommend additional resume modules that can improve competitiveness.
 
 ## Existing Resume Information
 
 ### Personal Information
 - Name: ${data.personal.name}
-- Target role: ${data.personal.title || 'not specified'}
-- Summary: ${data.personal.summary || 'none'}
+- Target role: ${data.personal.title || "not specified"}
+- Summary: ${data.personal.summary || "none"}
 
 ### Work Experience (${data.experience.length} items)
-${data.experience.map(e => `- ${e.position} @ ${e.company} (${e.startDate} - ${e.endDate || 'current'})\n  ${e.description}`).join('\n')}
+${data.experience
+  .map(
+    (e) =>
+      `- ${e.position} @ ${e.company} (${e.startDate} - ${
+        e.endDate || "current"
+      })\n  ${e.description}`
+  )
+  .join("\n")}
 
 ### Education (${data.education.length} items)
-${data.education.map(e => `- ${e.degree} ${e.field} @ ${e.institution} (${e.startDate} - ${e.endDate})`).join('\n')}
+${data.education
+  .map(
+    (e) =>
+      `- ${e.degree} ${e.field} @ ${e.institution} (${e.startDate} - ${e.endDate})`
+  )
+  .join("\n")}
 
 ### Skills (${data.skills.length} items)
-${data.skills.map(s => s.name).join(', ') || 'none'}
+${data.skills.map((s) => s.name).join(", ") || "none"}
 
 ## Other Modules Already Present in the Resume
-${existingModules.length > 0 ? existingModules.map(m => MODULE_PROMPT_LABELS[m as ModuleKey]).join(', ') : 'none'}
+${
+  existingModules.length > 0
+    ? existingModules
+        .map((m) => MODULE_PROMPT_LABELS[m as ModuleKey])
+        .join(", ")
+    : "none"
+}
 
 ## Task
 1. Analyze the user's career background and development stage.
@@ -216,66 +259,72 @@ Return JSON only, with no extra text:
 // Parse Responses
 // ============================================================================
 
-export function parseOptimizeResponse(response: string): ModuleOptimization | null {
-    try {
-        let content = response.trim();
-        if (content.startsWith('```')) {
-            const lines = content.split('\n');
-            content = lines.slice(1, -1).join('\n');
-        }
-
-        const start = content.indexOf('{');
-        const end = content.lastIndexOf('}') + 1;
-        if (start >= 0 && end > start) {
-            content = content.slice(start, end);
-        }
-
-        const parsed = JSON.parse(content);
-        return {
-            moduleType: 'projects', // Will be set by caller
-            suggestions: parsed.suggestions || [],
-            generalTips: parsed.generalTips || [],
-        };
-    } catch (e) {
-        console.error('Failed to parse optimize response:', e);
-        return null;
+export function parseOptimizeResponse(
+  response: string
+): ModuleOptimization | null {
+  try {
+    let content = response.trim();
+    if (content.startsWith("```")) {
+      const lines = content.split("\n");
+      content = lines.slice(1, -1).join("\n");
     }
+
+    const start = content.indexOf("{");
+    const end = content.lastIndexOf("}") + 1;
+    if (start >= 0 && end > start) {
+      content = content.slice(start, end);
+    }
+
+    const parsed = JSON.parse(content);
+    return {
+      moduleType: "projects", // Will be set by caller
+      suggestions: parsed.suggestions || [],
+      generalTips: parsed.generalTips || [],
+    };
+  } catch (e) {
+    console.error("Failed to parse optimize response:", e);
+    return null;
+  }
 }
 
-export function parseRecommendResponse(response: string): RecommendNewModulesResponse | null {
-    try {
-        let content = response.trim();
-        if (content.startsWith('```')) {
-            const lines = content.split('\n');
-            content = lines.slice(1, -1).join('\n');
-        }
-
-        const start = content.indexOf('{');
-        const end = content.lastIndexOf('}') + 1;
-        if (start >= 0 && end > start) {
-            content = content.slice(start, end);
-        }
-
-        const parsed = JSON.parse(content);
-
-        if (!parsed.recommendations || !Array.isArray(parsed.recommendations)) {
-            return null;
-        }
-
-        // Ensure all suggestedContent items have valid IDs
-        const recommendations = parsed.recommendations.map((rec: any) => ({
-            ...rec,
-            suggestedContent: (rec.suggestedContent || []).map((item: any, idx: number) => ({
-                ...item,
-                id: item.id || `ai_${rec.moduleType}_${idx + 1}`,
-            })),
-        }));
-
-        return { recommendations };
-    } catch (e) {
-        console.error('Failed to parse recommend response:', e);
-        return null;
+export function parseRecommendResponse(
+  response: string
+): RecommendNewModulesResponse | null {
+  try {
+    let content = response.trim();
+    if (content.startsWith("```")) {
+      const lines = content.split("\n");
+      content = lines.slice(1, -1).join("\n");
     }
+
+    const start = content.indexOf("{");
+    const end = content.lastIndexOf("}") + 1;
+    if (start >= 0 && end > start) {
+      content = content.slice(start, end);
+    }
+
+    const parsed = JSON.parse(content);
+
+    if (!parsed.recommendations || !Array.isArray(parsed.recommendations)) {
+      return null;
+    }
+
+    // Ensure all suggestedContent items have valid IDs
+    const recommendations = parsed.recommendations.map((rec: any) => ({
+      ...rec,
+      suggestedContent: (rec.suggestedContent || []).map(
+        (item: any, idx: number) => ({
+          ...item,
+          id: item.id || `ai_${rec.moduleType}_${idx + 1}`,
+        })
+      ),
+    }));
+
+    return { recommendations };
+  } catch (e) {
+    console.error("Failed to parse recommend response:", e);
+    return null;
+  }
 }
 
 // ============================================================================
@@ -283,24 +332,31 @@ export function parseRecommendResponse(response: string): RecommendNewModulesRes
 // ============================================================================
 
 export function getExistingModules(data: ResumeData): ModuleKey[] {
-    const result: ModuleKey[] = [];
-    if (data.projects.length > 0) result.push('projects');
-    if (data.certificates.length > 0) result.push('certificates');
-    if (data.awards.length > 0) result.push('awards');
-    if (data.publications.length > 0) result.push('publications');
-    if (data.hobbies.length > 0) result.push('hobbies');
-    if (data.volunteer.length > 0) result.push('volunteer');
-    return result;
+  const result: ModuleKey[] = [];
+  if (data.projects.length > 0) result.push("projects");
+  if (data.certificates.length > 0) result.push("certificates");
+  if (data.awards.length > 0) result.push("awards");
+  if (data.publications.length > 0) result.push("publications");
+  if (data.hobbies.length > 0) result.push("hobbies");
+  if (data.volunteer.length > 0) result.push("volunteer");
+  return result;
 }
 
 export function getModuleData(data: ResumeData, moduleType: ModuleKey): any[] {
-    switch (moduleType) {
-        case 'projects': return data.projects;
-        case 'certificates': return data.certificates;
-        case 'awards': return data.awards;
-        case 'publications': return data.publications;
-        case 'hobbies': return data.hobbies;
-        case 'volunteer': return data.volunteer;
-        default: return [];
-    }
+  switch (moduleType) {
+    case "projects":
+      return data.projects;
+    case "certificates":
+      return data.certificates;
+    case "awards":
+      return data.awards;
+    case "publications":
+      return data.publications;
+    case "hobbies":
+      return data.hobbies;
+    case "volunteer":
+      return data.volunteer;
+    default:
+      return [];
+  }
 }

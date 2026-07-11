@@ -1,4 +1,5 @@
-const SENSITIVE_KEY = /(token|secret|password|authorization|cookie|credential|api[_-]?key)/i;
+const SENSITIVE_KEY =
+  /(token|secret|password|authorization|cookie|credential|api[_-]?key)/i;
 const REDACTED = "••••••";
 
 function redact(value: unknown): unknown {
@@ -8,12 +9,14 @@ function redact(value: unknown): unknown {
       Object.entries(value).map(([key, child]) => [
         key,
         SENSITIVE_KEY.test(key) ? REDACTED : redact(child),
-      ]),
+      ])
     );
   }
   return value;
 }
 
-export function redactToolArgs(args: Record<string, unknown>): Record<string, unknown> {
+export function redactToolArgs(
+  args: Record<string, unknown>
+): Record<string, unknown> {
   return redact(args) as Record<string, unknown>;
 }

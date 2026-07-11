@@ -23,7 +23,10 @@ import {
   sanitizeHiddenPromptMessagesForPersistence,
   type HiddenPromptEnvelope,
 } from "@/app/utils/hiddenPromptEnvelope";
-import { getHumanizePrompt, getPromptOptimizePrompt } from "@/data/featurePrompts";
+import {
+  getHumanizePrompt,
+  getPromptOptimizePrompt,
+} from "@/data/featurePrompts";
 import { getFortuneTemplatePrefix } from "@/data/fortuneTemplatePrefix";
 import { useLanguage } from "@/providers/LanguageProvider";
 
@@ -54,24 +57,31 @@ function isRetryableSaveStatus(status: number): boolean {
 function rebuildModelMessageForRegenerate(message: Message): Message {
   if (message.type !== "human" || !message.id) return message;
 
-  const additional = (message as Message & {
-    additional_kwargs?: Record<string, unknown>;
-  }).additional_kwargs;
+  const additional = (
+    message as Message & {
+      additional_kwargs?: Record<string, unknown>;
+    }
+  ).additional_kwargs;
   const payload = additional?.neloo_hidden_prompt;
   if (!payload || typeof payload !== "object") return message;
 
   const visibleContent = getVisibleHumanContent(message);
   const context = (payload as { context?: unknown }).context;
-  if (!visibleContent || !context || typeof context !== "object") return message;
+  if (!visibleContent || !context || typeof context !== "object")
+    return message;
 
   const feature = (context as { feature?: unknown }).feature;
   const templateId = (context as { templateId?: unknown }).templateId;
-  const numericTemplateId = typeof templateId === "number" ? templateId : undefined;
+  const numericTemplateId =
+    typeof templateId === "number" ? templateId : undefined;
 
   if (feature === "prompt-optimize") {
     return createHiddenPromptMessage(message.id, {
       visibleContent,
-      hiddenPrefix: getPromptOptimizePrompt(numericTemplateId ?? null, undefined),
+      hiddenPrefix: getPromptOptimizePrompt(
+        numericTemplateId ?? null,
+        undefined
+      ),
       context: { feature: "prompt-optimize", templateId: numericTemplateId },
     });
   }
@@ -109,7 +119,9 @@ async function saveMessageToDb(
 
   try {
     const response = await fetch(
-      `${config.deploymentUrl}/api/threads/${encodeURIComponent(threadId)}/messages`,
+      `${config.deploymentUrl}/api/threads/${encodeURIComponent(
+        threadId
+      )}/messages`,
       {
         method: "POST",
         headers: {
@@ -118,19 +130,28 @@ async function saveMessageToDb(
         },
         body: JSON.stringify({
           message_id: message.id,
-          role: message.type === "human" ? "user" : message.type === "ai" ? "assistant" : message.type,
+          role:
+            message.type === "human"
+              ? "user"
+              : message.type === "ai"
+              ? "assistant"
+              : message.type,
           message_data: message,
         }),
       }
     );
 
     if (response.ok) {
-      console.log(`[useChat] Saved message ${message.id?.slice(0, 8)}... to database`);
+      console.log(
+        `[useChat] Saved message ${message.id?.slice(0, 8)}... to database`
+      );
       return { ok: true, retryable: false, status: response.status };
     } else {
       const detail = await response.text().catch(() => "");
       const retryable = isRetryableSaveStatus(response.status);
-      console.error(`[useChat] Failed to save message (${response.status}): ${detail}`);
+      console.error(
+        `[useChat] Failed to save message (${response.status}): ${detail}`
+      );
       return { ok: false, retryable, status: response.status };
     }
   } catch (error) {
@@ -149,7 +170,12 @@ async function saveMessageToDbWithRetry(
   let retryCount = 0;
 
   while (true) {
-    const result = await saveMessageToDb(config, accessToken, threadId, message);
+    const result = await saveMessageToDb(
+      config,
+      accessToken,
+      threadId,
+      message
+    );
     if (result.ok) {
       return true;
     }
@@ -165,7 +191,7 @@ async function saveMessageToDbWithRetry(
     );
     console.warn(
       `[useChat] Retry saving message ${message.id?.slice(0, 8)}... ` +
-      `(${retryCount}/${maxRetries}) in ${backoff}ms`
+        `(${retryCount}/${maxRetries}) in ${backoff}ms`
     );
     await delay(backoff);
   }
@@ -220,7 +246,9 @@ export function useChat({
   // Track saved message IDs to avoid duplicate saves
   const savedMessageIdsRef = useRef<Set<string>>(new Set());
   // Track failed saves so we can retry in the background.
-  const pendingSaveMessagesRef = useRef<Map<string, { threadId: string; message: Message }>>(new Map());
+  const pendingSaveMessagesRef = useRef<
+    Map<string, { threadId: string; message: Message }>
+  >(new Map());
   const isFlushingPendingSavesRef = useRef(false);
   // Ref to hold the latest messages snapshot for saving before history rehydrate
   const messagesSnapshotRef = useRef<Message[]>([]);
@@ -241,7 +269,8 @@ export function useChat({
   }, [fortuneMode, threadMode, webDevMode]);
 
   const currentBaseModelId = useMemo(() => {
-    const rawId = activeAssistant?.graph_id || activeAssistant?.assistant_id || null;
+    const rawId =
+      activeAssistant?.graph_id || activeAssistant?.assistant_id || null;
     if (!rawId) return null;
     return rawId.replace(/-(web-dev|fortune)$/, "");
   }, [activeAssistant?.assistant_id, activeAssistant?.graph_id]);
@@ -255,7 +284,9 @@ export function useChat({
 
       try {
         const response = await fetch(
-          `${config.deploymentUrl}/api/threads/${encodeURIComponent(currentThreadId)}/generate-title`,
+          `${config.deploymentUrl}/api/threads/${encodeURIComponent(
+            currentThreadId
+          )}/generate-title`,
           {
             method: "POST",
             headers: {
@@ -291,7 +322,8 @@ export function useChat({
         return true;
       }
 
-      const messageToPersist = sanitizeHiddenPromptMessageForPersistence(message);
+      const messageToPersist =
+        sanitizeHiddenPromptMessageForPersistence(message);
       const saved = await saveMessageToDbWithRetry(
         { deploymentUrl },
         accessToken,
@@ -324,7 +356,8 @@ export function useChat({
       }
 
       const tasks: Promise<boolean>[] = [];
-      const sanitizedMessages = sanitizeHiddenPromptMessagesForPersistence(messagesToSave);
+      const sanitizedMessages =
+        sanitizeHiddenPromptMessagesForPersistence(messagesToSave);
       for (const msg of sanitizedMessages) {
         if (!msg.id || savedMessageIdsRef.current.has(msg.id)) {
           continue;
@@ -344,8 +377,12 @@ export function useChat({
   );
 
   const persistUnsavedHumanMessages = useCallback(
-    async (targetThreadId: string): Promise<{ attempted: number; failed: number }> => {
-      const humanMessages = messagesSnapshotRef.current.filter((message) => message.type === "human");
+    async (
+      targetThreadId: string
+    ): Promise<{ attempted: number; failed: number }> => {
+      const humanMessages = messagesSnapshotRef.current.filter(
+        (message) => message.type === "human"
+      );
       if (humanMessages.length === 0) {
         return { attempted: 0, failed: 0 };
       }
@@ -380,7 +417,7 @@ export function useChat({
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
             langgraph_thread_id: threadId,
@@ -392,7 +429,12 @@ export function useChat({
 
         if (response.ok) {
           const threadData = await response.json();
-          console.log(`[useChat] Created thread record for: ${threadId.slice(0, 8)}... mode=${threadData.mode}`);
+          console.log(
+            `[useChat] Created thread record for: ${threadId.slice(
+              0,
+              8
+            )}... mode=${threadData.mode}`
+          );
           createdThreadsRef.current.add(threadId);
 
           // Update thread mode from server response
@@ -413,7 +455,9 @@ export function useChat({
           const errorText = await response.text();
           // If the thread belongs to another user, clear it immediately to prevent data leakage.
           if (response.status === 403) {
-            console.warn("[useChat] Thread ownership mismatch, clearing threadId");
+            console.warn(
+              "[useChat] Thread ownership mismatch, clearing threadId"
+            );
             pendingFirstMessageRef.current = null;
             setThreadId(null);
             toast.error("无权限访问该对话", {
@@ -451,7 +495,7 @@ export function useChat({
   useEffect(() => {
     if (!threadId) {
       setThreadMode("default");
-      setWebDevMode(false);  // Reset to default for new threads
+      setWebDevMode(false); // Reset to default for new threads
     }
     // Reset historyUnavailable flag when switching to a different thread
     setHistoryUnavailable(false);
@@ -481,13 +525,20 @@ export function useChat({
 
         if (!response.ok) {
           const detail = await response.text().catch(() => "");
-          console.error(`[useChat] Runtime recover failed: ${response.status} ${detail}`);
+          console.error(
+            `[useChat] Runtime recover failed: ${response.status} ${detail}`
+          );
           return false;
         }
 
         createdThreadsRef.current.add(currentThreadId);
         void persistUnsavedHumanMessages(currentThreadId);
-        console.log(`[useChat] Runtime recover succeeded for thread: ${currentThreadId.slice(0, 8)}...`);
+        console.log(
+          `[useChat] Runtime recover succeeded for thread: ${currentThreadId.slice(
+            0,
+            8
+          )}...`
+        );
         return true;
       } catch (error) {
         console.error("[useChat] Runtime recover error:", error);
@@ -496,7 +547,13 @@ export function useChat({
         recoveringThreadsRef.current.delete(currentThreadId);
       }
     },
-    [config?.deploymentUrl, session?.access_token, currentCreateMode, currentBaseModelId, persistUnsavedHumanMessages]
+    [
+      config?.deploymentUrl,
+      session?.access_token,
+      currentCreateMode,
+      currentBaseModelId,
+      persistUnsavedHumanMessages,
+    ]
   );
 
   const flushPendingSaveQueue = useCallback(async () => {
@@ -511,7 +568,9 @@ export function useChat({
 
     isFlushingPendingSavesRef.current = true;
     try {
-      console.log(`[useChat] Flushing ${pending.length} pending message saves...`);
+      console.log(
+        `[useChat] Flushing ${pending.length} pending message saves...`
+      );
       for (const item of pending) {
         await persistMessage(item.threadId, item.message);
       }
@@ -525,8 +584,15 @@ export function useChat({
     const errorMessage = error instanceof Error ? error.message : String(error);
     const lowerError = errorMessage.toLowerCase();
 
-    if (lowerError.includes("429") || lowerError.includes("usage limit") || lowerError.includes("too many requests")) {
-      const retryAfter = Number.parseInt(errorMessage.match(/retry-after[^0-9]*(\d+)/i)?.[1] || "60", 10);
+    if (
+      lowerError.includes("429") ||
+      lowerError.includes("usage limit") ||
+      lowerError.includes("too many requests")
+    ) {
+      const retryAfter = Number.parseInt(
+        errorMessage.match(/retry-after[^0-9]*(\d+)/i)?.[1] || "60",
+        10
+      );
       toast.error(t("errors.rate_limited", { seconds: retryAfter }));
       return;
     }
@@ -535,9 +601,14 @@ export function useChat({
     const currentThreadId = currentThreadIdRef.current;
     if (currentThreadId && accessToken && deploymentUrl) {
       const messagesToSave = messagesSnapshotRef.current;
-      const { attempted, failed } = await persistUnsavedMessages(currentThreadId, messagesToSave);
+      const { attempted, failed } = await persistUnsavedMessages(
+        currentThreadId,
+        messagesToSave
+      );
       if (attempted > 0) {
-        console.log(`[useChat] Save-on-error attempted=${attempted}, failed=${failed}`);
+        console.log(
+          `[useChat] Save-on-error attempted=${attempted}, failed=${failed}`
+        );
       }
     }
 
@@ -567,14 +638,18 @@ export function useChat({
 
     // Check if it's a history-not-found error (checkpoint lost after restart)
     if (isHistoryMissingError) {
-      console.warn("[useChat] Thread history not found in LangGraph (checkpoint may have been lost):", threadId);
+      console.warn(
+        "[useChat] Thread history not found in LangGraph (checkpoint may have been lost):",
+        threadId
+      );
 
       // Don't clear threadId - that causes blank UI and triggers new thread creation
       // Instead, mark history as unavailable and show user notification
       setHistoryUnavailable(true);
 
       toast.warning("对话历史不可用", {
-        description: "该对话的消息历史已丢失（服务器重启后可能发生）。你可以继续发送新消息。",
+        description:
+          "该对话的消息历史已丢失（服务器重启后可能发生）。你可以继续发送新消息。",
         duration: 6000,
       });
     } else {
@@ -597,7 +672,8 @@ export function useChat({
   // Compute the effective assistant ID based on active mode
   // Priority: fortune mode > web-dev mode > default
   const effectiveAssistantId = useMemo(() => {
-    const baseId = activeAssistant?.graph_id || activeAssistant?.assistant_id || "";
+    const baseId =
+      activeAssistant?.graph_id || activeAssistant?.assistant_id || "";
 
     // Fortune mode takes priority
     if (isFortuneModeActive && baseId && !baseId.endsWith("-fortune")) {
@@ -615,7 +691,12 @@ export function useChat({
 
     console.log(`[useChat] Using default graph: ${baseId}`);
     return baseId;
-  }, [activeAssistant?.graph_id, activeAssistant?.assistant_id, isWebDevModeActive, isFortuneModeActive]);
+  }, [
+    activeAssistant?.graph_id,
+    activeAssistant?.assistant_id,
+    isWebDevModeActive,
+    isFortuneModeActive,
+  ]);
 
   // Best-effort retry loop for transient persistence failures.
   useEffect(() => {
@@ -660,11 +741,16 @@ export function useChat({
 
       // Use the latest snapshot of messages (captured in useEffect below)
       const messagesToSave = messagesSnapshotRef.current;
-      const { attempted, failed } = await persistUnsavedMessages(currentThreadId, messagesToSave);
+      const { attempted, failed } = await persistUnsavedMessages(
+        currentThreadId,
+        messagesToSave
+      );
 
       // Wait for all save attempts to complete BEFORE revalidating.
       if (attempted > 0) {
-        console.log(`[useChat] Save-on-finish attempted=${attempted}, failed=${failed}`);
+        console.log(
+          `[useChat] Save-on-finish attempted=${attempted}, failed=${failed}`
+        );
       }
 
       void flushPendingSaveQueue();
@@ -689,7 +775,11 @@ export function useChat({
       const displayContent = content;
 
       const messageId = uuidv4();
-      const displayMessage: Message = { id: messageId, type: "human", content: displayContent };
+      const displayMessage: Message = {
+        id: messageId,
+        type: "human",
+        content: displayContent,
+      };
       let backendMessage: Message = displayMessage;
 
       if (activeAgent?.systemPrompt) {
@@ -710,10 +800,10 @@ export function useChat({
       const isFirstMessage = currentMessages.length === 0;
 
       stream.submit(
-        { messages: [backendMessage] },  // Send full content to backend
+        { messages: [backendMessage] }, // Send full content to backend
         {
           optimisticValues: (prev) => ({
-            messages: [...(prev.messages ?? []), displayMessage],  // Show only user content in UI
+            messages: [...(prev.messages ?? []), displayMessage], // Show only user content in UI
           }),
           config: { ...(activeAssistant?.config ?? {}), recursion_limit: 1000 },
         }
@@ -737,7 +827,15 @@ export function useChat({
         }
       }
     },
-    [stream, activeAssistant?.config, onHistoryRevalidate, threadId, generateTitleForThread, activeAgent, t]
+    [
+      stream,
+      activeAssistant?.config,
+      onHistoryRevalidate,
+      threadId,
+      generateTitleForThread,
+      activeAgent,
+      t,
+    ]
   );
 
   // Keep messagesSnapshotRef updated with the latest messages during streaming
@@ -762,8 +860,9 @@ export function useChat({
     ) => {
       // Only use checkpoint if it has a valid string checkpoint_id
       // This prevents HTTP 422 when checkpoint_id is null (from Supabase history)
-      const hasValidCheckpoint = checkpoint &&
-        typeof checkpoint.checkpoint_id === 'string' &&
+      const hasValidCheckpoint =
+        checkpoint &&
+        typeof checkpoint.checkpoint_id === "string" &&
         checkpoint.checkpoint_id.length > 0;
 
       if (hasValidCheckpoint) {
@@ -855,15 +954,22 @@ export function useChat({
     (messageIndex: number, newContent: string) => {
       const currentMessages = stream.messages ?? [];
       if (messageIndex < 0 || messageIndex >= currentMessages.length) {
-        console.error("[useChat] Invalid message index for edit:", messageIndex);
+        console.error(
+          "[useChat] Invalid message index for edit:",
+          messageIndex
+        );
         return;
       }
 
-	      // Truncate: keep messages before the edited one, then add the new message
-	      const truncatedMessages = sanitizeHiddenPromptMessagesForPersistence(
-	        currentMessages.slice(0, messageIndex)
-	      );
-	      const newMessage: Message = { id: uuidv4(), type: "human", content: newContent };
+      // Truncate: keep messages before the edited one, then add the new message
+      const truncatedMessages = sanitizeHiddenPromptMessagesForPersistence(
+        currentMessages.slice(0, messageIndex)
+      );
+      const newMessage: Message = {
+        id: uuidv4(),
+        type: "human",
+        content: newContent,
+      };
 
       // Submit with the truncated history + new message
       stream.submit(
@@ -898,75 +1004,82 @@ export function useChat({
       return;
     }
 
-	    // Truncate: keep messages up to and including the last human message.
-	    const sanitizedMessages = sanitizeHiddenPromptMessagesForPersistence(
-	      currentMessages.slice(0, lastHumanIndex + 1)
-	    );
-      const modelMessages = sanitizedMessages.map((message, index) =>
-        index === sanitizedMessages.length - 1
-          ? rebuildModelMessageForRegenerate(message)
-          : message
-      );
+    // Truncate: keep messages up to and including the last human message.
+    const sanitizedMessages = sanitizeHiddenPromptMessagesForPersistence(
+      currentMessages.slice(0, lastHumanIndex + 1)
+    );
+    const modelMessages = sanitizedMessages.map((message, index) =>
+      index === sanitizedMessages.length - 1
+        ? rebuildModelMessageForRegenerate(message)
+        : message
+    );
 
-	    // Re-submit to generate a new response
-	    stream.submit(
-	      { messages: modelMessages },
-	      {
-	        optimisticValues: { messages: sanitizedMessages },
-	        config: { ...(activeAssistant?.config ?? {}), recursion_limit: 1000 },
-	      }
-	    );
+    // Re-submit to generate a new response
+    stream.submit(
+      { messages: modelMessages },
+      {
+        optimisticValues: { messages: sanitizedMessages },
+        config: { ...(activeAssistant?.config ?? {}), recursion_limit: 1000 },
+      }
+    );
 
     onHistoryRevalidate?.();
   }, [stream, activeAssistant?.config, onHistoryRevalidate]);
 
   // Fork thread at a specific AI message and regenerate
   // This creates a new thread with history copied up to the anchor human message
-  const forkAndRegenerate = useCallback(async (targetAiMessageId: string) => {
-    if (!threadId || !config?.deploymentUrl || !session?.access_token) {
-      console.error("[useChat] Missing requirements for fork");
-      return;
-    }
-
-    try {
-      // Call Fork API
-      const response = await fetch(
-        `${config.deploymentUrl}/api/threads/${encodeURIComponent(threadId)}/fork`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            fork_target_ai_message_id: targetAiMessageId,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.detail || "Fork failed");
+  const forkAndRegenerate = useCallback(
+    async (targetAiMessageId: string) => {
+      if (!threadId || !config?.deploymentUrl || !session?.access_token) {
+        console.error("[useChat] Missing requirements for fork");
+        return;
       }
 
-      const data = await response.json();
-      console.log(`[useChat] Forked to new thread: ${data.new_thread_id}, copied ${data.messages_copied} messages`);
+      try {
+        // Call Fork API
+        const response = await fetch(
+          `${config.deploymentUrl}/api/threads/${encodeURIComponent(
+            threadId
+          )}/fork`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              fork_target_ai_message_id: targetAiMessageId,
+            }),
+          }
+        );
 
-      // Navigate to new thread - this will trigger history load
-      setThreadId(data.new_thread_id);
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          throw new Error(error.detail || "Fork failed");
+        }
 
-      // After navigation, the new thread will load its history (copied messages)
-      // The frontend will show the copied conversation
-      // User can then submit a new message to trigger AI regeneration
+        const data = await response.json();
+        console.log(
+          `[useChat] Forked to new thread: ${data.new_thread_id}, copied ${data.messages_copied} messages`
+        );
 
-      onHistoryRevalidate?.();
+        // Navigate to new thread - this will trigger history load
+        setThreadId(data.new_thread_id);
 
-      return data;
-    } catch (error) {
-      console.error("[useChat] Fork failed:", error);
-      throw error;
-    }
-  }, [threadId, config, session?.access_token, setThreadId, onHistoryRevalidate]);
+        // After navigation, the new thread will load its history (copied messages)
+        // The frontend will show the copied conversation
+        // User can then submit a new message to trigger AI regeneration
+
+        onHistoryRevalidate?.();
+
+        return data;
+      } catch (error) {
+        console.error("[useChat] Fork failed:", error);
+        throw error;
+      }
+    },
+    [threadId, config, session?.access_token, setThreadId, onHistoryRevalidate]
+  );
 
   return {
     stream,

@@ -94,13 +94,13 @@ function CodeBlock({
 
   if (!inline && match) {
     return (
-      <div className="relative group">
+      <div className="group relative">
         {/* Language label and copy button */}
-        <div className="flex items-center justify-between bg-zinc-800 px-4 py-2 rounded-t-md text-xs text-zinc-400">
+        <div className="flex items-center justify-between rounded-t-md bg-zinc-800 px-4 py-2 text-xs text-zinc-400">
           <span>{match[1]}</span>
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1 hover:text-white transition-colors"
+            className="flex items-center gap-1 transition-colors hover:text-white"
           >
             {isCopied ? (
               <>
@@ -119,7 +119,7 @@ function CodeBlock({
           style={oneDark}
           language={match[1]}
           PreTag="div"
-          className="!mt-0 !rounded-t-none max-w-full rounded-b-md text-sm"
+          className="!mt-0 max-w-full !rounded-t-none rounded-b-md text-sm"
           wrapLines={true}
           wrapLongLines={true}
           lineProps={{
@@ -154,9 +154,7 @@ function CodeBlock({
 
 function PreBlock({ children }: { children?: React.ReactNode }) {
   return (
-    <div className="my-4 max-w-full overflow-hidden last:mb-0">
-      {children}
-    </div>
+    <div className="my-4 max-w-full overflow-hidden last:mb-0">{children}</div>
   );
 }
 
@@ -189,7 +187,7 @@ function BlockQuote({ children }: { children?: React.ReactNode }) {
 
 function UnorderedList({ children }: { children?: React.ReactNode }) {
   return (
-    <ul className="my-4 pl-6 list-disc [&>li:last-child]:mb-0 [&>li]:mb-1">
+    <ul className="my-4 list-disc pl-6 [&>li:last-child]:mb-0 [&>li]:mb-1">
       {children}
     </ul>
   );
@@ -197,7 +195,7 @@ function UnorderedList({ children }: { children?: React.ReactNode }) {
 
 function OrderedList({ children }: { children?: React.ReactNode }) {
   return (
-    <ol className="my-4 pl-6 list-decimal [&>li:last-child]:mb-0 [&>li]:mb-1">
+    <ol className="my-4 list-decimal pl-6 [&>li:last-child]:mb-0 [&>li]:mb-1">
       {children}
     </ol>
   );
@@ -254,22 +252,22 @@ function ImageComponent({
   }
 
   return (
-    <span className="relative group inline-block my-4">
+    <span className="group relative my-4 inline-block">
       <img
         src={src}
         alt={alt}
-        className="max-w-full h-auto rounded-lg border border-gray-200 shadow-sm"
+        className="h-auto max-w-full rounded-lg border border-gray-200 shadow-sm"
       />
       <button
         onClick={handleDownload}
         disabled={isDownloading}
-        className="absolute top-2 right-2 p-2 bg-white/90 hover:bg-white rounded-lg shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 disabled:cursor-wait"
+        className="absolute right-2 top-2 rounded-lg bg-white/90 p-2 opacity-0 shadow-md transition-opacity duration-200 hover:bg-white disabled:cursor-wait group-hover:opacity-100"
         title="Download image"
       >
         {isDownloading ? (
-          <Loader2 className="w-4 h-4 text-gray-700 animate-spin" />
+          <Loader2 className="h-4 w-4 animate-spin text-gray-700" />
         ) : (
-          <Download className="w-4 h-4 text-gray-700" />
+          <Download className="h-4 w-4 text-gray-700" />
         )}
       </button>
     </span>

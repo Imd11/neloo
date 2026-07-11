@@ -11,7 +11,9 @@ export function isSupabaseConfigured(): boolean {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
   if (!url || !key) return false;
-  return !_SUPABASE_PLACEHOLDERS.some((p) => url.includes(p) || key.includes(p));
+  return !_SUPABASE_PLACEHOLDERS.some(
+    (p) => url.includes(p) || key.includes(p)
+  );
 }
 
 export function createClient() {

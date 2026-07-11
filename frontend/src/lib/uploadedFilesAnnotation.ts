@@ -68,7 +68,9 @@ export function parseUploadedFilesAnnotation(text: string): ParsedAttachment[] {
   }
 
   const blockContent = match[1];
-  const lines = blockContent.split("\n").filter((line) => line.startsWith("- "));
+  const lines = blockContent
+    .split("\n")
+    .filter((line) => line.startsWith("- "));
 
   const attachments: ParsedAttachment[] = [];
 
@@ -78,7 +80,8 @@ export function parseUploadedFilesAnnotation(text: string): ParsedAttachment[] {
       const filename = lineMatch[1];
       // Extract extension from filename
       const lastDot = filename.lastIndexOf(".");
-      const ext = lastDot !== -1 ? filename.slice(lastDot).toLowerCase() : undefined;
+      const ext =
+        lastDot !== -1 ? filename.slice(lastDot).toLowerCase() : undefined;
       const type = ext ? getFileTypeLabel(filename) : undefined;
 
       attachments.push({
