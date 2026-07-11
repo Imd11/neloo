@@ -123,5 +123,7 @@ async def optimize_resume(
         return OptimizeResponse(content=str(content).strip(), success=True)
     except asyncio.TimeoutError:
         raise HTTPException(status_code=504, detail="Resume optimization timed out")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

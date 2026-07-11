@@ -87,6 +87,8 @@ async def translate(
             )
     except asyncio.TimeoutError as exc:
         raise HTTPException(status_code=504, detail="Translation request timed out") from exc
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Translation failed: {exc}") from exc
 

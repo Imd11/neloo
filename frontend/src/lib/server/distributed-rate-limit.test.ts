@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  DistributedLimitError,
   DistributedRateLimiter,
   MemoryRateLimitStore,
   verifyGuestToken,
@@ -41,9 +42,15 @@ describe("DistributedRateLimiter", () => {
     });
     const first = limiter.withConcurrency("image", "guest-1", () => blocked);
 
-    await expect(
-      limiter.withConcurrency("image", "guest-1", async () => undefined)
-    ).rejects.toThrow("Concurrent usage limit exceeded");
+    const denied = limiter.withConcurrency(
+      "image",
+      "guest-1",
+      async () => undefined
+    );
+    await expect(denied).rejects.toMatchObject({
+      status: 429,
+      retryAfter: 5,
+    } satisfies Partial<DistributedLimitError>);
     release();
     await first;
     await expect(

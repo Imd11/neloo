@@ -208,6 +208,8 @@ async def generate_slides_text(
             )
     except asyncio.TimeoutError as exc:
         raise HTTPException(status_code=504, detail="Slides generation timed out") from exc
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Slides generation failed: {exc}") from exc
 

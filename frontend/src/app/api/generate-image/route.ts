@@ -5,6 +5,7 @@ import {
   ImageSize,
 } from "@/lib/services/image-generator";
 import {
+  distributedLimitResponse,
   rejectUnsafeImageRequest,
   runWithImageConcurrency,
 } from "@/lib/server/image-request-guard";
@@ -49,6 +50,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ images });
   } catch (error) {
+    const limited = distributedLimitResponse(error);
+    if (limited) return limited;
     if (error instanceof DOMException && error.name === "AbortError") {
       return NextResponse.json(
         { error: "Image generation cancelled" },

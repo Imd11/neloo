@@ -6,6 +6,15 @@ export interface RateLimitDecision {
   retryAfter: number;
 }
 
+export class DistributedLimitError extends Error {
+  readonly status = 429;
+
+  constructor(message: string, readonly retryAfter = 5) {
+    super(message);
+    this.name = "DistributedLimitError";
+  }
+}
+
 export interface RateLimitStore {
   increment(
     keys: string[],
@@ -224,7 +233,8 @@ export class DistributedRateLimiter {
       Number.parseInt(process.env.GUEST_CONCURRENCY_LIMIT || "2", 10),
       ttl
     );
-    if (!guest) throw new Error("Concurrent usage limit exceeded");
+    if (!guest)
+      throw new DistributedLimitError("Concurrent usage limit exceeded");
     const global = await this.acquireSlot(
       capability,
       "global",
@@ -233,7 +243,7 @@ export class DistributedRateLimiter {
     );
     if (!global) {
       await this.store.release(guest.key, guest.token);
-      throw new Error("Service concurrency limit exceeded");
+      throw new DistributedLimitError("Service concurrency limit exceeded");
     }
     try {
       return await operation();

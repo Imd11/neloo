@@ -23,16 +23,22 @@ const required = [
   [ci, "check-runtime-auth.sh", "runtime auth script"],
   [ci, "configurator-test", "configurator job"],
   [ci, "docker-readiness", "docker build job"],
+  [ci, "smoke-docker-runtime.sh", "post-build Docker runtime smoke"],
   [security, "check-production-dependencies.mjs", "production dependency audit"],
   [security, "pip-audit", "Python vulnerability audit"],
   [security, "gitleaks", "secret scan"],
 ];
 
 const missing = required.filter(([content, token]) => !content.includes(token));
+const dockerSmokeCalls = ci.match(/bash scripts\/smoke-docker-runtime\.sh/g) || [];
 if (/continue-on-error:\s*true/.test(ci)) {
   console.error("CI contract violation: required CI contains continue-on-error: true");
   process.exitCode = 1;
 }
 for (const [, , label] of missing) console.error(`CI contract violation: missing ${label}`);
+if (dockerSmokeCalls.length < 2) {
+  console.error("CI contract violation: both production Docker images must run runtime smoke tests");
+  process.exitCode = 1;
+}
 if (missing.length) process.exitCode = 1;
 if (!process.exitCode) console.log("CI contract is complete and blocking.");

@@ -270,6 +270,36 @@ test("production profile requires the same shared Redis in both server environme
   assert.equal(hasCode(report, "rate-limit-redis-mismatch"), true);
 });
 
+test("production profile requires an explicit trusted proxy boundary", () => {
+  const report = analyzeEnvironment({
+    profile: "production-railway-vercel",
+    backend: {
+      exists: true,
+      values: {
+        DEEPSEEK_API_KEY: "key",
+        SANDBOX_MODE: "e2b",
+        E2B_API_KEY: "e2b-key",
+        DATABASE_URL: "postgresql://example.test/db",
+        ALLOW_ANONYMOUS: "true",
+        ANONYMOUS_SESSION_SECRET: "shared-secret",
+        RATE_LIMIT_REDIS_URL: "redis://shared.test",
+      },
+    },
+    frontend: {
+      exists: true,
+      values: {
+        NEXT_PUBLIC_API_URL: "https://example.vercel.app",
+        ANONYMOUS_SESSION_SECRET: "shared-secret",
+        RATE_LIMIT_REDIS_URL: "redis://shared.test",
+        TRUSTED_PROXY_HOPS: "0",
+      },
+    },
+  });
+
+  assert.equal(report.ok, false);
+  assert.equal(hasCode(report, "missing-trusted-proxy-hops"), true);
+});
+
 test("analyzeEnvironment allows Next.js server-route secrets in frontend env", () => {
   const report = analyzeEnvironment({
     backend: { exists: true, values: { DEEPSEEK_API_KEY: "backend-key", SANDBOX_MODE: "local", ALLOW_ANONYMOUS: "true" } },

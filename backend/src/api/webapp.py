@@ -74,7 +74,12 @@ from ..storage.supabase_db import (
     update_thread_title,
     update_upload_session_status,
 )
-from ..usage_limits import get_usage_limiter, usage_store_ready
+from ..usage_limits import (
+    enforce_usage_limit,
+    get_usage_limiter,
+    usage_concurrency,
+    usage_store_ready,
+)
 
 # Import authentication
 from .auth import (
@@ -2803,6 +2808,7 @@ def _truncate_message(message: str) -> str:
 async def generate_thread_title_api(
     langgraph_thread_id: str,
     data: GenerateTitleRequest,
+    request: Request,
     user: dict = Depends(get_current_user),
 ):
     """
@@ -2841,8 +2847,9 @@ async def generate_thread_title_api(
             # Title already customized, don't overwrite
             return GenerateTitleResponse(title=current_title, generated=False)
 
-        # Generate title using LLM
-        new_title = await _generate_title_with_llm(data.user_message)
+        await enforce_usage_limit("model", user_id, request=request)
+        async with usage_concurrency("model", user_id):
+            new_title = await _generate_title_with_llm(data.user_message)
 
         # Update thread title
         success = await update_thread_title(langgraph_thread_id, new_title)
@@ -2945,6 +2952,7 @@ What security risks should this approach consider?"""
 async def generate_suggested_questions_api(
     langgraph_thread_id: str,
     data: SuggestedQuestionsRequest,
+    request: Request,
     user: dict = Depends(get_current_user),
 ):
     """
@@ -2968,10 +2976,11 @@ async def generate_suggested_questions_api(
         if thread_record["user_id"] != user_id:
             raise HTTPException(status_code=403, detail="Not authorized")
 
-        # Generate questions
-        questions = await _generate_suggested_questions(
-            ai_response=data.ai_response, context=data.conversation_context or ""
-        )
+        await enforce_usage_limit("model", user_id, request=request)
+        async with usage_concurrency("model", user_id):
+            questions = await _generate_suggested_questions(
+                ai_response=data.ai_response, context=data.conversation_context or ""
+            )
 
         return SuggestedQuestionsResponse(questions=questions)
 

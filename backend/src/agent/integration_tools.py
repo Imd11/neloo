@@ -15,6 +15,7 @@ import hashlib
 import json
 from datetime import datetime, timezone
 from typing import Annotated
+from uuid import UUID
 
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
@@ -50,20 +51,19 @@ def _resolve_user_id_from_config(config: RunnableConfig | None) -> str | None:
     return user_id_from_config(config)
 
 
-def _resolve_run_id_from_config(config: RunnableConfig | None) -> str:
-    """Extract run_id from RunnableConfig, or generate one."""
+def _resolve_run_id_from_config(config: RunnableConfig | None) -> str | None:
+    """Extract a stable run_id from RunnableConfig."""
     if config:
         try:
             # LangGraph puts run_id at top level or in configurable
             run_id = config.get("run_id") or config.get("configurable", {}).get("run_id")
             if isinstance(run_id, str) and run_id:
                 return run_id
+            if isinstance(run_id, UUID):
+                return str(run_id)
         except Exception:
             pass
-    # Fallback: generate a unique run_id
-    import uuid
-
-    return str(uuid.uuid4())[:8]
+    return None
 
 
 async def _resolve_user_id_for_thread(thread_id: str) -> str | None:
@@ -617,6 +617,11 @@ async def _invoke_allowed_action(
         return {"status": "error", "message": "Authenticated identity is required."}
     if not thread_id or thread_id == "default":
         return {"status": "error", "message": "A valid thread is required."}
+    if classification in {"write", "sensitive"} and not run_id:
+        return {
+            "status": "error",
+            "message": "A stable run ID is required before executing this action.",
+        }
 
     try:
         await ensure_app_identity(user_id, "guest")

@@ -1,5 +1,8 @@
 import { createHmac, randomUUID } from "node:crypto";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+
+import { getDistributedRateLimiter } from "@/lib/server/distributed-rate-limit";
+import { clientKey } from "@/lib/server/image-request-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +12,48 @@ function encodePayload(payload: Record<string, string | number>): string {
   return Buffer.from(JSON.stringify(payload)).toString("base64url");
 }
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const ipAddress = clientKey(request);
+  if (!ipAddress && process.env.NODE_ENV === "production") {
+    return NextResponse.json(
+      { error: "Trusted client address is unavailable" },
+      { status: 503 }
+    );
+  }
+
+  try {
+    const limiter = await getDistributedRateLimiter();
+    const limit = Math.max(
+      1,
+      Number.parseInt(process.env.GUEST_SESSIONS_PER_DAY || "2", 10)
+    );
+    const decision = await limiter.consume(
+      "session",
+      ipAddress || "local-development",
+      ipAddress,
+      limit,
+      86_400
+    );
+    if (!decision.allowed) {
+      return NextResponse.json(
+        {
+          error: "Too many guest sessions have been created from this address",
+        },
+        {
+          status: 429,
+          headers: { "Retry-After": String(decision.retryAfter) },
+        }
+      );
+    }
+  } catch {
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json(
+        { error: "Shared usage limits are unavailable" },
+        { status: 503 }
+      );
+    }
+  }
+
   const userId = randomUUID();
   const expiresAt = Date.now() + SESSION_LIFETIME_MS;
   const secret = process.env.ANONYMOUS_SESSION_SECRET?.trim();
