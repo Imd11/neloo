@@ -27,7 +27,7 @@ from typing import Optional
 
 from fastapi import FastAPI, File, UploadFile, HTTPException, Header, Query, Depends, Request, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, Response, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from starlette.responses import StreamingResponse
 from pydantic import BaseModel
 from slowapi import _rate_limit_exceeded_handler
@@ -35,6 +35,7 @@ from slowapi.errors import RateLimitExceeded
 
 # Import authentication
 from .auth import (
+    authenticate_authorization_header,
     extract_token_from_header,
     get_current_user,
     get_optional_user,
@@ -424,20 +425,19 @@ def _extract_thread_id_from_path(path: str) -> str | None:
 
 @app.middleware("http")
 async def _set_runtime_context(request: Request, call_next):
-    user_id = "default"
-    thread_id = _extract_thread_id_from_path(request.url.path) or "default"
+    user_id = None
+    thread_id = _extract_thread_id_from_path(request.url.path)
 
     authorization = request.headers.get("authorization")
-    token = extract_token_from_header(authorization)
-    if token:
+    if authorization:
         try:
-            payload = verify_jwt_token(token)
-            user_id = payload.get("sub", "default")
-        except HTTPException:
-            pass
+            payload = authenticate_authorization_header(authorization)
+            user_id = payload["sub"]
+        except HTTPException as exc:
+            return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
     else:
         if allow_anonymous() and allow_insecure_local_tokens():
-            user_id = request.headers.get("x-user-id") or "default"
+            user_id = request.headers.get("x-user-id")
 
     user_token = user_id_ctx.set(user_id)
     thread_token = thread_id_ctx.set(thread_id)

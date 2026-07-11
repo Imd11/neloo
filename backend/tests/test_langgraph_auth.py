@@ -9,11 +9,11 @@ from dataclasses import dataclass
 from uuid import uuid4
 
 import pytest
-from fastapi import HTTPException
 from langgraph_sdk import Auth
 
 from src.api.auth import allow_anonymous, get_jwt_secret
 from src.langgraph_auth import auth
+from src.runtime_context import user_id_from_config
 
 
 @dataclass
@@ -62,14 +62,14 @@ def _anonymous_sessions(monkeypatch: pytest.MonkeyPatch):
 
 @pytest.mark.asyncio
 async def test_missing_bearer_token_is_unauthorized():
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(Auth.exceptions.HTTPException) as exc_info:
         await auth._authenticate_handler(None)
     assert exc_info.value.status_code == 401
 
 
 @pytest.mark.asyncio
 async def test_invalid_bearer_token_is_unauthorized():
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(Auth.exceptions.HTTPException) as exc_info:
         await auth._authenticate_handler("Bearer invalid")
     assert exc_info.value.status_code == 401
 
@@ -143,3 +143,16 @@ async def test_create_run_handler_is_registered_and_scopes_owner():
 
     assert result == {"owner": "guest-a"}
     assert value["metadata"]["owner"] == "guest-a"
+
+
+def test_runtime_config_prefers_authenticated_identity():
+    config = {
+        "configurable": {
+            "langgraph_auth_user_id": "guest-a",
+            "user_id": "spoofed-user",
+        }
+    }
+
+    assert user_id_from_config(config) == "guest-a"
+    assert user_id_from_config({"configurable": {"user_id": "guest-b"}}) == "guest-b"
+    assert user_id_from_config({"configurable": {"user_id": "default"}}) is None

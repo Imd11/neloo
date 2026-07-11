@@ -20,7 +20,7 @@ from typing import Annotated, Optional
 from langchain_core.tools import tool
 from langchain_core.runnables import RunnableConfig
 
-from ..runtime_context import user_id_ctx, thread_id_ctx
+from ..runtime_context import thread_id_ctx, user_id_ctx, user_id_from_config
 from ..storage.supabase_db import get_supabase_client
 
 
@@ -46,17 +46,7 @@ def _resolve_thread_id_from_config(config: RunnableConfig | None) -> str | None:
 
 def _resolve_user_id_from_config(config: RunnableConfig | None) -> str | None:
     """Extract user_id from RunnableConfig.configurable."""
-    if not config:
-        return None
-    try:
-        configurable = config.get("configurable") or {}
-        if isinstance(configurable, dict):
-            user_id = configurable.get("user_id")
-            if isinstance(user_id, str) and user_id and user_id != "default":
-                return user_id
-    except Exception:
-        return None
-    return None
+    return user_id_from_config(config)
 
 
 def _resolve_run_id_from_config(config: RunnableConfig | None) -> str:
@@ -135,11 +125,6 @@ async def integrations_list_apps(
     if not user_id:
         user_id = user_id_ctx.get()
     
-    if not user_id or user_id in ("default", "anonymous"):
-        # Try DB fallback
-        if thread_id and thread_id != "default":
-            user_id = await _resolve_user_id_for_thread(thread_id)
-    
     print(f"[integrations_list_apps] user_id={user_id}, thread_id={thread_id}")
     
     if not user_id or user_id in ("default", "anonymous"):
@@ -188,10 +173,6 @@ async def integrations_list_actions(
     
     if not user_id:
         user_id = user_id_ctx.get()
-    
-    if not user_id or user_id in ("default", "anonymous"):
-        if thread_id and thread_id != "default":
-            user_id = await _resolve_user_id_for_thread(thread_id)
     
     if not user_id or user_id in ("default", "anonymous"):
         return "Error: Unable to identify the user."
@@ -259,11 +240,6 @@ async def integrations_execute(
     
     if not user_id:
         user_id = user_id_ctx.get()
-    
-    if not user_id or user_id in ("default", "anonymous"):
-        # Try DB fallback
-        if thread_id and thread_id != "default":
-            user_id = await _resolve_user_id_for_thread(thread_id)
     
     print(f"[integrations_execute] user_id={user_id}, thread_id={thread_id}, action={action}")
     

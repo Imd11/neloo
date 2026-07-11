@@ -167,6 +167,13 @@ def extract_token_from_header(authorization: Optional[str]) -> Optional[str]:
 # FastAPI Dependencies
 # =============================================================================
 
+def authenticate_authorization_header(authorization: Optional[str]) -> dict:
+    """Authenticate a Bearer header without FastAPI dependency injection."""
+    token = extract_token_from_header(authorization)
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    return verify_jwt_token(token)
+
 async def get_current_user(
     authorization: Optional[str] = Header(None),
     x_user_id: Optional[str] = Header(None),
@@ -194,11 +201,8 @@ async def get_current_user(
         HTTPException: 401 if authentication fails
     """
     # Try to extract token from Authorization header
-    token = extract_token_from_header(authorization)
-
-    if token:
-        # Verify the JWT token
-        return verify_jwt_token(token)
+    if authorization:
+        return authenticate_authorization_header(authorization)
 
     # Raw headers are allowed only for explicitly local development.
     if allow_anonymous() and allow_insecure_local_tokens():

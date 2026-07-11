@@ -12,7 +12,20 @@ We use ContextVar so values can be set per-request in FastAPI middleware.
 from __future__ import annotations
 
 from contextvars import ContextVar
+from typing import Any
 
-user_id_ctx: ContextVar[str] = ContextVar("user_id", default="default")
-thread_id_ctx: ContextVar[str] = ContextVar("thread_id", default="default")
+from langchain_core.runnables import RunnableConfig
 
+user_id_ctx: ContextVar[str | None] = ContextVar("user_id", default=None)
+thread_id_ctx: ContextVar[str | None] = ContextVar("thread_id", default=None)
+
+
+def user_id_from_config(config: RunnableConfig | None) -> str | None:
+    """Return only a usable identity from a LangGraph runtime config."""
+    configurable: Any = (config or {}).get("configurable") or {}
+    if not isinstance(configurable, dict):
+        return None
+    value = configurable.get("langgraph_auth_user_id") or configurable.get("user_id")
+    if not isinstance(value, str) or value in {"", "default", "anonymous"}:
+        return None
+    return value

@@ -18,10 +18,9 @@ from typing import Callable, Awaitable
 
 from .runtime_context import user_id_ctx, thread_id_ctx
 from .api.auth import (
+    authenticate_authorization_header,
     allow_anonymous,
     allow_insecure_local_tokens,
-    extract_token_from_header,
-    verify_jwt_token,
 )
 
 
@@ -49,18 +48,15 @@ class RuntimeContextASGIMiddleware:
                 continue
 
         path = scope.get("path") or ""
-        thread_id = _extract_thread_id_from_path(path) or "default"
+        thread_id = _extract_thread_id_from_path(path)
 
-        user_id = "default"
-        token = extract_token_from_header(headers.get("authorization"))
-        if token:
-            try:
-                payload = verify_jwt_token(token)
-                user_id = payload.get("sub", "default")
-            except Exception:
-                user_id = "default"
+        user_id = None
+        authorization = headers.get("authorization")
+        if authorization:
+            payload = authenticate_authorization_header(authorization)
+            user_id = payload["sub"]
         elif allow_anonymous() and allow_insecure_local_tokens():
-            user_id = headers.get("x-user-id") or "default"
+            user_id = headers.get("x-user-id")
 
         user_token = user_id_ctx.set(user_id)
         thread_token = thread_id_ctx.set(thread_id)

@@ -73,6 +73,10 @@
   "http": {
     "app": "src.api.webapp:app"
   },
+  "auth": {
+    "path": "src.langgraph_auth:auth",
+    "disable_studio_auth": true
+  },
   "checkpointer": {
     "type": "postgres",
     "uri": "${DATABASE_URL}"

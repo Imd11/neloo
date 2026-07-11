@@ -36,7 +36,11 @@ from ..context import (
 )
 from ..storage import save_image_base64, get_image_url
 
-from ..runtime_context import user_id_ctx as _user_id_ctx, thread_id_ctx as _thread_id_ctx
+from ..runtime_context import (
+    thread_id_ctx as _thread_id_ctx,
+    user_id_ctx as _user_id_ctx,
+    user_id_from_config,
+)
 from ..sandbox import get_executor, get_e2b_backend_factory
 from .integration_tools import INTEGRATION_TOOLS
 from ..model_ids import PUBLIC_MODEL_IDS, public_model_id
@@ -685,14 +689,9 @@ def execute_python(
     # Resolve thread_id/user_id. Do not rely solely on ContextVars because tools
     # execute in a ThreadPoolExecutor where ContextVars may not propagate.
     thread_id = _resolve_thread_id_from_config(config) or _thread_id_ctx.get()
-    user_id = _user_id_ctx.get()
+    user_id = user_id_from_config(config) or _user_id_ctx.get()
 
-    if user_id in ("default", "anonymous"):
-        resolved = _resolve_user_id_for_thread(thread_id) if isinstance(thread_id, str) else None
-        if resolved:
-            user_id = resolved
-
-    if user_id in ("default", "anonymous"):
+    if not user_id or user_id in ("default", "anonymous"):
         return (
             "Execution failed: missing authenticated user context.\n"
             "The server could not determine your user_id for sandbox file sync.\n"
