@@ -203,7 +203,24 @@ For providers with a required base URL or custom model variable, the API key alo
 3. Copy the service role key into `SUPABASE_SERVICE_KEY`. Never expose it in the frontend.
 4. Copy the anon key into `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 5. If you enable JWT verification, set `SUPABASE_JWT_SECRET`.
-6. Run the SQL migrations in `backend/supabase/migrations/` and `supabase/migrations/` using the Supabase SQL editor or your own migration process.
+6. Apply the Supabase migrations described in [Configuration](docs/configuration.md).
+
+### Upgrading an existing deployment
+
+Custom runtime authentication filters LangGraph threads by `metadata.owner`. Before
+deploying this version over an older Neloo installation, put the old backend in
+maintenance mode and backfill that metadata while its internal LangGraph endpoint is
+still available:
+
+```bash
+cd backend
+.venv/bin/python scripts/backfill_langgraph_thread_owners.py --dry-run
+.venv/bin/python scripts/backfill_langgraph_thread_owners.py
+.venv/bin/python scripts/backfill_langgraph_thread_owners.py --check
+```
+
+Deploy the authenticated runtime only after `--check` reports zero pending and failed
+threads. New installations can skip the write step, but should still run `--dry-run`.
 7. For MCP tooling, copy `backend/.mcp.example.json` to `backend/.mcp.json` and replace `YOUR_SUPABASE_PROJECT_REF`.
 
 ## E2B Setup

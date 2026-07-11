@@ -189,6 +189,28 @@ Security rules:
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` is public. Configure Row Level Security in Supabase.
 - Run migrations from `backend/supabase/migrations/` and `supabase/migrations/` when enabling database features.
 
+### Legacy LangGraph thread ownership
+
+Existing deployments created before runtime authentication may have LangGraph threads
+without `metadata.owner`. Do not deploy the new custom Auth configuration before those
+threads are migrated. Use this maintenance sequence against the old backend:
+
+```bash
+cd backend
+LANGGRAPH_INTERNAL_URL=http://127.0.0.1:2024 \
+  .venv/bin/python scripts/backfill_langgraph_thread_owners.py --dry-run
+LANGGRAPH_INTERNAL_URL=http://127.0.0.1:2024 \
+  .venv/bin/python scripts/backfill_langgraph_thread_owners.py
+LANGGRAPH_INTERNAL_URL=http://127.0.0.1:2024 \
+  .venv/bin/python scripts/backfill_langgraph_thread_owners.py --check
+```
+
+The script reads the canonical owner mapping from the Supabase `threads` table. It is
+idempotent and stops on conflicting owners. Targets must be loopback or RFC1918 URLs;
+remote targets require the explicit `ALLOW_REMOTE_OWNER_BACKFILL=true` override. If the
+old endpoint requires a bearer token, set `OWNER_BACKFILL_AUTH_TOKEN` in the shell. The
+script never prints that token or thread content.
+
 ## Database Persistence
 
 The default local `backend/langgraph.json` does not require Postgres. Without a database, local checkpoints and history may be ephemeral.
