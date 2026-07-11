@@ -13,6 +13,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
 from .auth import get_current_user
+from ..identity import get_persistent_user
 from .ratelimit import limiter
 from ..agent.graph import get_model
 from ..storage.supabase_db import USE_SUPABASE_DB, get_supabase_client
@@ -51,7 +52,7 @@ class PresentationPayload(BaseModel):
 
 
 class PresentationRecord(PresentationPayload):
-    user_id: str = "default"
+    user_id: str
     created_at: str | None = None
     updated_at: str | None = None
 
@@ -61,7 +62,10 @@ def _now() -> str:
 
 
 def _default_user_id(user: dict | None) -> str:
-    return str((user or {}).get("id") or (user or {}).get("sub") or "default")
+    user_id = (user or {}).get("id") or (user or {}).get("sub")
+    if not isinstance(user_id, str) or not user_id:
+        raise HTTPException(status_code=401, detail="Authenticated identity is missing")
+    return user_id
 
 
 def _extract_attachment_text(attachment: SlideAttachment) -> str:
@@ -210,7 +214,7 @@ async def generate_slides_text(
 
 
 @slides_router.post("/presentations", response_model=PresentationRecord)
-async def save_presentation(payload: PresentationPayload, user: dict = Depends(get_current_user)):
+async def save_presentation(payload: PresentationPayload, user: dict = Depends(get_persistent_user)):
     now = _now()
     user_id = _default_user_id(user)
     existing = await _find_presentation(payload.id)
@@ -229,7 +233,7 @@ async def save_presentation(payload: PresentationPayload, user: dict = Depends(g
 
 
 @slides_router.get("/presentations", response_model=list[PresentationRecord])
-async def list_presentations(user: dict = Depends(get_current_user)):
+async def list_presentations(user: dict = Depends(get_persistent_user)):
     user_id = _default_user_id(user)
     if USE_SUPABASE_DB:
         try:
@@ -249,7 +253,7 @@ async def list_presentations(user: dict = Depends(get_current_user)):
 
 
 @slides_router.get("/presentations/{presentation_id}", response_model=PresentationRecord)
-async def get_presentation(presentation_id: str, user: dict = Depends(get_current_user)):
+async def get_presentation(presentation_id: str, user: dict = Depends(get_persistent_user)):
     presentation = await _find_presentation(presentation_id)
     if not presentation or presentation.user_id != _default_user_id(user):
         raise HTTPException(status_code=404, detail="Presentation not found")
@@ -257,7 +261,7 @@ async def get_presentation(presentation_id: str, user: dict = Depends(get_curren
 
 
 @slides_router.delete("/presentations/{presentation_id}")
-async def delete_presentation(presentation_id: str, user: dict = Depends(get_current_user)):
+async def delete_presentation(presentation_id: str, user: dict = Depends(get_persistent_user)):
     user_id = _default_user_id(user)
     presentation = await _find_presentation(presentation_id)
     if not presentation or presentation.user_id != user_id:

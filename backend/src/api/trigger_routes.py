@@ -11,6 +11,7 @@ import os
 from supabase import create_client, Client
 
 from .auth import get_current_user, get_user_id
+from ..identity import get_persistent_user
 
 # Initialize Supabase client
 def get_supabase() -> Client:
@@ -86,7 +87,7 @@ def calculate_next_run(cron_expression: str, timezone: str) -> datetime:
 
 
 @trigger_router.get("", response_model=List[TriggerResponse])
-async def list_triggers(user: dict = Depends(get_current_user)):
+async def list_triggers(user: dict = Depends(get_persistent_user)):
     """List all scheduled triggers for the current user"""
     supabase = get_supabase()
     user_id = get_user_id(user)
@@ -109,7 +110,7 @@ async def list_triggers(user: dict = Depends(get_current_user)):
 
 
 @trigger_router.get("/{trigger_id}", response_model=TriggerResponse)
-async def get_trigger(trigger_id: str, user: dict = Depends(get_current_user)):
+async def get_trigger(trigger_id: str, user: dict = Depends(get_persistent_user)):
     """Get a specific trigger by ID"""
     supabase = get_supabase()
     user_id = get_user_id(user)
@@ -130,7 +131,7 @@ async def get_trigger(trigger_id: str, user: dict = Depends(get_current_user)):
 
 
 @trigger_router.post("", response_model=TriggerResponse, status_code=status.HTTP_201_CREATED)
-async def create_trigger(request: CreateTriggerRequest, user: dict = Depends(get_current_user)):
+async def create_trigger(request: CreateTriggerRequest, user: dict = Depends(get_persistent_user)):
     """Create a new scheduled trigger for an agent"""
     supabase = get_supabase()
     user_id = get_user_id(user)
@@ -177,7 +178,7 @@ async def create_trigger(request: CreateTriggerRequest, user: dict = Depends(get
 async def update_trigger(
     trigger_id: str,
     request: UpdateTriggerRequest,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(get_persistent_user)
 ):
     """Update a scheduled trigger"""
     supabase = get_supabase()
@@ -221,7 +222,7 @@ async def update_trigger(
 
 
 @trigger_router.delete("/{trigger_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_trigger(trigger_id: str, user: dict = Depends(get_current_user)):
+async def delete_trigger(trigger_id: str, user: dict = Depends(get_persistent_user)):
     """Delete a scheduled trigger"""
     supabase = get_supabase()
     user_id = get_user_id(user)
@@ -243,7 +244,7 @@ async def delete_trigger(trigger_id: str, user: dict = Depends(get_current_user)
 async def get_trigger_logs(
     trigger_id: str,
     limit: int = 20,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(get_persistent_user)
 ):
     """Get execution logs for a trigger"""
     supabase = get_supabase()

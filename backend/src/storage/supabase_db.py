@@ -67,6 +67,13 @@ async def get_supabase_client():
     return _supabase_client
 
 
+async def _ensure_guest_identity(user_id: str) -> None:
+    """Ensure background persistence has a valid application owner."""
+    from ..identity import ensure_app_identity
+
+    await ensure_app_identity(user_id, "guest")
+
+
 async def save_file_record(
     user_id: str,
     filename: str,
@@ -81,7 +88,7 @@ async def save_file_record(
     Save a file record to the files table.
 
     Args:
-        user_id: The user's ID (from Supabase Auth)
+        user_id: The application identity that owns the file
         filename: Original filename
         storage_path: Path in Supabase Storage
         file_size: File size in bytes
@@ -95,6 +102,8 @@ async def save_file_record(
     if not USE_SUPABASE_DB:
         print(f"[SupabaseDB] Skipping save_file_record (not configured)")
         return None
+
+    await _ensure_guest_identity(user_id)
 
     try:
         supabase = await get_supabase_client()
@@ -425,7 +434,7 @@ async def create_thread(
     duplicate threads from being created by concurrent requests.
 
     Args:
-        user_id: The user's ID (from Supabase Auth)
+        user_id: The application identity that owns the thread
         langgraph_thread_id: The LangGraph thread ID (UUID from frontend)
         title: Optional thread title (only used for new threads)
         mode: Thread mode - "default" or "web-dev" (only used for new threads)
@@ -436,6 +445,8 @@ async def create_thread(
     if not USE_SUPABASE_DB:
         print(f"[SupabaseDB] Skipping create_thread (not configured)")
         return None
+
+    await _ensure_guest_identity(user_id)
 
     try:
         supabase = await get_supabase_client()
@@ -523,6 +534,8 @@ async def create_thread_with_fork(
     """
     if not USE_SUPABASE_DB:
         return None
+
+    await _ensure_guest_identity(user_id)
     
     try:
         supabase = await get_supabase_client()
@@ -818,6 +831,8 @@ async def create_upload_session(
         The created session record, or None if failed
     """
     global _use_memory_sessions_fallback
+
+    await _ensure_guest_identity(user_id)
 
     expires_at = datetime.now() + timedelta(seconds=ttl_seconds)
 
@@ -1266,6 +1281,8 @@ async def create_share(
     if not USE_SUPABASE_DB:
         print("[SupabaseDB] Supabase not configured")
         return None
+
+    await _ensure_guest_identity(user_id)
     
     supabase = await get_supabase_client()
     if not supabase:

@@ -15,6 +15,7 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
 from .auth import get_current_user
+from ..identity import get_persistent_user
 from ..storage.supabase_db import get_supabase_client
 
 router = APIRouter(prefix="/api/integrations", tags=["integrations"])
@@ -115,7 +116,7 @@ async def get_configured_apps():
     return {"apps": sorted(get_app_auth_configs())}
 
 @router.get("/connections", response_model=ConnectionsResponse)
-async def get_connections(user: dict = Depends(get_current_user)):
+async def get_connections(user: dict = Depends(get_persistent_user)):
     """
     Get user's connected apps.
     Returns all connections with status pending or connected.
@@ -148,7 +149,7 @@ async def get_connections(user: dict = Depends(get_current_user)):
 @router.post("/connect", response_model=ConnectResponse)
 async def connect_app(
     request: ConnectRequest,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(get_persistent_user)
 ):
     """
     Initiate OAuth connection for an app.
@@ -310,7 +311,7 @@ async def oauth_callback(
 @router.get("/status/{app_name}", response_model=StatusResponse)
 async def check_status(
     app_name: str,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(get_persistent_user)
 ):
     """
     Check connection status for an app.
@@ -384,7 +385,7 @@ async def check_status(
 @router.post("/disconnect", response_model=DisconnectResponse)
 async def disconnect_app(
     request: DisconnectRequest,
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(get_persistent_user)
 ):
     """
     Disconnect an app.

@@ -103,8 +103,9 @@ values (
 );
 SQL
 
-psql "$TEST_URL" -v ON_ERROR_STOP=1 \
-  -f "$ROOT/supabase/migrations/20260712090000_canonical_schema.sql" >/dev/null
+for migration in "$ROOT"/supabase/migrations/20260712*.sql; do
+  psql "$TEST_URL" -v ON_ERROR_STOP=1 -f "$migration" >/dev/null
+done
 
 psql "$TEST_URL" -v ON_ERROR_STOP=1 <<'SQL'
 do $$

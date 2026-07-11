@@ -81,7 +81,11 @@ def _decode_anonymous_session(token: str) -> Optional[dict]:
         user_id = str(UUID(str(payload["sub"])))
         if int(payload["exp"]) <= int(time.time()):
             raise ValueError("token expired")
-        return {"sub": user_id, "email": f"guest-{user_id}@local"}
+        return {
+            "sub": user_id,
+            "email": f"guest-{user_id}@local",
+            "identity_type": "guest",
+        }
     except (KeyError, ValueError, TypeError, json.JSONDecodeError) as exc:
         raise HTTPException(status_code=401, detail="Invalid anonymous session") from exc
 
@@ -111,7 +115,11 @@ def verify_jwt_token(token: str) -> dict:
                 user_id = str(UUID(token.removeprefix("local-dev:")))
             except ValueError as exc:
                 raise HTTPException(status_code=401, detail="Invalid local development token") from exc
-            return {"sub": user_id, "email": f"guest-{user_id}@local"}
+            return {
+                "sub": user_id,
+                "email": f"guest-{user_id}@local",
+                "identity_type": "guest",
+            }
 
     secret = get_jwt_secret()
 
@@ -130,7 +138,7 @@ def verify_jwt_token(token: str) -> dict:
             algorithms=[JWT_ALGORITHM],
             audience="authenticated",  # Supabase uses this audience for authenticated users
         )
-        return payload
+        return {**payload, "identity_type": "supabase"}
     except jwt.ExpiredSignatureError:
         raise HTTPException(
             status_code=401,
@@ -209,6 +217,7 @@ async def get_current_user(
         return {
             "sub": x_user_id or "default",
             "email": f"{x_user_id or 'default'}@local",
+            "identity_type": "guest",
         }
 
     raise HTTPException(
@@ -239,7 +248,11 @@ async def get_optional_user(
             return None
 
     if x_user_id and allow_anonymous() and allow_insecure_local_tokens():
-        return {"sub": x_user_id, "email": f"{x_user_id}@local"}
+        return {
+            "sub": x_user_id,
+            "email": f"{x_user_id}@local",
+            "identity_type": "guest",
+        }
 
     return None
 
@@ -254,4 +267,7 @@ def get_user_id(user: dict) -> str:
     Returns:
         User ID string (Supabase user UUID)
     """
-    return user.get("sub", "default")
+    user_id = user.get("sub")
+    if not isinstance(user_id, str) or not user_id:
+        raise HTTPException(status_code=401, detail="Authenticated identity is missing")
+    return user_id

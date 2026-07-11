@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from supabase import create_client, Client
 
 from .auth import get_current_user, get_user_id
+from ..identity import get_persistent_user
 
 # =============================================================================
 # Configuration
@@ -184,7 +185,7 @@ def row_to_agent(row: dict, creator_name: Optional[str] = None) -> AgentResponse
 
 @router.get("", response_model=AgentListResponse)
 async def list_my_agents(
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(get_persistent_user),
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ) -> AgentListResponse:
@@ -265,7 +266,7 @@ async def list_store_agents(
 @router.get("/{agent_id}", response_model=AgentResponse)
 async def get_agent(
     agent_id: str,
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(get_persistent_user),
 ) -> AgentResponse:
     """
     Get a specific agent by ID.
@@ -291,7 +292,7 @@ async def get_agent(
 @router.post("", response_model=AgentResponse)
 async def create_agent(
     data: AgentCreate,
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(get_persistent_user),
 ) -> AgentResponse:
     """
     Create a new agent.
@@ -324,7 +325,7 @@ async def create_agent(
 async def update_agent(
     agent_id: str,
     data: AgentUpdate,
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(get_persistent_user),
 ) -> AgentResponse:
     """
     Update an existing agent.
@@ -363,7 +364,7 @@ async def update_agent(
 @router.delete("/{agent_id}")
 async def delete_agent(
     agent_id: str,
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(get_persistent_user),
 ) -> dict:
     """
     Delete an agent.
@@ -388,7 +389,7 @@ async def delete_agent(
 @router.post("/{agent_id}/copy", response_model=AgentResponse)
 async def copy_agent(
     agent_id: str,
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(get_persistent_user),
 ) -> AgentResponse:
     """
     Copy a public agent to the current user's list (add to favorites).
@@ -441,7 +442,7 @@ async def copy_agent(
 @router.post("/{agent_id}/use")
 async def use_agent(
     agent_id: str,
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(get_persistent_user),
 ) -> dict:
     """
     Mark an agent as used (increment usage count).
