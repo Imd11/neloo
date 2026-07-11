@@ -673,7 +673,7 @@ export function useChat({
     },
     onError: handleError,
     onCreated: onHistoryRevalidate,
-    experimental_thread: thread,
+    thread,
     // Enable state history for loading historical threads
     // Note: This causes history to replace streaming data after stream ends
     // We handle this by ensuring backend saves complete message_data
