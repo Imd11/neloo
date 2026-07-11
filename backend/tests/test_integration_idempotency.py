@@ -1,6 +1,7 @@
 """Atomic, fail-closed integration action idempotency tests."""
 
 import os
+from uuid import uuid4
 
 import pytest
 
@@ -62,6 +63,50 @@ async def invoke(monkeypatch, reservation, provider=None):
         "gmail", "GMAIL_SEND_EMAIL", {"to": "person@example.test"}, "write", CONFIG
     )
     return result, provider, updates
+
+
+def test_uuid_run_id_is_preserved_as_a_stable_string():
+    run_id = uuid4()
+    assert integration_tools._resolve_run_id_from_config({"run_id": run_id}) == str(run_id)
+
+
+@pytest.mark.asyncio
+async def test_write_without_stable_run_id_is_not_reserved_or_executed(monkeypatch):
+    provider = ProviderTool()
+    reservation_calls = 0
+
+    async def identity(*_args):
+        return None
+
+    async def client():
+        return object()
+
+    async def connected(*_args):
+        return True
+
+    async def reserve(*_args, **_kwargs):
+        nonlocal reservation_calls
+        reservation_calls += 1
+        return {"created": True, "status": "pending"}
+
+    monkeypatch.setattr(integration_tools, "ensure_app_identity", identity)
+    monkeypatch.setattr(integration_tools, "get_supabase_client", client)
+    monkeypatch.setattr(integration_tools, "_verify_connected_app", connected)
+    monkeypatch.setattr(integration_tools, "_reserve_integration_action", reserve)
+    monkeypatch.setattr(integration_tools, "_get_composio_tool", lambda *_args: provider)
+
+    result = await integration_tools._invoke_allowed_action(
+        "gmail",
+        "GMAIL_SEND_EMAIL",
+        {"to": "person@example.test"},
+        "write",
+        {"configurable": CONFIG["configurable"]},
+    )
+
+    assert result["status"] == "error"
+    assert "stable run" in result["message"].lower()
+    assert reservation_calls == 0
+    assert provider.calls == 0
 
 
 @pytest.mark.asyncio
