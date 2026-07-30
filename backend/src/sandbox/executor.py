@@ -1351,6 +1351,17 @@ class LocalSubprocessExecutor(SandboxExecutor):
                 "or use SANDBOX_MODE=e2b for shared/public deployments."
             )
 
+        # Guest mode must never run untrusted code on the host, even when the
+        # operator set ALLOW_LOCAL_SANDBOX=true. This promotes the documented
+        # invariant ("guest mode never enables host code execution") from a
+        # convention into a hard code gate. Use e2b for any guest-facing deploy.
+        if os.environ.get("ALLOW_ANONYMOUS", "false").lower() == "true":
+            raise RuntimeError(
+                "SANDBOX_MODE=local cannot be combined with ALLOW_ANONYMOUS=true: "
+                "guest sessions must not execute code on the host. "
+                "Use SANDBOX_MODE=e2b for shared/public deployments."
+            )
+
         # Auto-sync Supabase files to local before execution
         # This ensures all user-uploaded files are available in the local sandbox
         try:

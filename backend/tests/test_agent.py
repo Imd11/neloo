@@ -27,10 +27,13 @@ def test_sandbox_execution():
     sandbox_mode = os.environ.get("SANDBOX_MODE", "e2b").lower()
     if sandbox_mode.startswith("e2b") and not os.environ.get("E2B_API_KEY"):
         pytest.skip("requires E2B_API_KEY")
-    if sandbox_mode == "local" and not (
-        os.environ.get("ALLOW_LOCAL_SANDBOX") or os.environ.get("ALLOW_ANONYMOUS")
-    ):
-        pytest.skip("requires ALLOW_LOCAL_SANDBOX")
+    if sandbox_mode == "local":
+        # Guest mode hard-blocks host code execution (see LocalSubprocessExecutor
+        # gate), so a guest-facing local config cannot run this smoke test.
+        if os.environ.get("ALLOW_ANONYMOUS", "false").lower() == "true":
+            pytest.skip("local sandbox blocked in guest mode; use e2b")
+        if not os.environ.get("ALLOW_LOCAL_SANDBOX"):
+            pytest.skip("requires ALLOW_LOCAL_SANDBOX")
 
     from src.sandbox import execute_python
 

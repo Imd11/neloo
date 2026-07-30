@@ -474,6 +474,17 @@ def _extract_thread_id_from_path(path: str) -> str | None:
     return None
 
 
+# LangGraph native platform endpoints are served on this same app (see
+# langgraph.json http.app) but are NOT covered by FastAPI Depends(auth),
+# so the request middleware must gate them directly. Our own routes live
+# under /api/ and are protected by their own Depends(get_current_user).
+_LANGGRAPH_NATIVE_PREFIXES = ("/threads", "/runs", "/assistants", "/store", "/history")
+
+
+def _is_langgraph_native_endpoint(path: str) -> bool:
+    return any(path == p or path.startswith(p + "/") for p in _LANGGRAPH_NATIVE_PREFIXES)
+
+
 @app.middleware("http")
 async def _set_runtime_context(request: Request, call_next):
     user_id = None
@@ -489,6 +500,12 @@ async def _set_runtime_context(request: Request, call_next):
     else:
         if allow_anonymous() and allow_insecure_local_tokens():
             user_id = request.headers.get("x-user-id")
+
+    # Gate LangGraph native endpoints: without a verified identity they must
+    # not execute runs, stream, or read thread state — otherwise unauthenticated
+    # callers land on user_id=None and burn the operator's model budget.
+    if user_id is None and _is_langgraph_native_endpoint(request.url.path):
+        return JSONResponse(status_code=401, content={"detail": "Authentication required"})
 
     user_token = user_id_ctx.set(user_id)
     thread_token = thread_id_ctx.set(thread_id)

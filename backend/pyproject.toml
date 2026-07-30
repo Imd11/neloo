@@ -6,7 +6,10 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     # LangChain 1.0 Deep Agents
-    "deepagents>=0.1.0",
+    # LangChain 1.0 Deep Agents. Pin <0.7: 0.7 removed backend factories;
+    # create_deep_agent now expects a BackendProtocol instance, which breaks
+    # graph import on a fresh `pip install -e .`.
+    "deepagents>=0.1.0,<0.7",
     "langchain>=0.3.0",
     "langgraph>=0.3.0",
     "langgraph-cli[inmem]>=0.1.0",
